@@ -1,71 +1,121 @@
 <script setup lang="ts">
+import { ref, provide } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const postId = route.params.id
 
-// Recupera i dati dall'API appena creata
-const { data, error, pending } = await useFetch(`/api/item/${postId}`)
+const newCommentContent = ref('')
+const isSubmitting = ref(false)
+
+// Caricamento dati da server/api/hn/comment.ts
+const { data, error, pending, refresh } = await useFetch('/api/hn/comment', {
+  query: { postId }
+})
+
+const handleAddComment = async () => {
+  if (!newCommentContent.value.trim() || isSubmitting.value) return
+
+  isSubmitting.value = true
+  try {
+    await $fetch('/api/hn/comment', {
+      method: 'POST',
+      body: {
+        postId: postId,
+        parentId: null,
+        content: newCommentContent.value
+      }
+    })
+    newCommentContent.value = ''
+    await refresh()
+  } catch (err) {
+    alert('Errore durante l\'invio del commento.')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// Condividiamo la funzione di refresh con l'albero dei sotto-commenti
+provide('refreshComments', refresh)
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto p-4 font-sans bg-[#f6f6ef] text-[#1a1a1a]">
-    <!-- Stato di caricamento ed errori -->
-    <div v-if="pending" class="text-gray-500 py-4">Caricamento in corso...</div>
-    <div v-else-if="error || !data" class="text-red-500 py-4">
-      Errore durante il caricamento dell'item o post non trovato.
-    </div>
-
-    <div v-else>
-      <!-- Sezione Post (Header nello stile HN) -->
-      <div class="mb-6">
-        <div class="flex items-baseline gap-2">
-          <h1 class="text-lg font-bold text-gray-900">
-            <a v-if="data.post.url" :href="data.post.url" target="_blank" class="hover:underline">
-              {{ data.post.title }}
-            </a>
-            <span v-else>{{ data.post.title }}</span>
-          </h1>
-          <span v-if="data.post.url" class="text-xs text-gray-500">
-            ({{ new URL(data.post.url).hostname }})
+  <div class="min-h-screen bg-[#f6f6ef] md:py-2 md:px-4 font-mono text-[13px] text-[#222222]">
+    <div class="max-w-[85%] mx-auto bg-[#f6f6ef]">
+      
+      <!-- Hacker News Header Bar -->
+      <header class="bg-[#ff6600] p-1 flex items-center justify-between text-black font-sans">
+        <div class="flex items-center gap-2 font-bold">
+          <NuxtLink to="/" class="border-2 border-white px-1.5 py-0.5 text-white font-extrabold text-[14px] leading-none select-none">
+            Y
+          </NuxtLink>
+          <NuxtLink to="/" class="hover:underline text-[14px]">Hacker News</NuxtLink>
+          <span class="font-normal text-[#1a1a1a] text-[13px] flex gap-2 ml-2">
+            <NuxtLink to="/" class="hover:underline">new</NuxtLink> |
+            <NuxtLink to="/submit" class="hover:underline">submit</NuxtLink>
           </span>
         </div>
-        
-        <p class="text-xs text-gray-500 mt-1">
-          {{ data.post.score }} punti da {{ data.post.by }} | 
-          {{ new Date(data.post.createdAt).toLocaleString() }} | 
-          {{ data.post.descendants }} commenti
-        </p>
-      </div>
+      </header>
 
-      <!-- Area Inserimento Nuovo Commento Principale (Mock o Futura implementazione) -->
-      <div class="mb-8 bg-white p-4 rounded shadow-sm border border-gray-200">
-        <h3 class="text-sm font-bold mb-2">Aggiungi un commento</h3>
-        <textarea 
-          placeholder="Scrivi qualcosa... (funzionalità di scrittura nel prossimo step)" 
-          rows="3" 
-          class="w-full p-2 border rounded text-sm bg-gray-50 cursor-not-allowed"
-          disabled
-        ></textarea>
-        <button class="mt-2 px-3 py-1 bg-[#ff6600] text-white text-xs font-bold rounded opacity-50 cursor-not-allowed">
-          add comment
-        </button>
-      </div>
+      <!-- Corpo principale della pagina -->
+      <main class="p-3 font-sans">
+        <div v-if="pending" class="text-[#828282] py-2">Loading...</div>
+        <div v-else-if="error || !data" class="text-red-600 py-2">Post non trovato o errore server.</div>
 
-      <!-- Lista dei Commenti (Albero Ricorsivo) -->
-      <div>
-        <h2 class="text-md font-bold border-b border-gray-300 pb-2 mb-4">Discussione</h2>
-        <p v-if="data.comments.length === 0" class="text-sm text-gray-500 italic">
-          Nessun commento presente. Sii il primo a commentare!
-        </p>
-        
-        <ul v-else class="space-y-4">
-          <!-- Iterazione sui nodi radice dell'albero dei commenti -->
-          <li v-for="comment in data.comments" :key="comment.id">
-            <CommentNode :node="comment" />
-          </li>
-        </ul>
-      </div>
+        <div v-else>
+          <!-- Intestazione del Post -->
+          <div class="mb-4">
+            <div class="flex items-start gap-1">
+              <!-- Freccetta Upvote HN -->
+              <div class="text-[#828282] text-[10px] pt-1 cursor-pointer select-none hover:text-black">▲</div>
+              <div>
+                <span class="text-[14px] text-black">
+                  <a v-if="data.post.url" :href="data.post.url" target="_blank" class="hover:underline">{{ data.post.title }}</a>
+                  <span v-else>{{ data.post.title }}</span>
+                </span>
+                <span v-if="data.post.url" class="text-[10px] text-[#828282] ml-1">
+                  ({{ new URL(data.post.url).hostname }})
+                </span>
+              </div>
+            </div>
+            <!-- Sotto-titolo info -->
+            <div class="text-[10px] text-[#828282] pl-4 mt-0.5">
+              {{ data.post.score }} points by {{ data.post.by }} | 
+              {{ new Date(data.post.createdAt).toLocaleString() }} | 
+              {{ data.post.descendants }} comments
+            </div>
+          </div>
+
+          <!-- Textarea per il commento principale -->
+          <div class="pl-4 mb-6">
+            <textarea 
+              v-model="newCommentContent"
+              rows="4" 
+              class="w-full max-w-[600px] p-1 border border-gray-400 font-mono text-[13px] bg-white focus:outline-none"
+              :disabled="isSubmitting"
+            ></textarea>
+            <div class="mt-2">
+              <button 
+                @click="handleAddComment"
+                :disabled="isSubmitting"
+                class="px-2 py-0.5 border border-gray-500 bg-[#e0e0e0] active:bg-gray-300 text-[12px] rounded-xs text-black"
+              >
+                {{ isSubmitting ? 'submitting...' : 'add comment' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenitore dell'Albero delle Discussioni -->
+          <div class="pl-1 border-t border-[#dedede] pt-4">
+            <ul class="space-y-5 list-none p-0 m-0">
+              <li v-for="comment in data.comments" :key="comment.id">
+                <CommentNode :node="comment" />
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </main>
     </div>
   </div>
 </template>
