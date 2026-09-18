@@ -58,4 +58,3 @@ const route = useRoute()
     </nav>
   </header>
 </template>
-Usa il codice con cautela.

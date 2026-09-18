@@ -4,13 +4,14 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from './schema';
 
 export function getDb() {
-  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  // Recuperiamo la configurazione runtime sicura di Nuxt
+  const config = useRuntimeConfig();
+  const connectionString = config.databaseUrl;
   
   if (!connectionString) {
-    throw new Error("Manca la variabile d'ambiente DATABASE_URL o POSTGRES_URL");
+    throw new Error("Manca la stringa di connessione nel runtimeConfig di Nuxt.");
   }
   
-  // Utilizziamo direttamente l'importazione standard nativa ES Module
   const sql = neon(connectionString);
   return drizzle(sql, { schema });
-  }
+}

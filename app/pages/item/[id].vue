@@ -1,126 +1,71 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
+
 const route = useRoute()
-const id = computed(() => +route.params.id)
+const postId = route.params.id
 
-const [resultItem, resultComments] = await Promise.all([fetchItem(id.value), fetchComments(id.value)])
-const { data: item } = toRefs(resultItem)
-const { data: comments, loading: commentsLoading } = toRefs(resultComments)
-
-useHead({
-  title: item.value?.title,
-})
+// Recupera i dati dall'API appena creata
+const { data, error, pending } = await useFetch(`/api/item/${postId}`)
 </script>
 
 <template>
-  <div class="item-view view">
-    <div
-      v-if="!item?.url && !item?.title"
-      class="item-view-header"
-    >
-      <h1>Page not found</h1>
+  <div class="max-w-4xl mx-auto p-4 font-sans bg-[#f6f6ef] text-[#1a1a1a]">
+    <!-- Stato di caricamento ed errori -->
+    <div v-if="pending" class="text-gray-500 py-4">Caricamento in corso...</div>
+    <div v-else-if="error || !data" class="text-red-500 py-4">
+      Errore durante il caricamento dell'item o post non trovato.
     </div>
-    <template v-else>
-      <div class="item-view-header">
-        <template v-if="item.url && isAbsolute(item.url)">
-          <a
-            :href="item.url"
-            target="_blank"
-            rel="noopener"
-          ><h1 v-text="item.title" /></a>
-          <span class="host"> ({{ host(item.url) }})</span>
-        </template>
-        <template v-else>
-          <h1 v-text="item.title" />
-          <div
-            v-if="item.content"
-            class="content"
-            v-html="item.content"
-          />
-        </template>
-        <p class="meta">
-          {{ item.points }} points | by
-          <NuxtLink :to="'/user/' + item.user">
-            {{ item.user }}
-          </NuxtLink>
-          {{ timeAgo(+item.time) }} ago
+
+    <div v-else>
+      <!-- Sezione Post (Header nello stile HN) -->
+      <div class="mb-6">
+        <div class="flex items-baseline gap-2">
+          <h1 class="text-lg font-bold text-gray-900">
+            <a v-if="data.post.url" :href="data.post.url" target="_blank" class="hover:underline">
+              {{ data.post.title }}
+            </a>
+            <span v-else>{{ data.post.title }}</span>
+          </h1>
+          <span v-if="data.post.url" class="text-xs text-gray-500">
+            ({{ new URL(data.post.url).hostname }})
+          </span>
+        </div>
+        
+        <p class="text-xs text-gray-500 mt-1">
+          {{ data.post.score }} punti da {{ data.post.by }} | 
+          {{ new Date(data.post.createdAt).toLocaleString() }} | 
+          {{ data.post.descendants }} commenti
         </p>
       </div>
-      <div class="item-view-comments">
-        <LoadingWrapper :loading="commentsLoading">
-          <p class="item-view-comments-header">
-            {{ comments ? comments.length + ' comments' : 'No comments yet.' }}
-          </p>
-          <ul class="comment-children">
-            <PostComment
-              v-for="comment in comments"
-              :key="comment.id"
-              :comment="comment"
-            />
-          </ul>
-        </LoadingWrapper>
+
+      <!-- Area Inserimento Nuovo Commento Principale (Mock o Futura implementazione) -->
+      <div class="mb-8 bg-white p-4 rounded shadow-sm border border-gray-200">
+        <h3 class="text-sm font-bold mb-2">Aggiungi un commento</h3>
+        <textarea 
+          placeholder="Scrivi qualcosa... (funzionalità di scrittura nel prossimo step)" 
+          rows="3" 
+          class="w-full p-2 border rounded text-sm bg-gray-50 cursor-not-allowed"
+          disabled
+        ></textarea>
+        <button class="mt-2 px-3 py-1 bg-[#ff6600] text-white text-xs font-bold rounded opacity-50 cursor-not-allowed">
+          add comment
+        </button>
       </div>
-    </template>
+
+      <!-- Lista dei Commenti (Albero Ricorsivo) -->
+      <div>
+        <h2 class="text-md font-bold border-b border-gray-300 pb-2 mb-4">Discussione</h2>
+        <p v-if="data.comments.length === 0" class="text-sm text-gray-500 italic">
+          Nessun commento presente. Sii il primo a commentare!
+        </p>
+        
+        <ul v-else class="space-y-4">
+          <!-- Iterazione sui nodi radice dell'albero dei commenti -->
+          <li v-for="comment in data.comments" :key="comment.id">
+            <CommentNode :node="comment" />
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </template>
-
-<style lang="postcss">
-.item-view-header {
-  background-color: #fff;
-  padding: 1.8em 2em 1em;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-
-  & h1 {
-    display: inline;
-    font-size: 1.5em;
-    margin: 0;
-    margin-right: 0.5em;
-  }
-
-  .content {
-    margin-top: 1em;
-  }
-
-  .host, .meta, .meta a {
-    color: #595959;
-  }
-  .meta a:hover {
-    color: #00C48D;
-  }
-
-  .meta a {
-    text-decoration: underline;
-  }
-}
-
-.item-view-comments {
-  background-color: #fff;
-  margin-top: 10px;
-  padding: 0 2em 0.5em;
-}
-
-.item-view-comments-header {
-  margin: 0;
-  font-size: 1.1em;
-  padding: 1em 0;
-  position: relative;
-
-  .spinner {
-    display: inline-block;
-    margin: -15px 0;
-  }
-}
-
-.comment-children {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-@media (max-width: 600px) {
-  .item-view-header {
-    & h1 {
-      font-size: 1.25em;
-    }
-  }
-}
-</style>

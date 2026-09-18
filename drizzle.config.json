@@ -1,8 +1,0 @@
-{
-  "schema": "./server/db/schema.ts",
-  "out": "./server/db/migrations",
-  "dialect": "postgresql",
-  "dbCredentials": {
-    "url": "postgresql://alex:AbC123dEf@ep-cool-darkness-a1b2c3d4-pooler.us-east-2.aws.neon.tech/dbname?sslmode=require&channel_binding=require"
-  }
-}
