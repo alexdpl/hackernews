@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 import { posts, comments, votes } from '~~/server/db/schema'
 
 interface CommentNode {
@@ -92,6 +92,32 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Campi obbligatori mancanti (postId, content).'
       })
     }
+	
+	const cleanContent = content.trim()
+    const parsedPostId = parseInt(postId, 10)
+    const parsedParentId = parentId ? parseInt(parentId, 10) : null
+
+    // --- FILTRO ANTI-DUPLICATI PER I COMMENTI ---
+    const duplicateComment = await db
+      .select()
+      .from(comments)
+      .where(
+        and(
+          eq(comments.postId, parsedPostId),
+          // Gestisce il confronto sia con parentId numerico che NULL
+          parsedParentId ? eq(comments.parentId, parsedParentId) : sql`${comments.parentId} IS NULL`,
+          eq(comments.content, cleanContent)
+        )
+      )
+      .limit(1)
+
+    if (duplicateComment.length > 0) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: 'Hai già inviato questo identico commento in questa discussione.'
+      })
+    }
+    // ---------------------------------------------
 
     // Inserimento record nel DB Neon tramite Drizzle
     const newComment = await db.insert(comments).values({
