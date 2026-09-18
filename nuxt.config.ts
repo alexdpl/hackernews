@@ -44,3 +44,20 @@ export default defineNuxtConfig({
     },
   },
 })
+export default defineNuxtConfig({
+  // Mantiene le tue impostazioni correnti (compatibilityVersion: 4, runtimeConfig, ecc.)
+  future: {
+    compatibilityVersion: 4,
+  },
+  runtimeConfig: {
+    databaseUrl: '',
+  },
+  // Aggiungi questo blocco per aggiornare il target di compilazione di Nitro
+  nitro: {
+    esbuild: {
+      options: {
+        target: 'esnext'
+      }
+    }
+  }
+})

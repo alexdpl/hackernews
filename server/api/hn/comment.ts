@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm'
-import { posts, comments } from '~~/server/db/schema'
+import { eq, sql } from 'drizzle-orm'
+import { posts, comments, votes } from '~~/server/db/schema'
 
 interface CommentNode {
   id: number
@@ -24,22 +24,30 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'postId mancante o non valido.' })
     }
 
-    // 1. Recupera il post usando il singleton globale 'db'
+    // 1. Recupera il post usando il singleton dentro l'handler
     const postResult = await db.select().from(posts).where(eq(posts.id, postId)).limit(1)
     if (postResult.length === 0) {
       throw createError({ statusCode: 404, statusMessage: 'Post non trovato.' })
     }
     const post = postResult[0]
 
-    // Arricchimento mock (come in news.ts)
+    // 2. Conta i voti reali associati a questo postId
+    const voteCountResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(votes)
+      .where(eq(votes.postId, postId))
+    
+    const realScore = voteCountResult[0]?.count || 0
+
+    // Arricchimento con dati reali e mock
     const enrichedPost = {
       ...post,
-      score: Math.floor(Math.random() * 100) + 1,
+      score: realScore,
       by: 'utente_neon',
       descendants: 0
     }
 
-    // 2. Recupera tutti i commenti del post
+    // 3. Recupera tutti i commenti del post
     const allComments = await db
       .select()
       .from(comments)
@@ -48,7 +56,7 @@ export default defineEventHandler(async (event) => {
 
     enrichedPost.descendants = allComments.length
 
-    // 3. Costruzione dell'albero O(N)
+    // 4. Costruzione dell'albero O(N)
     const commentMap: Record<number, CommentNode> = {}
     const rootComments: CommentNode[] = []
 
@@ -95,7 +103,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      comment: newComment[0]
+      comment: newComment
     }
   }
 

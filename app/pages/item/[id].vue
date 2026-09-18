@@ -13,6 +13,20 @@ const { data, error, pending, refresh } = await useFetch('/api/hn/comment', {
   query: { postId }
 })
 
+// Gestione dell'invio dell'upvote al database Neon
+const handleUpvote = async () => {
+  try {
+    await $fetch('/api/hn/vote', {
+      method: 'POST',
+      body: { postId: postId }
+    })
+    await refresh() // Ricarica i dati includendo il nuovo punteggio aggiornato dal DB
+  } catch (err: any) {
+    alert(err.statusMessage || 'Errore durante l\'upvote o voto già inserito.')
+  }
+}
+
+// Gestione dell'invio del commento principale
 const handleAddComment = async () => {
   if (!newCommentContent.value.trim() || isSubmitting.value) return
 
@@ -66,8 +80,13 @@ provide('refreshComments', refresh)
           <!-- Intestazione del Post -->
           <div class="mb-4">
             <div class="flex items-start gap-1">
-              <!-- Freccetta Upvote HN -->
-              <div class="text-[#828282] text-[10px] pt-1 cursor-pointer select-none hover:text-black">▲</div>
+              <!-- Freccetta Upvote HN Dinamica e Funzionante -->
+              <div 
+                @click="handleUpvote" 
+                class="text-[#828282] text-[10px] pt-1 cursor-pointer select-none hover:text-[#ff6600] transition-colors"
+              >
+                ▲
+              </div>
               <div>
                 <span class="text-[14px] text-black">
                   <a v-if="data.post.url" :href="data.post.url" target="_blank" class="hover:underline">{{ data.post.title }}</a>
