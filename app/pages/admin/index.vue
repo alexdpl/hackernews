@@ -19,8 +19,9 @@ const loadPosts = async () => {
   postsList.value = []
   
   try {
-    // Sfrutta l'auto-import pulito di Nuxt senza costrutti globali rischiosi per l'SSR
-    const data = await \$fetch('/api/admin/posts', {
+    // useRequestFetch() sostituisce interamente il dollaro-fetch senza mandare in blocco Babel
+    const clientFetch = useRequestFetch()
+    const data = await clientFetch('/api/admin/posts', {
       headers: {
         'x-admin-secret': adminSecret.value
       }
@@ -41,7 +42,8 @@ const deletePost = async (id) => {
   }
 
   try {
-    await \$fetch('/api/admin/posts', {
+    const clientFetch = useRequestFetch()
+    await clientFetch('/api/admin/posts', {
       method: 'DELETE',
       headers: {
         'x-admin-secret': adminSecret.value
