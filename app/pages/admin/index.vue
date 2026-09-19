@@ -16,17 +16,18 @@ const loadPosts = async () => {
   
   loading.value = true
   errorMessage.value = ''
+  postsList.value = []
   
   try {
-    // Usiamo globalThis.\$fetch per isolarlo da qualunque errore di compilazione locale del compilatore Babel
-    const data = await globalThis.\$fetch('/api/admin/posts', {
+    // Sfrutta l'auto-import pulito di Nuxt senza costrutti globali rischiosi per l'SSR
+    const data = await \$fetch('/api/admin/posts', {
       headers: {
         'x-admin-secret': adminSecret.value
       }
     })
     postsList.value = data
   } catch (err) {
-    errorMessage.value = err.statusMessage || 'Errore nel caricamento dei post.'
+    errorMessage.value = err.statusMessage || 'Errore nel caricamento dei post. Verifica la chiave.'
     postsList.value = []
   } finally {
     loading.value = false
@@ -40,7 +41,7 @@ const deletePost = async (id) => {
   }
 
   try {
-    await globalThis.\$fetch('/api/admin/posts', {
+    await \$fetch('/api/admin/posts', {
       method: 'DELETE',
       headers: {
         'x-admin-secret': adminSecret.value
