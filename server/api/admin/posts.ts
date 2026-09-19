@@ -1,60 +1,25 @@
-// server/api/admin/posts.ts
-import { eq, desc } from 'drizzle-orm'
 import { posts } from '../../db/schema'
-import { db } from '../../utils/db'
+import { desc } from 'drizzle-orm'
+// getDb viene auto-importato da Nuxt da server/utils/db.ts, 
+// ma se persistono problemi di risoluzione moduli puoi decommentare la riga sotto:
+// import { getDb } from '../../utils/db'
 
 export default defineEventHandler(async (event) => {
-  // Configurazione di sicurezza rapida
-  const ADMIN_SECRET = 'il_tuo_secret_di_admin_qui'
-  const authHeader = getHeader(event, 'x-admin-secret')
+  if (event.method !== 'GET') {
+    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
+  }
+  
+  const config = useRuntimeConfig(event)
+  const authHeader = getHeader(event, 'Authorization')
 
-  if (authHeader !== ADMIN_SECRET) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Non autorizzato. Secret amministratore non valido.',
-    })
+  if (!config.adminSecret || authHeader !== `Bearer ${config.adminSecret}`) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
   }
 
-  const method = getMethod(event)
-
-  // 1. GET: Recupera tutti i post per la dashboard
-  if (method === 'GET') {
-    try {
-      const allPosts = await db.select().from(posts).orderBy(desc(posts.createdAt))
-      return allPosts
-    } catch (error: any) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Errore nel recupero dei post: ${error.message}`,
-      })
-    }
+  try {
+    const database = getDb()
+    return await database.select().from(posts).orderBy(desc(posts.createdAt))
+  } catch (error: any) {
+    throw createError({ statusCode: 500, statusMessage: error.message || 'Database connection failed' })
   }
-
-  // 2. DELETE: Elimina un post specifico (commenti e voti cadono in CASCADE)
-  if (method === 'DELETE') {
-    const body = await readBody(event)
-    const { id } = body
-
-    if (!id) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: 'ID del post mancante.',
-      })
-    }
-
-    try {
-      await db.delete(posts).where(eq(posts.posts.id, Number(id)))
-      return { success: true, message: `Post #${id} eliminato con successo.` }
-    } catch (error: any) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Errore durante l'eliminazione: ${error.message}`,
-      })
-    }
-  }
-
-  throw createError({
-    statusCode: 405,
-    statusMessage: 'Metodo non supportato',
-  })
 })

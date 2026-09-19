@@ -1,7 +1,20 @@
 <!-- app/pages/[feed]/[page].vue -->
 <script setup lang="ts">
-// Esegue la chiamata verso la nostra nuova API interna connessa a Neon
-const { data: items, error } = await useFetch('/api/news')
+const route = useRoute()
+
+// Estraiamo in modo sicuro i parametri della rotta dinamica di Nuxt 4
+const feedType = computed(() => (route.params.feed as string) || 'news')
+const pageNumber = computed(() => parseInt(route.params.page as string) || 1)
+
+// Eseguiamo la chiamata dinamica passando tipo di feed e pagina corrente come query params
+const { data: items, error } = await useFetch('/api/posts', {
+  query: {
+    feed: feedType,
+    page: pageNumber
+  },
+  // Ricarica i dati automaticamente se cambiano i parametri dell'URL
+  watch: [feedType, pageNumber]
+})
 </script>
 
 <template>
@@ -17,12 +30,15 @@ const { data: items, error } = await useFetch('/api/news')
     <div v-else class="item-list">
       <ul>
         <li v-for="(item, index) in items" :key="item.id" class="news-item">
-          <span class="index">{{ index + 1 }}.</span>
+          <!-- Calcolo corretto dell'indice per la paginazione in stile HN -->
+          <span class="index">{{ ((pageNumber - 1) * 30) + index + 1 }}.</span>
           <div class="main-text">
             <a :href="item.url" target="_blank" class="title-link">
               {{ item.title }}
             </a>
-            <span class="url-domain">({{ item.url.replace('https://','').replace('http://','').split('/')[0] }})</span>
+            <span v-if="item.url" class="url-domain">
+              ({{ item.url.replace('https://','').replace('http://','').split('/')[0] }})
+            </span>
           </div>
         </li>
       </ul>

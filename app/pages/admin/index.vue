@@ -19,11 +19,11 @@ const loadPosts = async () => {
   postsList.value = []
   
   try {
-    // useRequestFetch() sostituisce interamente il dollaro-fetch senza mandare in blocco Babel
     const clientFetch = useRequestFetch()
     const data = await clientFetch('/api/admin/posts', {
       headers: {
-        'x-admin-secret': adminSecret.value
+        // Usiamo l'header standard Bearer per allinearci al runtimeConfig sicuro del backend
+        'Authorization': `Bearer ${adminSecret.value}`
       }
     })
     postsList.value = data
@@ -46,15 +46,18 @@ const deletePost = async (id) => {
     await clientFetch('/api/admin/posts', {
       method: 'DELETE',
       headers: {
-        'x-admin-secret': adminSecret.value
+        // Allineato all'autenticazione del backend
+        'Authorization': `Bearer ${adminSecret.value}`
       },
-      body: { id }
+      // Cambiato in postId per combaciare esattamente con readBody(event) del backend
+      body: { postId: id }
     })
     
     // Rimuove il post dallo stato locale senza ricaricare la pagina
     postsList.value = postsList.value.filter(p => p.id !== id)
+    alert('Post eliminato con successo!')
   } catch (err) {
-    alert(`Impossibile eliminare il post: ${err.statusMessage || 'Errore di rete'}`)
+    alert(`Impossibile eliminare il post: ${err.statusMessage || 'Errore di rete o autenticazione fallita'}`)
   }
 }
 </script>

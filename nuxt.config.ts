@@ -1,6 +1,5 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
-  // https://nuxt.com/modules
   compatibilityDate: '2026-09-17',
   
   modules: [
@@ -8,11 +7,10 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
   ],
 
-  // Configurazione per le variabili d'ambiente lato server
+  // Configurazione per le variabili d'ambiente lato server (Accessibili solo in server/)
   runtimeConfig: {
-    // Lasciandola vuota qui, Nuxt si aspetta che venga sovrascritta 
-    // a runtime dalla variabile NUXT_DATABASE_URL nel file .env o su Vercel
-    databaseUrl: '', 
+    databaseUrl: '', // Mappata automaticamente da NUXT_DATABASE_URL
+    adminSecret: '', // Mappata automaticamente da NUXT_ADMIN_SECRET
   },
 
   // Configurazione Nuxt 4 (struttura a layer / app directory)
@@ -20,7 +18,16 @@ export default defineNuxtConfig({
     compatibilityVersion: 4 
   },
 
-  // https://devtools.nuxt.com
+  // Target di compilazione Nitro richiesto
+  nitro: {
+    esnext: true,
+    esbuild: {
+      options: {
+        target: 'esnext'
+      }
+    }
+  },
+
   devtools: {
     enabled: true,
   },
@@ -35,7 +42,6 @@ export default defineNuxtConfig({
     },
   },
 
-  // https://eslint.nuxt.com
   eslint: {
     config: {
       stylistic: {
@@ -43,21 +49,4 @@ export default defineNuxtConfig({
       },
     },
   },
-})
-export default defineNuxtConfig({
-  // Mantiene le tue impostazioni correnti (compatibilityVersion: 4, runtimeConfig, ecc.)
-  future: {
-    compatibilityVersion: 4,
-  },
-  runtimeConfig: {
-    databaseUrl: '',
-  },
-  // Aggiungi questo blocco per aggiornare il target di compilazione di Nitro
-  nitro: {
-    esbuild: {
-      options: {
-        target: 'esnext'
-      }
-    }
-  }
 })

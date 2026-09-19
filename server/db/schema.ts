@@ -1,11 +1,25 @@
 // 1. Importa i tipi e le funzioni specifiche per PostgreSQL da pg-core
 import { pgTable, serial, integer, text, timestamp, unique } from 'drizzle-orm/pg-core'
 
-// Tabella dei Post
+import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
+
+// Lascia SOLO questa definizione per i posts
 export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
-  url: text('url'),
+  url: text('url').notNull(),
+  type: text('type').default('news').notNull(), 
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Lascia SOLO questa definizione per i jobs
+export const jobs = pgTable('jobs', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  company: text('company').notNull(),
+  url: text('url'), 
+  text: text('text'), 
+  location: text('location'), 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
