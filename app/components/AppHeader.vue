@@ -7,54 +7,107 @@ const route = useRoute()
 
 <template>
   <header class="header">
-    <nav
-      class="inner"
-      role="navigation"
-    >
-      <NuxtLink
-        to="/"
-        aria-label="Go to homepage"
-      >
-        <svg
-          class="logo"
-          viewBox="0 0 900 900"
-          fill="none"
-          xmlns="http://w3.org"
-        >
-          <path
-            d="M504.908 750H839.476C850.103 750.001 860.542 747.229 869.745 741.963C878.948 736.696 886.589 729.121 891.9 719.999C897.211 710.876 900.005 700.529 900 689.997C899.995 679.465 897.193 669.12 891.873 660.002L667.187 274.289C661.876 265.169 654.237 257.595 645.036 252.329C635.835 247.064 625.398 244.291 614.773 244.291C604.149 244.291 593.711 247.064 584.511 252.329C575.31 257.595 567.67 265.169 562.36 274.289L504.908 372.979L392.581 179.993C387.266 170.874 379.623 163.301 370.42 158.036C361.216 152.772 350.777 150 340.151 150C329.525 150 319.086 152.772 309.883 158.036C300.679 163.301 293.036 170.874 287.721 179.993L8.12649 660.002C2.80743 669.12 0.00462935 679.465 5.72978e-06 689.997C-0.00461789 700.529 2.78909 710.876 8.10015 719.999C13.4112 729.121 21.0523 736.696 30.255 741.963C39.4576 747.229 49.8973 750.001 60.524 750H270.538C353.748 750 415.112 713.775 457.336 643.101L559.849 467.145L614.757 372.979L779.547 655.834H559.849L504.908 750ZM267.114 655.737L120.551 655.704L340.249 278.586L449.87 467.145L376.474 593.175C348.433 639.03 316.577 655.737 267.114 655.737Z"
-            fill="#00DC82"
-          />
-        </svg>
-      </NuxtLink>
-      
-      <NuxtLink
-        v-for="(list, key) in feedsInfo"
-        :key="key"
-        :to="`/${key}`"
-        :class="{ active: route.path.startsWith(`/${key}`) }"
-      >
-        {{ list.title }}
-      </NuxtLink>
+    <div class="header-container">
+      <!-- Logo e Menu Principale uniti nello stesso blocco -->
+      <div class="nav-main">
+        <!-- Il tuo logo verde smeraldo dello screen -->
+        <NuxtLink to="/" class="logo-link">
+          <svg class="logo-icon" viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M12 2L2 22h20L12 2zm0 4.8L18.4 19H5.6L12 6.8z"/>
+          </svg>
+        </NuxtLink>
 
-      <!-- Tasto "Invia Link" pulito e integrato senza caratteri di escape instabili -->
-      <NuxtLink
-        to="/submit"
-        :class="{ active: route.path === '/submit' }"
-        style="color: #ff6600; font-weight: bold; margin-left: 15px;"
-      >
-        Invia Link
-      </NuxtLink>
+        <!-- Menu di navigazione unico dello screen -->
+        <nav class="nav-links">
+          <NuxtLink to="/" class="nav-link text-emerald">News</NuxtLink>
+          <NuxtLink to="/newest" class="nav-link">Newest</NuxtLink>
+          <NuxtLink to="/ask" class="nav-link">Ask</NuxtLink>
+          <NuxtLink to="/show" class="nav-link">Show</NuxtLink>
+          
+          <!-- FASE 6: Jobs integrato nel menu (Verde smeraldo, grigio al passaggio del mouse) -->
+          <NuxtLink to="/jobs/1" class="nav-link nav-link-special">Jobs</NuxtLink>
+          
+          <!-- FASE 6: Invia Link integrato nel menu (Verde smeraldo, grigio al passaggio del mouse) -->
+          <NuxtLink to="/submit" class="nav-link nav-link-special">Invia Link</NuxtLink>
+        </nav>
+      </div>
 
-      <span class="github">
-        <a
-          href="https://github.com/alexdpl/hackernews"
-          target="_blank"
-          rel="noopener banner"
-        >
-          Open on GitHub
-        </a>
-      </span>
-    </nav>
+      <!-- Link esterno a destra -->
+      <div class="nav-right">
+        <a href="https://github.com" target="_blank" class="nav-link github-link">Open on GitHub</a>
+      </div>
+    </div>
   </header>
 </template>
+
+<style scoped>
+/* Sfondo scuro e layout fedele al tuo screenshot */
+.header {
+  background-color: #030712; /* Sfondo scuro profondo dello screen */
+  padding: 12px 24px;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.nav-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.logo-link {
+  color: #10b981; /* Verde Smeraldo del logo */
+  display: flex;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Stile base dei link (Grigio chiaro / Bianco) */
+.nav-link {
+  color: #f3f4f6;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover:not(.nav-link-special) {
+  color: #10b981; /* I link normali diventano verdi all'hover */
+}
+
+/* Colore specifico per il link News attivo */
+.text-emerald {
+  color: #10b981;
+}
+
+/* Link speciali di destra */
+.github-link {
+  font-size: 13px;
+  color: #d1d5db;
+}
+
+/* ======================================================== */
+/* CONFIGURAZIONE INVERTITA FASE 6 (Jobs & Invia Link)    */
+/* ======================================================== */
+.nav-link-special {
+  color: #059669 !important; /* Verde smeraldo fisso di partenza */
+  font-weight: 600;
+}
+
+/* Al passaggio del mouse l'effetto si inverte e diventa grigio */
+.nav-link-special:hover {
+  color: #9ca3af !important; /* Grigio chiaro al passaggio del mouse */
+}
+</style>
