@@ -1,25 +1,65 @@
+// server/api/admin/posts.ts
+import { defineEventHandler, getQuery, createError, getHeader } from 'h3'
+import { getDb } from '../../utils/db'
 import { posts } from '../../db/schema'
-import { desc } from 'drizzle-orm'
-// getDb viene auto-importato da Nuxt da server/utils/db.ts, 
-// ma se persistono problemi di risoluzione moduli puoi decommentare la riga sotto:
-// import { getDb } from '../../utils/db'
+import { desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  if (event.method !== 'GET') {
-    throw createError({ statusCode: 405, statusMessage: 'Method Not Allowed' })
-  }
-  
-  const config = useRuntimeConfig(event)
-  const authHeader = getHeader(event, 'Authorization')
-
-  if (!config.adminSecret || authHeader !== `Bearer ${config.adminSecret}`) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-  }
-
   try {
-    const database = getDb()
-    return await database.select().from(posts).orderBy(desc(posts.createdAt))
+    // 1. Controllo di sicurezza centralizzato (NUXT_ADMIN_SECRET)
+    const config = useRuntimeConfig()
+    const authHeader = getHeader(event, 'authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
+
+    if (!token || token !== config.adminSecret) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Accesso negato. Chiave amministrativa non valida.',
+      })
+    }
+
+    // 2. Estrazione e normalizzazione della paginazione O(N)
+    const query = getQuery(event)
+    const page = Math.max(1, parseInt(query.page as string) || 1)
+    const limit = Math.max(1, Math.min(100, parseInt(query.limit as string) || 30))
+    const offset = (page - 1) * limit
+
+    const db = getDb()
+
+    // 3. Esecuzione del conteggio e della selezione limitata
+    const [dataResult, countResult] = await Promise.all([
+      db
+        .select()
+        .from(posts)
+        .orderBy(desc(posts.createdAt))
+        .limit(limit)
+        .offset(offset),
+      
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(posts)
+    ])
+
+    const totalPosts = countResult?.[0]?.count || countResult?.count || 0
+    const hasMore = offset + dataResult.length < totalPosts
+
+    // 4. Struttura dati speculare a quella attesa dal Frontend ristrutturato
+    return {
+      success: true,
+      data: dataResult,
+      pagination: {
+        page,
+        limit,
+        total: totalPosts,
+        hasMore
+      }
+    }
+
   } catch (error: any) {
-    throw createError({ statusCode: 500, statusMessage: error.message || 'Database connection failed' })
+    console.error('=== [ADMIN API ERROR] FALLIMENTO PAGINAZIONE MANUTENZIONE ===', error)
+    throw createError({
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || 'Errore interno durante il recupero dei dati di manutenzione.',
+    })
   }
 })
