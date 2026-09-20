@@ -21,7 +21,6 @@ interface Post {
   hasVoted?: boolean
 }
 
-// 3 Post di prova predefiniti (Fallback visibile sia in locale che su Vercel)
 const defaultPosts: Post[] = [
   {
     id: 1,
@@ -58,13 +57,11 @@ const hasMore = ref(false)
 const isLoading = ref(false)
 const votingPostId = ref<number | null>(null)
 
-// Fetch API
-const { data: apiRes, error, refresh } = await useFetch<any>('/api/posts', {
+const { data: apiRes, refresh } = await useFetch<any>('/api/posts', {
   query: { page: 1, limit: 30 },
   key: 'home-posts-list'
 })
 
-// Inizializza i post: se il DB restituisce dati li usa, altrimenti carica i 3 post di prova
 function loadPostsData() {
   if (apiRes.value?.success && Array.isArray(apiRes.value.data) && apiRes.value.data.length > 0) {
     allPosts.value = apiRes.value.data.map((p: any) => ({
@@ -74,27 +71,22 @@ function loadPostsData() {
     }))
     hasMore.value = Boolean(apiRes.value.pagination?.hasMore)
   } else {
-    // Carica i 3 post di default se il DB è vuoto o non risponde
     allPosts.value = defaultPosts
     hasMore.value = false
   }
 }
 
-// Esegui il caricamento iniziale
 loadPostsData()
 
-// Sincronizza reattivamente se l'API risponde successivamente
 watch(apiRes, () => {
   loadPostsData()
 })
 
-// Garantisce che ad ogni apertura di sessione su '/' la pagina riparta da zero e rinfreschi i dati
 onMounted(async () => {
   await refresh()
   loadPostsData()
 })
 
-// Helper per formattare URL esterni (evita il 404 su localhost)
 function formatExternalUrl(urlString: string | null): string {
   if (!urlString) return '#'
   if (urlString.startsWith('http://') || urlString.startsWith('https://')) {
@@ -103,7 +95,6 @@ function formatExternalUrl(urlString: string | null): string {
   return `https://${urlString}`
 }
 
-// Helper estrazione dominio
 function getDomain(urlString: string | null): string {
   if (!urlString) return ''
   try {
@@ -115,7 +106,6 @@ function getDomain(urlString: string | null): string {
   }
 }
 
-// Gestione Voto Atomico
 async function votePost(post: Post) {
   if (post.hasVoted || votingPostId.value === post.id) return
   votingPostId.value = post.id
@@ -132,50 +122,17 @@ async function votePost(post: Post) {
       post.points += 1
       post.hasVoted = true
     }
-  } catch (err: any) {
-    // Gestione ottimistica per post locali/demo
+  } catch {
     post.points += 1
     post.hasVoted = true
   } finally {
     votingPostId.value = null
   }
 }
-
-// Caricamento Paginato
-async function loadMore() {
-  if (isLoading.value || !hasMore.value) return
-  isLoading.value = true
-
-  const nextPage = currentPage.value + 1
-
-  try {
-    const response = await $fetch<any>('/api/posts', {
-      query: { page: nextPage, limit: 30 }
-    })
-
-    if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
-      const newFormattedPosts = response.data.map((p: any) => ({
-        ...p,
-        points: p.points ?? 1,
-        hasVoted: false
-      }))
-      allPosts.value = [...allPosts.value, ...newFormattedPosts]
-      currentPage.value = nextPage
-      hasMore.value = Boolean(response.pagination?.hasMore)
-    } else {
-      hasMore.value = false
-    }
-  } catch (err) {
-    console.error('Errore nel caricamento post:', err)
-  } finally {
-    isLoading.value = false
-  }
-}
 </script>
 
 <template>
   <div class="hn-container">
-    <!-- Lista delle Storie -->
     <ol v-if="allPosts && allPosts.length > 0" class="posts-list">
       <li v-for="(post, index) in allPosts" :key="post.id || index" class="post-item">
         <span class="post-number">{{ index + 1 }}.</span>
@@ -192,7 +149,6 @@ async function loadMore() {
 
         <div class="post-content">
           <div class="post-title-row">
-            <!-- Link Esterno Corretto -->
             <a 
               v-if="post.url" 
               :href="formatExternalUrl(post.url)" 
@@ -202,7 +158,6 @@ async function loadMore() {
             >
               {{ post.title }}
             </a>
-            <!-- Link Interno se senza URL -->
             <NuxtLink v-else :to="`/item/${post.id}`" class="post-title">
               {{ post.title }}
             </NuxtLink>
@@ -223,14 +178,9 @@ async function loadMore() {
       </li>
     </ol>
 
-    <div v-if="hasMore" class="more-container">
-      <button @click="loadMore" :disabled="isLoading" class="more-btn">
-        {{ isLoading ? 'Caricamento...' : 'More' }}
-      </button>
-    </div>
-
     <!-- Footer Personalizzato -->
     <footer class="app-footer">
+      <!-- Riga Verde Smeraldo -->
       <div class="footer-divider"></div>
       <p class="footer-text">
         © 2026 <strong>{{ APP_NAME }}</strong>. Tutti i diritti riservati.
@@ -244,7 +194,7 @@ async function loadMore() {
   background-color: #f6f6ef; 
   padding: 1rem; 
   font-family: Verdana, Geneva, sans-serif; 
-  min-height: 100vh;
+  min-height: 80vh;
   display: flex;
   flex-direction: column;
 }
@@ -306,6 +256,7 @@ async function loadMore() {
   color: #000000; 
   text-decoration: none; 
   line-height: 1.2;
+  font-weight: 500;
 }
 
 .post-title:visited { 
@@ -337,27 +288,7 @@ async function loadMore() {
   text-decoration: underline;
 }
 
-.more-container { 
-  margin-top: 1.5rem; 
-  padding-left: 2.3rem; 
-  margin-bottom: 2rem;
-}
-
-.more-btn { 
-  background: none; 
-  border: none; 
-  color: #000000; 
-  font-family: inherit; 
-  font-size: 0.9rem; 
-  cursor: pointer; 
-  font-weight: bold; 
-}
-
-.more-btn:hover { 
-  text-decoration: underline; 
-}
-
-/* Style Footer */
+/* Style Footer con Riga Verde Smeraldo (#10b981) */
 .app-footer {
   margin-top: auto;
   padding-top: 2rem;
@@ -366,7 +297,7 @@ async function loadMore() {
 }
 
 .footer-divider {
-  border-top: 2px solid #ff6600;
+  border-top: 2px solid #10b981; /* Verde Smeraldo */
   margin-bottom: 1rem;
   width: 100%;
 }

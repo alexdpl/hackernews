@@ -1,116 +1,151 @@
+<!-- app/components/AppHeader.vue -->
 <script setup lang="ts">
-import { feedsInfo } from '~~/utils/api'
-
-// Utilizziamo useRoute per gestire i link attivi in modo sicuro senza usare \$ nel template
 const route = useRoute()
 </script>
 
 <template>
-  <header class="header">
+  <header class="header-bar">
     <div class="header-container">
-      <!-- Logo e Menu Principale uniti nello stesso blocco -->
-      <div class="nav-main">
-        <!-- Il tuo logo verde smeraldo dello screen -->
-        <NuxtLink to="/" class="logo-link">
-          <svg class="logo-icon" viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M12 2L2 22h20L12 2zm0 4.8L18.4 19H5.6L12 6.8z"/>
-          </svg>
+      <!-- Sezione Sinistra: Logo + Nome Brand + Link di Navigazione -->
+      <div class="nav-left">
+        <NuxtLink to="/" class="brand-link">
+          <span class="logo-badge">DKP</span>
+          <span class="brand-title">DevKernelPulse</span>
         </NuxtLink>
 
-        <!-- Menu di navigazione unico dello screen -->
+        <!-- Menu Pagine -->
         <nav class="nav-links">
-		<NuxtLink to="/" class="hover:underline text-[16px] font-bold">
-  DevKernelPulse
-</NuxtLink>
-          <NuxtLink to="/" class="nav-link text-emerald">News</NuxtLink>
-          <NuxtLink to="/newest" class="nav-link">Newest</NuxtLink>
-          <NuxtLink to="/ask" class="nav-link">Ask</NuxtLink>
-          <NuxtLink to="/show" class="nav-link">Show</NuxtLink>
-          
-          <!-- FASE 6: Jobs integrato nel menu (Verde smeraldo, grigio al passaggio del mouse) -->
-          <NuxtLink to="/jobs/1" class="nav-link nav-link-special">Jobs</NuxtLink>
-          
-          <!-- FASE 6: Invia Link integrato nel menu (Verde smeraldo, grigio al passaggio del mouse) -->
-          <NuxtLink to="/submit" class="nav-link nav-link-special">Invia Link</NuxtLink>
+          <NuxtLink to="/" :class="{ active: route.path === '/' }">
+            News
+          </NuxtLink>
+          <NuxtLink to="/newest" :class="{ active: route.path === '/newest' }">
+            Newest
+          </NuxtLink>
+          <NuxtLink to="/ask" :class="{ active: route.path === '/ask' }">
+            Ask
+          </NuxtLink>
+          <NuxtLink to="/show" :class="{ active: route.path === '/show' }">
+            Show
+          </NuxtLink>
+          <NuxtLink to="/jobs" :class="{ active: route.path === '/jobs' }">
+            Jobs
+          </NuxtLink>
+          <NuxtLink to="/submit" :class="{ active: route.path === '/submit' }">
+            Invia Link
+          </NuxtLink>
         </nav>
       </div>
 
-      <!-- Link esterno a destra -->
+      <!-- Sezione Destra: Link Repository GitHub -->
       <div class="nav-right">
-        <a href="https://github.com/alexdpl/hackernews" target="_blank" class="nav-link github-link">Apri su GitHub</a>
+        <a 
+          href="https://github.com/alexdpl/hackernews" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          class="github-link"
+        >
+          Apri su GitHub
+        </a>
       </div>
     </div>
   </header>
 </template>
 
 <style scoped>
-/* Sfondo scuro e layout fedele al tuo screenshot */
-.header {
-  background-color: #030712; /* Sfondo scuro profondo dello screen */
-  padding: 12px 24px;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+.header-bar {
+  background-color: #020420; /* Sfondo scuro elegante */
+  width: 100%;
+  padding: 0.8rem 1.25rem;
+  box-sizing: border-box;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   max-width: 1200px;
   margin: 0 auto;
-}
-
-.nav-main {
   display: flex;
   align-items: center;
-  gap: 24px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
-.logo-link {
-  color: #10b981; /* Verde Smeraldo del logo */
+.nav-left {
   display: flex;
   align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+.logo-badge {
+  background-color: #00dc82; /* Verde smeraldo */
+  color: #020420;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.brand-title {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 1.25rem;
+  flex-wrap: wrap;
 }
 
-/* Stile base dei link (Grigio chiaro / Bianco) */
-.nav-link {
-  color: #f3f4f6;
+.nav-links a {
+  color: #a1a1aa;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.2s ease;
+  transition: color 0.15s ease;
 }
 
-.nav-link:hover:not(.nav-link-special) {
-  color: #10b981; /* I link normali diventano verdi all'hover */
+.nav-links a:hover,
+.nav-links a.active {
+  color: #00dc82; /* Verde smeraldo attivo */
 }
 
-/* Colore specifico per il link News attivo */
-.text-emerald {
-  color: #10b981;
+.nav-right {
+  display: flex;
+  align-items: center;
 }
 
-/* Link speciali di destra */
 .github-link {
-  font-size: 13px;
-  color: #d1d5db;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
 }
 
-/* ======================================================== */
-/* CONFIGURAZIONE INVERTITA FASE 6 (Jobs & Invia Link)    */
-/* ======================================================== */
-.nav-link-special {
-  color: #059669 !important; /* Verde smeraldo fisso di partenza */
-  font-weight: 600;
+.github-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
 }
 
-/* Al passaggio del mouse l'effetto si inverte e diventa grigio */
-.nav-link-special:hover {
-  color: #9ca3af !important; /* Grigio chiaro al passaggio del mouse */
+@media (max-width: 640px) {
+  .nav-left {
+    gap: 0.8rem;
+  }
+  .nav-links {
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
 }
 </style>
