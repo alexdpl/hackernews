@@ -8,11 +8,18 @@ export default defineNuxtConfig({
   ],
 
   // 1. VARIABILI D'AMBIENTE SICURE (Server-side)
-  // Supporta sia il formato standard (DATABASE_URL / ADMIN_SECRET) 
-  // sia il formato nativo Nuxt (NUXT_DATABASE_URL / NUXT_ADMIN_SECRET)
+  // Supporta automaticamente DATABASE_URL, POSTGRES_URL (generati da Neon/Vercel)
+  // e il formato nativo NUXT_DATABASE_URL
   runtimeConfig: {
-    databaseUrl: process.env.DATABASE_URL || process.env.NUXT_DATABASE_URL || '',
-    adminSecret: process.env.ADMIN_SECRET || process.env.NUXT_ADMIN_SECRET || ''
+    databaseUrl: 
+      process.env.DATABASE_URL || 
+      process.env.POSTGRES_URL || 
+      process.env.NUXT_DATABASE_URL || 
+      '',
+    adminSecret: 
+      process.env.ADMIN_SECRET || 
+      process.env.NUXT_ADMIN_SECRET || 
+      ''
   },
 
   // 2. CONFIGURAZIONE NUXT 4
