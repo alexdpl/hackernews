@@ -6,27 +6,30 @@ import { desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   try {
-    // 1. Controllo di sicurezza centralizzato (NUXT_ADMIN_SECRET)
-    const config = useRuntimeConfig()
+    // 1. Controllo di sicurezza centralizzato (ADMIN_SECRET)
+    const config = useRuntimeConfig(event)
     const authHeader = getHeader(event, 'authorization')
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
+    const xAdminSecret = getHeader(event, 'x-admin-secret')
 
-    if (!token || token !== config.adminSecret) {
+    // Supporta sia l'header 'x-admin-secret' sia l'header 'Authorization: Bearer <token>'
+    const token = xAdminSecret || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader)
+
+    if (!config.adminSecret || !token || token !== config.adminSecret) {
       throw createError({
         statusCode: 401,
-        statusMessage: 'Accesso negato. Chiave amministrativa non valida.',
+        statusMessage: 'Accesso negato. Chiave amministrativa non valida o mancante.',
       })
     }
 
-    // 2. Estrazione e normalizzazione della paginazione O(N)
+    // 2. Estrazione e normalizzazione parametri di paginazione O(N)
     const query = getQuery(event)
-    const page = Math.max(1, parseInt(query.page as string) || 1)
-    const limit = Math.max(1, Math.min(100, parseInt(query.limit as string) || 30))
+    const page = Math.max(1, parseInt(query.page as string, 10) || 1)
+    const limit = Math.max(1, Math.min(100, parseInt(query.limit as string, 10) || 30))
     const offset = (page - 1) * limit
 
     const db = getDb()
 
-    // 3. Esecuzione del conteggio e della selezione limitata
+    // 3. Esecuzione parallela indicizzata su Neon Database
     const [dataResult, countResult] = await Promise.all([
       db
         .select()
@@ -34,16 +37,18 @@ export default defineEventHandler(async (event) => {
         .orderBy(desc(posts.createdAt))
         .limit(limit)
         .offset(offset),
-      
+
       db
         .select({ count: sql<number>`count(*)` })
         .from(posts)
     ])
 
-    const totalPosts = countResult?.[0]?.count || countResult?.count || 0
+    // Conversione sicura in numero per evitare mismatch di tipo da Postgres
+    const totalPosts = Number(countResult?.[0]?.count || 0)
+    const totalPages = Math.ceil(totalPosts / limit) || 1
     const hasMore = offset + dataResult.length < totalPosts
 
-    // 4. Struttura dati speculare a quella attesa dal Frontend ristrutturato
+    // 4. Risposta unificata e speculare al frontend
     return {
       success: true,
       data: dataResult,
@@ -51,15 +56,23 @@ export default defineEventHandler(async (event) => {
         page,
         limit,
         total: totalPosts,
+        totalPages,
         hasMore
       }
     }
 
   } catch (error: any) {
     console.error('=== [ADMIN API ERROR] FALLIMENTO PAGINAZIONE MANUTENZIONE ===', error)
+
+    // Preserva gli errori 401/400 già gestiti
+    if (error.statusCode) {
+      throw error
+    }
+
+    // Format unico per gli errori di connessione DB Neon
     throw createError({
-      statusCode: error.statusCode || 500,
-      statusMessage: error.statusMessage || 'Errore interno durante il recupero dei dati di manutenzione.',
+      statusCode: 500,
+      statusMessage: `Errore DB Neon: impossibile recuperare i dati di manutenzione (${error.message || 'Errore interno'})`,
     })
   }
 })
