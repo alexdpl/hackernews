@@ -37,7 +37,7 @@ const route = useRoute()
 
       <!-- Link esterno a destra -->
       <div class="nav-right">
-        <a href="https://github.com/alexdpl/hackernews" target="_blank" class="nav-link github-link">Open on GitHub</a>
+        <a href="https://github.com/alexdpl/hackernews" target="_blank" class="nav-link github-link">Apri su GitHub</a>
       </div>
     </div>
   </header>
