@@ -1,5 +1,6 @@
+<!-- app/pages/submit.vue -->
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 
 const title = ref('')
 const url = ref('')
@@ -8,11 +9,12 @@ const text = ref('')
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 
+// LOGICA OTTIMIZZATA: Un post è valido se ha un titolo E se ha almeno un URL O un Testo (o entrambi)
 const isValid = computed(() => {
-  const hasTitle = title.value.trim().length > 0
+  const hasTitle = title.value.trim().length >= 3
   const hasUrl = url.value.trim().length > 0
   const hasText = text.value.trim().length > 0
-  return hasTitle && !(hasUrl && hasText)
+  return hasTitle && (hasUrl || hasText)
 })
 
 async function handleSubmit() {
@@ -32,6 +34,9 @@ async function handleSubmit() {
       }
     })
 
+    // Svuotamento preventivo dello stato prima del cambio pagina per liberare la RAM
+    clearFormFields()
+
     await navigateTo('/')
   } catch (error) {
     console.error('Errore di invio:', error)
@@ -40,6 +45,21 @@ async function handleSubmit() {
     isSubmitting.value = false
   }
 }
+
+// Funzione centralizzata per azzerare i puntatori di memoria
+function clearFormFields() {
+  title.value = ''
+  url.value = ''
+  text.value = ''
+}
+
+// ANTIDOTO MEMORY LEAK: Distrugge i riferimenti reattivi quando la rotta cambia
+onUnmounted(() => {
+  title.value = null
+  url.value = null
+  text.value = null
+  errorMessage.value = null
+})
 </script>
 
 <template>
@@ -53,21 +73,39 @@ async function handleSubmit() {
 
       <div class="form-group">
         <label for="title">Titolo della storia</label>
-        <input id="title" v-model="title" type="text" required placeholder="Inserisci il titolo..." :disabled="isSubmitting" />
+        <input 
+          id="title" 
+          v-model="title" 
+          type="text" 
+          required 
+          placeholder="Inserisci il titolo (minimo 3 caratteri)..." 
+          :disabled="isSubmitting" 
+        />
       </div>
 
       <div class="form-group">
-        <label for="url">URL (opzionale)</label>
-        <input id="url" v-model="url" type="url" placeholder="https://example.com" :disabled="isSubmitting" />
-        <small v-if="text.trim()" class="warning-text">Nota: Se c'è un testo, lascia vuoto l'URL.</small>
+        <label for="url">URL (Link esterno)</label>
+        <input 
+          id="url" 
+          v-model="url" 
+          type="url" 
+          placeholder="https://example.com" 
+          :disabled="isSubmitting" 
+        />
+        <small class="info-text">Puoi inserire un link, un testo descrittivo o entrambi.</small>
       </div>
 
-      <div class="or-separator">oppure</div>
+      <div class="or-separator">Integrazione Contenuto</div>
 
       <div class="form-group">
-        <label for="text">Testo della discussione (opzionale)</label>
-        <textarea id="text" v-model="text" rows="5" placeholder="Scrivi qui la tua storia o domanda..." :disabled="isSubmitting"></textarea>
-        <small v-if="url.trim()" class="warning-text">Nota: Se c'è un URL, lascia vuoto il testo.</small>
+        <label for="text">Testo della discussione / Descrizione</label>
+        <textarea 
+          id="text" 
+          v-model="text" 
+          rows="5" 
+          placeholder="Scrivi qui la tua storia, domanda o commento iniziale..." 
+          :disabled="isSubmitting"
+        ></textarea>
       </div>
 
       <button type="submit" class="submit-btn" :disabled="!isValid || isSubmitting">
@@ -85,8 +123,8 @@ async function handleSubmit() {
 label { font-size: 0.9rem; font-weight: bold; color: #374151; }
 input[type="text"], input[type="url"], textarea { padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit; font-size: 0.9rem; background-color: #ffffff; color: #000; }
 input:focus, textarea:focus { outline: 2px solid #10b981; }
-.or-separator { text-align: center; font-size: 0.8rem; color: #6b7280; text-transform: uppercase; margin: 0.5rem 0; }
-.warning-text { font-size: 0.75rem; color: #ef4444; margin-top: 0.2rem; }
+.or-separator { text-align: center; font-size: 0.75rem; color: #6b7280; text-transform: uppercase; margin: 0.5rem 0; letter-spacing: 0.05em; border-bottom: 1px dashed #d1d5db; line-height: 0.1em; }
+.info-text { font-size: 0.75rem; color: #6b7280; margin-top: 0.2rem; }
 .error-banner { background-color: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 0.8rem; font-size: 0.85rem; border-radius: 4px; }
 .submit-btn { background-color: #10b981; color: white; border: none; padding: 0.6rem 1.2rem; font-weight: bold; cursor: pointer; border-radius: 4px; align-self: flex-start; transition: background 0.2s; }
 .submit-btn:disabled { background-color: #d1d5db; cursor: not-allowed; }

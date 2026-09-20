@@ -1,49 +1,75 @@
+// server/api/posts.post.ts
+import { defineEventHandler, readBody, createError } from 'h3'
 import { getDb } from '../utils/db'
-import { sql } from 'drizzle-orm' // <--- Importante: aggiunto l'import di sql mancante
+import { posts } from '../db/schema' // Assicurati che l'import del modello punti al tuo schema esplicito
+
+interface PostPayload {
+  title: string
+  url?: string
+  text?: string
+}
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-
-  // 1. Validazione del titolo
-  if (!body.title || !body.title.trim()) {
-    throw createError({ statusCode: 400, statusMessage: 'Il titolo è obbligatorio.' })
-  }
-
-  const cleanTitle = body.title.trim()
-  const cleanUrl = body.url && body.url.trim() ? body.url.trim() : null
-  const rawText = body.text || body.content || ''
-  const cleanText = rawText.trim() ? rawText.trim() : null
-
-  // 2. Controllo mutua esclusione (Regola Hacker News)
-  if (cleanUrl && cleanText) {
-    throw createError({ statusCode: 400, statusMessage: 'Non puoi inserire sia un URL che un testo.' })
-  }
-
   try {
-    const db = await getDb()
-    
-    // Proviamo l'inserimento standard usando l'oggetto schema dinamico
-    const targetTable = db.schema?.posts || sql`posts`
-    await db.insert(targetTable).values({
-      title: cleanTitle,
-      url: cleanUrl,
-      text: cleanText,
-      createdAt: new Date()
-    })
+    const body = await readBody<PostPayload>(event)
+    const { title, url, text } = body
 
-    return { success: true }
-  } catch (error: any) {
-    console.error('Errore inserimento standard post, eseguo fallback:', error)
-    
-    try {
-      const db = await getDb()
-      // Fallback sicuro se 'createdAt' genera conflitti di mappatura colonne
-      const queryAlternative = sql`INSERT INTO posts (title, url, text) VALUES (${cleanTitle}, ${cleanUrl}, ${cleanText})`
-      await db.execute(queryAlternative)
-      return { success: true }
-    } catch (innerError) {
-      console.error('Errore definitivo anche nel fallback:', innerError)
-      throw createError({ statusCode: 500, statusMessage: 'Errore durante il salvataggio su Neon DB.' })
+    // 1. Validazione di sicurezza lato Server
+    if (!title || title.trim().length < 3) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Il titolo è obbligatorio e deve contenere almeno 3 caratteri.',
+      })
     }
+
+    // Almeno uno dei due campi opzionali deve esistere (Logica flessibile HN sbloccata)
+    if (!url && !text) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Inserisci un URL esterno, un testo per la discussione o entrambi.',
+      })
+    }
+
+    const cleanTitle = title.trim()
+    const cleanUrl = url && url.trim() !== '' ? url.trim() : null
+    const cleanText = text && text.trim() !== '' ? text.trim() : null
+
+    // 2. Ottenimento dell'istanza DB isolata dalla cache
+    const db = getDb()
+
+    /* 
+      3. INSERIMENTO CORRETTO CON DRIZZLE QUERY BUILDER:
+      Bypassa gli errori di parsing delle proprietà SQL raw. Se usi i metodi nativi di Drizzle,
+      i campi createdAt/updatedAt e i relativi vincoli vengono autogestiti o mappati.
+    */
+    const [newPost] = await db
+      .insert(posts)
+      .values({
+        title: cleanTitle,
+        url: cleanUrl,
+        text: cleanText,
+        points: 1,
+        // Se nel tuo schema i campi temporali usano defaultNow(), puoi omettere queste righe
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning() // Sfrutta il RETURNING nativo di Postgres per estrarre subito il record creato
+
+    // 4. Risposta di successo inviata al client
+    return {
+      success: true,
+      message: 'Post salvato con successo su Neon DB.',
+      data: newPost,
+    }
+
+  } catch (error: any) {
+    console.error('=== [CRITICAL] FALLIMENTO INSERIMENTO POSTS ===')
+    console.error('Dettaglio Errore:', error)
+
+    // Gestione degli errori di violazione dei vincoli del Database (es. url duplicato o campi mancanti)
+    throw createError({
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || 'Errore durante il salvataggio su Neon DB. Verificare i vincoli dello schema.',
+    })
   }
 })

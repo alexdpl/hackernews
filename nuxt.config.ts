@@ -28,8 +28,13 @@ export default defineNuxtConfig({
     }
   },
 
+  // OTTIMIZZAZIONE MEMORIA NU-X-T DEVTOOLS
   devtools: {
     enabled: true,
+    // Disattiviamo i pannelli con sniffers continui in background per liberare la RAM
+    vscode: false,
+    performance: false, // Disattiva il monitoraggio continuo dei frame
+    timeline: false     // Blocca la memorizzazione persistente della cronologia HMR
   },
 
   hub: {
