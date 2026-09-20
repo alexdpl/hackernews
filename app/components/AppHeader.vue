@@ -19,6 +19,9 @@ const route = useRoute()
 
         <!-- Menu di navigazione unico dello screen -->
         <nav class="nav-links">
+		<NuxtLink to="/" class="hover:underline text-[16px] font-bold">
+  DevKernelPulse
+</NuxtLink>
           <NuxtLink to="/" class="nav-link text-emerald">News</NuxtLink>
           <NuxtLink to="/newest" class="nav-link">Newest</NuxtLink>
           <NuxtLink to="/ask" class="nav-link">Ask</NuxtLink>
@@ -34,7 +37,7 @@ const route = useRoute()
 
       <!-- Link esterno a destra -->
       <div class="nav-right">
-        <a href="https://github.com" target="_blank" class="nav-link github-link">Open on GitHub</a>
+        <a href="https://github.com/alexdpl/hackersnews" target="_blank" class="nav-link github-link">Open on GitHub</a>
       </div>
     </div>
   </header>

@@ -12,6 +12,8 @@ interface Post {
   hasVoted?: boolean
 }
 
+const APP_NAME = 'DevKernelPulse' // Sostituisci qui con il nome definitivo che preferisci
+
 const currentPage = ref(1)
 const allPosts = ref<Post[]>([])
 const hasMore = ref(false)
@@ -23,7 +25,7 @@ const { data, error } = await useFetch('/api/posts', {
   query: { page: 1, limit: 30 }
 })
 
-// 2. Sincronizzazione reattiva (SSR + Client)
+// 2. Sincronizzazione reattiva
 watch(
   data,
   (newData) => {
@@ -39,11 +41,21 @@ watch(
   { immediate: true }
 )
 
-// Helper estrazione dominio
+// Helper per garantire URL assoluti sicuri (evita rotta errata su localhost)
+function formatExternalUrl(urlString: string | null): string {
+  if (!urlString) return '#'
+  if (urlString.startsWith('http://') || urlString.startsWith('https://')) {
+    return urlString
+  }
+  return `https://${urlString}`
+}
+
+// Helper per estrazione nome dominio
 function getDomain(urlString: string | null): string {
   if (!urlString) return ''
   try {
-    const url = new URL(urlString)
+    const formatted = formatExternalUrl(urlString)
+    const url = new URL(formatted)
     return url.hostname.replace(/^www\./, '')
   } catch {
     return ''
@@ -76,7 +88,7 @@ async function votePost(post: Post) {
   }
 }
 
-// 4. Caricamento paginato ("More")
+// 4. Caricamento paginato
 async function loadMore() {
   if (isLoading.value || !hasMore.value) return
   isLoading.value = true
@@ -107,7 +119,6 @@ async function loadMore() {
   }
 }
 
-// Hard Cleanup
 onUnmounted(() => {
   allPosts.value = []
   data.value = null
@@ -140,15 +151,17 @@ onUnmounted(() => {
 
         <div class="post-content">
           <div class="post-title-row">
+            <!-- Link Esterno Corretto -->
             <a 
               v-if="post.url" 
-              :href="post.url" 
+              :href="formatExternalUrl(post.url)" 
               target="_blank" 
               rel="noopener noreferrer" 
               class="post-title"
             >
               {{ post.title }}
             </a>
+            <!-- Link Interno se assente URL -->
             <NuxtLink v-else :to="`/item/${post.id}`" class="post-title">
               {{ post.title }}
             </NuxtLink>
@@ -160,7 +173,7 @@ onUnmounted(() => {
 
           <div class="post-subtext">
             <span>{{ post.points }} punti</span>
-            | creato il {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : 'di recente' }}
+            | pubblicato il {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : 'di recente' }}
             | <NuxtLink :to="`/item/${post.id}`" class="sub-link">
                 {{ post.commentCount ?? 0 }} commenti
               </NuxtLink>
@@ -176,6 +189,14 @@ onUnmounted(() => {
         {{ isLoading ? 'Caricamento...' : 'More' }}
       </button>
     </div>
+
+    <!-- Footer Personalizzato -->
+    <footer class="app-footer">
+      <div class="footer-divider"></div>
+      <p class="footer-text">
+        © 2026 <strong>{{ APP_NAME }}</strong>. Tutti i diritti riservati.
+      </p>
+    </footer>
   </div>
 </template>
 
@@ -185,12 +206,15 @@ onUnmounted(() => {
   padding: 1rem; 
   font-family: Verdana, Geneva, sans-serif; 
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .posts-list { 
   list-style-type: none; 
   padding: 0; 
   margin: 0; 
+  flex-grow: 1;
 }
 
 .post-item { 
@@ -249,6 +273,10 @@ onUnmounted(() => {
   color: #828282; 
 }
 
+.post-title:hover {
+  text-decoration: underline;
+}
+
 .post-domain { 
   font-size: 0.75rem; 
   color: #828282; 
@@ -273,6 +301,7 @@ onUnmounted(() => {
 .more-container { 
   margin-top: 1.5rem; 
   padding-left: 2.3rem; 
+  margin-bottom: 2rem;
 }
 
 .more-btn { 
@@ -293,5 +322,25 @@ onUnmounted(() => {
   font-size: 0.9rem; 
   color: #6b7280; 
   padding: 1rem 0; 
+}
+
+/* Style Footer */
+.app-footer {
+  margin-top: auto;
+  padding-top: 2rem;
+  padding-bottom: 1rem;
+  text-align: center;
+}
+
+.footer-divider {
+  border-top: 2px solid #ff6600;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.footer-text {
+  font-size: 0.75rem;
+  color: #828282;
+  margin: 0;
 }
 </style>
