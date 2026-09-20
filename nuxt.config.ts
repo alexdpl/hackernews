@@ -1,24 +1,26 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-17',
-  
+
   modules: [
     '@nuxthub/core',
-    '@nuxt/eslint',
+    '@nuxt/eslint'
   ],
 
-  // Configurazione per le variabili d'ambiente lato server (Accessibili solo in server/)
+  // 1. VARIABILI D'AMBIENTE SICURE (Server-side)
+  // Supporta sia il formato standard (DATABASE_URL / ADMIN_SECRET) 
+  // sia il formato nativo Nuxt (NUXT_DATABASE_URL / NUXT_ADMIN_SECRET)
   runtimeConfig: {
-    databaseUrl: '', // Mappata automaticamente da NUXT_DATABASE_URL
-    adminSecret: '', // Mappata automaticamente da NUXT_ADMIN_SECRET
+    databaseUrl: process.env.DATABASE_URL || process.env.NUXT_DATABASE_URL || '',
+    adminSecret: process.env.ADMIN_SECRET || process.env.NUXT_ADMIN_SECRET || ''
   },
 
-  // Configurazione Nuxt 4 (struttura a layer / app directory)
-  future: { 
-    compatibilityVersion: 4 
+  // 2. CONFIGURAZIONE NUXT 4
+  future: {
+    compatibilityVersion: 4
   },
 
-  // Target di compilazione Nitro richiesto
+  // 3. TARGET DI COMPILAZIONE NITRO
   nitro: {
     esnext: true,
     esbuild: {
@@ -28,30 +30,29 @@ export default defineNuxtConfig({
     }
   },
 
-  // OTTIMIZZAZIONE MEMORIA NU-X-T DEVTOOLS
+  // 4. OTTIMIZZAZIONE MEMORIA LOCAL DEV (Hardware 12GB RAM)
   devtools: {
     enabled: true,
-    // Disattiviamo i pannelli con sniffers continui in background per liberare la RAM
     vscode: false,
-    performance: false, // Disattiva il monitoraggio continuo dei frame
-    timeline: false     // Blocca la memorizzazione persistente della cronologia HMR
+    performance: false, // Disattiva il monitoraggio per evitare memory leak HMR
+    timeline: false
   },
 
   hub: {
-    cache: true,
+    cache: true
   },
 
   postcss: {
     plugins: {
-      'postcss-nesting': {},
-    },
+      'postcss-nesting': {}
+    }
   },
 
   eslint: {
     config: {
       stylistic: {
-        quotes: 'single',
-      },
-    },
-  },
+        quotes: 'single'
+      }
+    }
+  }
 })

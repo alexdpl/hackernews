@@ -1,5 +1,6 @@
+<!-- app/pages/admin/index.vue -->
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 const adminSecret = ref('')
 const posts = ref([])
@@ -8,8 +9,12 @@ const isActioning = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
 
-// Funzione per caricare i post duplicati usando la fetch standard del browser
-async function fetchPostsForMaintenance() {
+// Stati per la gestione della Paginazione O(N) nell'Admin
+const adminPage = ref(1)
+const adminHasMore = ref(false)
+
+// Funzione per caricare i post (o i blocchi successivi) usando la fetch standard del browser
+async function fetchPostsForMaintenance(isLoadMore = false) {
   if (!adminSecret.value.trim()) {
     errorMessage.value = 'Inserisci la chiave segreta per caricare i dati.'
     return
@@ -18,10 +23,17 @@ async function fetchPostsForMaintenance() {
   isFetching.value = true
   errorMessage.value = ''
   successMessage.value = ''
+
+  // Se stiamo caricando una pagina successiva, incrementiamo l'indice, altrimenti resettiamo a 1
+  if (isLoadMore) {
+    adminPage.value = adminPage.value + 1
+  } else {
+    adminPage.value = 1
+  }
   
   try {
-    // Usiamo window.fetch per eliminare il simbolo $ che corrompe la build
-    const response = await window.fetch('/api/admin/posts', {
+    // Interroga l'endpoint passando i parametri di controllo limit e page
+    const response = await window.fetch('/api/admin/posts?page=' + adminPage.value + '&limit=30', {
       headers: {
         'Authorization': 'Bearer ' + adminSecret.value
       }
@@ -29,16 +41,35 @@ async function fetchPostsForMaintenance() {
     
     if (!response.ok) throw new Error('Risposta del server non valida')
     
-    const data = await response.json()
-    posts.value = data.posts || data
+    const resData = await response.json()
+    
+    // Gestione unificata dell'array (sia che l'endpoint restituisca l'oggetto o l'array diretto)
+    const newItems = resData.posts || resData.data || resData
+    const paginationInfo = resData.pagination
+
+    if (isLoadMore) {
+      // Append asincrono senza ricaricare la pagina
+      posts.value = [...posts.value, ...newItems]
+    } else {
+      posts.value = newItems
+    }
+
+    // Configurazione del flag "More" in base ai metadati del server
+    if (paginationInfo) {
+      adminHasMore.value = paginationInfo.hasMore
+    } else {
+      // Fallback: se arrivano meno di 30 record, deduciamo che i post sono finiti
+      adminHasMore.value = newItems.length === 30
+    }
     
     if (posts.value.length === 0) {
-      successMessage.value = 'Nessun link duplicato rilevato. Il database è pulito!'
+      successMessage.value = 'Nessun link rilevato. Il database è pulito!'
     }
   } catch (error) {
     console.error('Errore nel recupero dei post:', error)
     errorMessage.value = 'Chiave segreta errata o errore di rete.'
-  } finally {
+    adminHasMore.value = false
+  } bits: {
     isFetching.value = false
   }
 }
@@ -71,6 +102,14 @@ async function deletePost(postId) {
     isActioning.value = false
   }
 }
+
+// ANTIDOTO MEMORY LEAK: Libera istantaneamente la RAM al cambio di rotta
+onUnmounted(() => {
+  posts.value = null
+  adminSecret.value = null
+  adminHasMore.value = null
+  adminPage.value = null
+})
 </script>
 
 <template>
@@ -97,10 +136,10 @@ async function deletePost(postId) {
           <button 
             type="button" 
             class="action-load-btn" 
-            @click="fetchPostsForMaintenance"
+            @click="fetchPostsForMaintenance(false)"
             :disabled="isFetching || !adminSecret.trim()"
           >
-            {{ isFetching ? 'Caricamento...' : 'Carica Link' }}
+            {{ isFetching && adminPage === 1 ? 'Caricamento...' : 'Carica Link' }}
           </button>
         </div>
       </div>
@@ -124,6 +163,18 @@ async function deletePost(postId) {
               Elimina
             </button>
           </div>
+        </div>
+
+        <!-- Pulsante di Paginazione Coordinato in stile Smeraldo -->
+        <div v-if="adminHasMore" class="admin-pagination-box">
+          <button 
+            type="button" 
+            class="admin-more-btn" 
+            @click="fetchPostsForMaintenance(true)"
+            :disabled="isFetching"
+          >
+            {{ isFetching ? 'Iniezione record...' : 'Carica Altri Record ▾' }}
+          </button>
         </div>
       </div>
     </div>
@@ -238,6 +289,34 @@ input:focus { outline: 2px solid #047857; }
 
 .delete-btn:disabled {
   background-color: #fca5a5;
+  cursor: not-allowed;
+}
+
+/* Stili Paginazione Admin */
+.admin-pagination-box {
+  width: 100%;
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.admin-more-btn {
+  background-color: #047857;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.admin-more-btn:hover:not(:disabled) {
+  background-color: #065f46;
+}
+
+.admin-more-btn:disabled {
+  background-color: #cbd5e1;
   cursor: not-allowed;
 }
 </style>
