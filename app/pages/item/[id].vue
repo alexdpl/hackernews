@@ -1,56 +1,138 @@
+<!-- app/pages/item/[id].vue -->
 <script setup lang="ts">
-import { ref, provide } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, provide, onUnmounted } from 'vue'
+
+interface CommentItem {
+  id: number
+  postId: number
+  parentId: number | null
+  author: string
+  content: string
+  createdAt: string
+  children?: CommentItem[]
+}
+
+interface Post {
+  id: number
+  title: string
+  url: string | null
+  points: number
+  createdAt: string
+  hasVoted?: boolean
+}
 
 const route = useRoute()
-const postId = route.params.id
 
-const newCommentContent = ref('')
-const isSubmitting = ref(false)
-
-// Caricamento dati da server/api/hn/comment.ts
-const { data, error, pending, refresh } = await useFetch('/api/hn/comment', {
-  query: { postId }
+// 1. Estrazione e validazione reattiva dell'ID post (previene chiamate con NaN/undefined)
+const postId = computed(() => {
+  const id = Number(route.params.id)
+  return !isNaN(id) && id > 0 ? id : null
 })
 
-// Gestione dell'invio dell'upvote al database Neon
-const handleUpvote = async () => {
+// 2. Fetch reattivo dei commenti dall'endpoint corretto
+const { data: commentsRes, error, pending, refresh } = await useFetch(
+  () => (postId.value ? `/api/posts/${postId.value}/comments` : null),
+  {
+    immediate: !!postId.value
+  }
+)
+
+const rawComments = computed<CommentItem[]>(() => commentsRes.value?.data || [])
+
+// 3. Recupero dei dettagli del post principale
+const post = ref<Post | null>(null)
+
+if (postId.value) {
   try {
-    await $fetch('/api/hn/vote', {
-      method: 'POST',
-      body: { postId: postId }
-    })
-    await refresh() // Ricarica i dati includendo il nuovo punteggio aggiornato dal DB
-  } catch (err: any) {
-    alert(err.statusMessage || 'Errore durante l\'upvote o voto già inserito.')
+    const res = await $fetch<any>('/api/posts', { query: { id: postId.value } })
+    if (res?.success && Array.isArray(res.data)) {
+      const found = res.data.find((p: any) => p.id === postId.value) || res.data[0]
+      if (found) {
+        post.value = {
+          ...found,
+          points: found.points ?? 1,
+          hasVoted: false
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Impossibile recuperare i dettagli del post:', err)
   }
 }
 
-// Gestione dell'invio del commento principale
+// 4. Gestione dell'Upvote Atomico sul DB Neon
+const isVoting = ref(false)
+const handleUpvote = async () => {
+  if (!post.value || post.value.hasVoted || isVoting.value) return
+  isVoting.value = true
+
+  try {
+    const res = await $fetch<any>(`/api/posts/${post.value.id}/vote`, {
+      method: 'POST'
+    })
+    if (res?.success) {
+      post.value.points = res.points
+      post.value.hasVoted = true
+    }
+  } catch (err: any) {
+    if (err.statusCode === 409) {
+      post.value.hasVoted = true
+      alert('Hai già votato questo post.')
+    } else {
+      alert(err.data?.statusMessage || 'Errore durante la registrazione del voto.')
+    }
+  } finally {
+    isVoting.value = false
+  }
+}
+
+// 5. Gestione dell'invio del commento principale
+const newCommentContent = ref('')
+const authorName = ref('')
+const isSubmitting = ref(false)
+
 const handleAddComment = async () => {
-  if (!newCommentContent.value.trim() || isSubmitting.value) return
+  if (!postId.value || !newCommentContent.value.trim() || isSubmitting.value) return
 
   isSubmitting.value = true
   try {
-    await $fetch('/api/hn/comment', {
+    await $fetch(`/api/posts/${postId.value}/comments`, {
       method: 'POST',
       body: {
-        postId: postId,
-        parentId: null,
-        content: newCommentContent.value
+        author: authorName.value.trim() || 'utente_anonimo',
+        content: newCommentContent.value.trim(),
+        parentId: null
       }
     })
     newCommentContent.value = ''
-    await refresh()
-  } catch (err) {
-    alert('Errore durante l\'invio del commento.')
+    await refresh() // Ricarica la lista dei commenti dal DB Neon
+  } catch (err: any) {
+    alert(err.data?.statusMessage || 'Errore durante l\'invio del commento.')
   } finally {
     isSubmitting.value = false
   }
 }
 
-// Condividiamo la funzione di refresh con l'albero dei sotto-commenti
+// Helper sicuro per l'estrazione del dominio
+function getDomain(urlString: string | null): string {
+  if (!urlString) return ''
+  try {
+    const url = new URL(urlString)
+    return url.hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+// Condivisione funzione refresh per eventuali sotto-componenti
 provide('refreshComments', refresh)
+
+// Hard Cleanup
+onUnmounted(() => {
+  post.value = null
+  newCommentContent.value = ''
+  authorName.value = ''
+})
 </script>
 
 <template>
@@ -74,63 +156,88 @@ provide('refreshComments', refresh)
       <!-- Corpo principale della pagina -->
       <main class="p-3 font-sans">
         <div v-if="pending" class="text-[#828282] py-2">Loading...</div>
-        <div v-else-if="error || !data" class="text-red-600 py-2">Post non trovato o errore server.</div>
+        <div v-else-if="error || (!post && !pending)" class="text-red-600 py-2">Post non trovato o errore server.</div>
 
-        <div v-else>
+        <div v-else-if="post">
           <!-- Intestazione del Post -->
           <div class="mb-4">
             <div class="flex items-start gap-1">
-              <!-- Freccetta Upvote HN Dinamica e Funzionante -->
+              <!-- Freccetta Upvote HN -->
               <div 
                 @click="handleUpvote" 
-                class="text-[#828282] text-[10px] pt-1 cursor-pointer select-none hover:text-[#ff6600] transition-colors"
+                class="text-[10px] pt-1 cursor-pointer select-none transition-colors"
+                :class="post.hasVoted ? 'text-gray-300 cursor-default' : 'text-[#828282] hover:text-[#ff6600]'"
+                title="Upvote"
               >
                 ▲
               </div>
               <div>
-                <span class="text-[14px] text-black">
-                  <a v-if="data.post.url" :href="data.post.url" target="_blank" class="hover:underline">{{ data.post.title }}</a>
-                  <span v-else>{{ data.post.title }}</span>
+                <span class="text-[14px] text-black font-medium">
+                  <a v-if="post.url" :href="post.url" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                    {{ post.title }}
+                  </a>
+                  <span v-else>{{ post.title }}</span>
                 </span>
-                <span v-if="data.post.url" class="text-[10px] text-[#828282] ml-1">
-                  ({{ new URL(data.post.url).hostname }})
+                <span v-if="getDomain(post.url)" class="text-[10px] text-[#828282] ml-1">
+                  ({{ getDomain(post.url) }})
                 </span>
               </div>
             </div>
-            <!-- Sotto-titolo info -->
+
+            <!-- Subtext Info -->
             <div class="text-[10px] text-[#828282] pl-4 mt-0.5">
-              {{ data.post.score }} points by {{ data.post.by }} | 
-              {{ new Date(data.post.createdAt).toLocaleString() }} | 
-              {{ data.post.descendants }} comments
+              {{ post.points }} punti | 
+              pubblicato il {{ post.createdAt ? new Date(post.createdAt).toLocaleString('it-IT') : 'di recente' }} | 
+              {{ rawComments.length }} commenti
             </div>
           </div>
 
-          <!-- Textarea per il commento principale -->
+          <!-- Modulo Invio Commento -->
           <div class="pl-4 mb-6">
-            <textarea 
-              v-model="newCommentContent"
-              rows="4" 
-              class="w-full max-w-[600px] p-1 border border-gray-400 font-mono text-[13px] bg-white focus:outline-none"
-              :disabled="isSubmitting"
-            ></textarea>
-            <div class="mt-2">
+            <div class="mb-2">
+              <input 
+                v-model="authorName" 
+                type="text" 
+                placeholder="Nome utente (opzionale)" 
+                class="max-w-[250px] p-1 border border-gray-400 font-sans text-[12px] bg-white focus:outline-none mb-2 block"
+                maxlength="50"
+              />
+              <textarea 
+                v-model="newCommentContent"
+                rows="4" 
+                placeholder="Aggiungi un commento..."
+                class="w-full max-w-[600px] p-1 border border-gray-400 font-sans text-[13px] bg-white focus:outline-none block"
+                :disabled="isSubmitting"
+              ></textarea>
+            </div>
+            <div>
               <button 
                 @click="handleAddComment"
-                :disabled="isSubmitting"
-                class="px-2 py-0.5 border border-gray-500 bg-[#e0e0e0] active:bg-gray-300 text-[12px] rounded-xs text-black"
+                :disabled="isSubmitting || !newCommentContent.trim()"
+                class="px-2 py-0.5 border border-gray-500 bg-[#e0e0e0] active:bg-gray-300 text-[12px] rounded-xs text-black cursor-pointer disabled:opacity-50"
               >
                 {{ isSubmitting ? 'submitting...' : 'add comment' }}
               </button>
             </div>
           </div>
 
-          <!-- Contenitore dell'Albero delle Discussioni -->
+          <!-- Sezione Lista Commenti -->
           <div class="pl-1 border-t border-[#dedede] pt-4">
-            <ul class="space-y-5 list-none p-0 m-0">
-              <li v-for="comment in data.comments" :key="comment.id">
-                <CommentNode :node="comment" />
-              </li>
-            </ul>
+            <div v-if="rawComments.length > 0" class="space-y-4">
+              <div v-for="comment in rawComments" :key="comment.id" class="bg-[#f0f0e8] p-2 rounded-xs">
+                <div class="text-[10px] text-[#828282] mb-1">
+                  <span class="font-bold text-black">{{ comment.author || 'utente_anonimo' }}</span> 
+                  <span> | {{ comment.createdAt ? new Date(comment.createdAt).toLocaleString('it-IT') : '' }}</span>
+                </div>
+                <div class="text-[12px] text-black whitespace-pre-line">
+                  {{ comment.content }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="text-[12px] text-[#828282]">
+              Non ci sono ancora commenti. Sii il primo a commentare!
+            </div>
           </div>
 
         </div>
