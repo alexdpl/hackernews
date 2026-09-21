@@ -1,131 +1,134 @@
+<!-- app/layouts/admin.vue -->
 <script setup lang="ts">
-const route = useRoute()
-
-async function handleLogout() {
-  // Esegui la cancellazione dei cookie/sessione se presente
-  // await $fetch('/api/auth/logout', { method: 'POST' })
-  
-  // Reindirizza alla Home principale
-  await navigateTo('/')
+function logout() {
+  if (import.meta.client) {
+    sessionStorage.removeItem('dkp_admin_secret')
+    navigateTo('/admin')
+  }
 }
 </script>
 
 <template>
-  <div class="admin-wrapper">
+  <div class="admin-layout">
+    <!-- Header interno dedicato all'area riservata Admin -->
     <header class="admin-header">
-      <div class="inner">
+      <div class="admin-nav-container">
         <div class="nav-left">
-          <!-- Aprirà la home in una nuova scheda -->
-          <NuxtLink to="/" target="_blank" rel="noopener noreferrer" class="nav-link home-link">
+          <NuxtLink to="/" class="nav-link home-link">
             Torna in home ↗
           </NuxtLink>
-
           <span class="divider">|</span>
-
-          <!-- Navigazione dinamica tra le dashboard admin -->
-          <NuxtLink 
-            to="/admin" 
-            class="nav-link" 
-            :class="{ active: route.path === '/admin' }"
-          >
+          <NuxtLink to="/admin" class="nav-link" active-class="active" exact-active-class="active">
             Gestione News & Commenti
           </NuxtLink>
-
-          <NuxtLink 
-            to="/admin/jobs" 
-            class="nav-link" 
-            :class="{ active: route.path === '/admin/jobs' }"
-          >
+          <NuxtLink to="/admin/jobs" class="nav-link" active-class="active">
             Gestione Jobs
+          </NuxtLink>
+          <NuxtLink to="/admin/health" class="nav-link health-badge" active-class="active">
+            ⚡ Health Check
           </NuxtLink>
         </div>
 
         <div class="nav-right">
-          <button class="logout-btn" @click="handleLogout">
+          <button @click="logout" class="btn-logout">
             Esci
           </button>
         </div>
       </div>
     </header>
 
-    <main class="admin-content">
+    <!-- Contenuto delle pagine admin -->
+    <main class="admin-body">
       <slot />
     </main>
   </div>
 </template>
 
-<style scoped lang="postcss">
-.admin-wrapper {
+<style scoped>
+.admin-layout {
   min-height: 100vh;
-  background-color: #f4f4f5;
+  background-color: #f8fafc;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 .admin-header {
   background-color: #020420;
-  color: #ffffff;
-  padding: 0 15px;
-  height: 55px;
-  display: flex;
-  align-items: center;
-
-  .inner {
-    max-width: 1000px;
-    width: 100%;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .nav-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-  }
-
-  .divider {
-    color: #4b5563;
-  }
-
-  .nav-link {
-    color: #9ca3af;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    transition: color 0.2s ease;
-
-    &:hover, &.active {
-      color: #00dc82; /* Verde Smeraldo DevKernelPulse */
-    }
-
-    &.home-link {
-      color: #ffffff;
-      &:hover {
-        color: #00dc82;
-      }
-    }
-  }
-
-  .logout-btn {
-    background: transparent;
-    border: 1px solid #ef4444;
-    color: #ef4444;
-    padding: 5px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background-color: #ef4444;
-      color: #ffffff;
-    }
-  }
+  padding: 0.8rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.admin-content {
-  max-width: 1000px;
-  margin: 20px auto;
-  padding: 0 15px;
+.admin-nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.home-link {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.divider {
+  color: #334155;
+  user-select: none;
+}
+
+.health-badge {
+  color: #00dc82 !important;
+  background: rgba(0, 220, 130, 0.1);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 220, 130, 0.3);
+}
+
+.health-badge:hover,
+.health-badge.active {
+  background: rgba(0, 220, 130, 0.2);
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-logout:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.admin-body {
+  padding: 1.5rem;
 }
 </style>

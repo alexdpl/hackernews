@@ -19,7 +19,7 @@
           <span class="brand-title">DevKernelPulse</span>
         </NuxtLink>
 
-        <!-- Menu Pagine -->
+        <!-- Menu Pagine Pubbliche -->
         <nav class="nav-links">
           <NuxtLink to="/" active-class="active" exact-active-class="active">
             News
@@ -38,6 +38,14 @@
           </NuxtLink>
           <NuxtLink to="/submit" active-class="active">
             Invia Link
+          </NuxtLink>
+
+          <!-- Separatore Sezione Admin -->
+          <span class="nav-divider">|</span>
+
+          <!-- Sezione Strumenti Admin -->
+          <NuxtLink to="/admin/health" active-class="active" class="admin-nav-item">
+            <span class="admin-dot">●</span> ⚡ Health
           </NuxtLink>
         </nav>
       </div>
@@ -116,7 +124,7 @@
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1.1rem;
   flex-wrap: wrap;
 }
 
@@ -132,6 +140,39 @@
 .nav-links a.active {
   color: #00dc82;
   font-weight: 600;
+}
+
+.nav-divider {
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+/* Stile distintivo per le funzionalità Admin nella Navbar */
+.admin-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #00dc82 !important;
+  background: rgba(0, 220, 130, 0.08);
+  border: 1px solid rgba(0, 220, 130, 0.25);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  transition: all 0.15s ease;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item.active {
+  background: rgba(0, 220, 130, 0.18);
+  border-color: #00dc82;
+  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
+}
+
+.admin-dot {
+  font-size: 0.6rem;
+  color: #00dc82;
 }
 
 .nav-right {
@@ -176,6 +217,10 @@
 
   .brand-title {
     font-size: 0.95rem;
+  }
+
+  .nav-divider {
+    display: none;
   }
 }
 </style>
