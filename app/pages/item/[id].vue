@@ -1,4 +1,4 @@
-<!-- pages/item/[id].vue -->
+<!-- app/pages/item/[id].vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
@@ -14,23 +14,23 @@ interface Item {
   title: string
   url?: string | null
   domain?: string | null
-  points: number
+  points?: number
   author?: string
   createdAt: string | Date
   description?: string | null
+  text?: string | null
   comments?: Comment[]
 }
 
 const route = useRoute()
 const itemId = route.params.id
 
-// Recupero dati dall'API
-const { data, pending, error, refresh } = await useFetch<any>(`/api/items/${itemId}`)
+// 1. Recupero dati dall'API (Allineato a /api/item/${itemId})
+const { data, pending, error, refresh } = await useFetch<any>(`/api/item/${itemId}`)
 
-// Normalizzazione dell'oggetto Item (gestisce sia risposta diretta che wrapper { item: ... })
+// Normalizzazione dell'oggetto Item
 const item = computed<Item | null>(() => {
   if (!data.value) return null
-  if (data.value.item) return data.value.item
   if (data.value.data) return data.value.data
   return data.value
 })
@@ -50,9 +50,11 @@ async function handleCommentSubmit() {
   submitSuccess.value = ''
 
   try {
-    await $fetch(`/api/items/${itemId}/comments`, {
+    // 2. Invio commento all'endpoint /api/comments
+    await $fetch('/api/comments', {
       method: 'POST',
       body: {
+        postId: Number(itemId),
         text: commentText.value.trim(),
         author: authorName.value.trim() || 'Anonimo'
       }
@@ -60,6 +62,7 @@ async function handleCommentSubmit() {
 
     submitSuccess.value = 'Commento inviato con successo!'
     commentText.value = ''
+    authorName.value = ''
     
     // Ricarica i dati per mostrare subito il nuovo commento
     await refresh()
@@ -104,8 +107,8 @@ async function handleCommentSubmit() {
           <span v-if="item.author"> da <strong>{{ item.author }}</strong></span>
         </div>
 
-        <p v-if="item.description" class="item-description">
-          {{ item.description }}
+        <p v-if="item.description || item.text" class="item-description">
+          {{ item.description || item.text }}
         </p>
       </section>
 

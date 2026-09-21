@@ -1,14 +1,15 @@
-import { posts } from '~~/server/db/schema'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { getDb } from '../../../utils/db'
+import { posts } from '../../../db/schema'
 import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  // Ricaviamo l'ID del post dall'URL (es: /api/admin/posts/5 -> id = 5)
   const idParam = getRouterParam(event, 'id')
   
   if (!idParam) {
     throw createError({ 
       statusCode: 400, 
-      message: 'ID del post non specificato nella richiesta' 
+      statusMessage: 'ID del post non specificato nella richiesta' 
     })
   }
 
@@ -16,14 +17,13 @@ export default defineEventHandler(async (event) => {
   if (isNaN(postId)) {
     throw createError({ 
       statusCode: 400, 
-      message: 'ID post non valido' 
+      statusMessage: 'ID post non valido' 
     })
   }
 
   try {
     const database = getDb()
 
-    // Cancelliamo il record corrispondente dall'ID nel database Neon
     const deletedPost = await database
       .delete(posts)
       .where(eq(posts.id, postId))
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     console.error('❌ ERRORE CANCELLAZIONE POST ADMIN:', error)
     throw createError({
       statusCode: 500,
-      message: error.message || 'Errore durante la cancellazione del post dal database'
+      statusMessage: error.message || 'Errore durante la cancellazione del post dal database'
     })
   }
 })
