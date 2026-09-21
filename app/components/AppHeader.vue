@@ -1,42 +1,48 @@
 <!-- app/components/AppHeader.vue -->
 <script setup lang="ts">
-const route = useRoute()
+// NuxtLink gestisce l'evidenziazione tramite la rotta attiva
 </script>
 
 <template>
   <header class="header-bar">
     <div class="header-container">
-      <!-- Sezione Sinistra: Logo + Nome Brand + Link di Navigazione -->
+      <!-- Sezione Sinistra: Logo + Brand + Navigazione -->
       <div class="nav-left">
         <NuxtLink to="/" class="brand-link">
+          <!-- Logo Triangolo Nuxt Verde -->
+          <svg class="logo-icon" viewBox="0 0 32 32" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 4L2 28H30L16 4Z" fill="#00DC82"></path>
+            <path d="M16 12L8.5 25H23.5L16 12Z" fill="#020420"></path>
+            <path d="M16 18L12 25H20L16 18Z" fill="#00DC82"></path>
+          </svg>
           <span class="logo-badge">DKP</span>
           <span class="brand-title">DevKernelPulse</span>
         </NuxtLink>
 
         <!-- Menu Pagine -->
         <nav class="nav-links">
-          <NuxtLink to="/" :class="{ active: route.path === '/' }">
+          <NuxtLink to="/" active-class="active" exact-active-class="active">
             News
           </NuxtLink>
-          <NuxtLink to="/newest" :class="{ active: route.path === '/newest' }">
+          <NuxtLink to="/newest" active-class="active">
             Newest
           </NuxtLink>
-          <NuxtLink to="/ask" :class="{ active: route.path === '/ask' }">
+          <NuxtLink to="/ask" active-class="active">
             Ask
           </NuxtLink>
-          <NuxtLink to="/show" :class="{ active: route.path === '/show' }">
+          <NuxtLink to="/show" active-class="active">
             Show
           </NuxtLink>
-          <NuxtLink to="/jobs" :class="{ active: route.path === '/jobs' }">
+          <NuxtLink to="/jobs" active-class="active">
             Jobs
           </NuxtLink>
-          <NuxtLink to="/submit" :class="{ active: route.path === '/submit' }">
+          <NuxtLink to="/submit" active-class="active">
             Invia Link
           </NuxtLink>
         </nav>
       </div>
 
-      <!-- Sezione Destra: Link Repository GitHub -->
+      <!-- Sezione Destra: Link GitHub -->
       <div class="nav-right">
         <a 
           href="https://github.com/alexdpl/hackernews" 
@@ -44,7 +50,7 @@ const route = useRoute()
           rel="noopener noreferrer" 
           class="github-link"
         >
-          Apri su GitHub
+          Apri su GitHub <span class="external-icon">↗</span>
         </a>
       </div>
     </div>
@@ -53,11 +59,12 @@ const route = useRoute()
 
 <style scoped>
 .header-bar {
-  background-color: #020420; /* Sfondo scuro elegante */
+  background-color: #020420;
   width: 100%;
   padding: 0.8rem 1.25rem;
   box-sizing: border-box;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-container {
@@ -80,18 +87,23 @@ const route = useRoute()
 .brand-link {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   text-decoration: none;
 }
 
+.logo-icon {
+  flex-shrink: 0;
+}
+
 .logo-badge {
-  background-color: #00dc82; /* Verde smeraldo */
+  background-color: #00dc82;
   color: #020420;
   font-weight: 800;
-  font-size: 0.8rem;
-  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
   border-radius: 4px;
   line-height: 1;
+  letter-spacing: 0.05em;
 }
 
 .brand-title {
@@ -113,12 +125,13 @@ const route = useRoute()
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 .nav-links a:hover,
 .nav-links a.active {
-  color: #00dc82; /* Verde smeraldo attivo */
+  color: #00dc82;
+  font-weight: 600;
 }
 
 .nav-right {
@@ -131,21 +144,38 @@ const route = useRoute()
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 500;
-  transition: opacity 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: color 0.15s ease;
 }
 
 .github-link:hover {
-  opacity: 0.85;
-  text-decoration: underline;
+  color: #00dc82;
+  text-decoration: none;
+}
+
+.external-icon {
+  font-size: 0.8rem;
+  opacity: 0.8;
 }
 
 @media (max-width: 640px) {
+  .header-bar {
+    padding: 0.75rem 1rem;
+  }
+  
   .nav-left {
     gap: 0.8rem;
   }
+  
   .nav-links {
     gap: 0.75rem;
     font-size: 0.85rem;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
   }
 }
 </style>

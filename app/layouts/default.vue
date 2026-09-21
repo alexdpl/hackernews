@@ -1,10 +1,11 @@
 <!-- app/layouts/default.vue -->
 <template>
   <div class="app-layout">
-    <Navbar />
+    <AppHeader />
     <main class="main-content">
       <slot />
     </main>
+    <AppFooter />
   </div>
 </template>
 
