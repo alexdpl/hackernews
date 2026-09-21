@@ -1,20 +1,25 @@
 // server/api/admin/posts.ts
 import { defineEventHandler, getQuery, createError, getHeader } from 'h3'
-import { getDb } from '../../utils/db'
-import { posts } from '../../db/schema'
+import { getDb } from '~~/server/utils/db' // <-- Import con alias di radice Nuxt 4
+import { posts } from '~~/server/db/schema' // <-- Import con alias di radice Nuxt 4
 import { desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   try {
     // 1. Controllo di sicurezza centralizzato (ADMIN_SECRET)
     const config = useRuntimeConfig(event)
+    const expectedSecret = 
+      config.adminSecret || 
+      process.env.ADMIN_SECRET || 
+      process.env.NUXT_ADMIN_SECRET
+
     const authHeader = getHeader(event, 'authorization')
     const xAdminSecret = getHeader(event, 'x-admin-secret')
 
     // Supporta sia l'header 'x-admin-secret' sia l'header 'Authorization: Bearer <token>'
     const token = xAdminSecret || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader)
 
-    if (!config.adminSecret || !token || token !== config.adminSecret) {
+    if (!expectedSecret || !token || token !== expectedSecret) {
       throw createError({
         statusCode: 401,
         statusMessage: 'Accesso negato. Chiave amministrativa non valida o mancante.',
