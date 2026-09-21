@@ -1,45 +1,54 @@
 // server/api/posts.get.ts
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { getDb } from '../utils/db'
-import { posts } from '../db/schema' // 👈 Importiamo "posts" e non "jobs"
-import { desc, sql } from 'drizzle-orm'
+import { posts, comments } from '../db/schema'
+import { eq, desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event)
-    
-    const page = Math.max(1, parseInt(query.page as string) || 1)
-    const limit = Math.max(1, Math.min(100, parseInt(query.limit as string) || 30))
-    const offset = (page - 1) * limit
+    const type = query.type as string | undefined
 
     const db = getDb()
 
-    const [dataResult, countResult] = await Promise.all([
-      db
-        .select()
-        .from(posts) // 👈 CORRETTO: ora legge dalla tabella 'posts'
-        .orderBy(desc(posts.createdAt))
-        .limit(limit)
-        .offset(offset),
-      
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(posts) // 👈 CORRETTO: conta i record di 'posts'
-    ])
+    // Definizione della clausola WHERE in base al filtro richiesto
+    let whereClause = undefined
+    if (type === 'ask') {
+      whereClause = eq(posts.type, 'ask')
+    } else if (type === 'show') {
+      whereClause = eq(posts.type, 'show')
+    } else if (type === 'story') {
+      whereClause = eq(posts.type, 'story')
+    }
+    // Se type è 'newest' o undefined, restituisce tutti i post ordinati per data
 
-    const totalPosts = Number(countResult[0]?.count || 0)
-    const hasMore = offset + dataResult.length < totalPosts
+    const items = await db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        url: posts.url,
+        text: posts.text,
+        author: posts.author,
+        points: posts.points,
+        type: posts.type,
+        createdAt: posts.createdAt,
+        commentsCount: sql<number>`count(${comments.id})::int`
+      })
+      .from(posts)
+      .leftJoin(comments, eq(posts.id, comments.postId))
+      .where(whereClause)
+      .groupBy(posts.id)
+      .orderBy(desc(posts.createdAt))
 
     return {
       success: true,
-      data: dataResult,
-      pagination: { page, limit, total: totalPosts, hasMore }
+      data: items
     }
   } catch (error: any) {
-    console.error('=== [ERROR] FALLIMENTO LETTURA POSTS ===', error)
+    console.error('=== [ERROR] GET POSTS ===', error)
     throw createError({
       statusCode: 500,
-      statusMessage: 'Impossibile recuperare i post.',
+      statusMessage: error.message || 'Errore durante il recupero dei post.'
     })
   }
 })

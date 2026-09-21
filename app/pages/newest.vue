@@ -1,26 +1,40 @@
-<!-- app/pages/ask.vue -->
+<!-- app/pages/newest.vue -->
 <script setup lang="ts">
-const { data, pending, error } = await useFetch('/api/posts?type=ask')
+const { data, pending, error } = await useFetch('/api/posts?type=newest')
 
 const posts = computed(() => data.value?.data || [])
+
+function getDomain(url?: string | null) {
+  if (!url) return null
+  try {
+    const domain = new URL(url).hostname.replace('www.', '')
+    return domain
+  } catch {
+    return null
+  }
+}
 </script>
 
 <template>
   <div class="page-container">
-    <h2 class="page-title">Ask HN</h2>
+    <h2 class="page-title">Nuove Pubblicazioni (Newest)</h2>
 
-    <div v-if="pending" class="status-msg">Caricamento domande in corso...</div>
-    <div v-else-if="error" class="status-msg error">Impossibile caricare le domande.</div>
-    <div v-else-if="posts.length === 0" class="status-msg">Nessuna domanda presente. Sii il primo a chiedere qualcosa!</div>
+    <div v-if="pending" class="status-msg">Caricamento in corso...</div>
+    <div v-else-if="error" class="status-msg error">Impossibile caricare i post.</div>
+    <div v-else-if="posts.length === 0" class="status-msg">Nessun post recente.</div>
 
     <ol v-else class="post-list">
       <li v-for="(post, index) in posts" :key="post.id" class="post-item">
         <span class="post-number">{{ index + 1 }}.</span>
         <div class="post-content">
           <div class="post-heading">
-            <NuxtLink :to="`/item/${post.id}`" class="post-title">
+            <a v-if="post.url" :href="post.url" target="_blank" rel="noopener noreferrer" class="post-title">
+              {{ post.title }}
+            </a>
+            <NuxtLink v-else :to="`/item/${post.id}`" class="post-title">
               {{ post.title }}
             </NuxtLink>
+            <span v-if="getDomain(post.url)" class="post-domain">({{ getDomain(post.url) }})</span>
           </div>
 
           <div class="post-meta">
@@ -50,6 +64,7 @@ const posts = computed(() => data.value?.data || [])
 .post-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem; }
 .post-title { font-size: 0.95rem; font-weight: 600; color: #0f172a; text-decoration: none; }
 .post-title:hover { color: #2563eb; text-decoration: underline; }
+.post-domain { font-size: 0.8rem; color: #64748b; }
 .post-meta { font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 .comments-link { color: #475569; text-decoration: none; font-weight: 500; }
 .comments-link:hover { text-decoration: underline; color: #2563eb; }

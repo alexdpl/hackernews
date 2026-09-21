@@ -1,7 +1,7 @@
 <!-- app/layouts/default.vue -->
 <template>
   <div class="app-layout">
-    <AppHeader />
+    <Navbar />
     <main class="main-content">
       <slot />
     </main>
