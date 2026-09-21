@@ -15,7 +15,7 @@
 
       <!-- Firma e Crediti -->
       <p class="footer-text">
-      © 2026 <strong>DevKernelPulse</strong> — Proudly built with ❤️ by Alesandro De Paola & Gemini AI. Tutti i Diritti sono Riservati.
+      © 2026 <strong>DevKernelPulse</strong> — Proudly built with ❤️ by Alessandro De Paola & Gemini AI. Tutti i Diritti sono Riservati.
       </p>
     </div>
   </footer>
