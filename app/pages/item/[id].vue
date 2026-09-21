@@ -1,247 +1,322 @@
-<!-- app/pages/item/[id].vue -->
+<!-- pages/item/[id].vue -->
 <script setup lang="ts">
-import { ref, computed, provide, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 
-interface CommentItem {
-  id: number
-  postId: number
-  parentId: number | null
-  author: string
-  content: string
-  createdAt: string
-  children?: CommentItem[]
+interface Comment {
+  id: string | number
+  author?: string
+  text: string
+  createdAt: string | Date
 }
 
-interface Post {
-  id: number
+interface Item {
+  id: string | number
   title: string
-  url: string | null
+  url?: string | null
+  domain?: string | null
   points: number
-  createdAt: string
-  hasVoted?: boolean
+  author?: string
+  createdAt: string | Date
+  description?: string | null
+  comments?: Comment[]
 }
 
 const route = useRoute()
+const itemId = route.params.id
 
-// 1. Estrazione e validazione reattiva dell'ID post (previene chiamate con NaN/undefined)
-const postId = computed(() => {
-  const id = Number(route.params.id)
-  return !isNaN(id) && id > 0 ? id : null
+// Recupero dati dall'API
+const { data, pending, error, refresh } = await useFetch<any>(`/api/items/${itemId}`)
+
+// Normalizzazione dell'oggetto Item (gestisce sia risposta diretta che wrapper { item: ... })
+const item = computed<Item | null>(() => {
+  if (!data.value) return null
+  if (data.value.item) return data.value.item
+  if (data.value.data) return data.value.data
+  return data.value
 })
 
-// 2. Fetch reattivo dei commenti dall'endpoint corretto
-const { data: commentsRes, error, pending, refresh } = await useFetch(
-  () => (postId.value ? `/api/posts/${postId.value}/comments` : null),
-  {
-    immediate: !!postId.value
-  }
-)
-
-const rawComments = computed<CommentItem[]>(() => commentsRes.value?.data || [])
-
-// 3. Recupero dei dettagli del post principale
-const post = ref<Post | null>(null)
-
-if (postId.value) {
-  try {
-    const res = await $fetch<any>('/api/posts', { query: { id: postId.value } })
-    if (res?.success && Array.isArray(res.data)) {
-      const found = res.data.find((p: any) => p.id === postId.value) || res.data[0]
-      if (found) {
-        post.value = {
-          ...found,
-          points: found.points ?? 1,
-          hasVoted: false
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Impossibile recuperare i dettagli del post:', err)
-  }
-}
-
-// 4. Gestione dell'Upvote Atomico sul DB Neon
-const isVoting = ref(false)
-const handleUpvote = async () => {
-  if (!post.value || post.value.hasVoted || isVoting.value) return
-  isVoting.value = true
-
-  try {
-    const res = await $fetch<any>(`/api/posts/${post.value.id}/vote`, {
-      method: 'POST'
-    })
-    if (res?.success) {
-      post.value.points = res.points
-      post.value.hasVoted = true
-    }
-  } catch (err: any) {
-    if (err.statusCode === 409) {
-      post.value.hasVoted = true
-      alert('Hai già votato questo post.')
-    } else {
-      alert(err.data?.statusMessage || 'Errore durante la registrazione del voto.')
-    }
-  } finally {
-    isVoting.value = false
-  }
-}
-
-// 5. Gestione dell'invio del commento principale
-const newCommentContent = ref('')
+// Stato per l'inserimento del nuovo commento
+const commentText = ref('')
 const authorName = ref('')
 const isSubmitting = ref(false)
+const submitError = ref('')
+const submitSuccess = ref('')
 
-const handleAddComment = async () => {
-  if (!postId.value || !newCommentContent.value.trim() || isSubmitting.value) return
+async function handleCommentSubmit() {
+  if (!commentText.value.trim() || isSubmitting.value) return
 
   isSubmitting.value = true
+  submitError.value = ''
+  submitSuccess.value = ''
+
   try {
-    await $fetch(`/api/posts/${postId.value}/comments`, {
+    await $fetch(`/api/items/${itemId}/comments`, {
       method: 'POST',
       body: {
-        author: authorName.value.trim() || 'utente_anonimo',
-        content: newCommentContent.value.trim(),
-        parentId: null
+        text: commentText.value.trim(),
+        author: authorName.value.trim() || 'Anonimo'
       }
     })
-    newCommentContent.value = ''
-    await refresh() // Ricarica la lista dei commenti dal DB Neon
+
+    submitSuccess.value = 'Commento inviato con successo!'
+    commentText.value = ''
+    
+    // Ricarica i dati per mostrare subito il nuovo commento
+    await refresh()
   } catch (err: any) {
-    alert(err.data?.statusMessage || 'Errore durante l\'invio del commento.')
+    console.error('Errore invio commento:', err)
+    submitError.value = err?.data?.statusMessage || err?.data?.message || 'Impossibile pubblicare il commento.'
   } finally {
     isSubmitting.value = false
   }
 }
-
-// Helper sicuro per l'estrazione del dominio
-function getDomain(urlString: string | null): string {
-  if (!urlString) return ''
-  try {
-    const url = new URL(urlString)
-    return url.hostname.replace(/^www\./, '')
-  } catch {
-    return ''
-  }
-}
-
-// Condivisione funzione refresh per eventuali sotto-componenti
-provide('refreshComments', refresh)
-
-// Hard Cleanup
-onUnmounted(() => {
-  post.value = null
-  newCommentContent.value = ''
-  authorName.value = ''
-})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#f6f6ef] md:py-2 md:px-4 font-mono text-[13px] text-[#222222]">
-    <div class="max-w-[85%] mx-auto bg-[#f6f6ef]">
-      
-      <!-- Hacker News Header Bar -->
-      <header class="bg-[#ff6600] p-1 flex items-center justify-between text-black font-sans">
-        <div class="flex items-center gap-2 font-bold">
-          <NuxtLink to="/" class="border-2 border-white px-1.5 py-0.5 text-white font-extrabold text-[14px] leading-none select-none">
-            Y
-          </NuxtLink>
-          <NuxtLink to="/" class="hover:underline text-[14px]">Hacker News</NuxtLink>
-          <span class="font-normal text-[#1a1a1a] text-[13px] flex gap-2 ml-2">
-            <NuxtLink to="/" class="hover:underline">new</NuxtLink> |
-            <NuxtLink to="/submit" class="hover:underline">submit</NuxtLink>
-          </span>
+  <div class="item-page-container">
+    <!-- Stato di caricamento -->
+    <div v-if="pending" class="loading-state">
+      <p>Caricamento discussione in corso...</p>
+    </div>
+
+    <!-- Errore o Item non trovato -->
+    <div v-else-if="error || !item" class="error-state">
+      <h2>Post non trovato o errore di connessione.</h2>
+      <NuxtLink to="/" class="back-link">← Torna alla Home</NuxtLink>
+    </div>
+
+    <!-- Dettaglio Storia + Form + Commenti -->
+    <div v-else class="item-content">
+      <!-- 1. Header con Link e Dettagli Post -->
+      <section class="item-header">
+        <h1 class="item-title">
+          <a v-if="item.url" :href="item.url" target="_blank" rel="noopener noreferrer" class="title-link">
+            {{ item.title }} ↗
+          </a>
+          <span v-else>{{ item.title }}</span>
+          <span v-if="item.domain" class="item-domain">({{ item.domain }})</span>
+        </h1>
+
+        <div class="item-meta">
+          <span>{{ item.points || 0 }} punti</span>
+          <span class="dot">•</span>
+          <span>pubblicato il {{ new Date(item.createdAt).toLocaleDateString('it-IT') }}</span>
+          <span v-if="item.author"> da <strong>{{ item.author }}</strong></span>
         </div>
-      </header>
 
-      <!-- Corpo principale della pagina -->
-      <main class="p-3 font-sans">
-        <div v-if="pending" class="text-[#828282] py-2">Loading...</div>
-        <div v-else-if="error || (!post && !pending)" class="text-red-600 py-2">Post non trovato o errore server.</div>
+        <p v-if="item.description" class="item-description">
+          {{ item.description }}
+        </p>
+      </section>
 
-        <div v-else-if="post">
-          <!-- Intestazione del Post -->
-          <div class="mb-4">
-            <div class="flex items-start gap-1">
-              <!-- Freccetta Upvote HN -->
-              <div 
-                @click="handleUpvote" 
-                class="text-[10px] pt-1 cursor-pointer select-none transition-colors"
-                :class="post.hasVoted ? 'text-gray-300 cursor-default' : 'text-[#828282] hover:text-[#ff6600]'"
-                title="Upvote"
-              >
-                ▲
-              </div>
-              <div>
-                <span class="text-[14px] text-black font-medium">
-                  <a v-if="post.url" :href="post.url" target="_blank" rel="noopener noreferrer" class="hover:underline">
-                    {{ post.title }}
-                  </a>
-                  <span v-else>{{ post.title }}</span>
-                </span>
-                <span v-if="getDomain(post.url)" class="text-[10px] text-[#828282] ml-1">
-                  ({{ getDomain(post.url) }})
-                </span>
-              </div>
-            </div>
+      <hr class="divider" />
 
-            <!-- Subtext Info -->
-            <div class="text-[10px] text-[#828282] pl-4 mt-0.5">
-              {{ post.points }} punti | 
-              pubblicato il {{ post.createdAt ? new Date(post.createdAt).toLocaleString('it-IT') : 'di recente' }} | 
-              {{ rawComments.length }} commenti
-            </div>
+      <!-- 2. Form per inviare un nuovo commento -->
+      <section class="comment-box-section">
+        <h3>Aggiungi un Commento</h3>
+
+        <div v-if="submitSuccess" class="banner success-banner">{{ submitSuccess }}</div>
+        <div v-if="submitError" class="banner error-banner">{{ submitError }}</div>
+
+        <form class="comment-form" @submit.prevent="handleCommentSubmit">
+          <div class="form-group">
+            <input 
+              v-model="authorName" 
+              type="text" 
+              placeholder="Il tuo nome / nickname (opzionale)"
+              class="author-input"
+            />
           </div>
 
-          <!-- Modulo Invio Commento -->
-          <div class="pl-4 mb-6">
-            <div class="mb-2">
-              <input 
-                v-model="authorName" 
-                type="text" 
-                placeholder="Nome utente (opzionale)" 
-                class="max-w-[250px] p-1 border border-gray-400 font-sans text-[12px] bg-white focus:outline-none mb-2 block"
-                maxlength="50"
-              />
-              <textarea 
-                v-model="newCommentContent"
-                rows="4" 
-                placeholder="Aggiungi un commento..."
-                class="w-full max-w-[600px] p-1 border border-gray-400 font-sans text-[13px] bg-white focus:outline-none block"
-                :disabled="isSubmitting"
-              ></textarea>
-            </div>
-            <div>
-              <button 
-                @click="handleAddComment"
-                :disabled="isSubmitting || !newCommentContent.trim()"
-                class="px-2 py-0.5 border border-gray-500 bg-[#e0e0e0] active:bg-gray-300 text-[12px] rounded-xs text-black cursor-pointer disabled:opacity-50"
-              >
-                {{ isSubmitting ? 'submitting...' : 'add comment' }}
-              </button>
-            </div>
+          <div class="form-group">
+            <textarea
+              v-model="commentText"
+              rows="4"
+              required
+              placeholder="Scrivi qui il tuo commento..."
+              class="comment-textarea"
+            ></textarea>
           </div>
 
-          <!-- Sezione Lista Commenti -->
-          <div class="pl-1 border-t border-[#dedede] pt-4">
-            <div v-if="rawComments.length > 0" class="space-y-4">
-              <div v-for="comment in rawComments" :key="comment.id" class="bg-[#f0f0e8] p-2 rounded-xs">
-                <div class="text-[10px] text-[#828282] mb-1">
-                  <span class="font-bold text-black">{{ comment.author || 'utente_anonimo' }}</span> 
-                  <span> | {{ comment.createdAt ? new Date(comment.createdAt).toLocaleString('it-IT') : '' }}</span>
-                </div>
-                <div class="text-[12px] text-black whitespace-pre-line">
-                  {{ comment.content }}
-                </div>
-              </div>
-            </div>
+          <button 
+            type="submit" 
+            class="submit-btn"
+            :disabled="isSubmitting || !commentText.trim()"
+          >
+            {{ isSubmitting ? 'Invio in corso...' : 'Invia Commento' }}
+          </button>
+        </form>
+      </section>
 
-            <div v-else class="text-[12px] text-[#828282]">
-              Non ci sono ancora commenti. Sii il primo a commentare!
-            </div>
-          </div>
+      <hr class="divider" />
 
+      <!-- 3. Lista dei commenti ricevuti -->
+      <section class="comments-list-section">
+        <h3>Discussione ({{ item.comments?.length || 0 }})</h3>
+
+        <div v-if="!item.comments || item.comments.length === 0" class="no-comments">
+          Nessun commento ancora presente. Sii il primo a commentare!
         </div>
-      </main>
+
+        <div v-else class="comments-list">
+          <div v-for="comment in item.comments" :key="comment.id" class="comment-card">
+            <div class="comment-meta">
+              <strong>{{ comment.author || 'Anonimo' }}</strong>
+              <span class="comment-date">• {{ new Date(comment.createdAt).toLocaleDateString('it-IT') }}</span>
+            </div>
+            <div class="comment-body">
+              {{ comment.text }}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
+
+<style scoped>
+.item-page-container {
+  max-width: 850px;
+  margin: 1.5rem auto;
+  padding: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.item-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #020420;
+  line-height: 1.3;
+}
+
+.title-link {
+  color: #020420;
+  text-decoration: none;
+}
+
+.title-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.item-domain {
+  font-size: 0.85rem;
+  font-weight: normal;
+  color: #64748b;
+  margin-left: 0.5rem;
+}
+
+.item-meta {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.item-description {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  background: #f8fafc;
+  border-left: 4px solid #00dc82;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 1.5rem 0;
+}
+
+.comment-box-section h3, .comments-list-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #020420;
+  margin-bottom: 0.8rem;
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.author-input, .comment-textarea {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.comment-textarea:focus, .author-input:focus {
+  outline: 2px solid #00dc82;
+  border-color: transparent;
+}
+
+.submit-btn {
+  align-self: flex-start;
+  background-color: #020420;
+  color: #00dc82;
+  border: none;
+  padding: 0.65rem 1.3rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.comment-card {
+  padding: 0.9rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+
+.comment-meta {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-bottom: 0.4rem;
+}
+
+.comment-date {
+  color: #94a3b8;
+  margin-left: 0.3rem;
+}
+
+.comment-body {
+  font-size: 0.9rem;
+  color: #1e293b;
+  white-space: pre-wrap;
+}
+
+.banner {
+  padding: 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-bottom: 0.8rem;
+}
+.success-banner { background: #d1fae5; color: #065f46; }
+.error-banner { background: #fee2e2; color: #991b1b; }
+.no-comments { color: #64748b; font-size: 0.9rem; font-style: italic; }
+.loading-state, .error-state { text-align: center; padding: 2rem; color: #64748b; }
+.back-link { color: #2563eb; text-decoration: underline; font-size: 0.9rem; }
+</style>

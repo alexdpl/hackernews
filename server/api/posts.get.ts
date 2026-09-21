@@ -1,7 +1,7 @@
-// server/api/jobs.get.ts
+// server/api/posts.get.ts
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { getDb } from '../utils/db'
-import { jobs } from '../db/schema'
+import { posts } from '../db/schema' // 👈 Importiamo "posts" e non "jobs"
 import { desc, sql } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
@@ -17,29 +17,29 @@ export default defineEventHandler(async (event) => {
     const [dataResult, countResult] = await Promise.all([
       db
         .select()
-        .from(jobs)
-        .orderBy(desc(jobs.createdAt))
+        .from(posts) // 👈 CORRETTO: ora legge dalla tabella 'posts'
+        .orderBy(desc(posts.createdAt))
         .limit(limit)
         .offset(offset),
       
       db
         .select({ count: sql<number>`count(*)` })
-        .from(jobs)
+        .from(posts) // 👈 CORRETTO: conta i record di 'posts'
     ])
 
-    const totalJobs = countResult?.count || 0
-    const hasMore = offset + dataResult.length < totalJobs
+    const totalPosts = Number(countResult[0]?.count || 0)
+    const hasMore = offset + dataResult.length < totalPosts
 
     return {
       success: true,
       data: dataResult,
-      pagination: { page, limit, total: totalJobs, hasMore }
+      pagination: { page, limit, total: totalPosts, hasMore }
     }
   } catch (error: any) {
-    console.error('=== [ERROR] FALLIMENTO LETTURA JOBS ===', error)
+    console.error('=== [ERROR] FALLIMENTO LETTURA POSTS ===', error)
     throw createError({
       statusCode: 500,
-      statusMessage: 'Impossibile recuperare le offerte di lavoro.',
+      statusMessage: 'Impossibile recuperare i post.',
     })
   }
 })

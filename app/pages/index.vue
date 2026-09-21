@@ -1,6 +1,6 @@
-<!-- app/pages/index.vue -->
+<!-- pages/index.vue -->
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 
 const APP_NAME = 'DevKernelPulse'
 
@@ -12,82 +12,118 @@ useHead({
 })
 
 interface Post {
-  id: number
+  id: number | string
   title: string
-  url: string | null
+  url?: string | null
+  domain?: string | null
   points: number
-  createdAt: string
+  author?: string
+  createdAt: string | Date
   commentCount?: number
+  comments?: any[]
   hasVoted?: boolean
 }
 
+// 3 Articoli introduttivi / Default
 const defaultPosts: Post[] = [
   {
-    id: 1,
+    id: 'def-1',
     title: 'Benvenuti su DevKernelPulse — La nuova piattaforma per sviluppatori',
     url: 'https://github.com',
+    domain: 'github.com',
     points: 42,
+    author: 'admin',
     createdAt: new Date().toISOString(),
     commentCount: 5,
     hasVoted: false
   },
   {
-    id: 2,
+    id: 'def-2',
     title: 'Nuxt 3 & Vue 3: Guida all\'architettura Full-Stack moderna',
     url: 'https://nuxt.com',
+    domain: 'nuxt.com',
     points: 28,
+    author: 'NuxtTeam',
     createdAt: new Date().toISOString(),
     commentCount: 2,
     hasVoted: false
   },
   {
-    id: 3,
+    id: 'def-3',
     title: 'Ottimizzazione Serverless Database con Neon PostgreSQL',
     url: 'https://neon.tech',
+    domain: 'neon.tech',
     points: 19,
+    author: 'NeonDev',
     createdAt: new Date().toISOString(),
     commentCount: 1,
     hasVoted: false
   }
 ]
 
-const currentPage = ref(1)
-const allPosts = ref<Post[]>([])
-const hasMore = ref(false)
-const isLoading = ref(false)
-const votingPostId = ref<number | null>(null)
-
-const { data: apiRes, refresh } = await useFetch<any>('/api/posts', {
+// Fetching automatico (SSR + Client)
+const { data: apiRes, pending, refresh } = await useFetch<any>('/api/posts', {
   query: { page: 1, limit: 30 },
   key: 'home-posts-list'
 })
 
-function loadPostsData() {
-  if (apiRes.value?.success && Array.isArray(apiRes.value.data) && apiRes.value.data.length > 0) {
-    allPosts.value = apiRes.value.data.map((p: any) => ({
-      ...p,
-      points: p.points ?? 1,
-      hasVoted: false
-    }))
-    hasMore.value = Boolean(apiRes.value.pagination?.hasMore)
-  } else {
-    allPosts.value = defaultPosts
-    hasMore.value = false
+// Tracciamento locale dei voti utente
+const votedPosts = ref<Record<string | number, boolean>>({})
+const pointsDelta = ref<Record<string | number, number>>({})
+const votingPostId = ref<number | string | null>(null)
+
+// Computed property "items": Unisce i post dal Database con i post di Default
+const items = computed<Post[]>(() => {
+  let dbRawPosts: any[] = []
+
+  // Estrazione sicura da qualsiasi risposta API
+  if (apiRes.value?.success && Array.isArray(apiRes.value.data)) {
+    dbRawPosts = apiRes.value.data
+  } else if (Array.isArray(apiRes.value)) {
+    dbRawPosts = apiRes.value
+  } else if (apiRes.value?.posts && Array.isArray(apiRes.value.posts)) {
+    dbRawPosts = apiRes.value.posts
   }
-}
 
-loadPostsData()
+  // Normalizzazione flessibile dei campi del DB
+  const normalizedDbPosts: Post[] = dbRawPosts.map((p: any) => ({
+    id: p.id,
+    title: p.title || 'Senza titolo',
+    url: p.url || p.link || null,
+    domain: p.domain || null,
+    points: p.points ?? p.votes ?? p.upvotes ?? 1,
+    author: p.author || p.username || p.user || 'Admin',
+    createdAt: p.createdAt || p.created_at || p.date || new Date().toISOString(),
+    commentCount: p.commentCount ?? p.commentsCount ?? (Array.isArray(p.comments) ? p.comments.length : 0),
+    hasVoted: p.hasVoted || false
+  }))
 
-watch(apiRes, () => {
-  loadPostsData()
+  // Unione: I post del DB vanno in testa, poi quelli di Default se non sono duplicati
+  const combined: Post[] = [...normalizedDbPosts]
+
+  for (const defPost of defaultPosts) {
+    const exists = combined.some(
+      p => String(p.id) === String(defPost.id) || p.title.trim().toLowerCase() === defPost.title.trim().toLowerCase()
+    )
+    if (!exists) {
+      combined.push(defPost)
+    }
+  }
+
+  // Applicazione dello stato voti
+  return combined.map(p => {
+    const id = p.id
+    const extraPoints = pointsDelta.value[id] || 0
+
+    return {
+      ...p,
+      points: (p.points ?? 1) + extraPoints,
+      hasVoted: votedPosts.value[id] || p.hasVoted || false
+    }
+  })
 })
 
-onMounted(async () => {
-  await refresh()
-  loadPostsData()
-})
-
-function formatExternalUrl(urlString: string | null): string {
+function formatExternalUrl(urlString?: string | null): string {
   if (!urlString) return '#'
   if (urlString.startsWith('http://') || urlString.startsWith('https://')) {
     return urlString
@@ -95,7 +131,8 @@ function formatExternalUrl(urlString: string | null): string {
   return `https://${urlString}`
 }
 
-function getDomain(urlString: string | null): string {
+function getDomain(urlString?: string | null, fallbackDomain?: string | null): string {
+  if (fallbackDomain) return fallbackDomain
   if (!urlString) return ''
   try {
     const formatted = formatExternalUrl(urlString)
@@ -106,25 +143,32 @@ function getDomain(urlString: string | null): string {
   }
 }
 
+function formatDate(dateVal: any): string {
+  if (!dateVal) return 'di recente'
+  if (typeof dateVal === 'string' && dateVal.includes('/') && dateVal.length <= 10) return dateVal
+  try {
+    const d = new Date(dateVal)
+    if (isNaN(d.getTime())) return 'di recente'
+    return d.toLocaleDateString('it-IT')
+  } catch {
+    return 'di recente'
+  }
+}
+
+// Gestione voto ottimistico
 async function votePost(post: Post) {
   if (post.hasVoted || votingPostId.value === post.id) return
   votingPostId.value = post.id
 
+  votedPosts.value[post.id] = true
+  pointsDelta.value[post.id] = (pointsDelta.value[post.id] || 0) + 1
+
   try {
-    const response = await $fetch<any>(`/api/posts/${post.id}/vote`, {
+    await $fetch(`/api/posts/${post.id}/vote`, {
       method: 'POST'
     })
-
-    if (response?.success) {
-      post.points = response.points
-      post.hasVoted = true
-    } else {
-      post.points += 1
-      post.hasVoted = true
-    }
-  } catch {
-    post.points += 1
-    post.hasVoted = true
+  } catch (err) {
+    console.warn('Voto aggiornato in locale, sincronizzazione server fallita:', err)
   } finally {
     votingPostId.value = null
   }
@@ -133,54 +177,72 @@ async function votePost(post: Post) {
 
 <template>
   <div class="hn-container">
-    <ol v-if="allPosts && allPosts.length > 0" class="posts-list">
-      <li v-for="(post, index) in allPosts" :key="post.id || index" class="post-item">
+    <!-- Loader durante l'attesa iniziale -->
+    <div v-if="pending && (!items || items.length === 0)" class="state-message">
+      <p>Caricamento articoli in corso...</p>
+    </div>
+
+    <!-- Lista articoli (DB + Default uniti) -->
+    <ol v-else-if="items && items.length > 0" class="posts-list">
+      <li v-for="(item, index) in items" :key="item.id || index" class="post-item">
         <span class="post-number">{{ index + 1 }}.</span>
 
+        <!-- Bottone Freccetta Voto ▲ -->
         <button 
-          @click="votePost(post)" 
+          @click="votePost(item)" 
           class="vote-btn" 
-          :class="{ voted: post.hasVoted }" 
-          :disabled="post.hasVoted || votingPostId === post.id" 
-          title="Upvote"
+          :class="{ voted: item.hasVoted }" 
+          :disabled="item.hasVoted || votingPostId === item.id" 
+          title="Upvote (Vota articolo)"
         >
           ▲
         </button>
 
         <div class="post-content">
+          <!-- Titolo e Dominio -->
           <div class="post-title-row">
             <a 
-              v-if="post.url" 
-              :href="formatExternalUrl(post.url)" 
+              v-if="item.url" 
+              :href="formatExternalUrl(item.url)" 
               target="_blank" 
               rel="noopener noreferrer" 
-              class="post-title"
+              class="post-title external-link"
             >
-              {{ post.title }}
+              {{ item.title }}
             </a>
-            <NuxtLink v-else :to="`/item/${post.id}`" class="post-title">
-              {{ post.title }}
+            <NuxtLink v-else :to="`/item/${item.id}`" class="post-title internal-link">
+              {{ item.title }}
             </NuxtLink>
 
-            <span v-if="getDomain(post.url)" class="post-domain">
-              ({{ getDomain(post.url) }})
+            <span v-if="getDomain(item.url, item.domain)" class="post-domain">
+              ({{ getDomain(item.url, item.domain) }})
             </span>
           </div>
 
+          <!-- Sottotesto: Punti, Autore, Data e Link Commenti -->
           <div class="post-subtext">
-            <span>{{ post.points }} punti</span>
-            | pubblicato il {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : 'di recente' }}
-            | <NuxtLink :to="`/item/${post.id}`" class="sub-link">
-                {{ post.commentCount ?? 0 }} commenti
-              </NuxtLink>
+            <span class="points">{{ item.points || 0 }} punti</span>
+            <span class="dot">•</span>
+            <span class="author">da {{ item.author || 'Anonimo' }}</span>
+            <span class="dot">•</span>
+            <span class="time">{{ formatDate(item.createdAt) }}</span>
+            <span class="dot">•</span>
+            <NuxtLink :to="`/item/${item.id}`" class="comments-link">
+              💬 {{ item.commentCount ?? 0 }} commenti
+            </NuxtLink>
           </div>
         </div>
       </li>
     </ol>
 
-    <!-- Footer Personalizzato -->
+    <!-- Fallback se nessun articolo è presente -->
+    <div v-else class="state-message">
+      <p>Nessun articolo disponibile al momento.</p>
+      <button class="retry-btn" @click="refresh()">Riprova</button>
+    </div>
+
+    <!-- Footer -->
     <footer class="app-footer">
-      <!-- Riga Verde Smeraldo -->
       <div class="footer-divider"></div>
       <p class="footer-text">
         © 2026 <strong>{{ APP_NAME }}</strong>. Tutti i diritti riservati.
@@ -209,7 +271,7 @@ async function votePost(post: Post) {
 .post-item { 
   display: flex; 
   align-items: flex-start; 
-  margin-bottom: 0.5rem; 
+  margin-bottom: 0.65rem; 
   font-size: 0.9rem; 
 }
 
@@ -230,6 +292,7 @@ async function votePost(post: Post) {
   padding: 0 0.3rem;
   line-height: 1.2;
   margin-right: 0.2rem;
+  transition: color 0.15s ease;
 }
 
 .vote-btn:hover:not(:disabled) {
@@ -237,7 +300,7 @@ async function votePost(post: Post) {
 }
 
 .vote-btn.voted, .vote-btn:disabled {
-  color: #e5e5e5;
+  color: #d1d5db;
   cursor: default;
 }
 
@@ -270,25 +333,60 @@ async function votePost(post: Post) {
 .post-domain { 
   font-size: 0.75rem; 
   color: #828282; 
-  margin-left: 0.3rem; 
+  margin-left: 0.35rem; 
 }
 
 .post-subtext { 
-  font-size: 0.7rem; 
+  font-size: 0.72rem; 
   color: #828282; 
-  margin-top: 0.15rem; 
+  margin-top: 0.2rem; 
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
 }
 
-.sub-link {
+.dot {
+  color: #94a3b8;
+  font-size: 0.65rem;
+}
+
+.comments-link {
   color: #828282;
   text-decoration: none;
+  font-weight: 500;
 }
 
-.sub-link:hover {
+.comments-link:hover {
   text-decoration: underline;
+  color: #2563eb;
 }
 
-/* Style Footer con Riga Verde Smeraldo (#10b981) */
+.state-message {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+  flex-grow: 1;
+}
+
+.retry-btn {
+  margin-top: 0.8rem;
+  background-color: #020420;
+  color: #00dc82;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.retry-btn:hover {
+  opacity: 0.9;
+}
+
+/* Footer */
 .app-footer {
   margin-top: auto;
   padding-top: 2rem;
@@ -297,7 +395,7 @@ async function votePost(post: Post) {
 }
 
 .footer-divider {
-  border-top: 2px solid #10b981; /* Verde Smeraldo */
+  border-top: 2px solid #10b981;
   margin-bottom: 1rem;
   width: 100%;
 }

@@ -1,6 +1,6 @@
 <!-- pages/admin/jobs.vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 // Collegamento al layout unificato dell'area riservata
 definePageMeta({
@@ -25,34 +25,53 @@ const url = ref('')
 const jobs = ref<Job[]>([])
 const isFetching = ref(false)
 const isSubmitting = ref(false)
-const isDeleting = ref(false)
+const deletingId = ref<string | number | null>(null) // Stato di eliminazione per singolo ID
 
 // Messaggi di stato
 const successMessage = ref('')
 const errorMessage = ref('')
 
+// Ripristina la chiave segreta salvata in precedenza
+onMounted(() => {
+  const savedSecret = localStorage.getItem('nuxt_admin_secret')
+  if (savedSecret) {
+    adminSecret.value = savedSecret
+    fetchJobs()
+  }
+})
+
+// Utility per salvare il secret in localStorage
+function persistSecret(secret: string) {
+  if (secret.trim()) {
+    localStorage.setItem('nuxt_admin_secret', secret.trim())
+  }
+}
+
 // 1. Carica l'elenco dei job
 async function fetchJobs() {
-  if (!adminSecret.value.trim()) {
+  const cleanSecret = adminSecret.value.trim()
+  if (!cleanSecret) {
     errorMessage.value = 'Inserisci la chiave segreta per caricare le offerte di lavoro.'
     return
   }
 
+  persistSecret(cleanSecret)
   isFetching.value = true
   errorMessage.value = ''
   successMessage.value = ''
 
   try {
-    const resData = await $fetch<Job[] | { jobs?: Job[]; data?: Job[] }>('/api/admin/jobs', {
+    const resData = await $fetch<Job[] | { success?: boolean; data?: Job[]; jobs?: Job[] }>('/api/admin/jobs', {
       headers: {
-        Authorization: `Bearer ${adminSecret.value}`
+        Authorization: `Bearer ${cleanSecret}`,
+        'x-admin-secret': cleanSecret
       }
     })
 
     if (Array.isArray(resData)) {
       jobs.value = resData
     } else if (resData) {
-      jobs.value = resData.jobs || resData.data || []
+      jobs.value = resData.data || resData.jobs || []
     }
 
     if (jobs.value.length === 0) {
@@ -60,7 +79,7 @@ async function fetchJobs() {
     }
   } catch (error: any) {
     console.error('Errore durante il caricamento dei job:', error)
-    errorMessage.value = error?.data?.message || 'Chiave segreta errata o errore di rete.'
+    errorMessage.value = error?.data?.statusMessage || error?.data?.message || 'Chiave segreta errata o errore di rete.'
   } finally {
     isFetching.value = false
   }
@@ -68,8 +87,10 @@ async function fetchJobs() {
 
 // 2. Inserimento di un nuovo job
 async function handleJobSubmit() {
-  if (!title.value.trim() || !adminSecret.value.trim() || isSubmitting.value) return
+  const cleanSecret = adminSecret.value.trim()
+  if (!title.value.trim() || !cleanSecret || isSubmitting.value) return
 
+  persistSecret(cleanSecret)
   isSubmitting.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -77,11 +98,15 @@ async function handleJobSubmit() {
   try {
     await $fetch('/api/admin/jobs', {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cleanSecret}`,
+        'x-admin-secret': cleanSecret
+      },
       body: {
         title: title.value.trim(),
         company: company.value.trim() || null,
         url: url.value.trim() || null,
-        secret: adminSecret.value
+        secret: cleanSecret
       }
     })
 
@@ -96,7 +121,7 @@ async function handleJobSubmit() {
     await fetchJobs()
   } catch (error: any) {
     console.error('Errore durante l\'inserimento del Job:', error)
-    errorMessage.value = error?.data?.message || error?.data?.statusMessage || 'Segreto amministratore errato o errore del database.'
+    errorMessage.value = error?.data?.statusMessage || error?.data?.message || 'Segreto amministratore errato o errore del database.'
   } finally {
     isSubmitting.value = false
   }
@@ -104,25 +129,30 @@ async function handleJobSubmit() {
 
 // 3. Eliminazione di un job
 async function deleteJob(jobId: string | number) {
+  const cleanSecret = adminSecret.value.trim()
   if (!confirm('Sei sicuro di voler eliminare questo annuncio di lavoro?')) return
 
-  isDeleting.value = true
+  deletingId.value = jobId
   errorMessage.value = ''
   successMessage.value = ''
 
   try {
     await $fetch(`/api/admin/jobs/${jobId}`, {
       method: 'DELETE',
-      body: { secret: adminSecret.value }
+      headers: {
+        Authorization: `Bearer ${cleanSecret}`,
+        'x-admin-secret': cleanSecret
+      },
+      body: { secret: cleanSecret }
     })
 
     jobs.value = jobs.value.filter(j => j.id !== jobId)
     successMessage.value = 'Annuncio eliminato con successo.'
   } catch (error: any) {
     console.error('Errore durante l\'eliminazione:', error)
-    errorMessage.value = error?.data?.message || 'Impossibile eliminare l\'annuncio.'
+    errorMessage.value = error?.data?.statusMessage || error?.data?.message || 'Impossibile eliminare l\'annuncio.'
   } finally {
-    isDeleting.value = false
+    deletingId.value = null
   }
 }
 </script>
@@ -146,7 +176,7 @@ async function deleteJob(jobId: string | number) {
             type="password"
             required
             placeholder="Inserisci la password di amministrazione..."
-            :disabled="isSubmitting || isFetching || isDeleting"
+            :disabled="isSubmitting || isFetching || deletingId !== null"
             @keyup.enter="fetchJobs"
           />
           <button
@@ -228,10 +258,10 @@ async function deleteJob(jobId: string | number) {
             <button
               type="button"
               class="delete-btn"
-              :disabled="isDeleting"
+              :disabled="deletingId === job.id"
               @click="deleteJob(job.id)"
             >
-              Elimina
+              {{ deletingId === job.id ? 'Eliminazione...' : 'Elimina' }}
             </button>
           </div>
         </div>
