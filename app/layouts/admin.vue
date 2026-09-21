@@ -11,32 +11,20 @@ function logout() {
 <template>
   <div class="admin-layout">
     <header class="admin-header">
-      <div class="admin-nav-container">
-        <div class="nav-left">
-          <NuxtLink to="/" class="nav-link home-link">
-            Torna in home ↗
-          </NuxtLink>
-          <span class="divider">|</span>
-          <NuxtLink to="/admin" class="nav-link" active-class="active" exact-active-class="active">
-            Gestione News & Commenti
-          </NuxtLink>
-          <NuxtLink to="/admin/jobs" class="nav-link" active-class="active">
-            Gestione Jobs
-          </NuxtLink>
-          <NuxtLink to="/admin/health" class="nav-link health-badge" active-class="active">
-            ⚡ Health Check
-          </NuxtLink>
+      <div class="admin-container">
+        <div class="admin-nav">
+          <NuxtLink to="/" class="admin-link home">Torna in home ↗</NuxtLink>
+          <span class="sep">|</span>
+          <NuxtLink to="/admin" class="admin-link">Gestione News & Commenti</NuxtLink>
+          <NuxtLink to="/admin/jobs" class="admin-link">Gestione Jobs</NuxtLink>
+          <NuxtLink to="/admin/health" class="admin-link health-btn">⚡ Health Check</NuxtLink>
         </div>
-
-        <div class="nav-right">
-          <button @click="logout" class="btn-logout">
-            Esci
-          </button>
+        <div class="admin-right">
+          <button @click="logout" class="btn-exit">Esci</button>
         </div>
       </div>
     </header>
-
-    <main class="admin-body">
+    <main class="admin-content">
       <slot />
     </main>
   </div>
@@ -46,87 +34,64 @@ function logout() {
 .admin-layout {
   min-height: 100vh;
   background-color: #f8fafc;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
-
 .admin-header {
   background-color: #020420;
   padding: 0.8rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-
-.admin-nav-container {
+.admin-container {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
+  align-items: center;
 }
-
-.nav-left {
+.admin-nav {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
+  gap: 1.2rem;
 }
-
-.nav-link {
+.admin-link {
   color: #94a3b8;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.15s ease;
 }
-
-.nav-link:hover,
-.nav-link.active {
+.admin-link:hover, .admin-link.router-link-active {
   color: #ffffff;
   font-weight: 600;
 }
-
-.home-link {
+.home {
   color: #ffffff;
   font-weight: 600;
 }
-
-.divider {
+.sep {
   color: #334155;
-  user-select: none;
 }
-
-.health-badge {
+.health-btn {
   color: #00dc82 !important;
   background: rgba(0, 220, 130, 0.1);
-  padding: 0.25rem 0.6rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
   border: 1px solid rgba(0, 220, 130, 0.3);
 }
-
-.health-badge:hover,
-.health-badge.active {
-  background: rgba(0, 220, 130, 0.2);
-}
-
-.btn-logout {
+.btn-exit {
   background: transparent;
   border: 1px solid #ef4444;
   color: #ef4444;
-  padding: 0.3rem 0.8rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 4px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
-
-.btn-logout:hover {
+.btn-exit:hover {
   background: #ef4444;
-  color: #ffffff;
+  color: #fff;
 }
-
-.admin-body {
+.admin-content {
   padding: 1.5rem;
 }
 </style>
