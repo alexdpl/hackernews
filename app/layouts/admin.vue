@@ -10,7 +10,6 @@ function logout() {
 
 <template>
   <div class="admin-layout">
-    <!-- Header interno dedicato all'area riservata Admin -->
     <header class="admin-header">
       <div class="admin-nav-container">
         <div class="nav-left">
@@ -37,7 +36,6 @@ function logout() {
       </div>
     </header>
 
-    <!-- Contenuto delle pagine admin -->
     <main class="admin-body">
       <slot />
     </main>

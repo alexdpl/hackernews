@@ -6,10 +6,9 @@
 <template>
   <header class="header-bar">
     <div class="header-container">
-      <!-- Sezione Sinistra: Logo + Brand + Navigazione -->
+      <!-- Sezione Sinistra: Logo + Brand + Navigazione Pubblica -->
       <div class="nav-left">
         <NuxtLink to="/" class="brand-link">
-          <!-- Logo Triangolo Nuxt Verde -->
           <svg class="logo-icon" viewBox="0 0 32 32" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 4L2 28H30L16 4Z" fill="#00DC82"></path>
             <path d="M16 12L8.5 25H23.5L16 12Z" fill="#020420"></path>
@@ -21,32 +20,12 @@
 
         <!-- Menu Pagine Pubbliche -->
         <nav class="nav-links">
-          <NuxtLink to="/" active-class="active" exact-active-class="active">
-            News
-          </NuxtLink>
-          <NuxtLink to="/newest" active-class="active">
-            Newest
-          </NuxtLink>
-          <NuxtLink to="/ask" active-class="active">
-            Ask
-          </NuxtLink>
-          <NuxtLink to="/show" active-class="active">
-            Show
-          </NuxtLink>
-          <NuxtLink to="/jobs" active-class="active">
-            Jobs
-          </NuxtLink>
-          <NuxtLink to="/submit" active-class="active">
-            Invia Link
-          </NuxtLink>
-
-          <!-- Separatore Sezione Admin -->
-          <span class="nav-divider">|</span>
-
-          <!-- Sezione Strumenti Admin -->
-          <NuxtLink to="/admin/health" active-class="active" class="admin-nav-item">
-            <span class="admin-dot">●</span> ⚡ Health
-          </NuxtLink>
+          <NuxtLink to="/" active-class="active" exact-active-class="active">News</NuxtLink>
+          <NuxtLink to="/newest" active-class="active">Newest</NuxtLink>
+          <NuxtLink to="/ask" active-class="active">Ask</NuxtLink>
+          <NuxtLink to="/show" active-class="active">Show</NuxtLink>
+          <NuxtLink to="/jobs" active-class="active">Jobs</NuxtLink>
+          <NuxtLink to="/submit" active-class="active">Invia Link</NuxtLink>
         </nav>
       </div>
 
@@ -71,7 +50,7 @@
   width: 100%;
   padding: 0.8rem 1.25rem;
   box-sizing: border-box;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -124,7 +103,7 @@
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  gap: 1.25rem;
   flex-wrap: wrap;
 }
 
@@ -140,39 +119,6 @@
 .nav-links a.active {
   color: #00dc82;
   font-weight: 600;
-}
-
-.nav-divider {
-  color: rgba(255, 255, 255, 0.15);
-  font-size: 0.85rem;
-  user-select: none;
-}
-
-/* Stile distintivo per le funzionalità Admin nella Navbar */
-.admin-nav-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #00dc82 !important;
-  background: rgba(0, 220, 130, 0.08);
-  border: 1px solid rgba(0, 220, 130, 0.25);
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.85rem !important;
-  font-weight: 600 !important;
-  transition: all 0.15s ease;
-}
-
-.admin-nav-item:hover,
-.admin-nav-item.active {
-  background: rgba(0, 220, 130, 0.18);
-  border-color: #00dc82;
-  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
-}
-
-.admin-dot {
-  font-size: 0.6rem;
-  color: #00dc82;
 }
 
 .nav-right {
@@ -193,7 +139,6 @@
 
 .github-link:hover {
   color: #00dc82;
-  text-decoration: none;
 }
 
 .external-icon {
@@ -202,25 +147,9 @@
 }
 
 @media (max-width: 640px) {
-  .header-bar {
-    padding: 0.75rem 1rem;
-  }
-  
-  .nav-left {
-    gap: 0.8rem;
-  }
-  
-  .nav-links {
-    gap: 0.75rem;
-    font-size: 0.85rem;
-  }
-
-  .brand-title {
-    font-size: 0.95rem;
-  }
-
-  .nav-divider {
-    display: none;
-  }
+  .header-bar { padding: 0.75rem 1rem; }
+  .nav-left { gap: 0.8rem; }
+  .nav-links { gap: 0.75rem; font-size: 0.85rem; }
+  .brand-title { font-size: 0.95rem; }
 }
 </style>
