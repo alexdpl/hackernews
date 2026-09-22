@@ -1,151 +1,91 @@
 <!-- app/pages/user/[username].vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 
 const route = useRoute()
 const username = route.params.username as string
 
-const { data: responseData, pending, error, refresh } = await useFetch(`/api/users/${username}`)
+// 1. Recupero dati utente e relative statistiche/post
+const { data: userData, pending, error } = await useFetch(`/api/users/${username}`)
+const profile = computed(() => userData.value?.profile || userData.value)
 
-const profile = computed(() => responseData.value?.profile || null)
-const posts = computed(() => responseData.value?.posts || [])
-
-// Stati per la modifica del profilo
-const isEditing = ref(false)
-const editBio = ref('')
-const editAvatar = ref('')
-const saving = ref(false)
-
-function startEditing() {
-  if (profile.value) {
-    editBio.value = profile.value.bio
-    editAvatar.value = profile.value.avatar
-    isEditing.value = true
-  }
-}
-
-async function saveProfile() {
-  saving.value = true
-  try {
-    const res: any = await $fetch('/api/users/update', {
-      method: 'POST',
-      body: {
-        username,
-        bio: editBio.value,
-        avatar: editAvatar.value
-      }
-    })
-    if (res.success) {
-      isEditing.value = false
-      await refresh()
-    } else {
-      alert('Errore durante il salvataggio.')
-    }
-  } catch (err) {
-    console.error(err)
-    alert('Errore di connessione.')
-  } finally {
-    saving.value = false
-  }
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return 'N/D'
-  try {
-    return new Date(dateStr).toLocaleDateString('it-IT', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch {
-    return dateStr
-  }
-}
+// 2. Controllo utente loggato corrente
+const { data: authData } = await useFetch('/api/auth/me')
+const currentLoggedInUser = computed(() => authData.value?.username || null)
+const isOwner = computed(() => currentLoggedInUser.value === username)
+const isAdmin = computed(() => username === 'alexdpl')
 
 useSeoMeta({
-  title: `Profilo: ${username} - DevKernelPulse`,
-  description: `Statistiche e storie di ${username} su DevKernelPulse.`
+  title: computed(() => profile.value ? `Profilo di ${username} - DevKernelPulse` : 'Utente - DevKernelPulse')
 })
 </script>
 
 <template>
-  <div class="profile-container">
-    <div v-if="pending && !profile" class="state-message">
-      Caricamento profilo in corso...
+  <div class="user-profile-container">
+    <div v-if="pending" class="state-msg">Caricamento profilo in corso...</div>
+
+    <div v-else-if="error || !profile" class="state-msg error">
+      <h2>Utente non trovato</h2>
+      <p>L'utente "{{ username }}" non esiste o è stato rimosso.</p>
+      <NuxtLink to="/" class="back-link">← Torna alla Home</NuxtLink>
     </div>
 
-    <div v-else-if="error || (responseData && !responseData.success)" class="state-message error">
-      Impossibile trovare il profilo dell'utente "{{ username }}".
-    </div>
-
-    <div v-else-if="profile" class="profile-content">
-      <div class="profile-header-card">
-        <div class="profile-top-row">
-          <div class="avatar-wrapper">
-            <img :src="profile.avatar" alt="Avatar utente" class="user-avatar" />
+    <div v-else class="profile-card">
+      <!-- Header Profilo -->
+      <div class="profile-header">
+        <div class="user-identity">
+          <div class="avatar-placeholder">
+            {{ username.charAt(0).toUpperCase() }}
           </div>
-          <div class="profile-titles">
-            <h2>Profilo: <span class="username-highlight">{{ profile.username }}</span></h2>
-            <button v-if="!isEditing" @click="startEditing" class="edit-btn">Modifica Profilo</button>
+          <div>
+            <h1 class="username-title">
+              {{ profile.username }}
+              <span v-if="isAdmin" class="badge-admin">Admin</span>
+            </h1>
+            <p class="joined-date">Membro da {{ profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('it-IT') : 'recentemente' }}</p>
           </div>
         </div>
 
-        <!-- Vista normale -->
-        <div v-if="!isEditing">
-          <div class="profile-meta-grid">
-            <div class="meta-item">
-              <span class="label">Karma Totale</span>
-              <span class="value karma-val">{{ profile.karma }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="label">Iscritto dal</span>
-              <span class="value">{{ formatDate(profile.joinedAt) }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="label">Storie Sottomesse</span>
-              <span class="value">{{ profile.totalSubmissions }}</span>
-            </div>
-          </div>
-
-          <div class="bio-box">
-            <span class="label">Bio</span>
-            <p class="bio-text">{{ profile.bio }}</p>
-          </div>
-        </div>
-
-        <!-- Vista Modifica -->
-        <div v-else class="edit-form">
-          <div class="form-group">
-            <label class="label">URL Avatar Personalizzato (opzionale)</label>
-            <input v-model="editAvatar" type="text" class="form-input" placeholder="https://esempio.com/avatar.png" />
-          </div>
-          <div class="form-group">
-            <label class="label">Biografia</label>
-            <textarea v-model="editBio" rows="3" class="form-textarea" placeholder="Raccontaci qualcosa di te..."></textarea>
-          </div>
-          <div class="form-actions">
-            <button @click="saveProfile" :disabled="saving" class="save-btn">
-              {{ saving ? 'Salvataggio...' : 'Salva Modifiche' }}
-            </button>
-            <button @click="isEditing = false" class="cancel-btn">Annulla</button>
-          </div>
+        <!-- Azioni Proprietario o Admin -->
+        <div v-if="isOwner" class="owner-actions">
+          <NuxtLink to="/settings" class="edit-profile-btn">⚙️ Modifica Profilo</NuxtLink>
+          <NuxtLink v-if="isAdmin" to="/admin" class="admin-panel-btn">🛡️ Pannello Admin</NuxtLink>
         </div>
       </div>
 
-      <!-- Storie dell'Utente -->
-      <div class="user-submissions">
-        <h3>Storie pubblicate da {{ profile.username }}</h3>
-        
-        <div v-if="posts.length > 0" class="stories-list">
-          <ol class="story-items">
-            <li v-for="item in posts" :key="item.id" class="story-item">
-              <Item :item="item" />
-            </li>
-          </ol>
+      <!-- Statistiche Karma e Info -->
+      <div class="profile-stats-grid">
+        <div class="stat-box">
+          <span class="stat-value">{{ profile.karma || 4 }}</span>
+          <span class="stat-label">Karma</span>
         </div>
-        
-        <div v-else class="no-stories">
-          Questo utente non ha ancora pubblicato alcuna storia.
+        <div class="stat-box">
+          <span class="stat-value">{{ profile.submissionsCount || 'Attivo' }}</span>
+          <span class="stat-label">Status</span>
+        </div>
+      </div>
+
+      <!-- Biografia -->
+      <div class="bio-section">
+        <h3>Biografia</h3>
+        <p class="bio-text">
+          {{ profile.bio || 'Nessuna biografia inserita da questo utente.' }}
+        </p>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Sezioni Submissions & Comments integrate -->
+      <div class="user-activity-section">
+        <h3>Attività Recenti</h3>
+        <div class="activity-links">
+          <a :href="`https://news.ycombinator.com/submitted?id=${username}`" target="_blank" rel="noopener noreferrer" class="activity-link">
+            Visualizza Submissions Storiche su HN ↗
+          </a>
+          <span class="dot">•</span>
+          <a :href="`https://news.ycombinator.com/threads?id=${username}`" target="_blank" rel="noopener noreferrer" class="activity-link">
+            Visualizza Threads & Commenti Storici su HN ↗
+          </a>
         </div>
       </div>
     </div>
@@ -153,224 +93,193 @@ useSeoMeta({
 </template>
 
 <style scoped>
-.profile-container {
-  max-width: 900px;
-  margin: 1.5rem auto;
+.user-profile-container {
+  max-width: 800px;
+  margin: 2rem auto;
   padding: 0 1rem;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
-.state-message {
+.state-msg {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3rem;
   color: #64748b;
-  font-size: 0.95rem;
 }
 
-.state-message.error {
+.state-msg.error {
   color: #ef4444;
 }
 
-.profile-header-card {
+.profile-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
+  padding: 2rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
-.profile-top-row {
+.profile-header {
   display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  margin-bottom: 1.25rem;
-}
-
-.avatar-wrapper {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: #020420;
-  border: 2px solid #00dc82;
-  flex-shrink: 0;
-}
-
-.user-avatar {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.profile-titles {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  width: 100%;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.user-identity {
+  display: flex;
+  align-items: center;
   gap: 1rem;
 }
 
-.profile-titles h2 {
-  font-size: 1.4rem;
+.avatar-placeholder {
+  width: 56px;
+  height: 56px;
+  background: #020420;
+  color: #00dc82;
+  font-size: 1.5rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,220,130,0.2);
+}
+
+.username-title {
+  font-size: 1.5rem;
   color: #020420;
+  margin: 0 0 0.2rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge-admin {
+  background: #00dc82;
+  color: #020420;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.joined-date {
+  color: #64748b;
+  font-size: 0.85rem;
   margin: 0;
 }
 
-.username-highlight {
-  color: #00dc82;
-  background: #020420;
-  padding: 0.1rem 0.5rem;
-  border-radius: 4px;
+.owner-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.edit-btn {
-  background: #020420;
-  color: #00dc82;
-  border: none;
-  padding: 0.4rem 0.8rem;
+.edit-profile-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #020420;
+  padding: 0.5rem 1rem;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: opacity 0.2s;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background 0.2s;
 }
 
-.edit-btn:hover {
-  opacity: 0.9;
+.edit-profile-btn:hover {
+  background: #f1f5f9;
 }
 
-.profile-meta-grid {
+.admin-panel-btn {
+  background: #020420;
+  color: #00dc82;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.profile-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
-.meta-item {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 0.85rem 1rem;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-}
-
-.meta-item .label {
-  font-size: 0.75rem;
-  color: #64748b;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-.meta-item .value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #020420;
-  margin-top: 0.25rem;
-}
-
-.meta-item .value.karma-val {
-  color: #00dc82;
-  background: #020420;
-  display: inline-block;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  width: fit-content;
-}
-
-.bio-box {
+.stat-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   padding: 1rem;
   border-radius: 6px;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #020420;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.bio-section h3, .user-activity-section h3 {
+  font-size: 1.1rem;
+  color: #020420;
+  margin-bottom: 0.5rem;
 }
 
 .bio-text {
   color: #334155;
   font-size: 0.95rem;
-  margin: 0.3rem 0 0 0;
-}
-
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  line-height: 1.5;
   background: #f8fafc;
-  padding: 1.25rem;
+  padding: 1rem;
   border-radius: 6px;
   border: 1px solid #e2e8f0;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.form-input, .form-textarea {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 0.6rem;
-  color: #020420;
-  font-size: 0.95rem;
-}
-
-.form-input:focus, .form-textarea:focus {
-  outline: none;
-  border-color: #00dc82;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.save-btn {
-  background: #00dc82;
-  color: #020420;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.cancel-btn {
+.divider {
+  border: 0;
+  height: 1px;
   background: #e2e8f0;
-  color: #334155;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
+  margin: 1.5rem 0;
 }
 
-.user-submissions h3 {
-  font-size: 1.1rem;
-  color: #020420;
-  margin-bottom: 1rem;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 0.5rem;
-}
-
-.story-items {
-  padding-left: 1.5rem;
-  margin: 0;
-}
-
-.story-item {
-  margin-bottom: 0.5rem;
-}
-
-.no-stories {
-  color: #64748b;
+.activity-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   font-size: 0.9rem;
-  font-style: italic;
-  padding: 1rem 0;
+}
+
+.activity-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.activity-link:hover {
+  text-decoration: underline;
+}
+
+.dot {
+  color: #cbd5e1;
+}
+
+.back-link {
+  color: #2563eb;
+  text-decoration: underline;
+  font-size: 0.9rem;
 }
 </style>
