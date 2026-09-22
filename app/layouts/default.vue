@@ -10,10 +10,6 @@ function handleLogout() {
   userCookie.value = null
   router.push('/login')
 }
-
-function closeDropdown() {
-  isNewsDropdownOpen.value = false
-}
 </script>
 
 <template>
@@ -25,17 +21,21 @@ function closeDropdown() {
         </NuxtLink>
         
         <nav class="nav-links">
-          <!-- Dropdown News -->
-          <div class="dropdown-container" @mouseleave="closeDropdown">
-            <button @click="isNewsDropdownOpen = !isNewsDropdownOpen" class="dropdown-toggle">
+          <!-- Dropdown News fluido con Hover -->
+          <div 
+            class="dropdown-container" 
+            @mouseenter="isNewsDropdownOpen = true" 
+            @mouseleave="isNewsDropdownOpen = false"
+          >
+            <NuxtLink to="/news" class="dropdown-toggle" @click="isNewsDropdownOpen = false">
               News ▾
-            </button>
+            </NuxtLink>
             <div v-if="isNewsDropdownOpen" class="dropdown-menu">
-              <NuxtLink to="/news" @click="closeDropdown">🔥 Top News</NuxtLink>
-              <NuxtLink to="/newest" @click="closeDropdown">⏱️ Newest</NuxtLink>
-              <NuxtLink to="/ask" @click="closeDropdown">💬 Ask DKP</NuxtLink>
-              <NuxtLink to="/show" @click="closeDropdown">🚀 Show DKP</NuxtLink>
-              <NuxtLink to="/jobs" @click="closeDropdown">💼 Tech Jobs</NuxtLink>
+              <NuxtLink to="/news" @click="isNewsDropdownOpen = false">🔥 Top News</NuxtLink>
+              <NuxtLink to="/newest" @click="isNewsDropdownOpen = false">⏱️ Newest</NuxtLink>
+              <NuxtLink to="/ask" @click="isNewsDropdownOpen = false">💬 Ask DKP</NuxtLink>
+              <NuxtLink to="/show" @click="isNewsDropdownOpen = false">🚀 Show DKP</NuxtLink>
+              <NuxtLink to="/jobs" @click="isNewsDropdownOpen = false">💼 Tech Jobs</NuxtLink>
             </div>
           </div>
 
@@ -150,24 +150,21 @@ function closeDropdown() {
 .dropdown-container {
   position: relative;
   display: inline-block;
+  padding-bottom: 0.2rem; /* Crea un ponte invisibile per il mouse */
 }
 
 .dropdown-toggle {
-  background: transparent;
-  border: none;
   color: #cbd5e1;
   font-size: 0.9rem;
   font-weight: 500;
-  cursor: pointer;
-  padding: 0;
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 0.2rem;
   transition: color 0.2s;
-  font-family: inherit;
 }
 
-.dropdown-toggle:hover {
+.dropdown-toggle:hover, .dropdown-container:hover .dropdown-toggle {
   color: #00dc82;
 }
 
@@ -183,7 +180,6 @@ function closeDropdown() {
   flex-direction: column;
   min-width: 160px;
   padding: 0.5rem 0;
-  margin-top: 0.5rem;
   z-index: 100;
 }
 
