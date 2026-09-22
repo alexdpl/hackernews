@@ -1,325 +1,299 @@
 <!-- app/pages/item/[id].vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-
-interface Comment {
-  id: string | number
-  author?: string
-  text: string
-  createdAt: string | Date
-}
-
-interface Item {
-  id: string | number
-  title: string
-  url?: string | null
-  domain?: string | null
-  points?: number
-  author?: string
-  createdAt: string | Date
-  description?: string | null
-  text?: string | null
-  comments?: Comment[]
-}
+import { ref } from 'vue'
 
 const route = useRoute()
-const itemId = route.params.id
+const postId = route.params.id
 
-// 1. Recupero dati dall'API (Allineato a /api/item/${itemId})
-const { data, pending, error, refresh } = await useFetch<any>(`/api/item/${itemId}`)
+// Recupera i dettagli del post dal database Neon
+const { data: postData, pending: postPending } = await useFetch(`/api/posts/${postId}`)
+const post = computed(() => postData.value?.post || postData.value)
 
-// Normalizzazione dell'oggetto Item
-const item = computed<Item | null>(() => {
-  if (!data.value) return null
-  if (data.value.data) return data.value.data
-  return data.value
-})
+// Recupera i commenti locali
+const { data: commentsData, refresh: refreshComments } = await useFetch(`/api/comments?postId=${postId}`)
+const comments = computed(() => commentsData.value?.comments || [])
 
-// Stato per l'inserimento del nuovo commento
-const commentText = ref('')
-const authorName = ref('')
-const isSubmitting = ref(false)
-const submitError = ref('')
-const submitSuccess = ref('')
+// Stato utente corrente
+const { data: authData } = await useFetch('/api/auth/me')
+const currentUser = computed(() => authData.value?.username || null)
 
-async function handleCommentSubmit() {
-  if (!commentText.value.trim() || isSubmitting.value) return
+// Nuovo commento
+const newCommentText = ref('')
+const submitting = ref(false)
 
-  isSubmitting.value = true
-  submitError.value = ''
-  submitSuccess.value = ''
-
+async function submitComment() {
+  if (!newCommentText.value.trim() || submitting.value) return
+  submitting.value = true
   try {
-    // 2. Invio commento all'endpoint /api/comments
-    await $fetch('/api/comments', {
+    const res: any = await $fetch('/api/comments', {
       method: 'POST',
       body: {
-        postId: Number(itemId),
-        text: commentText.value.trim(),
-        author: authorName.value.trim() || 'Anonimo'
+        postId: Number(postId),
+        text: newCommentText.value
       }
     })
-
-    submitSuccess.value = 'Commento inviato con successo!'
-    commentText.value = ''
-    authorName.value = ''
-    
-    // Ricarica i dati per mostrare subito il nuovo commento
-    await refresh()
-  } catch (err: any) {
-    console.error('Errore invio commento:', err)
-    submitError.value = err?.data?.statusMessage || err?.data?.message || 'Impossibile pubblicare il commento.'
+    if (res.success) {
+      newCommentText.value = ''
+      await refreshComments()
+    } else {
+      alert(res.error || 'Errore nell invio del commento')
+    }
+  } catch (err) {
+    console.error(err)
+    alert('Errore di connessione')
   } finally {
-    isSubmitting.value = false
+    submitting.value = false
   }
 }
+
+useSeoMeta({
+  title: computed(() => post.value ? `${post.value.title} - DevKernelPulse` : 'Dettaglio Post - DevKernelPulse')
+})
 </script>
 
 <template>
-  <div class="item-page-container">
-    <!-- Stato di caricamento -->
-    <div v-if="pending" class="loading-state">
-      <p>Caricamento discussione in corso...</p>
+  <div class="item-detail-container">
+    <div v-if="postPending" class="state-msg">Caricamento post in corso...</div>
+    
+    <div v-else-if="!post" class="state-msg error">Post non trovato o rimosso.</div>
+
+    <div v-else class="post-content-card">
+      <div class="post-header-line">
+        <a v-if="post.url" :href="post.url" target="_blank" rel="noopener noreferrer" class="main-title">
+          {{ post.title }}
+        </a>
+        <h1 v-else class="main-title">{{ post.title }}</h1>
+      </div>
+
+      <div class="post-submeta">
+        <span>{{ post.points || 1 }} punti</span>
+        <span>•</span>
+        <span>da <NuxtLink :to="`/user/${post.author}`" class="author-link">{{ post.author || 'Anonimo' }}</NuxtLink></span>
+        <span>•</span>
+        <span>{{ post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'recentemente' }}</span>
+      </div>
+
+      <div v-if="post.text" class="post-body-text">
+        {{ post.text }}
+      </div>
     </div>
 
-    <!-- Errore o Item non trovato -->
-    <div v-else-if="error || !item" class="error-state">
-      <h2>Post non trovato o errore di connessione.</h2>
-      <NuxtLink to="/" class="back-link">← Torna alla Home</NuxtLink>
-    </div>
+    <!-- Sezione Commenti Locali -->
+    <div class="comments-section">
+      <h3>Discussione ({{ comments.length }})</h3>
 
-    <!-- Dettaglio Storia + Form + Commenti -->
-    <div v-else class="item-content">
-      <!-- 1. Header con Link e Dettagli Post -->
-      <section class="item-header">
-        <h1 class="item-title">
-          <a v-if="item.url" :href="item.url" target="_blank" rel="noopener noreferrer" class="title-link">
-            {{ item.title }} ↗
-          </a>
-          <span v-else>{{ item.title }}</span>
-          <span v-if="item.domain" class="item-domain">({{ item.domain }})</span>
-        </h1>
+      <!-- Form inserimento commento -->
+      <div v-if="currentUser" class="comment-form-box">
+        <p class="logged-as">Commenta come <span class="highlight">{{ currentUser }}</span>:</p>
+        <textarea v-model="newCommentText" rows="3" class="comment-textarea" placeholder="Scrivi un commento tecnico..."></textarea>
+        <button @click="submitComment" :disabled="submitting" class="comment-submit-btn">
+          {{ submitting ? 'Invio in corso...' : 'Aggiungi Commento' }}
+        </button>
+      </div>
+      <div v-else class="login-prompt">
+        Devi effettuare il <NuxtLink to="/login" class="login-link">Login</NuxtLink> per partecipare alla discussione.
+      </div>
 
-        <div class="item-meta">
-          <span>{{ item.points || 0 }} punti</span>
-          <span class="dot">•</span>
-          <span>pubblicato il {{ new Date(item.createdAt).toLocaleDateString('it-IT') }}</span>
-          <span v-if="item.author"> da <strong>{{ item.author }}</strong></span>
+      <!-- Lista Commenti -->
+      <div class="comments-list">
+        <div v-for="c in comments" :key="c.id" class="comment-card">
+          <div class="comment-meta">
+            <NuxtLink :to="`/user/${c.author}`" class="comment-author">{{ c.author }}</NuxtLink>
+            <span class="comment-time">{{ new Date(c.createdAt).toLocaleString('it-IT') }}</span>
+          </div>
+          <div class="comment-text">{{ c.text }}</div>
         </div>
 
-        <p v-if="item.description || item.text" class="item-description">
-          {{ item.description || item.text }}
-        </p>
-      </section>
-
-      <hr class="divider" />
-
-      <!-- 2. Form per inviare un nuovo commento -->
-      <section class="comment-box-section">
-        <h3>Aggiungi un Commento</h3>
-
-        <div v-if="submitSuccess" class="banner success-banner">{{ submitSuccess }}</div>
-        <div v-if="submitError" class="banner error-banner">{{ submitError }}</div>
-
-        <form class="comment-form" @submit.prevent="handleCommentSubmit">
-          <div class="form-group">
-            <input 
-              v-model="authorName" 
-              type="text" 
-              placeholder="Il tuo nome / nickname (opzionale)"
-              class="author-input"
-            />
-          </div>
-
-          <div class="form-group">
-            <textarea
-              v-model="commentText"
-              rows="4"
-              required
-              placeholder="Scrivi qui il tuo commento..."
-              class="comment-textarea"
-            ></textarea>
-          </div>
-
-          <button 
-            type="submit" 
-            class="submit-btn"
-            :disabled="isSubmitting || !commentText.trim()"
-          >
-            {{ isSubmitting ? 'Invio in corso...' : 'Invia Commento' }}
-          </button>
-        </form>
-      </section>
-
-      <hr class="divider" />
-
-      <!-- 3. Lista dei commenti ricevuti -->
-      <section class="comments-list-section">
-        <h3>Discussione ({{ item.comments?.length || 0 }})</h3>
-
-        <div v-if="!item.comments || item.comments.length === 0" class="no-comments">
-          Nessun commento ancora presente. Sii il primo a commentare!
+        <div v-if="comments.length === 0" class="no-comments">
+          Nessun commento presente. Sii il primo a commentare!
         </div>
-
-        <div v-else class="comments-list">
-          <div v-for="comment in item.comments" :key="comment.id" class="comment-card">
-            <div class="comment-meta">
-              <strong>{{ comment.author || 'Anonimo' }}</strong>
-              <span class="comment-date">• {{ new Date(comment.createdAt).toLocaleDateString('it-IT') }}</span>
-            </div>
-            <div class="comment-body">
-              {{ comment.text }}
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.item-page-container {
-  max-width: 850px;
+.item-detail-container {
+  max-width: 800px;
   margin: 1.5rem auto;
-  padding: 1.5rem;
+  padding: 0 1rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.state-msg {
+  text-align: center;
+  padding: 3rem;
+  color: #64748b;
+}
+
+.state-msg.error {
+  color: #ef4444;
+}
+
+.post-content-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
-.item-title {
-  font-size: 1.35rem;
+.main-title {
+  font-size: 1.3rem;
+  color: #020420;
+  text-decoration: none;
   font-weight: 700;
-  color: #020420;
-  line-height: 1.3;
+  margin: 0 0 0.5rem 0;
+  display: block;
 }
 
-.title-link {
+.main-title:hover {
+  color: #00dc82;
+}
+
+.post-submeta {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.author-link {
   color: #020420;
+  font-weight: 600;
   text-decoration: none;
 }
 
-.title-link:hover {
-  color: #2563eb;
+.author-link:hover {
+  color: #00dc82;
   text-decoration: underline;
 }
 
-.item-domain {
-  font-size: 0.85rem;
-  font-weight: normal;
-  color: #64748b;
-  margin-left: 0.5rem;
-}
-
-.item-meta {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.item-description {
+.post-body-text {
   margin-top: 1rem;
-  padding: 0.8rem 1rem;
-  background: #f8fafc;
-  border-left: 4px solid #00dc82;
-  font-size: 0.95rem;
   color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.divider {
-  border: 0;
-  height: 1px;
-  background: #e2e8f0;
-  margin: 1.5rem 0;
-}
-
-.comment-box-section h3, .comments-list-section h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
+.comments-section h3 {
+  font-size: 1.2rem;
   color: #020420;
-  margin-bottom: 0.8rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.4rem;
 }
 
-.comment-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+.comment-form-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
 }
 
-.author-input, .comment-textarea {
-  width: 100%;
-  padding: 0.7rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  box-sizing: border-box;
+.logged-as {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
 }
 
-.comment-textarea:focus, .author-input:focus {
-  outline: 2px solid #00dc82;
-  border-color: transparent;
-}
-
-.submit-btn {
-  align-self: flex-start;
-  background-color: #020420;
+.highlight {
   color: #00dc82;
-  border: none;
-  padding: 0.65rem 1.3rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: opacity 0.2s;
+  background: #020420;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
 }
 
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.comment-textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-size: 0.95rem;
+  color: #020420;
+  resize: vertical;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: #00dc82;
+}
+
+.comment-submit-btn {
+  margin-top: 0.5rem;
+  background: #00dc82;
+  color: #020420;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-prompt {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.login-link {
+  color: #00dc82;
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1rem;
 }
 
 .comment-card {
-  padding: 0.9rem;
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  padding: 1rem;
+  border-radius: 6px;
 }
 
 .comment-meta {
+  display: flex;
+  justify-content: space-between;
   font-size: 0.8rem;
-  color: #475569;
+  color: #64748b;
   margin-bottom: 0.4rem;
 }
 
-.comment-date {
-  color: #94a3b8;
-  margin-left: 0.3rem;
+.comment-author {
+  font-weight: 600;
+  color: #020420;
+  text-decoration: none;
 }
 
-.comment-body {
+.comment-author:hover {
+  color: #00dc82;
+  text-decoration: underline;
+}
+
+.comment-text {
+  color: #334155;
   font-size: 0.9rem;
-  color: #1e293b;
+  line-height: 1.4;
   white-space: pre-wrap;
 }
 
-.banner {
-  padding: 0.6rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  margin-bottom: 0.8rem;
+.no-comments {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+  padding: 1.5rem 0;
 }
-.success-banner { background: #d1fae5; color: #065f46; }
-.error-banner { background: #fee2e2; color: #991b1b; }
-.no-comments { color: #64748b; font-size: 0.9rem; font-style: italic; }
-.loading-state, .error-state { text-align: center; padding: 2rem; color: #64748b; }
-.back-link { color: #2563eb; text-decoration: underline; font-size: 0.9rem; }
 </style>
