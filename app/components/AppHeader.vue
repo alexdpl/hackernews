@@ -1,43 +1,56 @@
-<!-- app/components/AppHeader.vue -->
+<!-- app/components/Header.vue -->
 <script setup lang="ts">
-// NuxtLink gestisce l'evidenziazione tramite la rotta attiva
+const { data: authData, refresh: refreshAuth } = await useFetch('/api/auth/me')
+const router = useRouter()
+
+const isAuthenticated = computed(() => authData.value?.authenticated)
+const username = computed(() => authData.value?.username)
+
+async function handleLogout() {
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  await refreshAuth()
+  router.push('/')
+}
 </script>
 
 <template>
-  <header class="header-bar">
-    <div class="header-container">
-      <!-- Sezione Sinistra: Logo + Brand + Navigazione Pubblica -->
+  <header class="header">
+    <div class="header-content">
       <div class="nav-left">
-        <NuxtLink to="/" class="brand-link">
-          <svg class="logo-icon" viewBox="0 0 32 32" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 4L2 28H30L16 4Z" fill="#00DC82"></path>
-            <path d="M16 12L8.5 25H23.5L16 12Z" fill="#020420"></path>
-            <path d="M16 18L12 25H20L16 18Z" fill="#00DC82"></path>
+        <NuxtLink to="/" class="logo">
+          <!-- Logo SVG Unico: Terminale + Pulse Wave -->
+          <svg class="brand-logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="36" height="36" rx="8" fill="#00dc82"/>
+            <path d="M10 13L5 18L10 23" stroke="#020420" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M26 13L31 18L26 23" stroke="#020420" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15 22L18 14L21 22" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span class="logo-badge">DKP</span>
-          <span class="brand-title">DevKernelPulse</span>
+          <span class="logo-title">DevKernel<span class="highlight">Pulse</span></span>
         </NuxtLink>
-
-        <!-- Menu Pagine Pubbliche -->
+        
         <nav class="nav-links">
-          <NuxtLink to="/" active-class="active" exact-active-class="active">News</NuxtLink>
-          <NuxtLink to="/newest" active-class="active">Newest</NuxtLink>
-          <NuxtLink to="/ask" active-class="active">Ask</NuxtLink>
-          <NuxtLink to="/show" active-class="active">Show</NuxtLink>
-          <NuxtLink to="/jobs" active-class="active">Jobs</NuxtLink>
-          <NuxtLink to="/submit" active-class="active">Invia Link</NuxtLink>
+          <NuxtLink to="/news">News</NuxtLink>
+          <NuxtLink to="/newest">Newest</NuxtLink>
+          <NuxtLink to="/ask">Ask</NuxtLink>
+          <NuxtLink to="/show">Show</NuxtLink>
+          <NuxtLink to="/jobs">Jobs</NuxtLink>
+          <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
         </nav>
       </div>
 
-      <!-- Sezione Destra: Link GitHub -->
       <div class="nav-right">
-        <a 
-          href="https://github.com/alexdpl/hackernews" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          class="github-link"
-        >
-          Apri su GitHub <span class="external-icon">↗</span>
+        <template v-if="isAuthenticated">
+          <NuxtLink :to="`/user/${username}`" class="user-pill">
+            👤 {{ username }}
+          </NuxtLink>
+          <button @click="handleLogout" class="logout-btn">Esci</button>
+        </template>
+        <template v-else>
+          <NuxtLink to="/login" class="login-link">Login</NuxtLink>
+        </template>
+        
+        <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="github-link">
+          Apri su GitHub ↗
         </a>
       </div>
     </div>
@@ -45,111 +58,128 @@
 </template>
 
 <style scoped>
-.header-bar {
-  background-color: #020420;
-  width: 100%;
-  padding: 0.8rem 1.25rem;
-  box-sizing: border-box;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.header {
+  background: #020420;
+  border-bottom: 2px solid #00dc82;
+  padding: 0.6rem 1rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
-.header-container {
-  max-width: 1200px;
+.header-content {
+  max-width: 1100px;
   margin: 0 auto;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  flex-wrap: wrap;
 }
 
-.brand-link {
+.logo {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   text-decoration: none;
 }
 
-.logo-icon {
-  flex-shrink: 0;
+.brand-logo-svg {
+  width: 32px;
+  height: 32px;
+  box-shadow: 0 2px 4px rgba(0, 220, 130, 0.2);
+  border-radius: 6px;
 }
 
-.logo-badge {
-  background-color: #00dc82;
-  color: #020420;
-  font-weight: 800;
-  font-size: 0.75rem;
-  padding: 0.2rem 0.45rem;
-  border-radius: 4px;
-  line-height: 1;
-  letter-spacing: 0.05em;
-}
-
-.brand-title {
+.logo-title {
   color: #ffffff;
   font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: -0.02em;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.logo-title .highlight {
+  color: #00dc82;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .nav-links a {
-  color: #a1a1aa;
+  color: #cbd5e1;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.15s ease, opacity 0.15s ease;
+  transition: color 0.2s;
 }
 
-.nav-links a:hover,
-.nav-links a.active {
+.nav-links a:hover, .nav-links a.router-link-active {
   color: #00dc82;
-  font-weight: 600;
+}
+
+.submit-link {
+  color: #00dc82 !important;
+  font-weight: 600 !important;
 }
 
 .nav-right {
   display: flex;
   align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.user-pill {
+  color: #00dc82;
+  background: rgba(0, 220, 130, 0.1);
+  padding: 0.25rem 0.65rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid rgba(0, 220, 130, 0.3);
+}
+
+.logout-btn {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.login-link {
+  color: #00dc82;
+  text-decoration: none;
+  font-weight: 600;
 }
 
 .github-link {
   color: #ffffff;
   text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  transition: color 0.15s ease;
+  gap: 0.2rem;
+  transition: color 0.2s;
 }
 
 .github-link:hover {
   color: #00dc82;
-}
-
-.external-icon {
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
-@media (max-width: 640px) {
-  .header-bar { padding: 0.75rem 1rem; }
-  .nav-left { gap: 0.8rem; }
-  .nav-links { gap: 0.75rem; font-size: 0.85rem; }
-  .brand-title { font-size: 0.95rem; }
 }
 </style>
