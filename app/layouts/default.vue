@@ -22,6 +22,8 @@ function handleLogout() {
           <NuxtLink to="/ask">Ask</NuxtLink>
           <NuxtLink to="/show">Show</NuxtLink>
           <NuxtLink to="/jobs">Jobs</NuxtLink>
+          <NuxtLink to="/ai-scanner" class="special-nav-link">⚡ AI Scanner</NuxtLink>
+          <NuxtLink to="/terminal" class="special-nav-link">💻 Terminal</NuxtLink>
           <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
         </nav>
       </div>
@@ -54,8 +56,8 @@ function handleLogout() {
         <NuxtLink to="/about">Chi Siamo</NuxtLink> • 
         <NuxtLink to="/guidelines">Linee Guida</NuxtLink> • 
         <NuxtLink to="/terms">Termini d'Uso</NuxtLink> • 
-        <NuxtLink to="/privacy">Privacy & Cookie</NuxtLink> •
-		<NuxtLink to="/contact">Contatti</NuxtLink>
+        <NuxtLink to="/privacy">Privacy & Cookie</NuxtLink> • 
+        <NuxtLink to="/contact">Contatti</NuxtLink>
       </div>
       <p class="footer-copy">
         © 2026 <strong>DevKernelPulse</strong> — Proudly built with ❤️ by Alessandro De Paola & Gemini AI. Tutti i diritti sono riservati.
@@ -125,6 +127,11 @@ function handleLogout() {
 
 .nav-links a:hover, .nav-links a.router-link-active {
   color: #00dc82;
+}
+
+.special-nav-link {
+  color: #38bdf8 !important;
+  font-weight: 500;
 }
 
 .submit-link {
