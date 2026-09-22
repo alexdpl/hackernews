@@ -3,27 +3,15 @@
 import { ref, onMounted } from 'vue'
 
 const emit = defineEmits(['verify'])
-
-const question = ref('')
+const num1 = ref(0)
+const num2 = ref(0)
 const userAnswer = ref('')
 const isVerified = ref(false)
 const errorMessage = ref('')
 
-// Domande tecniche / logiche casuali per il DKP Captcha
-const challenges = [
-  { q: 'Quanto fa 7 + 5?', a: '12' },
-  { q: 'Qual è la radice quadrata di 81?', a: '9' },
-  { q: 'Quanti bit ci sono in un byte?', a: '8' },
-  { q: 'Quanto fa 15 - 6?', a: '9' },
-  { q: 'Digita il numero binario per dieci (in decimale):', a: '10' }
-]
-
-let correctAnswer = ''
-
 function generateChallenge() {
-  const randomChallenge = challenges[Math.floor(Math.random() * challenges.length)]
-  question.value = randomChallenge.q
-  correctAnswer = randomChallenge.a
+  num1.value = Math.floor(Math.random() * 10) + 1
+  num2.value = Math.floor(Math.random() * 10) + 1
   userAnswer.value = ''
   isVerified.value = false
   errorMessage.value = ''
@@ -31,7 +19,7 @@ function generateChallenge() {
 }
 
 function checkAnswer() {
-  if (userAnswer.value.trim() === correctAnswer) {
+  if (parseInt(userAnswer.value, 10) === num1.value + num2.value) {
     isVerified.value = true
     errorMessage.value = ''
     emit('verify', true)
@@ -48,106 +36,88 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dkp-captcha-box">
-    <div class="captcha-header">
-      <span class="captcha-badge">DKP Security</span>
-      <span class="captcha-title">Verifica Antispam Nativa</span>
-    </div>
-    
-    <div class="captcha-body">
-      <p class="captcha-question">❓ Risolvi per confermare: <strong>{{ question }}</strong></p>
-      
+  <div class="kernel-captcha">
+    <div class="captcha-box">
+      <span class="captcha-title">🔒 Kernel Captcha Sicurezza</span>
+      <p class="captcha-text">Risolvi l'equazione: <strong>{{ num1 }} + {{ num2 }} = ?</strong></p>
       <div class="captcha-input-group">
         <input 
           v-model="userAnswer" 
-          type="text" 
-          placeholder="Tua risposta..." 
+          type="number" 
+          placeholder="Risultato" 
           @input="checkAnswer"
-          :disabled="isVerified"
           class="captcha-input"
         />
-        <button type="button" @click="generateChallenge" class="refresh-btn" title="Cambia domanda">🔄</button>
+        <button type="button" @click="generateChallenge" class="refresh-btn" title="Nuova sfida">🔄</button>
       </div>
-
-      <p v-if="isVerified" class="success-text">✅ Verifica superata con successo!</p>
-      <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+      <p v-if="isVerified" class="success-msg">✅ Verificato con successo</p>
+      <p v-if="errorMessage" class="error-msg">{{ errorMessage }}</p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dkp-captcha-box {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 1rem;
+.kernel-captcha {
   margin: 1rem 0;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-family: inherit;
 }
-
-.captcha-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+.captcha-box {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  padding: 1rem;
+  border-radius: 8px;
+  color: #ffffff;
+  max-width: 320px;
 }
-
-.captcha-badge {
-  background: #020420;
-  color: #00dc82;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-}
-
 .captcha-title {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
-
-.captcha-question {
+.captcha-text {
   font-size: 0.9rem;
-  color: #020420;
-  margin-bottom: 0.5rem;
+  margin: 0.5rem 0;
+  color: #cbd5e1;
 }
-
 .captcha-input-group {
   display: flex;
   gap: 0.5rem;
 }
-
 .captcha-input {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #cbd5e1;
+  background: #020420;
+  border: 1px solid #334155;
+  color: #fff;
+  padding: 0.4rem 0.6rem;
   border-radius: 4px;
+  width: 100px;
   font-size: 0.9rem;
 }
-
+.captcha-input:focus {
+  outline: none;
+  border-color: #00dc82;
+}
 .refresh-btn {
-  background: #e2e8f0;
-  border: none;
+  background: transparent;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 0.4rem 0.6rem;
   border-radius: 4px;
-  padding: 0 0.75rem;
   cursor: pointer;
 }
-
 .refresh-btn:hover {
-  background: #cbd5e1;
+  background: #1e293b;
 }
-
-.success-text {
-  color: #059669;
-  font-size: 0.8rem;
+.success-msg {
+  color: #00dc82;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
   font-weight: 600;
-  margin-top: 0.4rem;
 }
-
-.error-text {
-  color: #dc2626;
-  font-size: 0.8rem;
-  margin-top: 0.4rem;
+.error-msg {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
 }
 </style>
