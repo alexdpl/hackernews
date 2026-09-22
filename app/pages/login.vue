@@ -38,7 +38,7 @@ useSeoMeta({
   <div class="login-container">
     <div class="login-card">
       <h2>Accedi a <span class="brand">DevKernelPulse</span></h2>
-      <p class="subtitle">Inserisci le credenziali per gestire il tuo profilo e commentare.</p>
+      <p class="subtitle">Inserisci le credenziali o usa i provider social per entrare al volo.</p>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
@@ -56,6 +56,22 @@ useSeoMeta({
           {{ loading ? 'Accesso in corso...' : 'Entra' }}
         </button>
       </form>
+
+      <!-- Sezione Social Login Integrata -->
+      <div class="social-login-container">
+        <div class="social-divider">
+          <span>oppure continua con</span>
+        </div>
+        
+        <div class="social-buttons">
+          <a href="/auth/github" class="social-btn github">
+            <span>🐙 GitHub</span>
+          </a>
+          <a href="/auth/google" class="social-btn google">
+            <span>🌐 Google</span>
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -147,5 +163,58 @@ useSeoMeta({
 
 .login-btn:hover {
   opacity: 0.9;
+}
+
+/* Stili Social Login */
+.social-login-container {
+  margin-top: 1.5rem;
+}
+
+.social-divider {
+  border-bottom: 1px solid #e2e8f0;
+  line-height: 0.1em;
+  margin: 1.5rem 0 1rem 0;
+  text-align: center;
+}
+
+.social-divider span {
+  background: #ffffff;
+  padding: 0 10px;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.social-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.social-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+  border: 1px solid #cbd5e1;
+  color: #020420;
+  background: #f8fafc;
+}
+
+.social-btn:hover {
+  opacity: 0.85;
+}
+
+.social-btn.github {
+  background: #020420;
+  color: #00dc82;
+  border-color: #020420;
 }
 </style>
