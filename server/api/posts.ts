@@ -3,6 +3,11 @@ import { defineEventHandler, getQuery } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 
+// server/api/posts.ts
+import { defineEventHandler, getQuery } from 'h3'
+import { sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const type = (query.type as string) || 'story'
@@ -14,6 +19,15 @@ export default defineEventHandler(async (event) => {
   const db = getDb()
 
   try {
+    // 1. Calcolo del conteggio totale dei post per questo tipo (per gestire centinaia/migliaia di record)
+    const countResult: any = await db.execute(sql`
+      SELECT COUNT(*) AS total 
+      FROM posts 
+      WHERE type = ${type}
+    `)
+    const totalItems = Number(countResult[0]?.total || countResult?.rows?.[0]?.total || 0)
+    const totalPages = Math.ceil(totalItems / limit) || 1
+
     let result: any
 
     if (sort === 'newest') {
@@ -27,7 +41,7 @@ export default defineEventHandler(async (event) => {
         LIMIT ${limit} OFFSET ${offset}
       `)
     } else {
-      // Algoritmo di Classifica Hacker News (Gravity Decay) con Paginazione
+      // Algoritmo di Classifica Hacker News (Gravity Decay) con Paginazione scalabile
       result = await db.execute(sql`
         SELECT id, title, url, text, author, type, points, 
                COALESCE(comments_count, 0) AS "commentsCount",
@@ -47,13 +61,29 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      data: posts
+      data: posts,
+      pagination: {
+        currentPage: page,
+        pageSize: limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
     }
   } catch (err: any) {
     console.error('Errore recupero posts:', err)
     return {
       success: false,
       data: [],
+      pagination: {
+        currentPage: page,
+        pageSize: limit,
+        totalItems: 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false
+      },
       error: err.message
     }
   }
