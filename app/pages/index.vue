@@ -8,9 +8,9 @@ const page = computed(() => {
   return isNaN(p) || p < 1 ? 1 : p
 })
 
-// Fetch delle notizie dall'endpoint /api/posts con filtro per tipo "story"
+// Fetch delle notizie dall'endpoint /api/posts con filtro per tipo "story" e ordinamento ranking
 const { data: responseData, pending, error } = await useFetch('/api/posts', {
-  query: { type: 'story', page },
+  query: { type: 'story', sort: 'ranking', page },
   watch: [page],
   // Trasforma e unifica la risposta (sia array diretto che wrapper { data: [...] })
   transform: (res: any) => {
@@ -25,7 +25,7 @@ const items = computed(() => responseData.value || [])
 
 useSeoMeta({
   title: 'News & Discussioni Tech',
-  description: 'Le migliori notizie, discussioni e storie dal mondo developer.'
+  description: 'Le migliori notizie, discussioni e storie dal mondo developer ordinate con l\'algoritmo di Hacker News.'
 })
 </script>
 
