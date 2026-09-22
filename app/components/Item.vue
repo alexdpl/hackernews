@@ -90,7 +90,13 @@ async function vote() {
     <div class="post-meta">
       <span>{{ points }} {{ points === 1 ? 'punto' : 'punti' }}</span>
       <span class="sep">•</span>
-      <span>da {{ item.author || 'Anonimo' }}</span>
+      <span>
+        da 
+        <NuxtLink v-if="item.author" :to="`/user/${item.author}`" class="author-link">
+          {{ item.author }}
+        </NuxtLink>
+        <span v-else>Anonimo</span>
+      </span>
       <span class="sep">•</span>
       <span>{{ formattedDate }}</span>
       <span class="sep">•</span>
@@ -156,6 +162,17 @@ async function vote() {
 
 .sep {
   color: #d4d4d8;
+}
+
+.author-link {
+  color: #71717a;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.author-link:hover {
+  color: #00dc82;
+  text-decoration: underline;
 }
 
 .comments-link {
