@@ -1,11 +1,18 @@
 <!-- app/layouts/default.vue -->
 <script setup lang="ts">
+import { ref } from 'vue'
+
 const userCookie = useCookie('dkp_user')
 const router = useRouter()
+const isNewsDropdownOpen = ref(false)
 
 function handleLogout() {
   userCookie.value = null
   router.push('/login')
+}
+
+function closeDropdown() {
+  isNewsDropdownOpen.value = false
 }
 </script>
 
@@ -16,12 +23,22 @@ function handleLogout() {
         <NuxtLink to="/" class="nav-brand">
           <span class="logo-badge">&lt;&gt;</span> DevKernelPulse
         </NuxtLink>
+        
         <nav class="nav-links">
-          <NuxtLink to="/news">News</NuxtLink>
-          <NuxtLink to="/newest">Newest</NuxtLink>
-          <NuxtLink to="/ask">Ask</NuxtLink>
-          <NuxtLink to="/show">Show</NuxtLink>
-          <NuxtLink to="/jobs">Jobs</NuxtLink>
+          <!-- Dropdown News -->
+          <div class="dropdown-container" @mouseleave="closeDropdown">
+            <button @click="isNewsDropdownOpen = !isNewsDropdownOpen" class="dropdown-toggle">
+              News ▾
+            </button>
+            <div v-if="isNewsDropdownOpen" class="dropdown-menu">
+              <NuxtLink to="/news" @click="closeDropdown">🔥 Top News</NuxtLink>
+              <NuxtLink to="/newest" @click="closeDropdown">⏱️ Newest</NuxtLink>
+              <NuxtLink to="/ask" @click="closeDropdown">💬 Ask DKP</NuxtLink>
+              <NuxtLink to="/show" @click="closeDropdown">🚀 Show DKP</NuxtLink>
+              <NuxtLink to="/jobs" @click="closeDropdown">💼 Tech Jobs</NuxtLink>
+            </div>
+          </div>
+
           <NuxtLink to="/ai-scanner" class="special-nav-link">⚡ AI Scanner</NuxtLink>
           <NuxtLink to="/terminal" class="special-nav-link">💻 Terminal</NuxtLink>
           <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
@@ -29,14 +46,12 @@ function handleLogout() {
       </div>
 
       <div class="nav-right">
-        <!-- Se loggato mostra utente e logout -->
         <template v-if="userCookie">
           <NuxtLink :to="`/user/${userCookie}`" class="user-pill">
             👤 {{ userCookie }}
           </NuxtLink>
           <button @click="handleLogout" class="logout-btn">Esci</button>
         </template>
-        <!-- Se non loggato mostra Login -->
         <template v-else>
           <NuxtLink to="/login" class="login-nav-btn">Login</NuxtLink>
         </template>
@@ -85,6 +100,8 @@ function handleLogout() {
   padding: 0.75rem 1.5rem;
   flex-wrap: wrap;
   gap: 1rem;
+  position: relative;
+  z-index: 50;
 }
 
 .nav-left {
@@ -114,7 +131,7 @@ function handleLogout() {
 
 .nav-links {
   display: flex;
-  gap: 1rem;
+  gap: 1.2rem;
   align-items: center;
   font-size: 0.9rem;
 }
@@ -126,6 +143,60 @@ function handleLogout() {
 }
 
 .nav-links a:hover, .nav-links a.router-link-active {
+  color: #00dc82;
+}
+
+/* Dropdown Menu Style */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.dropdown-toggle:hover {
+  color: #00dc82;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 0.5rem 0;
+  margin-top: 0.5rem;
+  z-index: 100;
+}
+
+.dropdown-menu a {
+  padding: 0.5rem 1rem;
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.dropdown-menu a:hover {
+  background: #0f172a;
   color: #00dc82;
 }
 

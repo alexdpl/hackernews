@@ -7,9 +7,24 @@ export default defineNuxtConfig({
     '@nuxt/eslint'
   ],
 
-  // 1. VARIABILI D'AMBIENTE SICURE (Server-side)
-  // Supporta automaticamente DATABASE_URL, POSTGRES_URL (generati da Neon/Vercel)
-  // e il formato nativo NUXT_DATABASE_URL
+  // 1. BRAND & SEO METADATA (Favicon SVG vettoriale integrata & SEO)
+  app: {
+    head: {
+      title: 'DevKernelPulse - L\'Ecosistema per Sviluppatori in Italia',
+      meta: [
+        { name: 'description', content: 'Piattaforma tech avanzata, AI Scanner, Terminal mode e bacheca jobs per sviluppatori.' }
+      ],
+      link: [
+        { 
+          rel: 'icon', 
+          type: 'image/svg+xml', 
+          href: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2300dc82"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>' 
+        }
+      ]
+    }
+  },
+
+  // 2. VARIABILI D'AMBIENTE SICURE (Server-side)
   runtimeConfig: {
     databaseUrl: 
       process.env.DATABASE_URL || 
@@ -22,12 +37,12 @@ export default defineNuxtConfig({
       ''
   },
 
-  // 2. CONFIGURAZIONE NUXT 4
+  // 3. CONFIGURAZIONE NUXT 4
   future: {
     compatibilityVersion: 4
   },
 
-  // 3. TARGET DI COMPILAZIONE NITRO
+  // 4. TARGET DI COMPILAZIONE NITRO
   nitro: {
     esnext: true,
     esbuild: {
@@ -37,11 +52,11 @@ export default defineNuxtConfig({
     }
   },
 
-  // 4. OTTIMIZZAZIONE MEMORIA LOCAL DEV (Hardware 12GB RAM)
+  // 5. OTTIMIZZAZIONE MEMORIA LOCAL DEV
   devtools: {
     enabled: true,
     vscode: false,
-    performance: false, // Disattiva il monitoraggio per evitare memory leak HMR
+    performance: false,
     timeline: false
   },
 
