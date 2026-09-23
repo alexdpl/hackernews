@@ -1,60 +1,46 @@
 // server/api/auth/login.post.ts
 import { defineEventHandler, readBody, setCookie } from 'h3'
-import { sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { username, password } = body
+  const username = body?.username?.trim()
+  const password = body?.password
 
-  if (!username) {
-    return { success: false, error: 'Username richiesto' }
+  if (!username || !password) {
+    return { success: false, error: 'Inserisci username e password' }
   }
 
-  const db = getDb()
+  // Credenziali Admin principali (puoi metterci la password sicura del tuo file di testo)
+  const ADMIN_USERNAME = 'alexdpl'
+  const ADMIN_PASSWORD = 'dk35%42Pfk$3rwQ323K' // <-- Inserisci qui la tua password complessa
 
-  try {
-    // Verifica se la tabella users esiste e ha la colonna password
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS users (
-        username VARCHAR(255) PRIMARY KEY,
-        password VARCHAR(255) DEFAULT 'admin123',
-        bio TEXT DEFAULT '',
-        avatar TEXT DEFAULT '',
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `)
+  // Verifica credenziali admin
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    // Impostiamo anche i cookie lato server per massima compatibilità
+    setCookie(event, 'dkp_logged_in', 'true', { path: '/', maxAge: 60 * 60 * 24 * 7 })
+    setCookie(event, 'dkp_user', ADMIN_USERNAME, { path: '/', maxAge: 60 * 60 * 24 * 7 })
 
-    // Cerca l'utente
-    const res: any = await db.execute(sql`
-      SELECT username, password FROM users WHERE username = ${username}
-    `)
-    let user = res[0] || res?.rows?.[0]
-
-    // Se l'utente non esiste e si tratta di alexdpl, lo creiamo al volo
-    if (!user && username === 'alexdpl') {
-      await db.execute(sql`
-        INSERT INTO users (username, password, bio) 
-        VALUES ('alexdpl', ${password || 'admin123'}, 'Amministratore e Creatore di DevKernelPulse')
-        ON CONFLICT (username) DO NOTHING
-      `)
-      user = { username: 'alexdpl', password: password || 'admin123' }
+    return {
+      success: true,
+      username: ADMIN_USERNAME,
+      message: 'Accesso amministratore effettuato con successo'
     }
+  }
 
-    if (!user) {
-      return { success: false, error: 'Utente non trovato' }
+  // Gestione per eventuali altri utenti o test (password con almeno 6 caratteri)
+  if (password.length >= 6) {
+    setCookie(event, 'dkp_logged_in', 'true', { path: '/', maxAge: 60 * 60 * 24 * 7 })
+    setCookie(event, 'dkp_user', username, { path: '/', maxAge: 60 * 60 * 24 * 7 })
+
+    return {
+      success: true,
+      username,
+      message: 'Accesso utente effettuato'
     }
+  }
 
-    // Imposta un cookie di sessione semplice
-    setCookie(event, 'dkp_user', username, {
-      httpOnly: true,
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7 // 1 settimana
-    })
-
-    return { success: true, username }
-  } catch (err: any) {
-    console.error('Errore login:', err)
-    return { success: false, error: err.message }
+  return {
+    success: false,
+    error: 'Credenziali non valide o password troppo corta.'
   }
 })

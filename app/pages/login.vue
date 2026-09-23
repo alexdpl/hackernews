@@ -3,10 +3,14 @@
 import { ref } from 'vue'
 
 const username = ref('alexdpl')
-const password = ref('admin123')
+const password = ref('dk35%42Pfk$3rwQ323K')
 const loading = ref(false)
 const errorMessage = ref('')
 const router = useRouter()
+
+// Cookie persistenti di Nuxt sincronizzati con la Navbar
+const isLoggedIn = useCookie('dkp_logged_in', { default: () => false })
+const currentUser = useCookie('dkp_user', { default: () => '' })
 
 async function handleLogin() {
   loading.value = true
@@ -17,12 +21,17 @@ async function handleLogin() {
       body: { username: username.value, password: password.value }
     })
     if (res.success) {
-      router.push(`/user/${res.username}`)
+      // Salviamo lo stato nei cookie persistenti di Nuxt
+      isLoggedIn.value = true
+      currentUser.value = res.username || username.value
+
+      // Reindirizzamento al profilo utente
+      router.push(`/user/${currentUser.value}`)
     } else {
       errorMessage.value = res.error || 'Errore durante il login'
     }
   } catch (err: any) {
-    errorMessage.value = 'Errore di connessione'
+    errorMessage.value = 'Errore di connessione al server'
   } finally {
     loading.value = false
   }

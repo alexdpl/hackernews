@@ -5,10 +5,10 @@ useServerHead({
 })
 
 useSeoMeta({
-  titleTemplate: 'Nuxt HN | %s',
-  description: 'HackerNews clone realizzato con Nuxt, Drizzle ORM e Neon Postgres.',
-  ogImage: 'https://hn.nuxt.dev/cover.jpg',
-  ogImageAlt: 'Nuxt Hackernews',
+  titleTemplate: 'DevKernelPulse | %s',
+  description: 'DevKernelPulse - La piattaforma meritocratica per sviluppatori con Proof of Code basata su GitHub, Nuxt 4, Neon Postgres e Vercel.',
+  ogImage: 'https://devkernelpulse.vercel.app/cover.jpg',
+  ogImageAlt: 'DevKernelPulse Proof of Code Ecosystem',
   twitterCard: 'summary_large_image',
 })
 </script>
@@ -27,15 +27,19 @@ useSeoMeta({
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 15px;
-  background-color: #f6f6ef;
+  background-color: #020617; /* Sfondo scuro coordinato con l'ecosistema DKP */
   margin: 0;
   padding: 0;
-  color: #020420;
+  color: #f8fafc;
   overflow-y: scroll;
 }
 
 a {
-  color: #020420;
+  color: #38bdf8;
   text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 </style>
