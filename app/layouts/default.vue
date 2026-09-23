@@ -16,8 +16,11 @@ function handleLogout() {
   <div class="app-layout">
     <header class="navbar">
       <div class="nav-left">
+        <!-- BRAND AGGIORNATO CON FAVICON A STRATI TRA <> -->
         <NuxtLink to="/" class="nav-brand">
-          <span class="logo-badge">&lt;&gt;</span> DevKernelPulse
+          <span class="logo-badge">
+            &lt;<svg class="navbar-favicon" viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6L12 2L20 6L12 10L4 6Z" fill="#020420"/><path d="M4 11L12 15L20 11" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16L12 20L20 16" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>&gt;
+          </span> DevKernelPulse
         </NuxtLink>
         
         <nav class="nav-links">
@@ -124,9 +127,17 @@ function handleLogout() {
 .logo-badge {
   background: #00dc82;
   color: #020420;
-  padding: 0.1rem 0.3rem;
+  padding: 0.1rem 0.4rem;
   border-radius: 4px;
   font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.navbar-favicon {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .nav-links {
@@ -150,7 +161,7 @@ function handleLogout() {
 .dropdown-container {
   position: relative;
   display: inline-block;
-  padding-bottom: 0.2rem; /* Crea un ponte invisibile per il mouse */
+  padding-bottom: 0.2rem;
 }
 
 .dropdown-toggle {
