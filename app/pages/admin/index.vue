@@ -59,14 +59,14 @@ const { settings } = useAdminSettings()
         <p>Configura i feature flag, la modalità manutenzione e le chiavi pubbliche.</p>
         <span class="mod-link">Accedi al Modulo ↗</span>
       </NuxtLink>
-
-      <div class="module-card disabled-card">
-        <div class="mod-icon">🛒</div>
-        <h2>DKP Ecosystem Shop (Prossimamente)</h2>
-        <p>Pannello di controllo e-commerce nativo per merchandise e licenze enterprise.</p>
-        <span class="mod-link">In Arrivo 🚀</span>
-      </div>
-    </div>
+      
+	  <NuxtLink to="/admin/shop" class="module-card">
+  <div class="mod-icon">🛒</div>
+  <h2>DKP Ecosystem Shop & .ZIP</h2>
+  <p>Gestisci il catalogo e-commerce dei plugin nativi e i pacchetti in vendita.</p>
+  <span class="mod-link">Accedi al Modulo ↗</span>
+</NuxtLink>
+   </div>   
   </div>
 </template>
 

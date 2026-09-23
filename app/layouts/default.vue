@@ -120,13 +120,14 @@ function selectLanguage(lang: string) {
 
     <footer class="footer">
       <div class="footer-links">
-        <NuxtLink to="/blog">DKP Blog</NuxtLink> • 
-        <NuxtLink to="/about">Chi Siamo</NuxtLink> • 
-        <NuxtLink to="/features">Ecosistema & Features</NuxtLink> • 
-        <NuxtLink to="/guidelines">Linee Guida</NuxtLink> • 
-        <NuxtLink to="/terms">Termini d'Uso</NuxtLink> • 
-        <NuxtLink to="/privacy">Privacy & Cookie</NuxtLink> • 
-        <NuxtLink to="/contact">Contatti</NuxtLink>
+        <NuxtLink to="/blog">📰 DKP Blog</NuxtLink> • 
+        <NuxtLink to="/shop">🛒 DKP Shop</NuxtLink> • 
+        <NuxtLink to="/about">👥 Chi Siamo</NuxtLink> • 
+        <NuxtLink to="/features">⚡ Ecosistema & Features</NuxtLink> • 
+        <NuxtLink to="/guidelines">📜 Linee Guida</NuxtLink> • 
+        <NuxtLink to="/terms">⚖️ Termini d'Uso</NuxtLink> • 
+        <NuxtLink to="/privacy">🔒 Privacy & Cookie</NuxtLink> • 
+        <NuxtLink to="/contact">✉️ Contatti</NuxtLink>
       </div>
       <p class="footer-copy">
         © 2026 <strong>DevKernelPulse</strong> — Proudly built with ❤️ by Alessandro De Paola & Gemini AI. Tutti i diritti sono riservati.
