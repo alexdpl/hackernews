@@ -9,6 +9,8 @@ export interface BlogPost {
   content: string
   author: string
   date: string
+  likes: number
+  views: number
 }
 
 export interface BlogCategory {
@@ -21,7 +23,8 @@ export function useBlog() {
     { id: 'tech', name: 'Tech & Kernel' },
     { id: 'ai', name: 'AI & Neural' },
     { id: 'releases', name: 'Release Ufficiali' },
-    { id: 'community', name: 'Community & Karma' }
+    { id: 'community', name: 'Community & Karma' },
+    { id: 'stack', name: 'Stack & System' }
   ])
 
   const posts = useState<BlogPost[]>('blog_posts', () => [
@@ -32,7 +35,9 @@ export function useBlog() {
       excerpt: 'Oggi segna una svolta epocale nello sviluppo software: rilasciamo ufficialmente il kernel di DKP con Proof of Code e AI Scanner.',
       content: 'DevKernelPulse nasce per ridefinire gli standard della collaborazione e dell\'analisi tecnologica. Grazie a strumenti nativi come AI Scanner, DKP Terminal e Neural Playground, gli sviluppatori di tutto il mondo possono finalmente contare su un ecosistema blindato, veloce e senza compromessi.',
       author: 'Alessandro De Paola',
-      date: '2026-06-06'
+      date: '2026-06-06',
+      likes: 42,
+      views: 1337
     }
   ])
 
@@ -43,19 +48,50 @@ export function useBlog() {
     }
   }
 
-  function addPost(post: Omit<BlogPost, 'id' | 'date'>) {
+  function addPost(post: Omit<BlogPost, 'id' | 'date' | 'likes' | 'views'>) {
     const newPost: BlogPost = {
       ...post,
       id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      likes: 0,
+      views: 1
     }
     posts.value.unshift(newPost)
+  }
+
+  function updatePost(id: string, updatedData: Partial<BlogPost>) {
+    const index = posts.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      posts.value[index] = { ...posts.value[index], ...updatedData }
+    }
+  }
+
+  function deletePost(id: string) {
+    posts.value = posts.value.filter(p => p.id !== id)
+  }
+
+  function likePost(id: string) {
+    const post = posts.value.find(p => p.id === id)
+    if (post) {
+      post.likes++
+    }
+  }
+
+  function incrementView(id: string) {
+    const post = posts.value.find(p => p.id === id)
+    if (post) {
+      post.views++
+    }
   }
 
   return {
     categories,
     posts,
     addCategory,
-    addPost
+    addPost,
+    updatePost,
+    deletePost,
+    likePost,
+    incrementView
   }
 }
