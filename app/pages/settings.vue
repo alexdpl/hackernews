@@ -1,225 +1,134 @@
-<!-- app/pages/settings.vue -->
+<!-- app/pages/admin/settings.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAdminSettings } from '~/composables/useAdminSettings'
 
-const router = useRouter()
-const { data: authData } = await useFetch('/api/auth/me')
+const { settings, updateSettings } = useAdminSettings()
 
-const username = computed(() => authData.value?.username)
-const isAuthenticated = computed(() => authData.value?.authenticated)
+const form = ref({ ...settings.value })
+const successMessage = ref('')
 
-// Se non è loggato, reindirizza al login
-if (import.meta.client && !isAuthenticated.value) {
-  router.push('/login')
+function handleSave() {
+  updateSettings(form.value)
+  successMessage.value = '⚙️ Configurazioni globali e Feature Flags salvati con successo nel Kernel!'
+  setTimeout(() => successMessage.value = '', 4000)
 }
-
-// Recupera i dati attuali del profilo
-const { data: profileData, refresh } = await useFetch(username.value ? `/api/users/${username.value}` : null)
-const profile = computed(() => profileData.value?.profile || null)
-
-const bio = ref('')
-const avatar = ref('')
-const saving = ref(false)
-const successMsg = ref('')
-
-// Inizializza i campi quando i dati arrivano
-watchEffect(() => {
-  if (profile.value) {
-    bio.value = profile.value.bio || ''
-    avatar.value = profile.value.avatar || ''
-  }
-})
-
-async function saveSettings() {
-  if (!username.value) return
-  saving.value = true
-  successMsg.value = ''
-  try {
-    const res: any = await $fetch('/api/users/update', {
-      method: 'POST',
-      body: {
-        username: username.value,
-        bio: bio.value,
-        avatar: avatar.value
-      }
-    })
-    if (res.success) {
-      successMsg.value = 'Profilo aggiornato con successo!'
-      await refresh()
-    } else {
-      alert('Errore durante il salvataggio.')
-    }
-  } catch (err) {
-    console.error(err)
-    alert('Errore di connessione.')
-  } finally {
-    saving.value = false
-  }
-}
-
-useSeoMeta({
-  title: 'Impostazioni Profilo - DevKernelPulse'
-})
 </script>
 
 <template>
-  <div class="settings-container">
-    <div class="settings-card">
-      <h2>Impostazioni Account</h2>
-      <p class="subtitle">Gestisci le informazioni del tuo profilo su <span class="highlight">DevKernelPulse</span>.</p>
+  <div class="admin-container">
+    <div class="admin-header">
+      <div class="header-top-row">
+        <span class="badge-tag">DKP Core Configs</span>
+        <NuxtLink to="/admin" class="back-dashboard-btn">← Torna al Command Center</NuxtLink>
+      </div>
+      <h1>Global Settings & Parameters</h1>
+      <p>Gestione dei Feature Flag di sistema, modalità manutenzione e chiavi pubbliche API.</p>
+    </div>
 
-      <div v-if="!isAuthenticated" class="not-logged">
-        Devi effettuare il <NuxtLink to="/login">Login</NuxtLink> per accedere a questa pagina.
+    <div v-if="successMessage" class="success-banner">
+      {{ successMessage }}
+    </div>
+
+    <div class="settings-grid">
+      <!-- Sezione Feature Flags & Moduli -->
+      <div class="admin-card">
+        <h2>🎚️ Feature Flags Ecosistema</h2>
+        <p class="card-desc">Attiva o disattiva i moduli nativi in tempo reale.</p>
+
+        <div class="toggle-group">
+          <label class="toggle-label">
+            <span>Abilita DKP Native Blog</span>
+            <input type="checkbox" v-model="form.enableBlog" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <label class="toggle-label">
+            <span>Abilita Sezione Jobs & Carriere</span>
+            <input type="checkbox" v-model="form.enableJobs" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <label class="toggle-label">
+            <span>Abilita DKP Shop (Prossimamente)</span>
+            <input type="checkbox" v-model="form.enableShop" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <label class="toggle-label">
+            <span>Modalità Manutenzione (Global Lock)</span>
+            <input type="checkbox" v-model="form.maintenanceMode" />
+            <span class="slider red-slider"></span>
+          </label>
+        </div>
       </div>
 
-      <div v-else-if="profile" class="settings-form">
-        <div v-if="successMsg" class="success-banner">{{ successMsg }}</div>
+      <!-- Sezione Parametri e Chiavi -->
+      <div class="admin-card span-2">
+        <h2>🔑 Parametri Globali & API Keys</h2>
+        <p class="card-desc">Configura il titolo del portale, il banner globale e le chiavi di terze parti.</p>
 
         <div class="form-group">
-          <label>Username (Non modificabile)</label>
-          <input :value="profile.username" type="text" disabled class="form-input disabled" />
-        </div>
-
-        <div class="form-group">
-          <label>URL Avatar Personalizzato</label>
-          <input v-model="avatar" type="text" class="form-input" placeholder="https://esempio.com/avatar.png" />
-          <span class="hint">Lascia vuoto per usare l'avatar automatico basato su Dicebear.</span>
+          <label>Titolo Ufficiale dell'Ecosistema</label>
+          <input v-model="form.siteTitle" type="text" />
         </div>
 
         <div class="form-group">
-          <label>Biografia / Bio</label>
-          <textarea v-model="bio" rows="4" class="form-textarea" placeholder="Raccontaci chi sei e cosa sviluppi..."></textarea>
+          <label>Banner Annuncio Globale (Header Ticker)</label>
+          <input v-model="form.announcementBanner" type="text" />
         </div>
 
-        <div class="form-actions">
-          <button @click="saveSettings" :disabled="saving" class="save-btn">
-            {{ saving ? 'Salvataggio in corso...' : 'Salva Modifiche' }}
-          </button>
-          <NuxtLink :to="`/user/${username}`" class="view-profile-btn">Visualizza Profilo ↗</NuxtLink>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Stripe Public Key (Shop)</label>
+            <input v-model="form.stripePublicKey" type="text" />
+          </div>
+          <div class="form-group flex-1">
+            <label>GitHub App Client Key (Proof of Code)</label>
+            <input v-model="form.githubClientKey" type="text" />
+          </div>
         </div>
+
+        <button @click="handleSave" class="action-btn primary-btn">Salva Configurazioni Globali</button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.settings-container {
-  max-width: 700px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
+.admin-container { max-width: 1100px; margin: 2.5rem auto; padding: 0 1.5rem; }
+.admin-header { margin-bottom: 2rem; }
+.header-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.back-dashboard-btn { color: #00dc82; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.back-dashboard-btn:hover { text-decoration: underline; }
+.badge-tag { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border: 1px solid rgba(56, 189, 248, 0.3); }
+.admin-header h1 { font-size: 2rem; color: #020420; font-weight: 800; margin-top: 0.5rem; }
+.admin-header p { color: #64748b; font-size: 0.95rem; }
+.success-banner { background: rgba(0, 220, 130, 0.15); border: 1px solid #00dc82; color: #006636; padding: 1rem; border-radius: 8px; font-weight: 600; margin-bottom: 1.5rem; }
+.settings-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; }
+@media (max-width: 768px) { .settings-grid { grid-template-columns: 1fr; } }
+.admin-card { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 2rem; color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+.admin-card h2 { font-size: 1.2rem; font-weight: 700; color: #00dc82; margin-bottom: 0.5rem; }
+.card-desc { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem; }
+.form-group { margin-bottom: 1.25rem; }
+.form-row { display: flex; gap: 1rem; }
+.flex-1 { flex: 1; }
+label { display: block; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.4rem; }
+input { width: 100%; background: #090d16; border: 1px solid #1e293b; color: #ffffff; padding: 0.6rem 0.8rem; border-radius: 6px; font-size: 0.9rem; outline: none; }
+input:focus { border-color: #00dc82; }
 
-.settings-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-}
+/* Toggle Switches */
+.toggle-group { margin-bottom: 1.25rem; border-bottom: 1px solid #1e293b; padding-bottom: 1rem; }
+.toggle-label { display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #cbd5e1; font-weight: 600; font-size: 0.9rem; }
+.toggle-label input { width: auto; cursor: pointer; }
 
-.settings-card h2 {
-  color: #020420;
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
-}
-
-.subtitle {
-  color: #64748b;
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.highlight {
-  color: #00dc82;
-  background: #020420;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-}
-
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.form-group label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
-}
-
-.form-input, .form-textarea {
-  padding: 0.7rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  color: #020420;
-}
-
-.form-input.disabled {
-  background: #f1f5f9;
-  color: #64748b;
-  cursor: not-allowed;
-}
-
-.form-input:focus, .form-textarea:focus {
-  outline: none;
-  border-color: #00dc82;
-}
-
-.hint {
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.success-banner {
-  background: #d1fae5;
-  color: #065f46;
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.form-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
-
-.save-btn {
-  background: #00dc82;
-  color: #020420;
-  border: none;
-  padding: 0.7rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.view-profile-btn {
-  color: #020420;
-  font-weight: 600;
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-
-.view-profile-btn:hover {
-  color: #00dc82;
-  text-decoration: underline;
-}
-
-.not-logged {
-  color: #64748b;
-  text-align: center;
-  padding: 2rem;
-}
+.action-btn { width: 100%; padding: 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; border: none; transition: opacity 0.2s; margin-top: 1rem; }
+.primary-btn { background: #00dc82; color: #020420; }
+.action-btn:hover { opacity: 0.9; }
 </style>

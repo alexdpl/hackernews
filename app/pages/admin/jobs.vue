@@ -1,489 +1,180 @@
-<!-- pages/admin/jobs.vue -->
+<!-- app/pages/admin/jobs.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
-// Collegamento al layout unificato dell'area riservata
-definePageMeta({
-  layout: 'admin'
-})
-
-interface Job {
-  id: string | number
+interface JobPosition {
+  id: string
   title: string
-  company?: string | null
-  url?: string | null
-  createdAt?: string | Date
+  department: string
+  type: string
+  status: 'Attiva' | 'Chiusa'
+  candidates: number
 }
 
-// Stato per l'autenticazione e il form
-const adminSecret = ref('')
-const title = ref('')
-const company = ref('')
-const url = ref('')
+const jobs = ref<JobPosition[]>([
+  { id: '1', title: 'Senior Kernel Rust Engineer', department: 'Core Systems', type: 'Remote', status: 'Attiva', candidates: 14 },
+  { id: '2', title: 'AI Neural Prompt Architect', department: 'AI Lab', type: 'Full-time', status: 'Attiva', candidates: 29 },
+  { id: '3', title: 'Fullstack Nuxt 3 Specialist', department: 'Frontend', type: 'Remote', status: 'Attiva', candidates: 42 }
+])
 
-// Elenco annunci e stati di caricamento
-const jobs = ref<Job[]>([])
-const isFetching = ref(false)
-const isSubmitting = ref(false)
-const deletingId = ref<string | number | null>(null) // Stato di eliminazione per singolo ID
-
-// Messaggi di stato
+const newTitle = ref('')
+const newDept = ref('Core Systems')
+const newType = ref('Remote')
 const successMessage = ref('')
-const errorMessage = ref('')
 
-// Ripristina la chiave segreta salvata in precedenza
-onMounted(() => {
-  const savedSecret = localStorage.getItem('nuxt_admin_secret')
-  if (savedSecret) {
-    adminSecret.value = savedSecret
-    fetchJobs()
-  }
-})
+function handleAddJob() {
+  if (!newTitle.value.trim()) return
+  jobs.value.unshift({
+    id: Date.now().toString(),
+    title: newTitle.value.trim(),
+    department: newDept.value,
+    type: newType.value,
+    status: 'Attiva',
+    candidates: 0
+  })
+  successMessage.value = '💼 Nuova posizione lavorativa aperta con successo!'
+  newTitle.value = ''
+  setTimeout(() => successMessage.value = '', 3000)
+}
 
-// Utility per salvare il secret in localStorage
-function persistSecret(secret: string) {
-  if (secret.trim()) {
-    localStorage.setItem('nuxt_admin_secret', secret.trim())
+function toggleJobStatus(id: string) {
+  const job = jobs.value.find(j => j.id === id)
+  if (job) {
+    job.status = job.status === 'Attiva' ? 'Chiusa' : 'Attiva'
   }
 }
 
-// 1. Carica l'elenco dei job
-async function fetchJobs() {
-  const cleanSecret = adminSecret.value.trim()
-  if (!cleanSecret) {
-    errorMessage.value = 'Inserisci la chiave segreta per caricare le offerte di lavoro.'
-    return
-  }
-
-  persistSecret(cleanSecret)
-  isFetching.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    const resData = await $fetch<Job[] | { success?: boolean; data?: Job[]; jobs?: Job[] }>('/api/admin/jobs', {
-      headers: {
-        Authorization: `Bearer ${cleanSecret}`,
-        'x-admin-secret': cleanSecret
-      }
-    })
-
-    if (Array.isArray(resData)) {
-      jobs.value = resData
-    } else if (resData) {
-      jobs.value = resData.data || resData.jobs || []
-    }
-
-    if (jobs.value.length === 0) {
-      successMessage.value = 'Nessun annuncio di lavoro presente nel database.'
-    }
-  } catch (error: any) {
-    console.error('Errore durante il caricamento dei job:', error)
-    errorMessage.value = error?.data?.statusMessage || error?.data?.message || 'Chiave segreta errata o errore di rete.'
-  } finally {
-    isFetching.value = false
-  }
-}
-
-// 2. Inserimento di un nuovo job
-async function handleJobSubmit() {
-  const cleanSecret = adminSecret.value.trim()
-  if (!title.value.trim() || !cleanSecret || isSubmitting.value) return
-
-  persistSecret(cleanSecret)
-  isSubmitting.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    await $fetch('/api/admin/jobs', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${cleanSecret}`,
-        'x-admin-secret': cleanSecret
-      },
-      body: {
-        title: title.value.trim(),
-        company: company.value.trim() || null,
-        url: url.value.trim() || null,
-        secret: cleanSecret
-      }
-    })
-
-    successMessage.value = 'Annuncio di lavoro inserito con successo!'
-    
-    // Reset dei campi modulo
-    title.value = ''
-    company.value = ''
-    url.value = ''
-
-    // Ricarica automaticamente la lista aggiornata
-    await fetchJobs()
-  } catch (error: any) {
-    console.error('Errore durante l\'inserimento del Job:', error)
-    errorMessage.value = error?.data?.statusMessage || error?.data?.message || 'Segreto amministratore errato o errore del database.'
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// 3. Eliminazione di un job
-async function deleteJob(jobId: string | number) {
-  const cleanSecret = adminSecret.value.trim()
-  if (!confirm('Sei sicuro di voler eliminare questo annuncio di lavoro?')) return
-
-  deletingId.value = jobId
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  try {
-    await $fetch(`/api/admin/jobs/${jobId}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${cleanSecret}`,
-        'x-admin-secret': cleanSecret
-      },
-      body: { secret: cleanSecret }
-    })
-
-    jobs.value = jobs.value.filter(j => j.id !== jobId)
-    successMessage.value = 'Annuncio eliminato con successo.'
-  } catch (error: any) {
-    console.error('Errore durante l\'eliminazione:', error)
-    errorMessage.value = error?.data?.statusMessage || error?.data?.message || 'Impossibile eliminare l\'annuncio.'
-  } finally {
-    deletingId.value = null
+function deleteJob(id: string) {
+  if (confirm('Eliminare questa posizione aperta?')) {
+    jobs.value = jobs.value.filter(j => j.id !== id)
   }
 }
 </script>
 
 <template>
-  <div class="admin-jobs-container">
-    <h1 class="admin-title">Pannello Gestione Offerte di Lavoro (Jobs)</h1>
+  <div class="admin-container">
+    <div class="admin-header">
+      <div class="header-top-row">
+        <span class="badge-tag">DKP Careers Management</span>
+        <NuxtLink to="/admin" class="back-dashboard-btn">← Torna al Command Center</NuxtLink>
+      </div>
+      <h1>Jobs & Talent Acquisition</h1>
+      <p>Gestisci le posizioni aperte nell'ecosistema DevKernelPulse e monitora i candidati.</p>
+    </div>
 
-    <div class="admin-form">
-      <!-- Banner Informativi -->
-      <div v-if="successMessage" class="success-banner">{{ successMessage }}</div>
-      <div v-if="errorMessage" class="error-banner">{{ errorMessage }}</div>
+    <div v-if="successMessage" class="success-banner">
+      {{ successMessage }}
+    </div>
 
-      <!-- Chiave di Sicurezza e Tasto Carica Lista -->
-      <div class="form-group">
-        <label for="secret">Chiave Segreta Admin (NUXT_ADMIN_SECRET)</label>
-        <div class="input-action-group">
-          <input
-            id="secret"
-            v-model="adminSecret"
-            type="password"
-            required
-            placeholder="Inserisci la password di amministrazione..."
-            :disabled="isSubmitting || isFetching || deletingId !== null"
-            @keyup.enter="fetchJobs"
-          />
-          <button
-            type="button"
-            class="action-load-btn"
-            :disabled="isFetching || !adminSecret.trim()"
-            @click="fetchJobs"
-          >
-            {{ isFetching ? 'Caricamento...' : 'Carica Jobs' }}
-          </button>
+    <div class="admin-grid">
+      <!-- Form Aggiunta Job -->
+      <div class="admin-card">
+        <h2>➕ Apri Nuova Posizione</h2>
+        <p class="card-desc">Pubblica una nuova offerta di lavoro per ingegneri e sviluppatori.</p>
+
+        <div class="form-group">
+          <label>Titolo Posizione *</label>
+          <input v-model="newTitle" type="text" placeholder="Es. Senior Security Auditor" />
         </div>
+
+        <div class="form-group">
+          <label>Dipartimento</label>
+          <select v-model="newDept">
+            <option value="Core Systems">Core Systems</option>
+            <option value="AI Lab">AI Lab</option>
+            <option value="Frontend">Frontend</option>
+            <option value="Security">Security</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Tipologia Contratto</label>
+          <select v-model="newType">
+            <option value="Remote">Remote</option>
+            <option value="Full-time">Full-time</option>
+            <option value="Contract">Contract</option>
+          </select>
+        </div>
+
+        <button @click="handleAddJob" class="action-btn primary-btn">Pubblica Offerta</button>
       </div>
 
-      <hr class="section-divider" />
+      <!-- Tabella Posizioni Aperte -->
+      <div class="admin-card span-2">
+        <h2>📋 Elenco Posizioni Attive ({{ jobs.length }})</h2>
+        <p class="card-desc">Monitoraggio in tempo reale delle posizioni e candidature.</p>
 
-      <!-- Form Inserimento Nuovo Job -->
-      <div class="sub-section">
-        <h2 class="section-subtitle">Nuovo Annuncio</h2>
-        <form class="sub-form" @submit.prevent="handleJobSubmit">
-          <div class="form-group">
-            <label for="title">Titolo della Posizione *</label>
-            <input
-              id="title"
-              v-model="title"
-              type="text"
-              required
-              placeholder="Es. Senior Full-Stack Engineer (m/f)"
-              :disabled="isSubmitting"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="company">Nome Azienda</label>
-            <input
-              id="company"
-              v-model="company"
-              type="text"
-              placeholder="Es. Acme Corp"
-              :disabled="isSubmitting"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="url">URL dell'Annuncio / Candidatura</label>
-            <input
-              id="url"
-              v-model="url"
-              type="url"
-              placeholder="https://acme.com/jobs/123"
-              :disabled="isSubmitting"
-            />
-          </div>
-
-          <button
-            type="submit"
-            class="submit-job-btn"
-            :disabled="isSubmitting || !title.trim() || !adminSecret.trim()"
-          >
-            {{ isSubmitting ? 'Pubblicazione in corso...' : 'Pubblica Annuncio Lavoro' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- Elenco Annunci Presenti nel DB -->
-      <div v-if="jobs && jobs.length > 0" class="maintenance-section">
-        <h2 class="section-subtitle">Annunci Rilevati ({{ jobs.length }})</h2>
-        <div class="jobs-list">
-          <div v-for="job in jobs" :key="job.id" class="job-item">
-            <div class="job-details">
-              <span class="job-title">{{ job.title }}</span>
-              <span v-if="job.company" class="job-company">Azienda: <strong>{{ job.company }}</strong></span>
-              <a v-if="job.url" :href="job.url" target="_blank" rel="noopener noreferrer" class="job-url">
-                {{ job.url }}
-              </a>
-              <span v-if="job.createdAt" class="job-date">
-                Inserito il: {{ new Date(job.createdAt).toLocaleDateString('it-IT') }}
-              </span>
-            </div>
-            <button
-              type="button"
-              class="delete-btn"
-              :disabled="deletingId === job.id"
-              @click="deleteJob(job.id)"
-            >
-              {{ deletingId === job.id ? 'Eliminazione...' : 'Elimina' }}
-            </button>
-          </div>
+        <div class="table-responsive">
+          <table class="posts-table">
+            <thead>
+              <tr>
+                <th>Posizione</th>
+                <th>Dipartimento</th>
+                <th>Tipo</th>
+                <th>Candidati</th>
+                <th>Stato</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="j in jobs" :key="j.id">
+                <td class="td-title">{{ j.title }}</td>
+                <td><span class="table-dept">{{ j.department }}</span></td>
+                <td>{{ j.type }}</td>
+                <td class="stats-cell">👥 {{ j.candidates }}</td>
+                <td>
+                  <span :class="['status-badge', j.status === 'Attiva' ? 'active' : 'closed']">
+                    {{ j.status }}
+                  </span>
+                </td>
+                <td class="actions-cell">
+                  <button @click="toggleJobStatus(j.id)" class="edit-btn">Stato</button>
+                  <button @click="deleteJob(j.id)" class="delete-btn">Elimina</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped lang="postcss">
-.admin-jobs-container {
-  max-width: 800px;
-  margin: 1rem auto;
-  padding: 1.5rem;
-  background-color: #ffffff;
-  border: 1px solid #e4e4e7;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
+<style scoped>
+.admin-container { max-width: 1100px; margin: 2.5rem auto; padding: 0 1.5rem; }
+.admin-header { margin-bottom: 2rem; }
+.header-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.back-dashboard-btn { color: #00dc82; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.back-dashboard-btn:hover { text-decoration: underline; }
+.badge-tag { background: rgba(0, 220, 130, 0.15); color: #00a862; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border: 1px solid rgba(0, 220, 130, 0.3); }
+.admin-header h1 { font-size: 2rem; color: #020420; font-weight: 800; margin-top: 0.5rem; }
+.admin-header p { color: #64748b; font-size: 0.95rem; }
+.success-banner { background: rgba(0, 220, 130, 0.15); border: 1px solid #00dc82; color: #006636; padding: 1rem; border-radius: 8px; font-weight: 600; margin-bottom: 1.5rem; }
+.admin-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; }
+@media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+.admin-card { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 2rem; color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+.admin-card h2 { font-size: 1.2rem; font-weight: 700; color: #00dc82; margin-bottom: 0.5rem; }
+.card-desc { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem; }
+.form-group { margin-bottom: 1.25rem; }
+label { display: block; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.4rem; }
+input, select { width: 100%; background: #090d16; border: 1px solid #1e293b; color: #ffffff; padding: 0.6rem 0.8rem; border-radius: 6px; font-size: 0.9rem; outline: none; }
+input:focus, select:focus { border-color: #00dc82; }
+.action-btn { width: 100%; padding: 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; border: none; transition: opacity 0.2s; margin-top: 0.5rem; }
+.primary-btn { background: #00dc82; color: #020420; }
+.action-btn:hover { opacity: 0.9; }
 
-.admin-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 1.2rem;
-  color: #020420;
-}
-
-.section-subtitle {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin: 1rem 0 0.8rem;
-  color: #334155;
-}
-
-.section-divider {
-  border: 0;
-  height: 1px;
-  background-color: #e2e8f0;
-  margin: 1rem 0;
-}
-
-.admin-form, .sub-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-
-  label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #475569;
-  }
-
-  input {
-    padding: 0.6rem 0.8rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    color: #020420;
-
-    &:focus {
-      outline: 2px solid #00dc82;
-      border-color: transparent;
-    }
-  }
-}
-
-.input-action-group {
-  display: flex;
-  gap: 8px;
-
-  input {
-    flex: 1;
-  }
-}
-
-.action-load-btn {
-  background-color: #020420;
-  color: #00dc82;
-  border: 1px solid #020420;
-  padding: 0.6rem 1.2rem;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: #00dc82;
-    color: #020420;
-  }
-
-  &:disabled {
-    background-color: #cbd5e1;
-    border-color: #cbd5e1;
-    color: #94a3b8;
-    cursor: not-allowed;
-  }
-}
-
-.submit-job-btn {
-  background-color: #020420;
-  color: #00dc82;
-  border: 1px solid #020420;
-  padding: 0.7rem 1.4rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  border-radius: 4px;
-  align-self: flex-start;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: #00dc82;
-    color: #020420;
-  }
-
-  &:disabled {
-    background-color: #cbd5e1;
-    border-color: #cbd5e1;
-    color: #94a3b8;
-    cursor: not-allowed;
-  }
-}
-
-.success-banner {
-  background-color: #d1fae5;
-  border: 1px solid #34d399;
-  color: #065f46;
-  padding: 0.8rem;
-  font-size: 0.85rem;
-  border-radius: 4px;
-}
-
-.error-banner {
-  background-color: #fee2e2;
-  border: 1px solid #f87171;
-  color: #991b1b;
-  padding: 0.8rem;
-  font-size: 0.85rem;
-  border-radius: 4px;
-}
-
-.maintenance-section {
-  margin-top: 1rem;
-}
-
-.jobs-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.job-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #f8fafc;
-  padding: 10px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-
-  &:hover {
-    border-color: #cbd5e1;
-  }
-}
-
-.job-details {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-width: 80%;
-}
-
-.job-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #020420;
-}
-
-.job-company {
-  font-size: 12px;
-  color: #475569;
-}
-
-.job-url {
-  font-size: 12px;
-  color: #2563eb;
-  text-decoration: none;
-  word-break: break-all;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.job-date {
-  font-size: 11px;
-  color: #64748b;
-}
-
-.delete-btn {
-  background-color: #ef4444;
-  color: #ffffff;
-  border: none;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &:hover:not(:disabled) {
-    background-color: #dc2626;
-  }
-
-  &:disabled {
-    background-color: #fca5a5;
-    cursor: not-allowed;
-  }
-}
+/* Table */
+.table-responsive { overflow-x: auto; }
+.posts-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+.posts-table th { background: #090d16; color: #94a3b8; padding: 0.75rem 1rem; border-bottom: 1px solid #1e293b; }
+.posts-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+.td-title { font-weight: 600; color: #ffffff; }
+.table-dept { background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; }
+.stats-cell { font-weight: 700; color: #38bdf8; }
+.status-badge { padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.status-badge.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
+.status-badge.closed { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.actions-cell { display: flex; gap: 0.5rem; }
+.edit-btn { background: #38bdf8; color: #020420; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+.delete-btn { background: #ef4444; color: #ffffff; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
 </style>
