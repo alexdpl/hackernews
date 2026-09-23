@@ -36,7 +36,19 @@
         <div class="feature-card">
           <div class="card-icon">🌐</div>
           <h3>DKP Global Engine (Translator)</h3>
-          <p>Motore e selettore di traduzione nativo ad alte prestazioni (supporto per Italiano, Inglese, Spagnolo, Francese, Tedesco e Cinese) progettato per azzerare i tempi di caricamento e unire la community tech globale senza barriere linguistiche.</p>
+          <p>Motore e selettore di traduzione nativo ad alte prestazioni (supporto per Italiano, Inglese, Spagnolo, Francese, Tedesco e Cinese) progettato per azzerare i tempi di caricamento e unire la community tech globale.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">📰</div>
+          <h3>DKP Native Blog & Admin</h3>
+          <p>Un newsroom nativo integrato con un pannello amministrativo protetto per la pubblicazione in tempo reale di rilasci, annunci e articoli strategici per la community globale.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">🔐</div>
+          <h3>DKP Captcha</h3>
+          <p>Sistema di verifica anti-bot proprietario e ad alta sicurezza, progettato per proteggere le interazioni critiche, i form di invio link e le autenticazioni dell'ecosistema DevKernelPulse.</p>
         </div>
       </div>
 

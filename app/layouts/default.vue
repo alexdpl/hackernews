@@ -112,6 +112,7 @@ function selectLanguage(lang: string) {
 
     <footer class="footer">
       <div class="footer-links">
+	    <NuxtLink to="/blog">Blog</NuxtLink> •
         <NuxtLink to="/about">Chi Siamo</NuxtLink> • 
         <NuxtLink to="/features">Ecosistema & Features</NuxtLink> • 
         <NuxtLink to="/guidelines">Linee Guida</NuxtLink> • 
