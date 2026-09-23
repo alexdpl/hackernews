@@ -5,10 +5,18 @@ import { ref } from 'vue'
 const userCookie = useCookie('dkp_user')
 const router = useRouter()
 const isNewsDropdownOpen = ref(false)
+const isToolsDropdownOpen = ref(false)
+const isLangDropdownOpen = ref(false)
+const currentLang = ref('IT')
 
 function handleLogout() {
   userCookie.value = null
   router.push('/login')
+}
+
+function selectLanguage(lang: string) {
+  currentLang.value = lang
+  isLangDropdownOpen.value = false
 }
 </script>
 
@@ -16,7 +24,7 @@ function handleLogout() {
   <div class="app-layout">
     <header class="navbar">
       <div class="nav-left">
-        <!-- BRAND AGGIORNATO CON FAVICON A STRATI TRA <> -->
+        <!-- BRAND CON FAVICON A STRATI TRA <> -->
         <NuxtLink to="/" class="nav-brand">
           <span class="logo-badge">
             &lt;<svg class="navbar-favicon" viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6L12 2L20 6L12 10L4 6Z" fill="#020420"/><path d="M4 11L12 15L20 11" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16L12 20L20 16" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>&gt;
@@ -24,7 +32,7 @@ function handleLogout() {
         </NuxtLink>
         
         <nav class="nav-links">
-          <!-- Dropdown News fluido con Hover -->
+          <!-- Dropdown News -->
           <div 
             class="dropdown-container" 
             @mouseenter="isNewsDropdownOpen = true" 
@@ -42,13 +50,46 @@ function handleLogout() {
             </div>
           </div>
 
-          <NuxtLink to="/ai-scanner" class="special-nav-link">⚡ AI Scanner</NuxtLink>
-          <NuxtLink to="/terminal" class="special-nav-link">💻 Terminal</NuxtLink>
+          <!-- MENÙ A TENDINA: DKP Tools -->
+          <div 
+            class="dropdown-container" 
+            @mouseenter="isToolsDropdownOpen = true" 
+            @mouseleave="isToolsDropdownOpen = false"
+          >
+            <span class="dropdown-toggle tools-toggle">
+              🛠️ DKP Tools ▾
+            </span>
+            <div v-if="isToolsDropdownOpen" class="dropdown-menu">
+              <NuxtLink to="/ai-scanner" @click="isToolsDropdownOpen = false">⚡ AI Scanner</NuxtLink>
+              <NuxtLink to="/terminal" @click="isToolsDropdownOpen = false">💻 Terminal</NuxtLink>
+              <NuxtLink to="/neural-playground" @click="isToolsDropdownOpen = false">🧠 Neural Playground</NuxtLink>
+            </div>
+          </div>
+
           <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
         </nav>
       </div>
 
       <div class="nav-right">
+        <!-- SELETTORE LINGUA GLOBALE NATIVO CON FRANCESE E TEDESCO -->
+        <div 
+          class="dropdown-container lang-dropdown"
+          @mouseenter="isLangDropdownOpen = true"
+          @mouseleave="isLangDropdownOpen = false"
+        >
+          <button class="dropdown-toggle lang-btn">
+            🌐 {{ currentLang }} ▾
+          </button>
+          <div v-if="isLangDropdownOpen" class="dropdown-menu lang-menu">
+            <a href="#" @click.prevent="selectLanguage('IT')">🇮🇹 Italiano</a>
+            <a href="#" @click.prevent="selectLanguage('EN')">🇬🇧 English</a>
+            <a href="#" @click.prevent="selectLanguage('ES')">🇪🇸 Español</a>
+            <a href="#" @click.prevent="selectLanguage('FR')">🇫🇷 Français</a>
+            <a href="#" @click.prevent="selectLanguage('DE')">🇩🇪 Deutsch</a>
+            <a href="#" @click.prevent="selectLanguage('ZH')">🇨🇳 中文</a>
+          </div>
+        </div>
+
         <template v-if="userCookie">
           <NuxtLink :to="`/user/${userCookie}`" class="user-pill">
             👤 {{ userCookie }}
@@ -59,8 +100,8 @@ function handleLogout() {
           <NuxtLink to="/login" class="login-nav-btn">Login</NuxtLink>
         </template>
         
-        <a href="https://github.com" target="_blank" rel="noopener" class="github-link">
-          Apri su GitHub ↗
+        <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener" class="github-link">
+          Esplora su GitHub <strong style="color: #50C878;">↗</strong>
         </a>
       </div>
     </header>
@@ -72,6 +113,7 @@ function handleLogout() {
     <footer class="footer">
       <div class="footer-links">
         <NuxtLink to="/about">Chi Siamo</NuxtLink> • 
+        <NuxtLink to="/features">Ecosistema & Features</NuxtLink> • 
         <NuxtLink to="/guidelines">Linee Guida</NuxtLink> • 
         <NuxtLink to="/terms">Termini d'Uso</NuxtLink> • 
         <NuxtLink to="/privacy">Privacy & Cookie</NuxtLink> • 
@@ -157,14 +199,16 @@ function handleLogout() {
   color: #00dc82;
 }
 
-/* Dropdown Menu Style */
 .dropdown-container {
   position: relative;
   display: inline-block;
   padding-bottom: 0.2rem;
 }
 
-.dropdown-toggle {
+.dropdown-toggle, .lang-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
   color: #cbd5e1;
   font-size: 0.9rem;
   font-weight: 500;
@@ -173,9 +217,15 @@ function handleLogout() {
   align-items: center;
   gap: 0.2rem;
   transition: color 0.2s;
+  padding: 0;
 }
 
-.dropdown-toggle:hover, .dropdown-container:hover .dropdown-toggle {
+.tools-toggle {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.dropdown-toggle:hover, .dropdown-container:hover .dropdown-toggle, .lang-btn:hover {
   color: #00dc82;
 }
 
@@ -189,7 +239,7 @@ function handleLogout() {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  min-width: 160px;
+  min-width: 190px;
   padding: 0.5rem 0;
   z-index: 100;
 }
@@ -207,11 +257,6 @@ function handleLogout() {
   color: #00dc82;
 }
 
-.special-nav-link {
-  color: #38bdf8 !important;
-  font-weight: 500;
-}
-
 .submit-link {
   color: #00dc82 !important;
   font-weight: 600;
@@ -222,6 +267,11 @@ function handleLogout() {
   align-items: center;
   gap: 1rem;
   font-size: 0.9rem;
+}
+
+.lang-menu {
+  left: auto;
+  right: 0;
 }
 
 .user-pill {
