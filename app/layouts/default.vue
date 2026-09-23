@@ -7,6 +7,7 @@ const router = useRouter()
 const isNewsDropdownOpen = ref(false)
 const isToolsDropdownOpen = ref(false)
 const isLangDropdownOpen = ref(false)
+const isMobileMenuOpen = ref(false)
 const currentLang = ref('IT')
 
 function handleLogout() {
@@ -17,6 +18,7 @@ function handleLogout() {
 function selectLanguage(lang: string) {
   currentLang.value = lang
   isLangDropdownOpen.value = false
+  isMobileMenuOpen.value = false
 }
 </script>
 
@@ -30,23 +32,28 @@ function selectLanguage(lang: string) {
             &lt;<svg class="navbar-favicon" viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6L12 2L20 6L12 10L4 6Z" fill="#020420"/><path d="M4 11L12 15L20 11" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16L12 20L20 16" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>&gt;
           </span> DevKernelPulse
         </NuxtLink>
+
+        <!-- HAMBURGER BUTTON MOBILE -->
+        <button class="mobile-menu-toggle" @click="isMobileMenuOpen = !isMobileMenuOpen">
+          ☰
+        </button>
         
-        <nav class="nav-links">
+        <nav :class="['nav-links', { 'mobile-open': isMobileMenuOpen }]">
           <!-- Dropdown News -->
           <div 
             class="dropdown-container" 
             @mouseenter="isNewsDropdownOpen = true" 
             @mouseleave="isNewsDropdownOpen = false"
           >
-            <NuxtLink to="/news" class="dropdown-toggle" @click="isNewsDropdownOpen = false">
+            <NuxtLink to="/news" class="dropdown-toggle" @click="isNewsDropdownOpen = false; isMobileMenuOpen = false">
               News ▾
             </NuxtLink>
             <div v-if="isNewsDropdownOpen" class="dropdown-menu">
-              <NuxtLink to="/news" @click="isNewsDropdownOpen = false">🔥 Top News</NuxtLink>
-              <NuxtLink to="/newest" @click="isNewsDropdownOpen = false">⏱️ Newest</NuxtLink>
-              <NuxtLink to="/ask" @click="isNewsDropdownOpen = false">💬 Ask DKP</NuxtLink>
-              <NuxtLink to="/show" @click="isNewsDropdownOpen = false">🚀 Show DKP</NuxtLink>
-              <NuxtLink to="/jobs" @click="isNewsDropdownOpen = false">💼 Tech Jobs</NuxtLink>
+              <NuxtLink to="/news" @click="isNewsDropdownOpen = false; isMobileMenuOpen = false">🔥 Top News</NuxtLink>
+              <NuxtLink to="/newest" @click="isNewsDropdownOpen = false; isMobileMenuOpen = false">⏱️ Newest</NuxtLink>
+              <NuxtLink to="/ask" @click="isNewsDropdownOpen = false; isMobileMenuOpen = false">💬 Ask DKP</NuxtLink>
+              <NuxtLink to="/show" @click="isNewsDropdownOpen = false; isMobileMenuOpen = false">🚀 Show DKP</NuxtLink>
+              <NuxtLink to="/jobs" @click="isNewsDropdownOpen = false; isMobileMenuOpen = false">💼 Tech Jobs</NuxtLink>
             </div>
           </div>
 
@@ -60,18 +67,19 @@ function selectLanguage(lang: string) {
               🛠️ DKP Tools ▾
             </span>
             <div v-if="isToolsDropdownOpen" class="dropdown-menu">
-              <NuxtLink to="/ai-scanner" @click="isToolsDropdownOpen = false">⚡ AI Scanner</NuxtLink>
-              <NuxtLink to="/terminal" @click="isToolsDropdownOpen = false">💻 Terminal</NuxtLink>
-              <NuxtLink to="/neural-playground" @click="isToolsDropdownOpen = false">🧠 Neural Playground</NuxtLink>
+              <NuxtLink to="/ai-scanner" @click="isToolsDropdownOpen = false; isMobileMenuOpen = false">⚡ AI Scanner</NuxtLink>
+              <NuxtLink to="/terminal" @click="isToolsDropdownOpen = false; isMobileMenuOpen = false">💻 Terminal</NuxtLink>
+              <NuxtLink to="/neural-playground" @click="isToolsDropdownOpen = false; isMobileMenuOpen = false">🧠 Neural Playground</NuxtLink>
             </div>
           </div>
 
-          <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
+          <NuxtLink to="/submit" class="submit-link" @click="isMobileMenuOpen = false">Invia Link</NuxtLink>
+          <NuxtLink to="/admin" class="admin-nav-link" @click="isMobileMenuOpen = false">🎛️ Admin</NuxtLink>
         </nav>
       </div>
 
       <div class="nav-right">
-        <!-- SELETTORE LINGUA GLOBALE NATIVO CON FRANCESE E TEDESCO -->
+        <!-- SELETTORE LINGUA GLOBALE NATIVO -->
         <div 
           class="dropdown-container lang-dropdown"
           @mouseenter="isLangDropdownOpen = true"
@@ -100,8 +108,8 @@ function selectLanguage(lang: string) {
           <NuxtLink to="/login" class="login-nav-btn">Login</NuxtLink>
         </template>
         
-        <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener" class="github-link">
-          Esplora su GitHub <strong style="color: #50C878;">↗</strong>
+        <a href="https://github.com" target="_blank" rel="noopener" class="github-link desktop-only">
+          GitHub ↗
         </a>
       </div>
     </header>
@@ -112,7 +120,7 @@ function selectLanguage(lang: string) {
 
     <footer class="footer">
       <div class="footer-links">
-	    <NuxtLink to="/blog">Blog</NuxtLink> •
+        <NuxtLink to="/blog">DKP Blog</NuxtLink> • 
         <NuxtLink to="/about">Chi Siamo</NuxtLink> • 
         <NuxtLink to="/features">Ecosistema & Features</NuxtLink> • 
         <NuxtLink to="/guidelines">Linee Guida</NuxtLink> • 
@@ -144,8 +152,6 @@ function selectLanguage(lang: string) {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
   position: relative;
   z-index: 50;
 }
@@ -154,7 +160,6 @@ function selectLanguage(lang: string) {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  flex-wrap: wrap;
 }
 
 .nav-brand {
@@ -181,6 +186,17 @@ function selectLanguage(lang: string) {
 .navbar-favicon {
   display: inline-block;
   vertical-align: middle;
+}
+
+.mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid #1e293b;
+  color: #00dc82;
+  font-size: 1.2rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .nav-links {
@@ -226,8 +242,9 @@ function selectLanguage(lang: string) {
   font-weight: 600;
 }
 
-.dropdown-toggle:hover, .dropdown-container:hover .dropdown-toggle, .lang-btn:hover {
-  color: #00dc82;
+.admin-nav-link {
+  color: #c084fc !important;
+  font-weight: 600;
 }
 
 .dropdown-menu {
@@ -312,18 +329,49 @@ function selectLanguage(lang: string) {
   text-decoration: none;
 }
 
-.login-nav-btn:hover {
-  opacity: 0.9;
-}
-
 .github-link {
   color: #cbd5e1;
   text-decoration: none;
   font-size: 0.85rem;
 }
 
-.github-link:hover {
-  color: #ffffff;
+/* RESPONSIVE MOBILE MEDIA QUERY */
+@media (max-width: 900px) {
+  .mobile-menu-toggle {
+    display: inline-block;
+  }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #020420;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem;
+    box-shadow: 0 10px 15px rgba(0,0,0,0.5);
+    border-bottom: 1px solid #1e293b;
+    gap: 1rem;
+  }
+
+  .nav-links.mobile-open {
+    display: flex;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .dropdown-menu {
+    position: static;
+    box-shadow: none;
+    border: none;
+    background: #090d16;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
 }
 
 .main-content {
@@ -342,6 +390,10 @@ function selectLanguage(lang: string) {
 
 .footer-links {
   margin-bottom: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .footer-links a {
