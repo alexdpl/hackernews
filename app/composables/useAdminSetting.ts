@@ -1,3 +1,4 @@
+TypeScript
 // app/composables/useAdminSettings.ts
 import { useState } from '#imports'
 

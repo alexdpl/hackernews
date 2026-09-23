@@ -17,3 +17,5 @@ public/workbox-sw*.js*
 .data
 .vercel
 .env*
+# DKP Proprietary & Commercial Plugins (Hidden from public repo)
+dkp-proprietary-plugins/
