@@ -1,14 +1,28 @@
 <!-- app/components/Header.vue -->
 <script setup lang="ts">
-const { data: authData, refresh: refreshAuth } = await useFetch('/api/auth/me')
+// Forziamo il fetch a non usare la cache SSR per l'autenticazione
+const { data: authData, refresh: refreshAuth } = await useFetch('/api/auth/me', {
+  key: 'auth-me-header',
+  getCachedData: () => null // Evita il caching della sessione nell'HTML statico
+})
 const router = useRouter()
 
-const isAuthenticated = computed(() => authData.value?.authenticated)
-const username = computed(() => authData.value?.username)
+// Validazione esplicita e booleana dello stato di autenticazione
+const isAuthenticated = computed(() => {
+  const data = authData.value as any
+  return Boolean(data && data.authenticated === true)
+})
 
-// Controllo blindato dell'Admin: visibile solo se autenticato ed è l'admin (alexdpl o ruolo admin)
+const username = computed(() => {
+  const data = authData.value as any
+  return data?.username || ''
+})
+
+// Controllo blindato dell'Admin: richiede autenticazione reale E username/ruolo esatti
 const isAdmin = computed(() => {
-  return isAuthenticated.value && (username.value === 'alexdpl' || (authData.value as any)?.role === 'admin')
+  const data = authData.value as any
+  if (!data || !data.authenticated) return false
+  return data.username === 'alexdpl' || data.role === 'admin'
 })
 
 async function handleLogout() {
@@ -41,7 +55,7 @@ async function handleLogout() {
           <NuxtLink to="/jobs">Jobs</NuxtLink>
           <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
           
-          <!-- LINK ADMIN PROTETTO: Appare SOLO all'admin loggato -->
+          <!-- LINK ADMIN PROTETTO: Appare SOLO all'admin loggato realmente -->
           <NuxtLink v-if="isAdmin" to="/admin" class="admin-link">Admin</NuxtLink>
         </nav>
       </div>
@@ -58,7 +72,7 @@ async function handleLogout() {
         </template>
         
         <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="github-link">
-          Apri su GitHub ↗
+          Apri su GitHub <strong style="color: #50C878;">↗</strong>
         </a>
       </div>
     </div>
