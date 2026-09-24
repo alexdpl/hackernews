@@ -1,14 +1,15 @@
 <!-- app/layouts/default.vue -->
 <template>
   <div class="default-layout">
-    <!-- Usiamo ESPLICITAMENTE Navbar.vue -->
+    <!-- Navbar Unica Master DKP -->
     <Navbar />
     
+    <!-- Contenuto Principale della Pagina -->
     <main class="main-content">
       <slot />
     </main>
 
-    <!-- Usiamo ESPLICITAMENTE AppFooter.vue -->
+    <!-- Footer dell'Ecosistema DKP -->
     <AppFooter />
   </div>
 </template>
@@ -20,9 +21,11 @@
   flex-direction: column;
   background-color: #020420;
   color: #f8fafc;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .main-content {
   flex: 1;
+  width: 100%;
 }
 </style>

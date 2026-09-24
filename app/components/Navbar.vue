@@ -6,14 +6,53 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 const { currentUser, isAuthenticated, logout, openAuthModal } = useAuthCore()
 const router = useRouter()
 
-// Riferimento al DOM per la chiusura dei dropdown al click esterno
+// DOM Ref per chiusura al click esterno
 const navbarRef = ref<HTMLElement | null>(null)
 
 // Stati dei Dropdown
 const isUserDropdownOpen = ref(false)
 const isDkpToolsOpen = ref(false)
 const isLangOpen = ref(false)
+
+// DKP Translator Pro (5 Lingue Ufficiali)
 const currentLang = ref('IT')
+const currentFlag = ref('🇮🇹')
+
+const languages = [
+  { code: 'IT', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'EN', label: 'English', flag: '🇬🇧' },
+  { code: 'ES', label: 'Español', flag: '🇪🇸' },
+  { code: 'FR', label: 'Français', flag: '🇫🇷' },
+  { code: 'DE', label: 'Deutsch', flag: '🇩🇪' }
+]
+
+// 4 DKP Tools v2.0 con rotte dedicate esatte
+const dkpTools = [
+  {
+    name: 'Neural Playground',
+    description: 'Testing Prompt e Modelli IA',
+    icon: '🧠',
+    route: '/tools/neural-playground'
+  },
+  {
+    name: 'Terminal Web Shell',
+    description: 'Shell CLI In-Browser e SDK',
+    icon: '💻',
+    route: '/tools/terminal'
+  },
+  {
+    name: 'AI Code Scanner v2',
+    description: 'Audit & Analisi Vulnerabilità IA',
+    icon: '🔍',
+    route: '/tools/ai-scanner'
+  },
+  {
+    name: 'Proof of Code (Vault)',
+    description: 'Notarizzazione e Hash Crittografico',
+    icon: '🛡️',
+    route: '/tools/proof-of-code'
+  }
+]
 
 // Controllo ruoli per accedere al Pannello Admin
 const isAdmin = computed(() => {
@@ -23,7 +62,7 @@ const isAdmin = computed(() => {
   return username === 'alexdpl' || role === 'admin'
 })
 
-// Toggle Gestione Dropdown
+// Gestione Dropdowns
 function toggleUserDropdown() {
   isUserDropdownOpen.value = !isUserDropdownOpen.value
   isDkpToolsOpen.value = false
@@ -48,12 +87,15 @@ function closeAllDropdowns() {
   isLangOpen.value = false
 }
 
-function selectLang(lang: string) {
-  currentLang.value = lang
+function selectLang(lang: { code: string; label: string; flag: string }) {
+  currentLang.value = lang.code
+  currentFlag.value = lang.flag
   isLangOpen.value = false
+  if (import.meta.client) {
+    localStorage.setItem('dkp_lang', lang.code)
+  }
 }
 
-// Chiusura al click fuori dal menu
 function handleClickOutside(event: MouseEvent) {
   if (navbarRef.value && !navbarRef.value.contains(event.target as Node)) {
     closeAllDropdowns()
@@ -62,23 +104,31 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  if (import.meta.client) {
+    const saved = localStorage.getItem('dkp_lang')
+    if (saved) {
+      const found = languages.find(l => l.code === saved)
+      if (found) {
+        currentLang.value = found.code
+        currentFlag.value = found.flag
+      }
+    }
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// Azione di Login / Apertura Modal
 function handleLogin() {
   closeAllDropdowns()
   if (typeof openAuthModal === 'function') {
     openAuthModal()
   } else {
-    router.push('/?auth=login')
+    router.push('/login')
   }
 }
 
-// Azione Logout
 async function handleLogout() {
   closeAllDropdowns()
   await logout()
@@ -99,7 +149,7 @@ async function handleLogout() {
         <span class="version-tag">v1.0</span>
       </div>
 
-      <!-- NAVIGAZIONE PRINCIPALE STILE DEVKERNEL (CON SLASH) -->
+      <!-- NAVIGAZIONE PRINCIPALE CON SLASH -->
       <nav class="nav-links">
         <NuxtLink to="/feed">news</NuxtLink>
         <span class="slash">/</span>
@@ -116,7 +166,7 @@ async function handleLogout() {
         <NuxtLink to="/submit" class="submit-highlight">submit</NuxtLink>
         <span class="slash">/</span>
 
-        <!-- DROPDOWN DKP TOOLS -->
+        <!-- DROPDOWN DKP TOOLS V2.0 (I 4 TOOLS CON ROTTE ESATTE) -->
         <div class="dropdown-wrapper">
           <button @click="toggleDkpTools" class="tools-btn" :class="{ active: isDkpToolsOpen }">
             🛠️ DKP Tools <span class="arrow">▼</span>
@@ -124,27 +174,17 @@ async function handleLogout() {
           
           <Transition name="fade-slide">
             <div v-if="isDkpToolsOpen" class="menu-dropdown tools-menu">
-              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
-                <span class="icon">⚡</span>
+              <NuxtLink 
+                v-for="tool in dkpTools" 
+                :key="tool.route" 
+                :to="tool.route" 
+                class="menu-item" 
+                @click="closeAllDropdowns"
+              >
+                <span class="icon">{{ tool.icon }}</span>
                 <div class="item-text">
-                  <strong>Proof of Code (PoC)</strong>
-                  <small>Verifica e notarizzazione script</small>
-                </div>
-              </NuxtLink>
-              
-              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
-                <span class="icon">🛡️</span>
-                <div class="item-text">
-                  <strong>AI Security Scanner</strong>
-                  <small>Audit vulnerabilità codice</small>
-                </div>
-              </NuxtLink>
-              
-              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
-                <span class="icon">💻</span>
-                <div class="item-text">
-                  <strong>Code Playground</strong>
-                  <small>Ambiente di test protetto</small>
+                  <strong>{{ tool.name }}</strong>
+                  <small>{{ tool.description }}</small>
                 </div>
               </NuxtLink>
             </div>
@@ -152,18 +192,25 @@ async function handleLogout() {
         </div>
       </nav>
 
-      <!-- SEZIONE DESTRA: LINGUA, GITHUB, AUTH / PROFILE -->
+      <!-- SEZIONE DESTRA: TRANSLATOR (5 LINGUE), GITHUB, AUTH / PROFILE -->
       <div class="right-actions">
         
-        <!-- SELETTORE LINGUA -->
+        <!-- SELETTORE LINGUA (DKP TRANSLATOR) -->
         <div class="dropdown-wrapper">
-          <button @click="toggleLang" class="lang-btn">
-            🌐 {{ currentLang }} <span class="arrow">▼</span>
+          <button @click="toggleLang" class="lang-btn" :class="{ active: isLangOpen }">
+            🌐 {{ currentFlag }} {{ currentLang }} <span class="arrow">▼</span>
           </button>
           <Transition name="fade-slide">
             <div v-if="isLangOpen" class="menu-dropdown lang-menu">
-              <button @click="selectLang('IT')" class="menu-item lang-item" :class="{ selected: currentLang === 'IT' }">🇮🇹 IT - Italiano</button>
-              <button @click="selectLang('EN')" class="menu-item lang-item" :class="{ selected: currentLang === 'EN' }">🇬🇧 EN - English</button>
+              <button 
+                v-for="lang in languages" 
+                :key="lang.code" 
+                @click="selectLang(lang)" 
+                class="menu-item lang-item" 
+                :class="{ selected: currentLang === lang.code }"
+              >
+                <span class="flag">{{ lang.flag }}</span> {{ lang.code }} - {{ lang.label }}
+              </button>
             </div>
           </Transition>
         </div>
@@ -173,12 +220,12 @@ async function handleLogout() {
           GitHub ↗
         </a>
 
-        <!-- AREA UTENTE: UTENTE NON LOGGATO -->
+        <!-- AREA UTENTE NON LOGGATO -->
         <button v-if="!isAuthenticated" @click="handleLogin" class="btn-accedi">
           Accedi
         </button>
 
-        <!-- AREA UTENTE: UTENTE LOGGATO (PILLOLA + DROPDOWN PROFILO) -->
+        <!-- AREA UTENTE LOGGATO (PILLOLA + DROPDOWN PROFILO) -->
         <div v-else class="dropdown-wrapper">
           <button @click="toggleUserDropdown" class="user-pill-btn" :class="{ active: isUserDropdownOpen }">
             <div class="pill-avatar">
@@ -203,11 +250,11 @@ async function handleLogout() {
                 <span>📊</span> Dashboard Personale
               </NuxtLink>
 
-              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
+              <NuxtLink to="/user/dashboard?tab=vault" class="menu-item" @click="closeAllDropdowns">
                 <span>🛡️</span> I Miei Certificati Vault
               </NuxtLink>
 
-              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
+              <NuxtLink to="/user/dashboard?tab=profile" class="menu-item" @click="closeAllDropdowns">
                 <span>⚙️</span> Impostazioni Account
               </NuxtLink>
 
@@ -381,10 +428,13 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  transition: border-color 0.15s ease;
 }
 
-.lang-btn:hover {
-  border-color: #38bdf8;
+.lang-btn:hover,
+.lang-btn.active {
+  border-color: #00dc82;
+  color: #ffffff;
 }
 
 .github-link {
@@ -480,12 +530,12 @@ async function handleLogout() {
 
 .tools-menu {
   left: 0;
-  width: 260px;
+  width: 270px;
 }
 
 .lang-menu {
   right: 0;
-  width: 140px;
+  width: 170px;
 }
 
 .profile-menu {
@@ -521,7 +571,7 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   color: #cbd5e1;
   text-decoration: none;
   font-size: 0.85rem;
@@ -539,9 +589,15 @@ async function handleLogout() {
   color: #38bdf8;
 }
 
+.lang-item {
+  font-size: 0.8rem;
+  padding: 0.45rem 0.65rem;
+}
+
 .lang-item.selected {
   color: #00dc82;
-  font-weight: 700;
+  font-weight: 800;
+  background: rgba(0, 220, 130, 0.1);
 }
 
 .item-text strong {
