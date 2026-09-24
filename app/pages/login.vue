@@ -3,75 +3,70 @@
 import { ref } from 'vue'
 
 const username = ref('alexdpl')
-const password = ref('dk35%42Pfk$3rwQ323K')
-const loading = ref(false)
+const password = ref('')
 const errorMessage = ref('')
-const router = useRouter()
-
-// Cookie persistenti di Nuxt sincronizzati con la Navbar
-const isLoggedIn = useCookie('dkp_logged_in', { default: () => false })
-const currentUser = useCookie('dkp_user', { default: () => '' })
 
 async function handleLogin() {
-  loading.value = true
-  errorMessage.value = ''
   try {
-    const res: any = await $fetch('/api/auth/login', {
+    const res = await $fetch('/api/auth/login', {
       method: 'POST',
       body: { username: username.value, password: password.value }
-    })
-    if (res.success) {
-      // Salviamo lo stato nei cookie persistenti di Nuxt
-      isLoggedIn.value = true
-      currentUser.value = res.username || username.value
+    }) as any
 
-      // Reindirizzamento al profilo utente
-      router.push(`/user/${currentUser.value}`)
+    if (res && res.success) {
+      window.location.href = '/'
     } else {
-      errorMessage.value = res.error || 'Errore durante il login'
+      errorMessage.value = res?.message || 'Credenziali non valide.'
     }
-  } catch (err: any) {
-    errorMessage.value = 'Errore di connessione al server'
-  } finally {
-    loading.value = false
+  } catch (e: any) {
+    errorMessage.value = e?.data?.message || 'Errore durante l autenticazione.'
   }
 }
-
-useSeoMeta({
-  title: 'Login - DevKernelPulse',
-  description: 'Accedi al tuo account DevKernelPulse.'
-})
 </script>
 
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2>Accedi a <span class="brand">DevKernelPulse</span></h2>
+      <h1>Accedi a <span class="brand-badge">DevKernelPulse</span></h1>
       <p class="subtitle">Inserisci le credenziali o usa i provider social per entrare al volo.</p>
+
+      <div v-if="errorMessage" class="error-banner">
+        {{ errorMessage }}
+      </div>
 
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label>Username</label>
-          <input v-model="username" type="text" required class="form-input" placeholder="es. alexdpl" />
+          <label for="username">Username</label>
+          <input id="username" v-model="username" type="text" placeholder="alexdpl" required />
         </div>
+
         <div class="form-group">
-          <label>Password</label>
-          <input v-model="password" type="password" required class="form-input" placeholder="••••••••" />
+          <label for="password">Password</label>
+          <input id="password" v-model="password" type="password" placeholder="••••••••••••••••" required />
         </div>
 
-        <div v-if="errorMessage" class="error-msg">{{ errorMessage }}</div>
-
-        <button type="submit" :disabled="loading" class="login-btn">
-          {{ loading ? 'Accesso in corso...' : 'Entra' }}
-        </button>
+        <button type="submit" class="submit-btn">Entra</button>
       </form>
 
-      <!-- Sezione Social Login Integrata -->
-       <div class="social-login-grid">
-         <button class="social-btn github-btn">🐙 Continua con GitHub</button>
-         <button class="social-btn google-btn">🌐 Continua con Google</button>
-         <button class="social-btn linkedin-btn">💼 Continua con LinkedIn</button>
-         <button class="social-btn gitlab-btn">🦊 Continua con GitLab</button>
+      <!-- Divisore Sezione Social -->
+      <div class="divider">
+        <span>OPPURE CONTINUA CON</span>
+      </div>
+
+      <!-- Griglia Social Provider 2x2 -->
+      <div class="social-grid">
+        <a href="/api/auth/github" class="social-btn github-btn">
+          <span>🐙</span> GitHub
+        </a>
+        <a href="/api/auth/google" class="social-btn google-btn">
+          <span>🌐</span> Google
+        </a>
+        <a href="/api/auth/gitlab" class="social-btn gitlab-btn">
+          <span>🦊</span> GitLab
+        </a>
+        <a href="/api/auth/linkedin" class="social-btn linkedin-btn">
+          <span>💼</span> LinkedIn
+        </a>
       </div>
     </div>
   </div>
@@ -82,140 +77,183 @@ useSeoMeta({
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  min-height: calc(80vh - 60px);
+  padding: 2rem 1rem;
 }
 
 .login-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 2rem;
+  border-radius: 12px;
+  padding: 2.5rem;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  max-width: 480px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  text-align: center;
 }
 
-.login-card h2 {
-  color: #020420;
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
+.login-card h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
 }
 
-.brand {
-  color: #00dc82;
+.brand-badge {
   background: #020420;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
+  color: #00dc82;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 1.5rem;
 }
 
 .subtitle {
   color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 1.75rem;
+  line-height: 1.4;
+}
+
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 6px;
   font-size: 0.85rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  gap: 1.25rem;
+  text-align: left;
 }
 
 .form-group label {
-  font-size: 0.8rem;
+  display: block;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #334155;
+  margin-bottom: 0.4rem;
 }
 
-.form-input {
-  padding: 0.6rem;
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.95rem;
-  color: #020420;
+  outline: none;
+  box-sizing: border-box;
 }
 
-.form-input:focus {
-  outline: none;
+.form-group input:focus {
   border-color: #00dc82;
 }
 
-.error-msg {
-  color: #ef4444;
-  font-size: 0.85rem;
-}
-
-.login-btn {
+.submit-btn {
+  width: 100%;
   background: #020420;
   color: #00dc82;
-  border: none;
-  padding: 0.7rem;
-  border-radius: 6px;
   font-weight: 700;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
   cursor: pointer;
-  transition: opacity 0.2s;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
 }
 
-.login-btn:hover {
-  opacity: 0.9;
+.submit-btn:hover {
+  background: #0f172a;
 }
 
-/* Stili Social Login */
-.social-login-container {
-  margin-top: 1.5rem;
-}
-
-.social-divider {
-  border-bottom: 1px solid #e2e8f0;
-  line-height: 0.1em;
-  margin: 1.5rem 0 1rem 0;
+.divider {
+  position: relative;
+  margin: 2rem 0 1.5rem 0;
   text-align: center;
 }
 
-.social-divider span {
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+
+.divider span {
+  position: relative;
+  z-index: 2;
   background: #ffffff;
-  padding: 0 10px;
-  color: #64748b;
+  padding: 0 0.75rem;
   font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 700;
+  color: #94a3b8;
   letter-spacing: 0.05em;
 }
 
-.social-buttons {
-  display: flex;
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
 }
 
 .social-btn {
-  flex: 1;
-  padding: 0.6rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s;
-  border: 1px solid #cbd5e1;
-  color: #020420;
-  background: #f8fafc;
+  gap: 0.5rem;
+  padding: 0.7rem 0.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
-.social-btn:hover {
-  opacity: 0.85;
-}
-
-.social-btn.github {
+.github-btn {
   background: #020420;
   color: #00dc82;
   border-color: #020420;
+}
+
+.github-btn:hover {
+  background: #0f172a;
+}
+
+.google-btn {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.google-btn:hover {
+  background: #f1f5f9;
+}
+
+.gitlab-btn {
+  background: #fc6d26;
+  color: #ffffff;
+}
+
+.gitlab-btn:hover {
+  opacity: 0.9;
+}
+
+.linkedin-btn {
+  background: #0a66c2;
+  color: #ffffff;
+}
+
+.linkedin-btn:hover {
+  opacity: 0.9;
 }
 </style>

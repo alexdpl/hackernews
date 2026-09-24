@@ -1,27 +1,16 @@
 <!-- app/components/Navbar.vue -->
 <script setup lang="ts">
-// Sincronizzato con la nuova API di autenticazione sicura e senza cache SSR
 const { data: authData, refresh: refreshAuth } = await useFetch('/api/auth/me', {
-  key: 'auth-me-navbar',
+  key: 'auth-me-navbar-v2',
   getCachedData: () => null
 })
 const router = useRouter()
 
-const isAuthenticated = computed(() => {
-  const data = authData.value as any
-  return Boolean(data && data.authenticated === true)
-})
-
-const username = computed(() => {
-  const data = authData.value as any
-  return data?.username || ''
-})
-
-// Controllo blindato dell'Admin anche nel Navbar
+const isAuthenticated = computed(() => Boolean((authData.value as any)?.authenticated))
+const username = computed(() => (authData.value as any)?.username || '')
 const isAdmin = computed(() => {
   const data = authData.value as any
-  if (!data || !data.authenticated) return false
-  return data.username === 'alexdpl' || data.role === 'admin'
+  return data && data.authenticated && (data.username === 'alexdpl' || data.role === 'admin')
 })
 
 async function handleLogout() {
@@ -32,153 +21,88 @@ async function handleLogout() {
 </script>
 
 <template>
-  <header class="navbar-header">
+  <header class="dkp-navbar">
     <div class="navbar-container">
-      <!-- Logo e Titolo -->
-      <NuxtLink to="/" class="brand">
-        <span class="logo">DK</span>
-        <span class="brand-title">DevKernelPulse</span>
+      
+      <!-- Brand -->
+      <NuxtLink to="/" class="brand-logo">
+        <span class="logo-box">DK</span>
+        <span class="brand-text">DevKernel<span class="highlight">Pulse</span></span>
       </NuxtLink>
 
-      <!-- Menu di Navigazione Principale -->
-      <nav class="nav-links">
-        <NuxtLink to="/news" class="nav-link" active-class="active">news</NuxtLink>
-        <span class="separator">|</span>
-        <NuxtLink to="/newest" class="nav-link" active-class="active">newest</NuxtLink>
-        <span class="separator">|</span>
-        <NuxtLink to="/ask" class="nav-link" active-class="active">ask</NuxtLink>
-        <span class="separator">|</span>
-        <NuxtLink to="/show" class="nav-link" active-class="active">show</NuxtLink>
-        <span class="separator">|</span>
-        <NuxtLink to="/jobs" class="nav-link" active-class="active">jobs</NuxtLink>
-        <span class="separator">|</span>
-        <NuxtLink to="/submit" class="nav-link submit-link" active-class="active">submit</NuxtLink>
-        
-        <!-- LINK ADMIN PROTETTO: Visibile SOLO all'admin autenticato -->
+      <!-- Menu Principale & Tools Suite -->
+      <nav class="nav-menu">
+        <NuxtLink to="/news" class="nav-item">news</NuxtLink>
+        <span class="divider">/</span>
+        <NuxtLink to="/ask" class="nav-item">ask</NuxtLink>
+        <span class="divider">/</span>
+        <NuxtLink to="/show" class="nav-item">show</NuxtLink>
+        <span class="divider">/</span>
+        <NuxtLink to="/jobs" class="nav-item">jobs</NuxtLink>
+        <span class="divider">/</span>
+        <NuxtLink to="/submit" class="nav-item submit-highlight">submit</NuxtLink>
+
+        <span class="divider">/</span>
+        <!-- Dropdown / Gruppo Tools Suite -->
+        <div class="dropdown">
+          <span class="nav-item tools-dropdown-toggle">🛠️ DKP Tools ▼</span>
+          <div class="dropdown-menu">
+            <NuxtLink to="/tools/proof-of-code" class="dropdown-item">🛡️ Proof of Code (Vault)</NuxtLink>
+            <NuxtLink to="/tools/ai-scanner" class="dropdown-item">🔍 AI Code Scanner v2</NuxtLink>
+            <NuxtLink to="/tools/terminal" class="dropdown-item">💻 Terminal Web Shell</NuxtLink>
+            <NuxtLink to="/tools/neural-playground" class="dropdown-item">🧠 Neural Playground</NuxtLink>
+          </div>
+        </div>
+
+        <!-- Admin Link Condizionale -->
         <template v-if="isAdmin">
-          <span class="separator">|</span>
-          <NuxtLink to="/admin" class="nav-link admin-link">admin</NuxtLink>
+          <span class="divider">/</span>
+          <NuxtLink to="/admin" class="nav-item admin-badge">admin</NuxtLink>
         </template>
       </nav>
 
-      <!-- Sezione Autenticazione & User Panel Predisposto -->
-      <div class="nav-auth">
-        <span class="separator">|</span>
+      <!-- Auth & Shop Slot -->
+      <div class="nav-auth-slot">
         <template v-if="isAuthenticated">
-          <!-- Predisposto per il futuro Pannello Utente (Fase 4) -->
-          <NuxtLink :to="`/user/${username}`" class="nav-link active-user">@{{ username }}</NuxtLink>
-          <span class="separator">|</span>
-          <button @click="handleLogout" class="logout-btn">logout</button>
+          <NuxtLink :to="`/user/${username}`" class="user-pill">👤 @{{ username }}</NuxtLink>
+          <button @click="handleLogout" class="logout-btn">esci</button>
         </template>
         <template v-else>
-          <NuxtLink to="/login" class="nav-link" active-class="active">login</NuxtLink>
+          <NuxtLink to="/login" class="login-btn">Accedi</NuxtLink>
         </template>
       </div>
+
     </div>
   </header>
 </template>
 
 <style scoped>
-.navbar-header {
-  background-color: #020420;
-  border-bottom: 2px solid #00dc82;
-  padding: 8px 12px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
+.dkp-navbar { background-color: #020420; border-bottom: 2px solid #00dc82; padding: 0.75rem 1.25rem; font-family: ui-sans-serif, system-ui, sans-serif; position: relative; z-index: 100; }
+.navbar-container { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.brand-logo { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+.logo-box { background: #00dc82; color: #020420; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.9rem; }
+.brand-text { color: #ffffff; font-weight: 700; font-size: 1.05rem; }
+.brand-text .highlight { color: #00dc82; }
 
-.navbar-container {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+.nav-menu { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+.nav-item { color: #cbd5e1; text-decoration: none; font-weight: 500; transition: color 0.2s; cursor: pointer; }
+.nav-item:hover, .nav-item.router-link-active { color: #00dc82; }
+.submit-highlight { color: #00dc82 !important; font-weight: 600; }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  font-weight: bold;
-}
+/* Dropdown Tools */
+.dropdown { position: relative; display: inline-block; }
+.tools-dropdown-toggle { color: #38bdf8 !important; font-weight: 600; }
+.dropdown-menu { display: none; position: absolute; background-color: #090d16; min-width: 210px; box-shadow: 0px 8px 16px rgba(0,0,0,0.4); border: 1px solid #1e293b; border-radius: 8px; z-index: 1; padding: 0.5rem 0; top: 100%; left: 0; }
+.dropdown:hover .dropdown-menu { display: block; }
+.dropdown-item { color: #cbd5e1; padding: 0.5rem 1rem; text-decoration: none; display: block; font-size: 0.85rem; }
+.dropdown-item:hover { background: rgba(0, 220, 130, 0.1); color: #00dc82; }
 
-.logo {
-  background: #00dc82;
-  color: #020420;
-  font-weight: bold;
-  padding: 2px 6px;
-  font-size: 0.85rem;
-  border-radius: 4px;
-  line-height: 1;
-}
-
-.brand-title {
-  font-size: 1rem;
-  color: #ffffff;
-  font-weight: 700;
-}
-
-.nav-links, .nav-auth {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-.nav-link {
-  color: #cbd5e1;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.nav-link:hover {
-  color: #00dc82;
-}
-
-.nav-link.active, .active-user {
-  color: #00dc82;
-  font-weight: bold;
-}
-
-.submit-link {
-  color: #00dc82 !important;
-  font-weight: 600;
-}
-
-/* Stile distintivo per il link Admin protetto */
-.admin-link {
-  color: #f59e0b !important;
-  font-weight: 700 !important;
-  background: rgba(245, 158, 11, 0.1);
-  padding: 1px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.admin-link:hover {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24 !important;
-}
-
-.separator {
-  color: #334155;
-  font-size: 0.8rem;
-}
-
-.logout-btn {
-  background: none;
-  border: none;
-  color: #ef4444;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0;
-}
-
-.logout-btn:hover {
-  text-decoration: underline;
-}
+.admin-badge { color: #fbbf24 !important; background: rgba(245, 158, 11, 0.15); padding: 0.15rem 0.5rem; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700 !important; }
+.divider { color: #334155; font-size: 0.85rem; }
+.nav-auth-slot { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; }
+.user-pill { color: #00dc82; background: rgba(0, 220, 130, 0.1); padding: 0.25rem 0.6rem; border-radius: 6px; text-decoration: none; font-weight: 600; border: 1px solid rgba(0, 220, 130, 0.3); }
+.logout-btn { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer; font-weight: 600; }
+.logout-btn:hover { background: #ef4444; color: #ffffff; }
+.login-btn { background: #00dc82; color: #020420; padding: 0.4rem 0.9rem; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 0.85rem; }
+.login-btn:hover { opacity: 0.9; }
 </style>
