@@ -1,7 +1,7 @@
-<!-- app/pages/admin/settings.vue -->
+<!-- app/pages/settings.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAdminSettings } from '~/composables/useAdminSettings'
+// NOTA: useAdminSettings è auto-importato da Nuxt, zero import manuali!
 
 const { settings, updateSettings } = useAdminSettings()
 
