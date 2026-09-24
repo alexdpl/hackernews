@@ -67,19 +67,11 @@ useSeoMeta({
       </form>
 
       <!-- Sezione Social Login Integrata -->
-      <div class="social-login-container">
-        <div class="social-divider">
-          <span>oppure continua con</span>
-        </div>
-        
-        <div class="social-buttons">
-          <a href="/auth/github" class="social-btn github">
-            <span>🐙 GitHub</span>
-          </a>
-          <a href="/auth/google" class="social-btn google">
-            <span>🌐 Google</span>
-          </a>
-        </div>
+       <div class="social-login-grid">
+         <button class="social-btn github-btn">🐙 Continua con GitHub</button>
+         <button class="social-btn google-btn">🌐 Continua con Google</button>
+         <button class="social-btn linkedin-btn">💼 Continua con LinkedIn</button>
+         <button class="social-btn gitlab-btn">🦊 Continua con GitLab</button>
       </div>
     </div>
   </div>
