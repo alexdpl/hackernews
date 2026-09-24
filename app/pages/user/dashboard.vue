@@ -1,15 +1,14 @@
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 
-// Integrazione Auth Core
+// Integrazione Auth Core & Routing Nuxt
 const { currentUser, isAuthenticated } = useAuthCore()
 const router = useRouter()
 
-// Controllo Accesso / Protezione Rotta
+// Controllo Accesso / Protezione Rotta Client-Side
 onMounted(() => {
   if (!isAuthenticated.value) {
-    // Se l'utente non è loggato, reindirizza alla home o al login
     router.push('/')
   }
 })
@@ -19,12 +18,20 @@ const activeTab = ref<'profile' | 'activity' | 'vault' | 'tokens'>('profile')
 
 // --- TAB 1: PROFILO DEVELOPER ---
 const profileForm = reactive({
-  avatarUrl: currentUser.value?.avatar || '',
-  bio: currentUser.value?.bio || 'Sviluppatore Full-Stack e contributor dell\'ecosistema DevKernelPulse.',
+  avatarUrl: '',
+  bio: 'Sviluppatore Full-Stack e contributor dell\'ecosistema DevKernelPulse.',
   github: 'https://github.com/alexdpl',
   twitter: 'https://x.com/alexdpl',
   linkedin: 'https://linkedin.com/in/alexdpl'
 })
+
+// Sincronizza il form appena l'utente autenticato è disponibile
+watch(currentUser, (newUser) => {
+  if (newUser) {
+    profileForm.avatarUrl = newUser.avatar || ''
+    if (newUser.bio) profileForm.bio = newUser.bio
+  }
+}, { immediate: true })
 
 const isSavingProfile = ref(false)
 const profileSavedSuccess = ref(false)
@@ -49,18 +56,15 @@ const userSubmissions = ref([
 
 const filteredSubmissions = computed(() => {
   if (activityFilter.value === 'all') return userSubmissions.value
-  if (activityFilter.value === 'submissions') return userSubmissions.value.filter(item => item.type === 'submission')
-  if (activityFilter.value === 'comments') return userSubmissions.value.filter(item => item.type === 'comment')
-  if (activityFilter.value === 'show') return userSubmissions.value.filter(item => item.type === 'show')
-  return userSubmissions.value
+  return userSubmissions.value.filter(item => item.type === activityFilter.value)
 })
 
 // --- TAB 3: VAULT PERSONALE DKP TOOLS ---
 const vaultCategory = ref<'poc' | 'scanner' | 'snippets'>('poc')
 
 const pocCertificates = ref([
-  { id: 'poc-98421', repo: 'alexdpl/devkernel-pulse', hash: '0x8f3a...b19c', badge: '🌱 Script Kiddie', date: '2026-09-20' },
-  { id: 'poc-98499', repo: 'alexdpl/nitro-auth-plugin', hash: '0x4d12...a90f', badge: '⚡ Code Ninja', date: '2026-09-22' }
+  { id: 'poc-98421', repo: 'alexdpl/devkernel-pulse', hash: '0x8f3a9b1c83d12f42a9b', badge: '🌱 Script Kiddie', date: '2026-09-20' },
+  { id: 'poc-98499', repo: 'alexdpl/nitro-auth-plugin', hash: '0x4d12a90fe3b28104c32', badge: '⚡ Code Ninja', date: '2026-09-22' }
 ])
 
 const scannerAudits = ref([
@@ -102,9 +106,15 @@ function revokeApiKey(id: string) {
   apiKeys.value = apiKeys.value.filter(k => k.id !== id)
 }
 
-function copyToClipboard(text: string) {
+// System Feedback per il Clipboard
+const copiedTarget = ref<string | null>(null)
+
+function copyToClipboard(text: string, identifier: string = 'global') {
   navigator.clipboard.writeText(text)
-  alert('Copiato negli appunti!')
+  copiedTarget.value = identifier
+  setTimeout(() => {
+    copiedTarget.value = null
+  }, 2000)
 }
 </script>
 
@@ -262,8 +272,10 @@ function copyToClipboard(text: string) {
             </div>
             <h4>{{ poc.repo }}</h4>
             <div class="hash-row">
-              <code>Hash: {{ poc.hash }}</code>
-              <button @click="copyToClipboard(poc.hash)" class="copy-small-btn">Copia</button>
+              <code>Hash: {{ poc.hash.substring(0, 10) }}...</code>
+              <button @click="copyToClipboard(poc.hash, poc.id)" class="copy-small-btn">
+                {{ copiedTarget === poc.id ? 'Copiato!' : 'Copia Hash' }}
+              </button>
             </div>
           </div>
         </div>
@@ -304,7 +316,7 @@ function copyToClipboard(text: string) {
         <div class="key-generator-box">
           <h3>Genera Nuova Chiave API</h3>
           <div class="gen-input-group">
-            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. Local CLI Scanner)" class="dkp-input" />
+            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. Local CLI Scanner)" class="dkp-input" @keyup.enter="generateNewApiKey" />
             <button @click="generateNewApiKey" class="gen-btn">Genera Key</button>
           </div>
         </div>
@@ -315,7 +327,9 @@ function copyToClipboard(text: string) {
             <h4>⚠️ Salva la tua chiave API adesso! Non verrà più mostrata.</h4>
             <div class="full-token-box">
               <code>{{ generatedKeyModal }}</code>
-              <button @click="copyToClipboard(generatedKeyModal)" class="copy-btn">Copia Token</button>
+              <button @click="copyToClipboard(generatedKeyModal, 'modal-token')" class="copy-btn">
+                {{ copiedTarget === 'modal-token' ? 'Copiato!' : 'Copia Token' }}
+              </button>
             </div>
             <button @click="generatedKeyModal = null" class="close-alert-btn">Ho salvato la chiave</button>
           </div>
@@ -763,8 +777,8 @@ function copyToClipboard(text: string) {
   margin-bottom: 1rem;
 }
 
-.full-token-box code { color: #00dc82; font-size: 0.85rem; font-weight: 700; }
-.copy-btn { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.3rem 0.75rem; border-radius: 4px; cursor: pointer; }
+.full-token-box code { color: #00dc82; font-size: 0.85rem; font-weight: 700; word-break: break-all; }
+.copy-btn { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.3rem 0.75rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 
 .close-alert-btn {
   background: transparent;
