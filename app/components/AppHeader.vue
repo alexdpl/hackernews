@@ -6,6 +6,11 @@ const router = useRouter()
 const isAuthenticated = computed(() => authData.value?.authenticated)
 const username = computed(() => authData.value?.username)
 
+// Controllo blindato dell'Admin: visibile solo se autenticato ed è l'admin (alexdpl o ruolo admin)
+const isAdmin = computed(() => {
+  return isAuthenticated.value && (username.value === 'alexdpl' || (authData.value as any)?.role === 'admin')
+})
+
 async function handleLogout() {
   await $fetch('/api/auth/logout', { method: 'POST' })
   await refreshAuth()
@@ -35,6 +40,9 @@ async function handleLogout() {
           <NuxtLink to="/show">Show</NuxtLink>
           <NuxtLink to="/jobs">Jobs</NuxtLink>
           <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
+          
+          <!-- LINK ADMIN PROTETTO: Appare SOLO all'admin loggato -->
+          <NuxtLink v-if="isAdmin" to="/admin" class="admin-link">Admin</NuxtLink>
         </nav>
       </div>
 
@@ -127,6 +135,21 @@ async function handleLogout() {
 .submit-link {
   color: #00dc82 !important;
   font-weight: 600 !important;
+}
+
+/* Stile distintivo per il link Admin protetto */
+.admin-link {
+  color: #f59e0b !important;
+  font-weight: 700 !important;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-link:hover {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24 !important;
 }
 
 .nav-right {
