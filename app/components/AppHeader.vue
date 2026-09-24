@@ -1,222 +1,277 @@
-<!-- app/components/Header.vue -->
+<!-- app/components/AppHeader.vue -->
 <script setup lang="ts">
-// Forziamo il fetch a non usare la cache SSR per l'autenticazione
-const { data: authData, refresh: refreshAuth } = await useFetch('/api/auth/me', {
-  key: 'auth-me-header',
-  getCachedData: () => null // Evita il caching della sessione nell'HTML statico
-})
-const router = useRouter()
+// Integrazione reattiva con DKP Auth Core
+const { isAuthenticated, currentUser, isAdmin, logout } = useAuthCore()
 
-// Validazione esplicita e booleana dello stato di autenticazione
-const isAuthenticated = computed(() => {
-  const data = authData.value as any
-  return Boolean(data && data.authenticated === true)
+// Inizializziamo la sessione all'avvio
+onMounted(async () => {
+  const { fetchSession } = useAuthCore()
+  await fetchSession()
 })
-
-const username = computed(() => {
-  const data = authData.value as any
-  return data?.username || ''
-})
-
-// Controllo blindato dell'Admin: richiede autenticazione reale E username/ruolo esatti
-const isAdmin = computed(() => {
-  const data = authData.value as any
-  if (!data || !data.authenticated) return false
-  return data.username === 'alexdpl' || data.role === 'admin'
-})
-
-async function handleLogout() {
-  await $fetch('/api/auth/logout', { method: 'POST' })
-  await refreshAuth()
-  router.push('/')
-}
 </script>
 
 <template>
-  <header class="header">
-    <div class="header-content">
-      <div class="nav-left">
-        <NuxtLink to="/" class="logo">
-          <!-- Logo SVG Unico: Terminale + Pulse Wave -->
-          <svg class="brand-logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="36" height="36" rx="8" fill="#00dc82"/>
-            <path d="M10 13L5 18L10 23" stroke="#020420" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M26 13L31 18L26 23" stroke="#020420" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M15 22L18 14L21 22" stroke="#020420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span class="logo-title">DevKernel<span class="highlight">Pulse</span></span>
-        </NuxtLink>
-        
-        <nav class="nav-links">
-          <NuxtLink to="/news">News</NuxtLink>
-          <NuxtLink to="/newest">Newest</NuxtLink>
-          <NuxtLink to="/ask">Ask</NuxtLink>
-          <NuxtLink to="/show">Show</NuxtLink>
-          <NuxtLink to="/jobs">Jobs</NuxtLink>
-          <NuxtLink to="/submit" class="submit-link">Invia Link</NuxtLink>
-          
-          <!-- LINK ADMIN PROTETTO: Appare SOLO all'admin loggato realmente -->
-          <NuxtLink v-if="isAdmin" to="/admin" class="admin-link">Admin</NuxtLink>
-        </nav>
-      </div>
+  <header class="dkp-header">
+    <div class="header-container">
+      
+      <!-- Brand Logo -->
+      <NuxtLink to="/" class="brand">
+        <span class="logo-badge">DK</span>
+        <span class="brand-name">DevKernel<span class="highlight">Pulse</span></span>
+      </NuxtLink>
 
-      <div class="nav-right">
+      <!-- Navigazione Principale + Menu a Tendina DKP Tools -->
+      <nav class="nav-links">
+        <NuxtLink to="/news" class="nav-item">news</NuxtLink>
+        <span class="sep">/</span>
+        <NuxtLink to="/ask" class="nav-item">ask</NuxtLink>
+        <span class="sep">/</span>
+        <NuxtLink to="/show" class="nav-item">show</NuxtLink>
+        <span class="sep">/</span>
+        <NuxtLink to="/jobs" class="nav-item">jobs</NuxtLink>
+        <span class="sep">/</span>
+        <NuxtLink to="/submit" class="nav-item submit-btn-link">submit</NuxtLink>
+
+        <span class="sep">/</span>
+
+        <!-- Dropdown Menu DKP Tools v2.0 -->
+        <div class="tools-dropdown">
+          <button class="dropdown-trigger">
+            🛠️ DKP Tools <span class="arrow">▼</span>
+          </button>
+          <div class="dropdown-content">
+            <NuxtLink to="/tools/proof-of-code" class="dropdown-link">
+              🛡️ Proof of Code (Vault)
+            </NuxtLink>
+            <NuxtLink to="/tools/ai-scanner" class="dropdown-link">
+              🔍 AI Code Scanner v2
+            </NuxtLink>
+            <NuxtLink to="/tools/terminal" class="dropdown-link">
+              💻 Terminal Web Shell
+            </NuxtLink>
+            <NuxtLink to="/tools/neural-playground" class="dropdown-link">
+              🧠 Neural Playground
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Link Admin (Visibile SOLO per Admin via Auth Core) -->
+        <template v-if="isAdmin">
+          <span class="sep">/</span>
+          <NuxtLink to="/admin" class="nav-item admin-pill">⚙️ admin</NuxtLink>
+        </template>
+      </nav>
+
+      <!-- Sezione Autenticazione & Profilo Utente -->
+      <div class="auth-section">
         <template v-if="isAuthenticated">
-          <NuxtLink :to="`/user/${username}`" class="user-pill">
-            👤 {{ username }}
+          <NuxtLink :to="`/user/${currentUser?.username}`" class="user-badge">
+            👤 @{{ currentUser?.username }}
           </NuxtLink>
-          <button @click="handleLogout" class="logout-btn">Esci</button>
+          <button @click="logout" class="logout-link">esci</button>
         </template>
         <template v-else>
-          <NuxtLink to="/login" class="login-link">Login</NuxtLink>
+          <NuxtLink to="/login" class="login-cta">Accedi</NuxtLink>
         </template>
-        
-        <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="github-link">
-          Apri su GitHub <strong style="color: #50C878;">↗</strong>
-        </a>
       </div>
+
     </div>
   </header>
 </template>
 
 <style scoped>
-.header {
-  background: #020420;
+.dkp-header {
+  background-color: #020420;
   border-bottom: 2px solid #00dc82;
-  padding: 0.6rem 1rem;
+  padding: 0.75rem 1.25rem;
   font-family: ui-sans-serif, system-ui, sans-serif;
+  position: relative;
+  z-index: 1000; /* Assicura che il dropdown rimanga sempre sopra ogni elemento */
 }
 
-.header-content {
-  max-width: 1100px;
+.header-container {
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-.nav-left {
+.brand {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
   text-decoration: none;
 }
 
-.brand-logo-svg {
-  width: 32px;
-  height: 32px;
-  box-shadow: 0 2px 4px rgba(0, 220, 130, 0.2);
-  border-radius: 6px;
+.logo-badge {
+  background: #00dc82;
+  color: #020420;
+  font-weight: 800;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 
-.logo-title {
+.brand-name {
   color: #ffffff;
   font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: -0.01em;
+  font-size: 1.1rem;
 }
 
-.logo-title .highlight {
+.brand-name .highlight {
   color: #00dc82;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  font-size: 0.9rem;
 }
 
-.nav-links a {
+.nav-item {
   color: #cbd5e1;
   text-decoration: none;
-  font-size: 0.9rem;
   font-weight: 500;
   transition: color 0.2s;
 }
 
-.nav-links a:hover, .nav-links a.router-link-active {
+.nav-item:hover, .nav-item.router-link-active {
   color: #00dc82;
 }
 
-.submit-link {
+.submit-btn-link {
   color: #00dc82 !important;
-  font-weight: 600 !important;
+  font-weight: 700;
 }
 
-/* Stile distintivo per il link Admin protetto */
-.admin-link {
-  color: #f59e0b !important;
-  font-weight: 700 !important;
-  background: rgba(245, 158, 11, 0.1);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.sep {
+  color: #334155;
+  font-size: 0.85rem;
 }
 
-.admin-link:hover {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24 !important;
+/* --- Dropdown Style --- */
+.tools-dropdown {
+  position: relative;
+  display: inline-block;
 }
 
-.nav-right {
+.dropdown-trigger {
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.3rem;
+  font-family: inherit;
+  transition: color 0.2s;
+}
+
+.dropdown-trigger:hover {
+  color: #00dc82;
+}
+
+.arrow {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #090d16;
+  min-width: 220px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.5);
+  padding: 0.5rem 0;
+  z-index: 1001;
+  margin-top: 0.25rem;
+}
+
+/* Apertura al passaggio del mouse */
+.tools-dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.dropdown-link {
+  color: #cbd5e1;
+  padding: 0.6rem 1rem;
+  text-decoration: none;
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.dropdown-link:hover {
+  background-color: rgba(0, 220, 130, 0.12);
+  color: #00dc82;
+  padding-left: 1.25rem;
+}
+
+.admin-pill {
+  color: #fbbf24 !important;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-weight: 700 !important;
+}
+
+.auth-section {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
   font-size: 0.9rem;
 }
 
-.user-pill {
+.user-badge {
   color: #00dc82;
   background: rgba(0, 220, 130, 0.1);
-  padding: 0.25rem 0.65rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
   text-decoration: none;
   font-weight: 600;
   border: 1px solid rgba(0, 220, 130, 0.3);
 }
 
-.logout-btn {
+.logout-link {
   background: transparent;
   color: #ef4444;
   border: 1px solid #ef4444;
-  padding: 0.2rem 0.55rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
   font-size: 0.8rem;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s;
 }
 
-.logout-btn:hover {
+.logout-link:hover {
   background: #ef4444;
   color: #ffffff;
 }
 
-.login-link {
-  color: #00dc82;
+.login-cta {
+  background: #00dc82;
+  color: #020420;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
-.github-link {
-  color: #ffffff;
-  text-decoration: none;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  transition: color 0.2s;
-}
-
-.github-link:hover {
-  color: #00dc82;
+.login-cta:hover {
+  opacity: 0.9;
 }
 </style>
