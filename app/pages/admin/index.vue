@@ -1,212 +1,130 @@
 <!-- app/pages/admin/index.vue -->
 <script setup lang="ts">
-const { posts } = useBlog()
-const { settings } = useAdminSettings()
+definePageMeta({
+  layout: 'admin'
+})
+
+const { currentUser, isAdmin, fetchSession } = useAuthCore()
+
+onMounted(async () => {
+  await fetchSession()
+})
+
+const stats = ref({
+  totalNews: 142,
+  totalJobs: 18,
+  activeUsers: 89,
+  kernelStatus: 'ONLINE (GCP)'
+})
 </script>
 
 <template>
-  <div class="admin-container">
-    <div class="admin-header">
-      <span class="badge-tag">DKP Master Control Unit</span>
-      <h1>Admin Command Center</h1>
-      <p>Pannello di controllo unificato per la gestione totale dell'ecosistema DevKernelPulse.</p>
+  <div class="admin-dashboard">
+    <!-- Se non è ancora riconosciuto come admin -->
+    <div v-if="!isAdmin" class="unauthorized-box">
+      <h2>🔒 Accesso Riservato agli Amministratori DKP</h2>
+      <p>Devi effettuare il login con un account amministratore per accedere al Kernel Control Panel.</p>
+      <NuxtLink to="/login" class="login-btn">Accedi con il tuo Account Admin</NuxtLink>
     </div>
 
-    <!-- Metriche Rapide Globali -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <span class="metric-icon">📰</span>
-        <div class="metric-info">
-          <h3>{{ posts.length }}</h3>
-          <p>Articoli Blog Pubblicati</p>
+    <!-- Dashboard Admin completa quando loggato -->
+    <div v-else class="dashboard-content">
+      <div class="dashboard-header">
+        <h1>⚙️ DKP Admin Control Panel</h1>
+        <p class="subtitle">Benvenuto @{{ currentUser?.username || 'alexdpl' }}. Gestione globale dell'ecosistema DevKernelPulse.</p>
+      </div>
+
+      <!-- Griglia Metriche Admin -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">Notizie Pubblicate</span>
+          <span class="metric-value green">{{ stats.totalNews }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Offerte Job Attive</span>
+          <span class="metric-value blue">{{ stats.totalJobs }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Utenti Registrati</span>
+          <span class="metric-value yellow">{{ stats.activeUsers }}</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Stato Kernel</span>
+          <span class="metric-value green-badge">{{ stats.kernelStatus }}</span>
         </div>
       </div>
-      <div class="metric-card">
-        <span class="metric-icon">💼</span>
-        <div class="metric-info">
-          <h3>3</h3>
-          <p>Posizioni Jobs Attive</p>
-        </div>
-      </div>
-      <div class="metric-card">
-        <span class="metric-icon">🛡️</span>
-        <div class="metric-info">
-          <h3>{{ settings.maintenanceMode ? 'Manutenzione' : 'Online / Sicuro' }}</h3>
-          <p>Stato del Kernel</p>
-        </div>
+
+      <!-- Sezioni di Gestione Rapida -->
+      <div class="admin-sections-grid">
+        <NuxtLink to="/admin/settings" class="section-card">
+          <h3>⚙️ Kernel & Plugin Settings</h3>
+          <p>Configura lo Shop, le Feature Flags e i moduli dei DKP Tools.</p>
+          <span class="card-arrow">Gestisci ↗</span>
+        </NuxtLink>
+
+        <NuxtLink to="/admin/jobs" class="section-card">
+          <h3>💼 Gestione Job Board</h3>
+          <p>Aggiungi, modifica o approva le offerte di lavoro della community.</p>
+          <span class="card-arrow">Gestisci ↗</span>
+        </NuxtLink>
+
+        <NuxtLink to="/admin/health" class="section-card">
+          <h3>⚡ System Health Check</h3>
+          <p>Monitora lo stato di Neon PostgreSQL, PM2 e delle API GCP.</p>
+          <span class="card-arrow">Ispeziona ↗</span>
+        </NuxtLink>
       </div>
     </div>
-
-    <!-- Moduli di Navigazione Admin -->
-    <div class="modules-grid">
-      <NuxtLink to="/admin/blog" class="module-card">
-        <div class="mod-icon">✍️</div>
-        <h2>DKP Native Blog & News</h2>
-        <p>Gestisci categorie, scrivi articoli con live preview e analizza i Karma Likes.</p>
-        <span class="mod-link">Accedi al Modulo ↗</span>
-      </NuxtLink>
-
-      <NuxtLink to="/admin/jobs" class="module-card">
-        <div class="mod-icon">💼</div>
-        <h2>Jobs & Talent Acquisition</h2>
-        <p>Pubblica nuove offerte di lavoro e gestisci le candidature tecniche.</p>
-        <span class="mod-link">Accedi al Modulo ↗</span>
-      </NuxtLink>
-
-      <NuxtLink to="/admin/settings" class="module-card">
-        <div class="mod-icon">⚙️</div>
-        <h2>Global Configurations & Settings</h2>
-        <p>Configura i feature flag, la modalità manutenzione e le chiavi pubbliche.</p>
-        <span class="mod-link">Accedi al Modulo ↗</span>
-      </NuxtLink>
-      
-	  <NuxtLink to="/admin/shop" class="module-card">
-  <div class="mod-icon">🛒</div>
-  <h2>DKP Ecosystem Shop & .ZIP</h2>
-  <p>Gestisci il catalogo e-commerce dei plugin nativi e i pacchetti in vendita.</p>
-  <span class="mod-link">Accedi al Modulo ↗</span>
-</NuxtLink>
-   </div>   
   </div>
 </template>
 
 <style scoped>
-.admin-container { 
-  max-width: 1100px; 
-  margin: 2rem auto; 
-  padding: 0 1rem; 
+.admin-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
-.admin-header { 
-  margin-bottom: 2rem; 
-  text-align: center; 
+.unauthorized-box {
+  background: #020420;
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  margin: 3rem auto;
+  max-width: 600px;
 }
 
-.badge-tag { 
-  background: rgba(0, 220, 130, 0.15); 
-  color: #00a862; 
-  padding: 0.3rem 0.8rem; 
-  border-radius: 20px; 
-  font-size: 0.8rem; 
-  font-weight: 700; 
-  text-transform: uppercase; 
-  border: 1px solid rgba(0, 220, 130, 0.3); 
+.unauthorized-box h2 { color: #ef4444; font-size: 1.4rem; margin-bottom: 1rem; }
+.unauthorized-box p { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
+
+.login-btn {
+  background: #00dc82;
+  color: #020420;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 0.95rem;
 }
 
-.admin-header h1 { 
-  font-size: clamp(1.8rem, 4vw, 2.3rem); 
-  color: #020420; 
-  font-weight: 800; 
-  margin-top: 0.75rem; 
-}
+.dashboard-header { margin-bottom: 2rem; }
+.dashboard-header h1 { font-size: 2rem; color: #00dc82; font-weight: 800; }
+.subtitle { color: #94a3b8; font-size: 0.95rem; margin-top: 0.4rem; }
 
-.admin-header p { 
-  color: #64748b; 
-  font-size: 0.95rem; 
-}
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem; }
+.metric-card { background: #020420; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 10px; text-align: center; }
+.metric-label { display: block; font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 0.5rem; }
+.metric-value { font-size: 1.8rem; font-weight: 800; }
+.metric-value.green { color: #00dc82; }
+.metric-value.blue { color: #38bdf8; }
+.metric-value.yellow { color: #f59e0b; }
+.metric-value.green-badge { font-size: 1rem; color: #00dc82; background: rgba(0, 220, 130, 0.1); padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); }
 
-/* Metrics - Mobile First */
-.metrics-grid { 
-  display: grid; 
-  grid-template-columns: 1fr; 
-  gap: 1rem; 
-  margin-bottom: 2rem; 
-}
-
-@media(min-width: 640px) {
-  .metrics-grid { 
-    grid-template-columns: repeat(3, 1fr); 
-  }
-}
-
-.metric-card { 
-  background: #020420; 
-  border: 1px solid #1e293b; 
-  border-radius: 12px; 
-  padding: 1.25rem; 
-  display: flex; 
-  align-items: center; 
-  gap: 1rem; 
-  color: #ffffff; 
-}
-
-.metric-icon { 
-  font-size: 2rem; 
-}
-
-.metric-info h3 { 
-  font-size: 1.3rem; 
-  font-weight: 800; 
-  color: #00dc82; 
-  margin: 0; 
-}
-
-.metric-info p { 
-  color: #94a3b8; 
-  font-size: 0.8rem; 
-  margin: 0.2rem 0 0; 
-}
-
-/* Modules Grid - Mobile First */
-.modules-grid { 
-  display: grid; 
-  grid-template-columns: 1fr; 
-  gap: 1.25rem; 
-}
-
-@media(min-width: 768px) {
-  .modules-grid { 
-    grid-template-columns: repeat(2, 1fr); 
-  }
-}
-
-.module-card { 
-  background: #020420; 
-  border: 1px solid #1e293b; 
-  border-radius: 12px; 
-  padding: 1.5rem; 
-  color: #ffffff; 
-  text-decoration: none; 
-  display: flex; 
-  flex-direction: column; 
-  transition: transform 0.2s, border-color 0.2s; 
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
-}
-
-.module-card:hover { 
-  transform: translateY(-2px); 
-  border-color: #00dc82; 
-}
-
-.disabled-card { 
-  opacity: 0.6; 
-  pointer-events: none; 
-  border-style: dashed; 
-}
-
-.mod-icon { 
-  font-size: 2.2rem; 
-  margin-bottom: 0.75rem; 
-}
-
-.module-card h2 { 
-  font-size: 1.15rem; 
-  font-weight: 700; 
-  color: #00dc82; 
-  margin-bottom: 0.4rem; 
-}
-
-.module-card p { 
-  color: #94a3b8; 
-  font-size: 0.85rem; 
-  line-height: 1.5; 
-  flex-grow: 1; 
-  margin-bottom: 1.25rem; 
-}
-
-.mod-link { 
-  color: #38bdf8; 
-  font-weight: 700; 
-  font-size: 0.85rem; 
-}
+.admin-sections-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+.section-card { background: #020420; border: 1px solid #1e293b; padding: 1.75rem; border-radius: 12px; text-decoration: none; color: #ffffff; transition: all 0.2s; display: flex; flex-direction: column; }
+.section-card:hover { border-color: #00dc82; transform: translateY(-3px); }
+.section-card h3 { font-size: 1.1rem; color: #00dc82; margin-bottom: 0.5rem; }
+.section-card p { font-size: 0.85rem; color: #94a3b8; line-height: 1.5; flex: 1; }
+.card-arrow { margin-top: 1rem; color: #38bdf8; font-size: 0.85rem; font-weight: 700; }
 </style>
