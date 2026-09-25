@@ -18,7 +18,8 @@
       <div class="footer-col">
         <h4>🛠️ DKP Tools Suite</h4>
         <ul class="footer-links">
-          <li><NuxtLink to="/tools/proof-of-code">🛡️ Proof of Code (Vault)</NuxtLink></li>
+          <NuxtLink to="/tools">🛠️ Panoramica DKP Tools</NuxtLink>
+		  <li><NuxtLink to="/tools/proof-of-code">🛡️ Proof of Code (Vault)</NuxtLink></li>
           <li><NuxtLink to="/tools/ai-scanner">🔍 AI Code Scanner v2</NuxtLink></li>
           <li><NuxtLink to="/tools/terminal">💻 Terminal Web Shell</NuxtLink></li>
           <li><NuxtLink to="/tools/neural-playground">🧠 Neural Playground</NuxtLink></li>
@@ -41,8 +42,9 @@
         <h4>📜 Risorse & Legale</h4>
         <ul class="footer-links">
           <li><NuxtLink to="/about">👥 Chi Siamo</NuxtLink></li>
-          <li><NuxtLink to="/guidelines">⚡ Linee Guida</NuxtLink></li>
-          <li><NuxtLink to="/terms">⚖️ Termini d'Uso</NuxtLink></li>
+          <NuxtLink to="/legal/privacy">🛡️ Privacy Policy</NuxtLink>
+		  <li><NuxtLink to="/guidelines">⚡ Linee Guida</NuxtLink></li>
+          <li><NuxtLink to="/legal/terms">⚖️ Termini d'Uso</NuxtLink></li>
           <li><NuxtLink to="/privacy">🔒 Privacy & Cookie</NuxtLink></li>
         </ul>
       </div>

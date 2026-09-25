@@ -161,7 +161,7 @@ async function handleLogout() {
           <span class="dk-badge">DK</span>
           <span class="brand-name">DevKernel<span class="pulse-highlight">Pulse</span></span>
         </NuxtLink>
-        <span class="version-tag">v1.0</span>
+        <span class="version-tag">v2.0</span>
       </div>
 
       <!-- NAVIGAZIONE PRINCIPALE DESKTOP -->
