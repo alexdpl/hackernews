@@ -1,10 +1,15 @@
 // server/api/auth/me.get.ts
-import { defineEventHandler, getCookie } from 'h3'
-
 export default defineEventHandler((event) => {
-  const username = getCookie(event, 'dkp_user')
-  return {
-    authenticated: !!username,
-    username: username || null
+  const sessionCookie = getCookie(event, 'dkp_session')
+
+  if (!sessionCookie) {
+    return { authenticated: false, user: null }
+  }
+
+  try {
+    const user = typeof sessionCookie === 'string' ? JSON.parse(sessionCookie) : sessionCookie
+    return { authenticated: true, user }
+  } catch {
+    return { authenticated: false, user: null }
   }
 })

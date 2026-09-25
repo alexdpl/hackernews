@@ -1,5 +1,6 @@
 <!-- app/app.vue -->
 <script setup lang="ts">
+// Head & SEO Meta configuration
 useServerHead({
   htmlAttrs: { lang: 'it' },
 })
@@ -11,12 +12,24 @@ useSeoMeta({
   ogImageAlt: 'DevKernelPulse Proof of Code Ecosystem',
   twitterCard: 'summary_large_image',
 })
+
+// Inizializzazione Automatica Sessione DKP Auth Core
+const { initAuth } = useAuthCore()
+
+onMounted(async () => {
+  await initAuth()
+})
 </script>
 
 <template>
-  <NuxtLayout>
-    <NuxtPage />
-  </NuxtLayout>
+  <div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+
+    <!-- Modale globale di autenticazione (Accedi / Registrati / Social) -->
+    <AuthModal />
+  </div>
 </template>
 
 <style lang="postcss">

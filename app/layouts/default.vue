@@ -1,15 +1,26 @@
 <!-- app/layouts/default.vue -->
+<script setup lang="ts">
+const { initAuth } = useAuthCore()
+
+onMounted(() => {
+  initAuth()
+})
+</script>
+
 <template>
   <div class="default-layout">
-    <!-- Navbar Unica Master DKP -->
+    <!-- Navbar Master DKP -->
     <Navbar />
     
-    <!-- Contenuto Principale della Pagina -->
+    <!-- Contenuto Principale -->
     <main class="main-content">
       <slot />
     </main>
 
-    <!-- Footer dell'Ecosistema DKP -->
+    <!-- Modale Autenticazione Globale -->
+    <AuthModal />
+
+    <!-- Footer DKP -->
     <AppFooter />
   </div>
 </template>
@@ -21,7 +32,7 @@
   flex-direction: column;
   background-color: #020420;
   color: #f8fafc;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 .main-content {
