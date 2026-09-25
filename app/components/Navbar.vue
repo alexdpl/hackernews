@@ -10,9 +10,11 @@ const router = useRouter()
 const navbarRef = ref<HTMLElement | null>(null)
 
 // Stati dei Dropdown
-const isUserDropdownOpen = ref(false)
+const isNewsOpen = ref(false)
 const isDkpToolsOpen = ref(false)
+const isUserDropdownOpen = ref(false)
 const isLangOpen = ref(false)
+const isMobileMenuOpen = ref(false)
 
 // DKP Translator Pro (5 Lingue Ufficiali)
 const currentLang = ref('IT')
@@ -26,32 +28,20 @@ const languages = [
   { code: 'DE', label: 'Deutsch', flag: '🇩🇪' }
 ]
 
+// Menù a tendina News Unificato
+const newsMenuItems = [
+  { name: 'News Feed', description: 'Ultimi aggiornamenti tech & ecosistema', icon: '📰', route: '/feed' },
+  { name: 'Ask Community', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
+  { name: 'Show DKP', description: 'Showcase progetti della community', icon: '⚡', route: '/show' },
+  { name: 'Tech Jobs', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
+]
+
 // 4 DKP Tools v2.0 con rotte dedicate esatte
 const dkpTools = [
-  {
-    name: 'Neural Playground',
-    description: 'Testing Prompt e Modelli IA',
-    icon: '🧠',
-    route: '/tools/neural-playground'
-  },
-  {
-    name: 'Terminal Web Shell',
-    description: 'Shell CLI In-Browser e SDK',
-    icon: '💻',
-    route: '/tools/terminal'
-  },
-  {
-    name: 'AI Code Scanner v2',
-    description: 'Audit & Analisi Vulnerabilità IA',
-    icon: '🔍',
-    route: '/tools/ai-scanner'
-  },
-  {
-    name: 'Proof of Code (Vault)',
-    description: 'Notarizzazione e Hash Crittografico',
-    icon: '🛡️',
-    route: '/tools/proof-of-code'
-  }
+  { name: 'Neural Playground', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
+  { name: 'Terminal Web Shell', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
+  { name: 'AI Code Scanner v2', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
+  { name: 'Proof of Code (Vault)', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' }
 ]
 
 // Controllo ruoli per accedere al Pannello Admin
@@ -62,29 +52,49 @@ const isAdmin = computed(() => {
   return username === 'alexdpl' || role === 'admin'
 })
 
-// Gestione Dropdowns
-function toggleUserDropdown() {
-  isUserDropdownOpen.value = !isUserDropdownOpen.value
+// Gestione Toggle Dropdowns
+function toggleNews() {
+  isNewsOpen.value = !isNewsOpen.value
   isDkpToolsOpen.value = false
+  isUserDropdownOpen.value = false
   isLangOpen.value = false
 }
 
 function toggleDkpTools() {
   isDkpToolsOpen.value = !isDkpToolsOpen.value
+  isNewsOpen.value = false
   isUserDropdownOpen.value = false
   isLangOpen.value = false
 }
 
 function toggleLang() {
   isLangOpen.value = !isLangOpen.value
-  isUserDropdownOpen.value = false
+  isNewsOpen.value = false
   isDkpToolsOpen.value = false
+  isUserDropdownOpen.value = false
+}
+
+function toggleUserDropdown() {
+  isUserDropdownOpen.value = !isUserDropdownOpen.value
+  isNewsOpen.value = false
+  isDkpToolsOpen.value = false
+  isLangOpen.value = false
+}
+
+function toggleMobileMenu() {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+  isNewsOpen.value = false
+  isDkpToolsOpen.value = false
+  isUserDropdownOpen.value = false
+  isLangOpen.value = false
 }
 
 function closeAllDropdowns() {
-  isUserDropdownOpen.value = false
+  isNewsOpen.value = false
   isDkpToolsOpen.value = false
+  isUserDropdownOpen.value = false
   isLangOpen.value = false
+  isMobileMenuOpen.value = false
 }
 
 function selectLang(lang: { code: string; label: string; flag: string }) {
@@ -140,7 +150,7 @@ async function handleLogout() {
   <header class="navbar-wrapper" ref="navbarRef">
     <div class="navbar-inner">
       
-      <!-- LOGO CON BOX GREEN 'DK' + DevKernelPulse + v1.0 -->
+      <!-- BRAND LOGO BLINDATO CON BADGE 'DK' E 'v1.0' -->
       <div class="brand-section">
         <NuxtLink to="/" class="brand-link" @click="closeAllDropdowns">
           <span class="dk-badge">DK</span>
@@ -149,24 +159,37 @@ async function handleLogout() {
         <span class="version-tag">v1.0</span>
       </div>
 
-      <!-- NAVIGAZIONE PRINCIPALE CON SLASH -->
-      <nav class="nav-links">
-        <NuxtLink to="/feed">news</NuxtLink>
-        <span class="slash">/</span>
+      <!-- NAVIGAZIONE PRINCIPALE DESKTOP IN ORDINE RICHIESTO -->
+      <nav class="nav-links desktop-only">
         
-        <NuxtLink to="/ask">ask</NuxtLink>
-        <span class="slash">/</span>
-        
-        <NuxtLink to="/show">show</NuxtLink>
-        <span class="slash">/</span>
-        
-        <NuxtLink to="/jobs">jobs</NuxtLink>
-        <span class="slash">/</span>
-        
-        <NuxtLink to="/submit" class="submit-highlight">submit</NuxtLink>
+        <!-- 1. MENÙ A TENDINA NEWS -->
+        <div class="dropdown-wrapper">
+          <button @click="toggleNews" class="nav-dropdown-btn" :class="{ active: isNewsOpen }">
+            news <span class="arrow">▼</span>
+          </button>
+          
+          <Transition name="fade-slide">
+            <div v-if="isNewsOpen" class="menu-dropdown news-menu">
+              <NuxtLink 
+                v-for="item in newsMenuItems" 
+                :key="item.route" 
+                :to="item.route" 
+                class="menu-item" 
+                @click="closeAllDropdowns"
+              >
+                <span class="icon">{{ item.icon }}</span>
+                <div class="item-text">
+                  <strong>{{ item.name }}</strong>
+                  <small>{{ item.description }}</small>
+                </div>
+              </NuxtLink>
+            </div>
+          </Transition>
+        </div>
+
         <span class="slash">/</span>
 
-        <!-- DROPDOWN DKP TOOLS V2.0 (I 4 TOOLS CON ROTTE ESATTE) -->
+        <!-- 2. MENÙ A TENDINA DKP TOOLS V2.0 -->
         <div class="dropdown-wrapper">
           <button @click="toggleDkpTools" class="tools-btn" :class="{ active: isDkpToolsOpen }">
             🛠️ DKP Tools <span class="arrow">▼</span>
@@ -190,12 +213,23 @@ async function handleLogout() {
             </div>
           </Transition>
         </div>
+
+        <span class="slash">/</span>
+
+        <!-- 3. SUBMIT LINK -->
+        <NuxtLink to="/submit" class="submit-highlight" @click="closeAllDropdowns">submit</NuxtLink>
+
+        <span class="slash">/</span>
+
+        <!-- 4. DKP BLOG -->
+        <NuxtLink to="/blog" class="nav-link-item" @click="closeAllDropdowns">Blog</NuxtLink>
+
       </nav>
 
-      <!-- SEZIONE DESTRA: TRANSLATOR (5 LINGUE), GITHUB, AUTH / PROFILE -->
-      <div class="right-actions">
+      <!-- SEZIONE DESTRA: TRANSLATOR, GITHUB, ACCEDI / PROFILO -->
+      <div class="right-actions desktop-only">
         
-        <!-- SELETTORE LINGUA (DKP TRANSLATOR) -->
+        <!-- 5. SELETTORE LINGUA (DKP TRANSLATOR) -->
         <div class="dropdown-wrapper">
           <button @click="toggleLang" class="lang-btn" :class="{ active: isLangOpen }">
             🌐 {{ currentFlag }} {{ currentLang }} <span class="arrow">▼</span>
@@ -215,17 +249,16 @@ async function handleLogout() {
           </Transition>
         </div>
 
-        <!-- LINK GITHUB ESTERNO -->
+        <!-- 6. LINK GITHUB -->
         <a href="https://github.com/alexdpl/devkernel-pulse" target="_blank" rel="noopener" class="github-link">
           GitHub ↗
         </a>
 
-        <!-- AREA UTENTE NON LOGGATO -->
+        <!-- 7. PULSANTE ACCEDI / PILL UTENTE LOGGATO -->
         <button v-if="!isAuthenticated" @click="handleLogin" class="btn-accedi">
           Accedi
         </button>
 
-        <!-- AREA UTENTE LOGGATO (PILLOLA + DROPDOWN PROFILO) -->
         <div v-else class="dropdown-wrapper">
           <button @click="toggleUserDropdown" class="user-pill-btn" :class="{ active: isUserDropdownOpen }">
             <div class="pill-avatar">
@@ -274,7 +307,51 @@ async function handleLogout() {
 
       </div>
 
+      <!-- BOTTONE TOGGLE HAMBURGER DKP MOBILE -->
+      <button @click="toggleMobileMenu" class="mobile-hamburger-btn mobile-only" aria-label="Toggle Menu">
+        <span v-if="!isMobileMenuOpen">☰</span>
+        <span v-else>✕</span>
+      </button>
+
     </div>
+
+    <!-- DRAWER DKP MOBILE RESPONSIVE -->
+    <Transition name="fade-slide">
+      <div v-if="isMobileMenuOpen" class="mobile-drawer mobile-only">
+        <nav class="mobile-nav-list">
+          <span class="mobile-section-title">📰 NEWS & COMMUNITY</span>
+          <NuxtLink to="/feed" class="mobile-nav-link" @click="closeAllDropdowns">📰 News Feed</NuxtLink>
+          <NuxtLink to="/ask" class="mobile-nav-link" @click="closeAllDropdowns">💬 Ask Community</NuxtLink>
+          <NuxtLink to="/show" class="mobile-nav-link" @click="closeAllDropdowns">⚡ Show DKP</NuxtLink>
+          <NuxtLink to="/jobs" class="mobile-nav-link" @click="closeAllDropdowns">💼 Tech Jobs</NuxtLink>
+          
+          <div class="mobile-section-divider"></div>
+          
+          <NuxtLink to="/submit" class="mobile-nav-link highlight" @click="closeAllDropdowns">+ Submit Link</NuxtLink>
+          <NuxtLink to="/blog" class="mobile-nav-link" @click="closeAllDropdowns">✍️ DKP Blog</NuxtLink>
+          
+          <div class="mobile-section-divider"></div>
+          <span class="mobile-section-title">🛠️ DKP TOOLS V2.0</span>
+          
+          <NuxtLink v-for="tool in dkpTools" :key="tool.route" :to="tool.route" class="mobile-nav-link tool-link" @click="closeAllDropdowns">
+            <span>{{ tool.icon }} {{ tool.name }}</span>
+          </NuxtLink>
+
+          <div class="mobile-section-divider"></div>
+          
+          <div v-if="isAuthenticated" class="mobile-user-block">
+            <span class="m-user">👤 @{{ currentUser?.username }}</span>
+            <NuxtLink to="/user/dashboard" class="mobile-nav-link" @click="closeAllDropdowns">📊 Dashboard & Vault</NuxtLink>
+            <NuxtLink v-if="isAdmin" to="/admin" class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Pannello Admin</NuxtLink>
+            <button @click="handleLogout" class="mobile-nav-link logout">🚪 Disconnetti</button>
+          </div>
+          
+          <div v-else class="mobile-auth-block">
+            <button @click="handleLogin" class="btn-accedi full-width">Accedi / Registrati</button>
+          </div>
+        </nav>
+      </div>
+    </Transition>
   </header>
 </template>
 
@@ -299,7 +376,7 @@ async function handleLogout() {
   gap: 1rem;
 }
 
-/* BRANDING & LOGO */
+/* BRANDING & LOGO BLINDATO */
 .brand-section {
   display: flex;
   align-items: center;
@@ -344,7 +421,7 @@ async function handleLogout() {
   border-radius: 4px;
 }
 
-/* LINK DI NAVIGAZIONE E SLASH */
+/* NAVIGAZIONE DESKTOP */
 .nav-links {
   display: flex;
   align-items: center;
@@ -353,20 +430,41 @@ async function handleLogout() {
   font-weight: 600;
 }
 
-.nav-links a {
+.nav-link-item {
   color: #cbd5e1;
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
-.nav-links a:hover,
-.nav-links a.router-link-active {
+.nav-link-item:hover,
+.nav-link-item.router-link-active {
+  color: #00dc82;
+}
+
+.nav-dropdown-btn {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: color 0.15s ease;
+}
+
+.nav-dropdown-btn:hover,
+.nav-dropdown-btn.active {
   color: #00dc82;
 }
 
 .submit-highlight {
   color: #00dc82 !important;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .slash {
@@ -528,6 +626,11 @@ async function handleLogout() {
   z-index: 100;
 }
 
+.news-menu {
+  left: 0;
+  width: 260px;
+}
+
 .tools-menu {
   left: 0;
   width: 270px;
@@ -630,7 +733,42 @@ async function handleLogout() {
   color: #f87171;
 }
 
-/* TRANSIZIONI FADE SLIDE */
+/* REGOLE RESPONSIVE / DKP MOBILE */
+.mobile-only { display: none; }
+
+@media (max-width: 900px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: block; }
+
+  .mobile-hamburger-btn {
+    background: #090d16;
+    border: 1px solid #1e293b;
+    color: #00dc82;
+    font-size: 1.4rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .mobile-drawer {
+    background: #090d16;
+    border-top: 1px solid #1e293b;
+    padding: 1.25rem;
+    margin-top: 0.6rem;
+    border-radius: 8px;
+  }
+
+  .mobile-nav-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .mobile-nav-link { color: #cbd5e1; text-decoration: none; font-size: 0.95rem; font-weight: 700; background: transparent; border: none; text-align: left; cursor: pointer; }
+  .mobile-nav-link.highlight { color: #00dc82; }
+  .mobile-nav-link.admin { color: #facc15; }
+  .mobile-nav-link.logout { color: #ef4444; }
+  .mobile-section-divider { height: 1px; background: #1e293b; margin: 0.5rem 0; }
+  .mobile-section-title { color: #64748b; font-size: 0.75rem; font-weight: 800; }
+  .full-width { width: 100%; margin-top: 0.5rem; }
+  .m-user { color: #38bdf8; font-weight: 800; font-size: 0.9rem; }
+}
+
 .fade-slide-enter-active,
 .fade-slide-leave-active {
   transition: all 0.15s ease-out;
