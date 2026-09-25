@@ -1,127 +1,62 @@
-<!-- app/pages/admin/shop.vue -->
-<script setup lang="ts">
-definePageMeta({ middleware: 'admin-only' })
-
-const products = ref([
-  { id: 1, name: 'DKP Automated Crawler SaaS Engine', price: 109, version: 'v1.0.0', zip: 'dkp-automated-crawler-pro-v1.0.zip', sales: 0 },
-  { id: 2, name: 'DKP Native Blog & Admin Pro', price: 99, version: 'v2.1.0', zip: 'dkp-native-blog-v2.1.0.zip', sales: 16 },
-  { id: 3, name: 'DKP Neural Code Playground Suite', price: 79, version: 'v1.5.0', zip: 'dkp-neural-playground-v1.5.0.zip', sales: 11 }
-])
-
-const newProduct = ref({
-  name: '',
-  price: 29,
-  version: 'v1.0.0',
-  zipName: ''
-})
-
-function addProduct() {
-  if (!newProduct.value.name) return
-  products.value.push({
-    id: Date.now(),
-    name: newProduct.value.name,
-    price: newProduct.value.price,
-    version: newProduct.value.version,
-    zip: newProduct.value.zipName || `${newProduct.value.name.toLowerCase().replace(/\s+/g, '-')}.zip`,
-    sales: 0
-  })
-  newProduct.value = { name: '', price: 29, version: 'v1.0.0', zipName: '' }
-}
-
-function removeProduct(id: number) {
-  products.value = products.value.filter(p => p.id !== id)
-}
-</script>
-
+<!-- Snippet Scheda Prodotto DKP Shop SaaS -->
 <template>
-  <div class="admin-page-container">
-    <div class="header-section">
-      <div class="badge">DKP SHOP MANAGEMENT</div>
-      <h1>Gestione <span class="highlight">DKP Shop Proprietario</span></h1>
-      <p class="subtitle">Gestisci moduli .ZIP, licenze software e prezzi d'accesso esclusivi.</p>
-    </div>
-
-    <div class="admin-grid">
-      <!-- Form Aggiunta Prodotto -->
-      <div class="card">
-        <h3>📦 Aggiungi Nuovo Plugin .ZIP</h3>
-        <form @submit.prevent="addProduct" class="form-stack">
-          <div class="form-group">
-            <label>Nome Plugin / Prodotto *</label>
-            <input v-model="newProduct.name" type="text" placeholder="Es. DKP AI Code Scanner Pro" required />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Prezzo (€)</label>
-              <input v-model.number="newProduct.price" type="number" min="0" required />
-            </div>
-            <div class="form-group">
-              <label>Versione</label>
-              <input v-model="newProduct.version" type="text" required />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Nome File .ZIP Associato</label>
-            <input v-model="newProduct.zipName" type="text" placeholder="dkp-plugin-v1.0.zip" />
-          </div>
-
-          <button type="submit" class="btn-submit">➕ Inserisci nel Catalogo Shop</button>
-        </form>
+  <div class="shop-products-grid">
+    
+    <!-- CARD PRODOTTO 1: DKP AUTOMATED CRAWLER PRO -->
+    <div class="product-card">
+      <div class="product-header">
+        <span class="product-badge">SAAS MODULE</span>
+        <span class="product-price">€99.00</span>
       </div>
-
-      <!-- Catalogo Prodotti -->
-      <div class="card table-card">
-        <h3>📄 Catalogo Prodotti Attivi ({{ products.length }})</h3>
-        <table class="dkp-table">
-          <thead>
-            <tr>
-              <th>Prodotto</th>
-              <th>Prezzo</th>
-              <th>Versione</th>
-              <th>File .ZIP</th>
-              <th>Vendite</th>
-              <th>Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in products" :key="p.id">
-              <td class="font-bold">{{ p.name }}</td>
-              <td class="price-text">€{{ p.price }}</td>
-              <td><span class="ver-badge">{{ p.version }}</span></td>
-              <td class="zip-text"><code>{{ p.zip }}</code></td>
-              <td>🛒 {{ p.sales }}</td>
-              <td>
-                <button @click="removeProduct(p.id)" class="btn-delete">Rimuovi</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <h3>🤖 DKP Automated Crawler Engine Pro</h3>
+      <p class="product-desc">
+        Modulo di ingestione notizie automatico con integrazione HackerNews, clean-up Neon DB ed API Nitro ad alte prestazioni.
+      </p>
+      <div class="product-meta">
+        <span>📦 versione: <strong>v1.0.0</strong></span>
+        <span>📁 file: <code>dkp-automated-crawler-pro-v1.0.zip</code></span>
+      </div>
+      <div class="product-actions">
+        <NuxtLink to="/admin/shop?action=download&id=1" class="btn-purchase">
+          🛒 Acquista / Scarica .ZIP
+        </NuxtLink>
       </div>
     </div>
+
+    <!-- CARD PRODOTTO 2: DKP TRANSLATOR PRO -->
+    <div class="product-card">
+      <div class="product-header">
+        <span class="product-badge">CORE PLUGIN</span>
+        <span class="product-price">€69.00</span>
+      </div>
+      <h3>🌐 DKP Translator Pro v2.0 Plugin</h3>
+      <p class="product-desc">
+        Composable globale e reattivo a 9 lingue con salvataggio cookie/localStorage, supporto Nuxt 4 SSR e zero dipendenze esterne.
+      </p>
+      <div class="product-meta">
+        <span>📦 versione: <strong>v2.0.0</strong></span>
+        <span>📁 file: <code>dkp-translator-pro-v2.0.zip</code></span>
+      </div>
+      <div class="product-actions">
+        <NuxtLink to="/admin/shop?action=download&id=2" class="btn-purchase">
+          🛒 Acquista / Scarica .ZIP
+        </NuxtLink>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
-.admin-page-container { padding: 2rem; background: #020420; min-height: 90vh; color: #f8fafc; }
-.header-section { margin-bottom: 2rem; }
-.badge { display: inline-block; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 0.75rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3); margin-bottom: 0.5rem; }
-.highlight { color: #00dc82; }
-.subtitle { color: #94a3b8; font-size: 0.9rem; }
-.admin-grid { display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; }
-.card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; }
-.form-stack { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: #cbd5e1; margin-bottom: 0.3rem; }
-.form-group input { width: 100%; background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.65rem; border-radius: 6px; outline: none; }
-.btn-submit { background: #00dc82; color: #020420; font-weight: 800; padding: 0.8rem; border: none; border-radius: 8px; cursor: pointer; }
-.dkp-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; margin-top: 1rem; }
-.dkp-table th, .dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; }
-.dkp-table th { color: #64748b; font-size: 0.75rem; text-transform: uppercase; }
-.price-text { color: #00dc82; font-weight: 800; }
-.ver-badge { background: rgba(0, 220, 130, 0.15); color: #00dc82; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.75rem; }
-.zip-text code { font-family: monospace; color: #94a3b8; font-size: 0.8rem; }
-.btn-delete { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; }
-.btn-delete:hover { background: rgba(239, 68, 68, 0.4); }
+.shop-products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+.product-card { background: #090d16; border: 1px solid #1e293b; border-radius: 14px; padding: 1.75rem; display: flex; flex-direction: column; }
+.product-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.product-badge { background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid rgba(0, 220, 130, 0.3); }
+.product-price { font-size: 1.25rem; font-weight: 900; color: #38bdf8; }
+.product-card h3 { font-size: 1.2rem; color: #ffffff; margin: 0 0 0.5rem; }
+.product-desc { color: #cbd5e1; font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.25rem; flex: 1; }
+.product-meta { background: #020420; border: 1px solid #1e293b; padding: 0.75rem; border-radius: 8px; font-size: 0.8rem; color: #94a3b8; display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1.25rem; }
+.product-meta code { color: #00dc82; }
+.btn-purchase { background: #00dc82; color: #020420; text-align: center; font-weight: 800; font-size: 0.9rem; padding: 0.75rem; border-radius: 8px; text-decoration: none; transition: background 0.2s; }
+.btn-purchase:hover { background: #00bf71; }
 </style>

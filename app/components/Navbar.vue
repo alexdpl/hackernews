@@ -2,32 +2,55 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
-// Integrazione Core Auth & Routing
+// Integrazione Core Auth, Routing & DKP Translator v2.0
 const { currentUser, isAuthenticated, logout, openAuthModal } = useAuthCore()
+const { currentLang, activeLanguageObj, languages, setLanguage, initTranslator, t } = useDkpTranslator()
+
 const router = useRouter()
 const route = useRoute()
 
 // DOM Ref per chiusura al click esterno
 const navbarRef = ref<HTMLElement | null>(null)
 
-// Stati dei Dropdown
-const isNewsOpen = ref(false)
-const isDkpToolsOpen = ref(false)
-const isUserDropdownOpen = ref(false)
-const isLangOpen = ref(false)
+// Gestore centralizzato Dropdown (Estensibile per futuri moduli SaaS)
+const activeDropdown = ref<string | null>(null)
 const isMobileMenuOpen = ref(false)
 
-// DKP Translator Pro (5 Lingue Ufficiali)
-const currentLang = ref('IT')
-const currentFlag = ref('🇮🇹')
+function toggleDropdown(name: string) {
+  activeDropdown.value = activeDropdown.value === name ? null : name
+}
 
-const languages = [
-  { code: 'IT', label: 'Italiano', flag: '🇮🇹' },
-  { code: 'EN', label: 'English', flag: '🇬🇧' },
-  { code: 'ES', label: 'Español', flag: '🇪🇸' },
-  { code: 'FR', label: 'Français', flag: '🇫🇷' },
-  { code: 'DE', label: 'Deutsch', flag: '🇩🇪' }
-]
+function closeAllDropdowns() {
+  activeDropdown.value = null
+  isMobileMenuOpen.value = false
+}
+
+// Chiusura automatica dei dropdown al cambio pagina
+watch(() => route.fullPath, () => {
+  closeAllDropdowns()
+})
+
+function selectLang(code: string) {
+  setLanguage(code)
+  activeDropdown.value = null
+}
+
+function handleClickOutside(event: MouseEvent) {
+  if (navbarRef.value && !navbarRef.value.contains(event.target as Node)) {
+    closeAllDropdowns()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  if (typeof initTranslator === 'function') {
+    initTranslator()
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 // Menù a tendina News Unificato
 const newsMenuItems = [
@@ -51,88 +74,6 @@ const isAdmin = computed(() => {
   const username = currentUser.value.username?.toLowerCase()
   const role = currentUser.value.role?.toLowerCase()
   return username === 'alexdpl' || role === 'admin'
-})
-
-function toggleNews() {
-  isNewsOpen.value = !isNewsOpen.value
-  isDkpToolsOpen.value = false
-  isUserDropdownOpen.value = false
-  isLangOpen.value = false
-}
-
-function toggleDkpTools() {
-  isDkpToolsOpen.value = !isDkpToolsOpen.value
-  isNewsOpen.value = false
-  isUserDropdownOpen.value = false
-  isLangOpen.value = false
-}
-
-function toggleLang() {
-  isLangOpen.value = !isLangOpen.value
-  isNewsOpen.value = false
-  isDkpToolsOpen.value = false
-  isUserDropdownOpen.value = false
-}
-
-function toggleUserDropdown() {
-  isUserDropdownOpen.value = !isUserDropdownOpen.value
-  isNewsOpen.value = false
-  isDkpToolsOpen.value = false
-  isLangOpen.value = false
-}
-
-function toggleMobileMenu() {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value
-  isNewsOpen.value = false
-  isDkpToolsOpen.value = false
-  isUserDropdownOpen.value = false
-  isLangOpen.value = false
-}
-
-function closeAllDropdowns() {
-  isNewsOpen.value = false
-  isDkpToolsOpen.value = false
-  isUserDropdownOpen.value = false
-  isLangOpen.value = false
-  isMobileMenuOpen.value = false
-}
-
-// Chiusura automatica dei dropdown al cambio pagina
-watch(() => route.fullPath, () => {
-  closeAllDropdowns()
-})
-
-function selectLang(lang: { code: string; label: string; flag: string }) {
-  currentLang.value = lang.code
-  currentFlag.value = lang.flag
-  isLangOpen.value = false
-  if (import.meta.client) {
-    localStorage.setItem('dkp_lang', lang.code)
-  }
-}
-
-function handleClickOutside(event: MouseEvent) {
-  if (navbarRef.value && !navbarRef.value.contains(event.target as Node)) {
-    closeAllDropdowns()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  if (import.meta.client) {
-    const saved = localStorage.getItem('dkp_lang')
-    if (saved) {
-      const found = languages.find(l => l.code === saved)
-      if (found) {
-        currentLang.value = found.code
-        currentFlag.value = found.flag
-      }
-    }
-  }
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
 })
 
 function handleLogin() {
@@ -169,12 +110,12 @@ async function handleLogout() {
         
         <!-- 1. NEWS DROPDOWN -->
         <div class="dropdown-wrapper">
-          <button @click="toggleNews" class="nav-dropdown-btn" :class="{ active: isNewsOpen }">
-            news <span class="arrow">▼</span>
+          <button @click="toggleDropdown('news')" class="nav-dropdown-btn" :class="{ active: activeDropdown === 'news' }">
+            {{ t('news') }} <span class="arrow">▼</span>
           </button>
           
           <Transition name="fade-slide">
-            <div v-show="isNewsOpen" class="menu-dropdown news-menu">
+            <div v-show="activeDropdown === 'news'" class="menu-dropdown news-menu">
               <NuxtLink 
                 v-for="item in newsMenuItems" 
                 :key="item.route" 
@@ -195,12 +136,12 @@ async function handleLogout() {
 
         <!-- 2. DKP TOOLS V2.0 -->
         <div class="dropdown-wrapper">
-          <button @click="toggleDkpTools" class="tools-btn" :class="{ active: isDkpToolsOpen }">
-            🛠️ DKP Tools <span class="arrow">▼</span>
+          <button @click="toggleDropdown('tools')" class="tools-btn" :class="{ active: activeDropdown === 'tools' }">
+            🛠️ {{ t('tools') }} <span class="arrow">▼</span>
           </button>
           
           <Transition name="fade-slide">
-            <div v-show="isDkpToolsOpen" class="menu-dropdown tools-menu">
+            <div v-show="activeDropdown === 'tools'" class="menu-dropdown tools-menu">
               <NuxtLink 
                 v-for="tool in dkpTools" 
                 :key="tool.route" 
@@ -220,29 +161,29 @@ async function handleLogout() {
         <span class="slash">/</span>
 
         <!-- 3. SUBMIT LINK -->
-        <NuxtLink to="/submit" class="submit-highlight">submit</NuxtLink>
+        <NuxtLink to="/submit" class="submit-highlight">{{ t('submit') }}</NuxtLink>
 
         <span class="slash">/</span>
 
         <!-- 4. DKP BLOG -->
-        <NuxtLink to="/blog" class="nav-link-item">Blog</NuxtLink>
+        <NuxtLink to="/blog" class="nav-link-item">{{ t('blog') }}</NuxtLink>
 
       </nav>
 
       <!-- SEZIONE DESTRA -->
       <div class="right-actions desktop-only">
         
-        <!-- TRANSLATOR -->
+        <!-- TRANSLATOR PRO (9 LINGUE) -->
         <div class="dropdown-wrapper">
-          <button @click="toggleLang" class="lang-btn" :class="{ active: isLangOpen }">
-            🌐 {{ currentFlag }} {{ currentLang }} <span class="arrow">▼</span>
+          <button @click="toggleDropdown('lang')" class="lang-btn" :class="{ active: activeDropdown === 'lang' }">
+            🌐 {{ activeLanguageObj.flag }} {{ activeLanguageObj.code }} <span class="arrow">▼</span>
           </button>
           <Transition name="fade-slide">
-            <div v-show="isLangOpen" class="menu-dropdown lang-menu">
+            <div v-show="activeDropdown === 'lang'" class="menu-dropdown lang-menu">
               <button 
                 v-for="lang in languages" 
                 :key="lang.code" 
-                @click="selectLang(lang)" 
+                @click="selectLang(lang.code)" 
                 class="menu-item lang-item" 
                 :class="{ selected: currentLang === lang.code }"
               >
@@ -254,27 +195,27 @@ async function handleLogout() {
 
         <!-- LINK GITHUB -->
         <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener" class="github-link">
-          GitHub <strong style="color: #50C878;">↗</strong>
+          GitHub <strong style="color: #00dc82;">↗</strong>
         </a>
 
         <!-- PULSANTE ACCEDI / PILL UTENTE LOGGATO -->
         <button v-if="!isAuthenticated" @click="handleLogin" class="btn-accedi">
-          Accedi
+          {{ t('login') }}
         </button>
 
         <div v-else class="dropdown-wrapper">
-          <button @click="toggleUserDropdown" class="user-pill-btn" :class="{ active: isUserDropdownOpen }">
+          <button @click="toggleDropdown('user')" class="user-pill-btn" :class="{ active: activeDropdown === 'user' }">
             <div class="pill-avatar">
               <img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="Avatar" />
               <span v-else>{{ currentUser?.username?.charAt(0).toUpperCase() || 'U' }}</span>
             </div>
             <span class="pill-username">@{{ currentUser?.username }}</span>
-            <span class="arrow" :class="{ rotated: isUserDropdownOpen }">▼</span>
+            <span class="arrow" :class="{ rotated: activeDropdown === 'user' }">▼</span>
           </button>
 
           <!-- MENU A TENDINA PROFILO UTENTE / ADMIN COMPLETO -->
           <Transition name="fade-slide">
-            <div v-show="isUserDropdownOpen" class="menu-dropdown profile-menu">
+            <div v-show="activeDropdown === 'user'" class="menu-dropdown profile-menu">
               <div class="profile-header">
                 <span class="user-display-name">@{{ currentUser?.username }}</span>
                 <span class="user-role-badge">{{ isAdmin ? '🛡️ Administrator' : '🌱 VIP Developer' }}</span>
@@ -283,15 +224,15 @@ async function handleLogout() {
               <div class="dropdown-divider"></div>
 
               <NuxtLink to="/user/dashboard" class="menu-item">
-                <span>📊</span> Dashboard Personale
+                <span>📊</span> {{ t('dashboard') }}
               </NuxtLink>
 
               <NuxtLink to="/user/dashboard?tab=vault" class="menu-item">
-                <span>🛡️</span> I Miei Certificati Vault
+                <span>🛡️</span> {{ t('vault') }}
               </NuxtLink>
 
               <NuxtLink to="/user/dashboard?tab=profile" class="menu-item">
-                <span>⚙️</span> Impostazioni Account
+                <span>⚙️</span> {{ t('settings') }}
               </NuxtLink>
 
               <!-- PANNELLO ADMIN & SUB-SEZIONI -->
@@ -300,11 +241,11 @@ async function handleLogout() {
                 <div class="dropdown-section-title">AMMINISTRAZIONE DKP</div>
                 
                 <NuxtLink to="/admin" class="menu-item admin-item">
-                  <span>🔒</span> Control Center Admin
+                  <span>🔒</span> {{ t('adminControl') }}
                 </NuxtLink>
-				
-				<NuxtLink to="/admin/crawler" class="menu-item admin-item">
-                  <span>🤖</span> DKP Crawler Engine
+
+                <NuxtLink to="/admin/crawler" class="menu-item admin-item">
+                  <span>🤖</span> {{ t('crawlerEngine') }}
                 </NuxtLink>
 
                 <NuxtLink to="/admin/blog" class="menu-item admin-item">
@@ -312,18 +253,18 @@ async function handleLogout() {
                 </NuxtLink>
 
                 <NuxtLink to="/admin/shop" class="menu-item admin-item">
-                  <span>🛍️</span> Gestione DKP Shop
+                  <span>🛍️</span> {{ t('shopManagement') }}
                 </NuxtLink>
 
                 <NuxtLink to="/admin/jobs" class="menu-item admin-item">
-                  <span>💼</span> Gestione Job Hub
+                  <span>💼</span> {{ t('jobsManagement') }}
                 </NuxtLink>
               </template>
 
               <div class="dropdown-divider"></div>
 
               <button @click="handleLogout" class="menu-item logout-item">
-                <span>🚪</span> Disconnetti
+                <span>🚪</span> {{ t('logout') }}
               </button>
             </div>
           </Transition>
@@ -332,7 +273,7 @@ async function handleLogout() {
       </div>
 
       <!-- BOTTONE TOGGLE HAMBURGER DKP MOBILE -->
-      <button @click="toggleMobileMenu" class="mobile-hamburger-btn mobile-only" aria-label="Toggle Menu">
+      <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="mobile-hamburger-btn mobile-only" aria-label="Toggle Menu">
         <span v-if="!isMobileMenuOpen">☰</span>
         <span v-else>✕</span>
       </button>
@@ -371,6 +312,7 @@ async function handleLogout() {
               <div class="mobile-section-divider"></div>
               <span class="mobile-section-title">🛡️ AMMINISTRAZIONE DKP</span>
               <NuxtLink to="/admin" class="mobile-nav-link admin">🔒 Control Center Admin</NuxtLink>
+              <NuxtLink to="/admin/crawler" class="mobile-nav-link admin">🤖 DKP Crawler Engine</NuxtLink>
               <NuxtLink to="/admin/blog" class="mobile-nav-link admin">📝 Gestione DKP Blog</NuxtLink>
               <NuxtLink to="/admin/shop" class="mobile-nav-link admin">🛍️ Gestione DKP Shop</NuxtLink>
               <NuxtLink to="/admin/jobs" class="mobile-nav-link admin">💼 Gestione Job Hub</NuxtLink>
@@ -639,7 +581,7 @@ async function handleLogout() {
 
 .news-menu { left: 0; width: 260px; }
 .tools-menu { left: 0; width: 270px; }
-.lang-menu { right: 0; width: 170px; }
+.lang-menu { right: 0; width: 180px; max-height: 280px; overflow-y: auto; }
 .profile-menu { right: 0; width: 250px; }
 
 .profile-header {
