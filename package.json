@@ -1,57 +1,35 @@
 {
-  "name": "nuxt-hn",
-  "type": "module",
+  "name": "devkernelpulse-ecosystem",
+  "version": "2.0.0",
   "private": true,
-  "packageManager": "pnpm@12.3.4",
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "^24.0.0",
-      "onFail": "warn"
-    }
-  },
-  "description": "Hacker News Dev",
-  "author": "Evan You <yyx990803@gmail.com>",
-  "contributors": [
-    {
-      "name": "Sebastien Chopin (@Atinux)"
-    },
-    {
-      "name": "Pooya Parsa (@pi0)"
-    },
-    {
-      "name": "Anthony Fu (@antfu)"
-    }
-  ],
+  "type": "module",
+  "description": "DevKernelPulse v2.0 - Core Engine and Proprietary SaaS Modular Ecosystem",
   "scripts": {
-    "dev": "node --max-old-space-size=4096 ./node_modules/nuxt/bin/nuxt.mjs dev",
-    "build": "node --max-old-space-size=4096 ./node_modules/nuxt/bin/nuxt.mjs build",
-    "start": "nuxt start",
-    "lint": "eslint .",
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "test": "vitest run",
-    "test:unit": "vitest run --project unit",
-    "test:nuxt": "vitest run --project nuxt",
-    "test:e2e": "vitest run --project e2e"
-  },
-  "devDependencies": {
-    "@nuxt/devtools": "^3.4.2",
-    "@nuxt/eslint": "^1.17.0",
-    "@nuxt/eslint-config": "^1.17.0",
-    "@nuxt/test-utils": "^4.3.2",
-    "@nuxthub/core": "^0.10.8",
-    "@types/node": "^24.13.4",
-    "@vue/test-utils": "^2.5.0",
-    "drizzle-kit": "^0.31.10",
-    "eslint": "^10.10.0",
-    "happy-dom": "^20.14.5",
-    "nuxt": "^4.5.2",
-    "postcss-nesting": "^14.0.1",
-    "typescript": "^5.9.3",
-    "vitest": "^5.0.0"
+    "package:saas": "node scripts/package-saas.mjs",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
-    "drizzle-orm": "^0.45.2"
+    "@neondatabase/serverless": "^0.9.5",
+    "@vueuse/core": "^11.1.0",
+    "drizzle-orm": "^0.33.0",
+    "nuxt": "^3.13.0",
+    "ofetch": "^1.3.4",
+    "vue": "^3.5.8",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "drizzle-kit": "^0.24.2",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
   }
 }
