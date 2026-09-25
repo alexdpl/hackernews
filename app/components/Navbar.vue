@@ -269,7 +269,7 @@ async function handleLogout() {
             <span class="arrow" :class="{ rotated: isUserDropdownOpen }">▼</span>
           </button>
 
-          <!-- MENU A TENDINA PROFILO UTENTE / ADMIN -->
+          <!-- MENU A TENDINA PROFILO UTENTE / ADMIN COMPLETO -->
           <Transition name="fade-slide">
             <div v-if="isUserDropdownOpen" class="menu-dropdown profile-menu">
               <div class="profile-header">
@@ -291,10 +291,27 @@ async function handleLogout() {
                 <span>⚙️</span> Impostazioni Account
               </NuxtLink>
 
-              <!-- PANNELLO ADMIN (Visibile solo per alexdpl / admin) -->
-              <NuxtLink v-if="isAdmin" to="/admin" class="menu-item admin-item" @click="closeAllDropdowns">
-                <span>🔒</span> Pannello Admin
-              </NuxtLink>
+              <!-- PANNELLO ADMIN & SUB-SEZIONI (Visibile solo per alexdpl / admin) -->
+              <template v-if="isAdmin">
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-section-title">AMMINISTRAZIONE DKP</div>
+                
+                <NuxtLink to="/admin" class="menu-item admin-item" @click="closeAllDropdowns">
+                  <span>🔒</span> Control Center Admin
+                </NuxtLink>
+
+                <NuxtLink to="/admin/blog" class="menu-item admin-item" @click="closeAllDropdowns">
+                  <span>📝</span> Gestione DKP Blog
+                </NuxtLink>
+
+                <NuxtLink to="/admin/shop" class="menu-item admin-item" @click="closeAllDropdowns">
+                  <span>🛍️</span> Gestione DKP Shop
+                </NuxtLink>
+
+                <NuxtLink to="/admin/jobs" class="menu-item admin-item" @click="closeAllDropdowns">
+                  <span>💼</span> Gestione Job Hub
+                </NuxtLink>
+              </template>
 
               <div class="dropdown-divider"></div>
 
@@ -342,7 +359,17 @@ async function handleLogout() {
           <div v-if="isAuthenticated" class="mobile-user-block">
             <span class="m-user">👤 @{{ currentUser?.username }}</span>
             <NuxtLink to="/user/dashboard" class="mobile-nav-link" @click="closeAllDropdowns">📊 Dashboard & Vault</NuxtLink>
-            <NuxtLink v-if="isAdmin" to="/admin" class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Pannello Admin</NuxtLink>
+            
+            <template v-if="isAdmin">
+              <div class="mobile-section-divider"></div>
+              <span class="mobile-section-title">🛡️ AMMINISTRAZIONE DKP</span>
+              <NuxtLink to="/admin" class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Control Center Admin</NuxtLink>
+              <NuxtLink to="/admin/blog" class="mobile-nav-link admin" @click="closeAllDropdowns">📝 Gestione DKP Blog</NuxtLink>
+              <NuxtLink to="/admin/shop" class="mobile-nav-link admin" @click="closeAllDropdowns">🛍️ Gestione DKP Shop</NuxtLink>
+              <NuxtLink to="/admin/jobs" class="mobile-nav-link admin" @click="closeAllDropdowns">💼 Gestione Job Hub</NuxtLink>
+            </template>
+
+            <div class="mobile-section-divider"></div>
             <button @click="handleLogout" class="mobile-nav-link logout">🚪 Disconnetti</button>
           </div>
           
@@ -643,7 +670,7 @@ async function handleLogout() {
 
 .profile-menu {
   right: 0;
-  width: 230px;
+  width: 250px;
 }
 
 .profile-header {
@@ -668,6 +695,14 @@ async function handleLogout() {
   height: 1px;
   background: #1e293b;
   margin: 0.3rem 0;
+}
+
+.dropdown-section-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #00dc82;
+  padding: 0.3rem 0.75rem 0.1rem;
+  letter-spacing: 0.5px;
 }
 
 .menu-item {
@@ -716,12 +751,13 @@ async function handleLogout() {
 }
 
 .admin-item {
-  color: #facc15;
+  color: #00dc82;
+  font-weight: 600;
 }
 
 .admin-item:hover {
-  background: rgba(250, 204, 21, 0.1);
-  color: #fde047;
+  background: rgba(0, 220, 130, 0.1);
+  color: #00dc82;
 }
 
 .logout-item {
@@ -761,7 +797,7 @@ async function handleLogout() {
   .mobile-nav-list { display: flex; flex-direction: column; gap: 0.75rem; }
   .mobile-nav-link { color: #cbd5e1; text-decoration: none; font-size: 0.95rem; font-weight: 700; background: transparent; border: none; text-align: left; cursor: pointer; }
   .mobile-nav-link.highlight { color: #00dc82; }
-  .mobile-nav-link.admin { color: #facc15; }
+  .mobile-nav-link.admin { color: #00dc82; }
   .mobile-nav-link.logout { color: #ef4444; }
   .mobile-section-divider { height: 1px; background: #1e293b; margin: 0.5rem 0; }
   .mobile-section-title { color: #64748b; font-size: 0.75rem; font-weight: 800; }
