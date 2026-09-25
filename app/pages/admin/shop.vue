@@ -96,7 +96,21 @@ const products = ref<SaasProduct[]>([
     description: 'Pannello di testing prompt e integrazione modelli IA per l\'analisi automatica del codice e generazione contenuti.',
     downloads: 41,
     status: 'Featured'
+  },
+  
+  {
+    id: 7,
+    title: '⚡ DKP Pulse Nexus Pro (AI Agent & Gamification)',
+    category: 'ai',
+    categoryLabel: 'FLAGSHIP AI MODULE',
+    price: 149.00,
+    version: 'v2.0.0',
+    zipFile: 'dkp-pulse-nexus-pro-v2.0.zip',
+    description: 'Chat floating glassmorphic in real-time con l\'agente "Pulse Sentinel", motore di Gamification con XP, Livelli e classifica DB.',
+    downloads: 112,
+    status: 'Featured'
   }
+  
 ])
 
 // KPI / Stats Calcolate

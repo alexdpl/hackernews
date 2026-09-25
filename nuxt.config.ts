@@ -13,10 +13,11 @@ export default defineNuxtConfig({
     '@core': resolve(__dirname, './devkernelpulse-core'),
     '@plugins': resolve(__dirname, './dkp-proprietary-plugins'),
     '@crawler-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-automated-crawler-pro'),
-    '@translator-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-translator-pro')
+    '@translator-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-translator-pro'),
+    '@nexus-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-pulse-nexus-pro')
   },
 
-  // Scansione dei componenti anche dalle cartelle dei plugin proprietari
+  // Auto-scansione componenti anche dai moduli proprietari
   components: {
     dirs: [
       { path: '~/components' },

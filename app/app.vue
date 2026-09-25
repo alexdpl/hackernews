@@ -32,6 +32,16 @@ onMounted(async () => {
   </div>
 </template>
 
+<template>
+  <div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+    <!-- Componente Floating Plugin 7 -->
+    <DkpPulseNexus />
+  </div>
+</template>
+
 <style lang="postcss">
 *, *::before, *::after {
   box-sizing: border-box;
