@@ -3,8 +3,9 @@
 definePageMeta({ middleware: 'admin-only' })
 
 const products = ref([
-  { id: 1, name: 'DKP Native Blog & Admin Pro', price: 49, version: 'v2.1.0', zip: 'dkp-native-blog-v2.1.0.zip', sales: 12 },
-  { id: 2, name: 'DKP Neural Code Playground Suite', price: 79, version: 'v1.5.0', zip: 'dkp-neural-playground-v1.5.0.zip', sales: 8 }
+  { id: 1, name: 'DKP Automated Crawler SaaS Engine', price: 109, version: 'v1.0.0', zip: 'dkp-automated-crawler-pro-v1.0.zip', sales: 0 },
+  { id: 2, name: 'DKP Native Blog & Admin Pro', price: 99, version: 'v2.1.0', zip: 'dkp-native-blog-v2.1.0.zip', sales: 16 },
+  { id: 3, name: 'DKP Neural Code Playground Suite', price: 79, version: 'v1.5.0', zip: 'dkp-neural-playground-v1.5.0.zip', sales: 11 }
 ])
 
 const newProduct = ref({

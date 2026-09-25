@@ -302,6 +302,10 @@ async function handleLogout() {
                 <NuxtLink to="/admin" class="menu-item admin-item">
                   <span>🔒</span> Control Center Admin
                 </NuxtLink>
+				
+				<NuxtLink to="/admin/crawler" class="menu-item admin-item">
+                  <span>🤖</span> DKP Crawler Engine
+                </NuxtLink>
 
                 <NuxtLink to="/admin/blog" class="menu-item admin-item">
                   <span>📝</span> Gestione DKP Blog

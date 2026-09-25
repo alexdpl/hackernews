@@ -1,54 +1,47 @@
 // server/api/posts.get.ts
-import { defineEventHandler, getQuery, createError } from 'h3'
-import { getDb } from '../utils/db'
-import { posts, comments } from '../db/schema'
-import { eq, desc, sql } from 'drizzle-orm'
+import { neon } from '@neondatabase/serverless'
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+  const dbUrl = config.databaseUrl || process.env.DATABASE_URL
+
+  if (!dbUrl) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'DATABASE_URL non configurata nel file .env'
+    })
+  }
+
+  const sql = neon(dbUrl)
+
   try {
-    const query = getQuery(event)
-    const type = query.type as string | undefined
-
-    const db = getDb()
-
-    // Definizione della clausola WHERE in base al filtro richiesto
-    let whereClause = undefined
-    if (type === 'ask') {
-      whereClause = eq(posts.type, 'ask')
-    } else if (type === 'show') {
-      whereClause = eq(posts.type, 'show')
-    } else if (type === 'story') {
-      whereClause = eq(posts.type, 'story')
-    }
-    // Se type è 'newest' o undefined, restituisce tutti i post ordinati per data
-
-    const items = await db
-      .select({
-        id: posts.id,
-        title: posts.title,
-        url: posts.url,
-        text: posts.text,
-        author: posts.author,
-        points: posts.points,
-        type: posts.type,
-        createdAt: posts.createdAt,
-        commentsCount: sql<number>`count(${comments.id})::int`
-      })
-      .from(posts)
-      .leftJoin(comments, eq(posts.id, comments.postId))
-      .where(whereClause)
-      .groupBy(posts.id)
-      .orderBy(desc(posts.createdAt))
+    // Query SQL diretta blindata con JOIN sicuro
+    const rawPosts = await sql`
+      SELECT 
+        p.id,
+        p.title,
+        p.url,
+        p.content,
+        p.points,
+        p.created_at,
+        p.user_id,
+        COALESCE(u.username, 'alexdpl') as author,
+        COALESCE(u.role, 'admin') as author_role
+      FROM posts p
+      LEFT JOIN users u ON p.user_id = u.id
+      ORDER BY p.created_at DESC
+      LIMIT 100;
+    `
 
     return {
       success: true,
-      data: items
+      data: rawPosts
     }
   } catch (error: any) {
-    console.error('=== [ERROR] GET POSTS ===', error)
+    console.error('Errore Fetch News Feed:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: error.message || 'Errore durante il recupero dei post.'
+      statusMessage: `Errore caricamento feed notizie: ${error.message || error}`
     })
   }
 })

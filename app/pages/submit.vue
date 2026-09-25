@@ -1,314 +1,376 @@
 <!-- app/pages/submit.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import DkpCaptcha from '~/components/DkpCaptcha.vue' // <-- Import esplicito per risolvere il caricamento
+import { ref, onMounted } from 'vue'
 
-const postType = ref('story') // 'story' | 'ask' | 'show' | 'job'
-const title = ref('')
-const url = ref('')
-const text = ref('')
-const company = ref('')
-const location = ref('')
+useDkpSeo({
+  title: 'Invia Contenuto - DevKernelPulse v2.0',
+  description: 'Pubblica notizie, domande Ask, Showcase progetti o annunci Job nel Kernel DKP.'
+})
+
+const router = useRouter()
+const { currentUser, isAuthenticated } = useAuthCore()
+
+// Opzioni Menù a Tendina Sezioni DKP
+const sections = [
+  { id: 'news', name: '📰 News Feed', description: 'Notizie tech, articoli ed ecosistema', targetRoute: '/feed' },
+  { id: 'ask', name: '💬 Ask Community', description: 'Domande tecniche, supporto e dibattiti', targetRoute: '/ask' },
+  { id: 'show', name: '⚡ Show DKP', description: 'Showcase e demo di progetti personali', targetRoute: '/show' },
+  { id: 'jobs', name: '💼 Tech Jobs', description: 'Offerte di lavoro e posizioni aperte', targetRoute: '/jobs' },
+  { id: 'blog', name: '✍️ DKP Blog', description: 'Articoli lunghi ed approfondimenti', targetRoute: '/blog' }
+]
+
+const form = ref({
+  type: 'news',
+  title: '',
+  url: '',
+  content: ''
+})
+
+// DKP Kernel Captcha System (Anti-Bot Engine)
+const captchaNum1 = ref(0)
+const captchaNum2 = ref(0)
+const captchaUserAnswer = ref('')
+const captchaExpectedAnswer = ref(0)
+
+function generateCaptcha() {
+  captchaNum1.value = Math.floor(Math.random() * 12) + 1
+  captchaNum2.value = Math.floor(Math.random() * 10) + 1
+  captchaExpectedAnswer.value = captchaNum1.value + captchaNum2.value
+  captchaUserAnswer.value = ''
+}
 
 const isSubmitting = ref(false)
 const errorMessage = ref('')
-const isCaptchaVerified = ref(false)
-
-// Domini spam vietati per i job
-const spamDomains = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly']
-
-// Validazione dinamica, rigorosa e protetta da DKP Captcha
-const isValid = computed(() => {
-  const hasTitle = title.value.trim().length >= 3
-  
-  // Il Captcha deve essere superato per qualsiasi tipo di post
-  if (!isCaptchaVerified.value) return false
-  
-  if (postType.value === 'job') {
-    const trimmedUrl = url.value.trim()
-    const trimmedText = text.value.trim()
-    
-    // Regole ferree per i Job:
-    // 1. Titolo valido
-    // 2. URL obbligatorio, in HTTPS e senza shortener
-    // 3. Descrizione dettagliata (minimo 50 caratteri)
-    if (!hasTitle) return false
-    if (!trimmedUrl || !trimmedUrl.startsWith('https://')) return false
-    
-    const isSpam = spamDomains.some(domain => trimmedUrl.toLowerCase().includes(domain))
-    if (isSpam) return false
-    
-    if (trimmedText.length < 50) return false
-    
-    return true
-  }
-
-  // Per Storie, Ask e Show
-  return hasTitle && (url.value.trim().length > 0 || text.value.trim().length > 0)
-})
+const successMessage = ref('')
 
 async function handleSubmit() {
-  if (!isValid.value || isSubmitting.value) return
+  if (!form.value.title.trim()) {
+    errorMessage.value = 'Il titolo del contenuto è obbligatorio.'
+    return
+  }
+
+  // Verifica locale Captcha
+  if (parseInt(captchaUserAnswer.value) !== captchaExpectedAnswer.value) {
+    errorMessage.value = '🛡️ Risposta al DKP Kernel Captcha errata. Riprova.'
+    generateCaptcha()
+    return
+  }
 
   isSubmitting.value = true
   errorMessage.value = ''
+  successMessage.value = ''
 
   try {
-    if (postType.value === 'job') {
-      await $fetch('/api/jobs', {
-        method: 'POST',
-        body: {
-          title: title.value.trim(),
-          url: url.value.trim(),
-          text: text.value.trim(),
-          company: company.value.trim() || null,
-          location: location.value.trim() || null
-        }
-      })
-      await navigateTo('/jobs')
-    } else {
-      await $fetch('/api/posts', {
-        method: 'POST',
-        body: {
-          title: title.value.trim(),
-          url: url.value.trim() || null,
-          text: text.value.trim() || null,
-          type: postType.value
-        }
-      })
-      
-      if (postType.value === 'ask') await navigateTo('/ask')
-      else if (postType.value === 'show') await navigateTo('/show')
-      else await navigateTo('/')
+    const res = await $fetch<{ success: boolean; message: string; type: string }>('/api/posts', {
+      method: 'POST',
+      body: {
+        ...form.value,
+        captchaAnswer: captchaUserAnswer.value,
+        captchaExpected: captchaExpectedAnswer.value
+      }
+    })
+
+    if (res.success) {
+      successMessage.value = res.message
+      setTimeout(() => {
+        // Reindirizzamento dinamico alla sezione pubblicata
+        const selectedSec = sections.find(s => s.id === res.type)
+        router.push(selectedSec ? selectedSec.targetRoute : '/')
+      }, 1200)
     }
-  } catch (error: any) {
-    console.error('Errore di invio:', error)
-    errorMessage.value = error.data?.statusMessage || error.data?.message || 'Errore durante l\'invio del contenuto.'
+  } catch (err: any) {
+    errorMessage.value = err.statusMessage || 'Errore durante la pubblicazione. Verifica i dati.'
+    generateCaptcha()
   } finally {
     isSubmitting.value = false
   }
 }
 
-useSeoMeta({
-  title: 'Invia Contenuto - DevKernelPulse'
+onMounted(() => {
+  generateCaptcha()
 })
 </script>
 
 <template>
-  <div class="submit-container">
-    <h1 class="submit-title">Invia un nuovo contenuto a <span class="brand">DevKernelPulse</span></h1>
-
-    <form @submit.prevent="handleSubmit" class="submit-form">
-      <div v-if="errorMessage" class="error-banner">
-        ⚠️ {{ errorMessage }}
-      </div>
-
-      <!-- Selettore Tipo Contenuto -->
-      <div class="form-group">
-        <label for="postType">Tipo di pubblicazione</label>
-        <select id="postType" v-model="postType" class="select-input">
-          <option value="story">Notizia / Storia (Story)</option>
-          <option value="ask">Domanda alla community (Ask HN)</option>
-          <option value="show">Mostra un progetto (Show HN)</option>
-          <option value="job">Offerta di Lavoro (Job)</option>
-        </select>
-      </div>
-
-      <!-- Titolo -->
-      <div class="form-group">
-        <label for="title">
-          {{ postType === 'job' ? 'Titolo dell\'offerta di lavoro' : 'Titolo' }}
-        </label>
-        <input 
-          id="title" 
-          v-model="title" 
-          type="text" 
-          required 
-          placeholder="Inserisci il titolo (minimo 3 caratteri)..." 
-          :disabled="isSubmitting" 
-        />
-      </div>
-
-      <!-- Box Avviso Anti-Spam specifico per Job -->
-      <div v-if="postType === 'job'" class="job-warning-box">
-        ℹ️ <strong>Protocollo Anti-Spam Jobs DKP</strong>: Per pubblicare un annuncio di lavoro sono obbligatori un URL aziendale in <strong>HTTPS</strong> valido (senza link accorciati) e una descrizione tecnica approfondita di almeno <strong>50 caratteri</strong> (Tech Stack e requisiti).
-      </div>
-
-      <!-- Campi specifici per le Offerte di Lavoro -->
-      <template v-if="postType === 'job'">
-        <div class="form-group">
-          <label for="company">Nome Azienda (opzionale)</label>
-          <input 
-            id="company" 
-            v-model="company" 
-            type="text" 
-            placeholder="Es. Acme Corp" 
-            :disabled="isSubmitting" 
-          />
-        </div>
-        <div class="form-group">
-          <label for="location">Sede / Remote (opzionale)</label>
-          <input 
-            id="location" 
-            v-model="location" 
-            type="text" 
-            placeholder="Es. Milano / Full Remote" 
-            :disabled="isSubmitting" 
-          />
-        </div>
-      </template>
-
-      <!-- URL -->
-      <div class="form-group">
-        <label for="url">
-          {{ postType === 'job' ? 'URL Aziendale Ufficiale (HTTPS obbligatorio)' : 'URL (Link esterno)' }}
-        </label>
-        <input 
-          id="url" 
-          v-model="url" 
-          type="url" 
-          :required="postType === 'job'"
-          placeholder="https://example.com" 
-          :disabled="isSubmitting" 
-        />
-      </div>
-
-      <!-- Testo / Descrizione -->
-      <div class="form-group">
-        <label for="text">
-          {{ postType === 'job' ? 'Requisiti e Tech Stack (Minimo 50 caratteri)' : (postType === 'ask' ? 'Dettagli della domanda' : 'Testo / Descrizione') }}
-        </label>
-        <textarea 
-          id="text" 
-          v-model="text" 
-          rows="5" 
-          :required="postType === 'job'"
-          placeholder="Aggiungi una descrizione dettagliata..." 
-          :disabled="isSubmitting"
-        ></textarea>
-        <span v-if="postType === 'job'" class="char-counter" :class="{ 'valid': text.trim().length >= 50 }">
-          Caratteri inseriti: {{ text.trim().length }} / 50 minimi richiesti
+  <div class="submit-page-container">
+    <div class="submit-card">
+      
+      <!-- BADGE HEADER -->
+      <div class="card-header-badge">
+        <span class="badge-tag">DKP KERNEL SUBMIT v2.0</span>
+        <span v-if="isAuthenticated" class="user-identity">
+          Autore: <strong class="user-highlight">@{{ currentUser?.username }}</strong>
         </span>
       </div>
 
-      <!-- DKP Captcha di Sicurezza Nativo -->
-      <DkpCaptcha @verify="(status: boolean) => isCaptchaVerified = status" />
+      <h1>Condividi nel <span class="highlight">Kernel DKP</span></h1>
+      <p class="subtitle">Scegli la sezione, compila i dati e pubblica all'istante nell'ecosistema.</p>
 
-      <button type="submit" class="submit-btn" :disabled="!isValid || isSubmitting">
-        {{ isSubmitting ? 'Pubblicazione in corso...' : 'Invia Contenuto' }}
-      </button>
-    </form>
+      <form @submit.prevent="handleSubmit" class="submit-form">
+        
+        <!-- 1. MENÙ A TENDINA SEZIONI KERNEL -->
+        <div class="form-group">
+          <label class="label-with-icon">
+            <span>🎯 Sezione Destinazione *</span>
+          </label>
+          <select v-model="form.type" class="dkp-select">
+            <option v-for="sec in sections" :key="sec.id" :value="sec.id">
+              {{ sec.name }} — {{ sec.description }}
+            </option>
+          </select>
+        </div>
+
+        <!-- 2. TITOLO DEL CONTENUTO -->
+        <div class="form-group">
+          <label>Titolo del Contenuto *</label>
+          <input 
+            v-model="form.title" 
+            type="text" 
+            placeholder="Es. Guida alle nuove Server Routes di Nuxt 4" 
+            required 
+            class="dkp-input"
+          />
+        </div>
+
+        <!-- 3. URL ESTERNO -->
+        <div class="form-group">
+          <label>URL / Link Esterno (Consigliato per News, Show e Jobs)</label>
+          <input 
+            v-model="form.url" 
+            type="url" 
+            placeholder="https://github.com/tuo-progetto o https://articolo..." 
+            class="dkp-input"
+          />
+        </div>
+
+        <!-- 4. TESTO / DESCRIZIONE BREVE -->
+        <div class="form-group">
+          <label>Testo / Descrizione (Richiesto per Ask Community e Blog)</label>
+          <textarea 
+            v-model="form.content" 
+            rows="4" 
+            placeholder="Inserisci qui il contesto, il codice o i dettagli della discussione..."
+            class="dkp-textarea"
+          ></textarea>
+        </div>
+
+        <!-- 5. DKP KERNEL CAPTCHA ENGINE -->
+        <div class="captcha-box">
+          <div class="captcha-header">
+            <span class="captcha-title">🛡️ DKP KERNEL CAPTCHA</span>
+            <button type="button" @click="generateCaptcha" class="btn-captcha-refresh" title="Genera nuovo codice">
+              🔄 Rigenera
+            </button>
+          </div>
+          <div class="captcha-challenge">
+            <p class="challenge-text">
+              Risolvi l'equazione di sicurezza:
+              <strong class="math-eq">{{ captchaNum1 }} + {{ captchaNum2 }} = ?</strong>
+            </p>
+            <input 
+              v-model="captchaUserAnswer" 
+              type="number" 
+              placeholder="Inserisci il risultato..." 
+              required
+              class="captcha-input"
+            />
+          </div>
+        </div>
+
+        <!-- MESSAGGI DI ERRORE O SUCCESSO -->
+        <div v-if="errorMessage" class="error-banner">
+          ⚠️ {{ errorMessage }}
+        </div>
+
+        <div v-if="successMessage" class="success-banner">
+          {{ successMessage }}
+        </div>
+
+        <!-- SUBMIT BUTTON -->
+        <button type="submit" class="btn-submit" :disabled="isSubmitting">
+          <span v-if="isSubmitting">Pubblicazione nel Kernel... ⚡</span>
+          <span v-else>🚀 Pubblica Contenuto</span>
+        </button>
+
+      </form>
+
+      <!-- INFO DASHBOARD UTENTE -->
+      <div class="user-panel-info">
+        <span>📊 Nota: Potrai modificare ed eliminare i tuoi contenuti inviati direttamente dalla tua </span>
+        <NuxtLink to="/user/dashboard">Dashboard Personale ➔</NuxtLink>
+      </div>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
-.submit-container { 
-  max-width: 700px; 
-  margin: 2rem auto; 
-  padding: 2rem; 
-  background-color: #ffffff; 
-  border: 1px solid #e2e8f0; 
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-  font-family: ui-sans-serif, system-ui, sans-serif; 
+.submit-page-container {
+  max-width: 720px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  color: #f8fafc;
 }
 
-.submit-title { 
-  font-size: 1.4rem; 
-  font-weight: 700; 
-  margin-bottom: 1.5rem; 
-  color: #020420; 
+.submit-card {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 2.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.brand {
+.card-header-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.badge-tag {
+  background: rgba(0, 220, 130, 0.15);
   color: #00dc82;
-  background: #020420;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-}
-
-.submit-form { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 1.25rem; 
-}
-
-.form-group { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 0.4rem; 
-}
-
-label { 
-  font-size: 0.85rem; 
-  font-weight: 600; 
-  color: #334155; 
-}
-
-input, textarea, .select-input { 
-  padding: 0.7rem; 
-  border: 1px solid #cbd5e1; 
-  border-radius: 6px; 
-  font-size: 0.95rem; 
-  background-color: #ffffff; 
-  color: #020420; 
-}
-
-input:focus, textarea:focus, .select-input:focus { 
-  outline: none;
-  border-color: #00dc82; 
-}
-
-.job-warning-box {
-  background: #f8fafc;
-  border-left: 4px solid #00dc82;
-  border: 1px solid #e2e8f0;
-  padding: 0.8rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #334155;
-  line-height: 1.4;
-}
-
-.char-counter {
   font-size: 0.75rem;
-  color: #ef4444;
-  margin-top: 0.2rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 220, 130, 0.3);
 }
 
-.char-counter.valid {
-  color: #059669;
+.user-identity { font-size: 0.82rem; color: #94a3b8; }
+.user-highlight { color: #00dc82; }
+
+.submit-card h1 { font-size: 2rem; font-weight: 900; margin: 0.25rem 0; }
+.highlight { color: #00dc82; }
+.subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; }
+
+.submit-form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 0.4rem;
 }
 
-.error-banner { 
-  background-color: #fee2e2; 
-  border: 1px solid #f87171; 
-  color: #991b1b; 
-  padding: 0.8rem; 
-  font-size: 0.85rem; 
-  border-radius: 6px; 
-  font-weight: 500;
+.dkp-select, .dkp-input, .dkp-textarea {
+  width: 100%;
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  outline: none;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.submit-btn { 
-  background-color: #020420; 
-  color: #00dc82; 
-  border: none; 
-  padding: 0.75rem 1.5rem; 
-  font-weight: 700; 
-  cursor: pointer; 
-  border-radius: 6px; 
-  align-self: flex-start; 
-  transition: opacity 0.2s;
+.dkp-select:focus, .dkp-input:focus, .dkp-textarea:focus {
+  border-color: #00dc82;
+  box-shadow: 0 0 10px rgba(0, 220, 130, 0.15);
 }
 
-.submit-btn:hover {
-  opacity: 0.9;
+/* DKP KERNEL CAPTCHA STYLES */
+.captcha-box {
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-top: 0.5rem;
 }
 
-.submit-btn:disabled { 
-  background-color: #cbd5e1; 
+.captcha-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.captcha-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.btn-captcha-refresh {
+  background: transparent;
+  border: none;
   color: #64748b;
-  cursor: not-allowed; 
+  font-size: 0.75rem;
+  cursor: pointer;
 }
+
+.btn-captcha-refresh:hover { color: #00dc82; }
+
+.captcha-challenge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.challenge-text { margin: 0; font-size: 0.88rem; color: #cbd5e1; }
+.math-eq { color: #00dc82; font-size: 1.1rem; margin-left: 0.4rem; }
+
+.captcha-input {
+  width: 140px;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  color: #00dc82;
+  font-weight: 800;
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+  outline: none;
+}
+
+.captcha-input:focus { border-color: #00dc82; }
+
+/* BANNERS */
+.error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.success-banner {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  border: 1px solid #00dc82;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.btn-submit {
+  background: #00dc82;
+  color: #020420;
+  font-weight: 800;
+  font-size: 0.98rem;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 0.5rem;
+}
+
+.btn-submit:hover { background: #00bf71; transform: translateY(-1px); }
+
+.user-panel-info {
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #1e293b;
+  font-size: 0.82rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.user-panel-info a { color: #38bdf8; text-decoration: none; font-weight: 700; }
+.user-panel-info a:hover { text-decoration: underline; }
 </style>
