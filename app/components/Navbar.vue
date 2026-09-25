@@ -250,8 +250,8 @@ async function handleLogout() {
         </div>
 
         <!-- 6. LINK GITHUB -->
-        <a href="https://github.com/alexdpl/devkernel-pulse" target="_blank" rel="noopener" class="github-link">
-          GitHub ↗
+        <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener" class="github-link">
+          GitHub <strong style="color: #50C878;">↗</strong>
         </a>
 
         <!-- 7. PULSANTE ACCEDI / PILL UTENTE LOGGATO -->

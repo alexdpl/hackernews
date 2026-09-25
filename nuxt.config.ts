@@ -7,12 +7,18 @@ export default defineNuxtConfig({
     '@nuxt/eslint'
   ],
 
-  // 1. BRAND & SEO METADATA (Favicon SVG vettoriale integrata & SEO)
+  // 1. BRAND, FAVICON SVG & INTESTAZIONI DI SICUREZZA HTTP
   app: {
     head: {
+      htmlAttrs: { lang: 'it' },
       title: 'DevKernelPulse - L\'Ecosistema per Sviluppatori in Italia',
       meta: [
-        { name: 'description', content: 'Piattaforma tech avanzata, AI Scanner, Terminal mode e bacheca jobs per sviluppatori.' }
+        { charset: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'description', content: 'Piattaforma tech avanzata, AI Scanner, Terminal mode e bacheca jobs per sviluppatori.' },
+        { 'http-equiv': 'X-Content-Type-Options', content: 'nosniff' },
+        { 'http-equiv': 'X-Frame-Options', content: 'DENY' },
+        { 'http-equiv': 'X-XSS-Protection', content: '1; mode=block' }
       ],
       link: [
         { 
@@ -42,17 +48,27 @@ export default defineNuxtConfig({
     compatibilityVersion: 4
   },
 
-  // 4. TARGET DI COMPILAZIONE NITRO
+  // 4. OTTIMIZZAZIONE COMPILAZIONE NITRO & ROUTE RULES (SSR Caching Sub-100ms)
   nitro: {
     esnext: true,
+    compressPublicAssets: true,
     esbuild: {
       options: {
         target: 'esnext'
       }
+    },
+    routeRules: {
+      '/': { swr: 60 },                 // Revalidazione SWR ogni 60s
+      '/feed': { swr: 30 },             // Revalidazione feed ogni 30s
+      '/blog/**': { isr: 3600 },        // Caching statico 1 ora per articoli blog
+      '/rss.xml': { swr: 300 },         // Cache 5 min per RSS feed
+      '/sitemap.xml': { swr: 3600 },    // Cache 1 ora per Sitemap XML
+      '/api/vault/**': { cache: false },// Nessuna cache per le API Vault riservate
+      '/user/dashboard': { ssr: false } // SPA Mode per l'Area Riservata Utente
     }
   },
 
-  // 5. OTTIMIZZAZIONE MEMORIA LOCAL DEV
+  // 5. DEVTOOLS & PERFORMANCE TUNING
   devtools: {
     enabled: true,
     vscode: false,
