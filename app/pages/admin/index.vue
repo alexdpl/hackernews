@@ -1,4 +1,4 @@
-<!-- pages/admin/index.vue (o app/pages/admin/index.vue) -->
+<!-- app/pages/admin/index.vue) -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
@@ -108,7 +108,7 @@ onMounted(() => {
           <span class="shield-pulse">🛡️</span>
           <div>
             <h2>Pulse Sentinel AI <span class="badge-status">Protected</span></h2>
-            <p class="sentinel-sub">Firewall Euristico & System Defense attivi nell'infrastruttura Kernel v2.3</p>
+            <p class="sentinel-sub">Firewall Euristico & System Defense attivi nell'infrastruttura Kernel v2.0</p>
           </div>
         </div>
         <button 
