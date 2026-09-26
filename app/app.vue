@@ -13,13 +13,18 @@ useSeoMeta({
 const { initAuth } = useAuthCore()
 const isClientReady = ref(false)
 
-onMounted(async () => {
+onMounted(() => {
+  // 1. Attiviamo subito il client per garantire la resa dei componenti interattivi
   isClientReady.value = true
-  try {
-    await initAuth()
-  } catch (err) {
-    // Check iniziale silenzioso
-  }
+
+  // 2. Eseguiamo l'auth in modo totalmente isolato (un errore qui non blocca l'UI)
+  setTimeout(async () => {
+    try {
+      await initAuth()
+    } catch (e) {
+      console.warn('[Kernel Auth Check] Inizializzazione eseguita con avviso:', e)
+    }
+  }, 50)
 })
 </script>
 
@@ -29,14 +34,10 @@ onMounted(async () => {
       <NuxtPage />
     </NuxtLayout>
 
-    <!-- Modale globale di autenticazione -->
+    <!-- Modale globale e Chat Pulse Nexus renderizzati lato Client -->
     <ClientOnly>
       <AuthModal />
-    </ClientOnly>
-
-    <!-- CHAT PULSE NEXUS: Caricata solo dopo il mount lato client -->
-    <ClientOnly>
-      <LazyDkpPulseNexus v-if="isClientReady" />
+      <DkpPulseNexus v-if="isClientReady" />
     </ClientOnly>
   </div>
 </template>
