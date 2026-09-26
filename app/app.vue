@@ -1,14 +1,19 @@
 <!-- app/app.vue -->
 <script setup lang="ts">
+import { onMounted } from 'vue'
+
 // Head & SEO Meta configuration
 useServerHead({
   htmlAttrs: { lang: 'it' },
 })
+<!-- app.vue -->
+<script setup lang="ts">
+import { onMounted } from 'vue'
 
 useSeoMeta({
   titleTemplate: 'DevKernelPulse | %s',
   description: 'DevKernelPulse - La piattaforma meritocratica per sviluppatori con Proof of Code basata su GitHub, Nuxt 4, Neon Postgres e Vercel.',
-  ogImage: 'https://devkernelpulse.vercel.app/cover.jpg',
+  ogImage: 'https://devkernelpulse.duckdns.og/cover.jpg',
   ogImageAlt: 'DevKernelPulse Proof of Code Ecosystem',
   twitterCard: 'summary_large_image',
 })
@@ -27,11 +32,15 @@ onMounted(async () => {
       <NuxtPage />
     </NuxtLayout>
 
-    <!-- Modale globale di autenticazione (Accedi / Registrati / Social) -->
-    <AuthModal />
+    <!-- Modale globale di autenticazione -->
+    <ClientOnly>
+      <AuthModal />
+    </ClientOnly>
 
     <!-- Componente Floating Plugin 7 (Pulse Nexus Chat) -->
-    <DkpPulseNexus />
+    <ClientOnly>
+      <DkpPulseNexus />
+    </ClientOnly>
   </div>
 </template>
 
