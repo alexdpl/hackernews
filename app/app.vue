@@ -2,23 +2,21 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 
-// Head & SEO Meta configuration
-useServerHead({
-  htmlAttrs: { lang: 'it' },
+// 1. Configurazione Lingua & HTML Head
+useHead({
+  htmlAttrs: { lang: 'it' }
 })
-<!-- app.vue -->
-<script setup lang="ts">
-import { onMounted } from 'vue'
 
+// 2. Head & SEO Meta configuration DKP Kernel v2.0
 useSeoMeta({
   titleTemplate: 'DevKernelPulse | %s',
-  description: 'DevKernelPulse - La piattaforma meritocratica per sviluppatori con Proof of Code basata su GitHub, Nuxt 4, Neon Postgres e Vercel.',
-  ogImage: 'https://devkernelpulse.duckdns.og/cover.jpg',
+  description: 'DevKernelPulse v2.0 - La piattaforma meritocratica per sviluppatori con Proof of Code basata su GitHub, Nuxt 4, Neon Postgres e GCP.',
+  ogImage: 'https://devkernelpulse.duckdns.org/cover.jpg',
   ogImageAlt: 'DevKernelPulse Proof of Code Ecosystem',
-  twitterCard: 'summary_large_image',
+  twitterCard: 'summary_large_image'
 })
 
-// Inizializzazione Automatica Sessione DKP Auth Core
+// 3. Inizializzazione Automatica Sessione DKP Auth Core
 const { initAuth } = useAuthCore()
 
 onMounted(async () => {
@@ -27,7 +25,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
+  <div class="dkp-app-wrapper">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -44,7 +42,7 @@ onMounted(async () => {
   </div>
 </template>
 
-<style lang="postcss">
+<style>
 *, *::before, *::after {
   box-sizing: border-box;
 }
