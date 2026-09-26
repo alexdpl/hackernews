@@ -11,23 +11,19 @@ export default defineNuxtConfig({
   alias: {
     '~~/drizzle': resolve(__dirname, './drizzle'),
     '@core': resolve(__dirname, './devkernelpulse-core'),
-    '@plugins': resolve(__dirname, './dkp-proprietary-plugins'),
-    '@crawler-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-automated-crawler-pro'),
-    '@translator-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-translator-pro'),
-    '@nexus-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-pulse-nexus-pro')
+    '@plugins': resolve(__dirname, './dkp-proprietary-plugins')
   },
 
-  // Registrazione esplicita dei composables dei plugin
+  // Auto-import dinamico per composables e utility dei plugin
   imports: {
     dirs: [
       '~/composables',
       '~/utils',
-      '~~/dkp-proprietary-plugins/dkp-pulse-nexus-pro/composables',
-      '~~/dkp-proprietary-plugins/dkp-translator-pro/composables',
-      '~~/dkp-proprietary-plugins/dkp-automated-crawler-pro/composables'
+      '~~/dkp-proprietary-plugins/*/composables'
     ]
   },
 
+  // Auto-import componenti per la app e per tutti i plugin proprietari
   components: {
     dirs: [
       '~/components',
