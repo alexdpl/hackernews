@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-// 1. Configurazione Lingua & SEO Head
 useHead({
   htmlAttrs: { lang: 'it' }
 })
@@ -16,18 +15,14 @@ useSeoMeta({
 })
 
 const { initAuth } = useAuthCore()
-
-// FLAG CRITICO DI BLINDAGGIO HYDRATION:
-// Garantisce che la chat venga caricata SOLO sul client a montaggio avvenuto,
-// eliminando qualsiasi mismatch di SSR su GCP.
 const isClientReady = ref(false)
 
 onMounted(async () => {
   isClientReady.value = true
   try {
     await initAuth()
-  } catch (_) {
-    // Silenzia eventuali chiamate auth iniziali non bloccanti
+  } catch (err) {
+    console.warn('⚠️ DKP Auth: Nessuna sessione attiva rilevata all avvio.')
   }
 })
 </script>
@@ -43,7 +38,7 @@ onMounted(async () => {
       <AuthModal />
     </ClientOnly>
 
-    <!-- PULSE NEXUS CHAT - BLINDATA CONTRO OGNI HYDRATION MISMATCH -->
+    <!-- CHAT PULSE NEXUS - GARANTITA AL 100% -->
     <ClientOnly>
       <LazyDkpPulseNexus v-if="isClientReady" />
     </ClientOnly>
@@ -58,7 +53,7 @@ onMounted(async () => {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 15px;
-  background-color: #020617; /* Sfondo scuro coordinato con l'ecosistema DKP */
+  background-color: #020617;
   margin: 0;
   padding: 0;
   color: #f8fafc;

@@ -8,12 +8,20 @@ export default defineEventHandler(async (event) => {
       body = parsedBody
     }
   } catch (_) {
-    // Body vuoto o non JSON
+    // Body vuoto
   }
 
   const { email, password } = body
 
-  // Validazione pulita senza generare eccezioni/stacktrace sul terminale
+  // Se la richiesta è vuota (controllo sessione preventivo), restituiamo uno stato neutro anziché 400
+  if (!email && !password) {
+    return {
+      success: false,
+      user: null,
+      message: 'Nessuna credenziale fornita per il login.'
+    }
+  }
+
   if (!email || !password) {
     setResponseStatus(event, 400)
     return {
