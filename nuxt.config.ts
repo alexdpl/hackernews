@@ -8,8 +8,8 @@ export default defineNuxtConfig({
     compatibilityVersion: 4
   },
 
-  // Mappatura Alias Architettura SaaS Modulare (Bagisto-Style)
   alias: {
+    '~~/drizzle': resolve(__dirname, './drizzle'),
     '@core': resolve(__dirname, './devkernelpulse-core'),
     '@plugins': resolve(__dirname, './dkp-proprietary-plugins'),
     '@crawler-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-automated-crawler-pro'),
@@ -17,11 +17,15 @@ export default defineNuxtConfig({
     '@nexus-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-pulse-nexus-pro')
   },
 
-  // Auto-scansione componenti anche dai moduli proprietari
+  // Scansione automatica di tutti i componenti nei plugin proprietari
   components: {
     dirs: [
-      { path: '~/components' },
-      { path: '~/dkp-proprietary-plugins', pathPrefix: false }
+      '~/components',
+      {
+        path: '~~/dkp-proprietary-plugins',
+        pathPrefix: false,
+        extensions: ['.vue']
+      }
     ]
   },
 

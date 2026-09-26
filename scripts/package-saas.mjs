@@ -1,37 +1,49 @@
 // scripts/package-saas.mjs
-import fs from 'fs'
-import path from 'path'
-import { execSync } from 'child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import { execSync } from 'node:child_process'
 
-const pluginsDir = path.resolve('./dkp-proprietary-plugins')
-const outputDir = path.resolve('./public/downloads')
+const pluginsDir = path.resolve(process.cwd(), 'dkp-proprietary-plugins')
+const downloadsDir = path.resolve(process.cwd(), 'public/downloads')
 
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true })
+// Creazione cartella downloads se non esiste
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true })
 }
 
-console.log('📦 Avvio Impacchettamento Plugin SaaS DKP v2.0...\n')
+// Mappatura dei 7 moduli SaaS
+const plugins = [
+  'dkp-automated-crawler-pro',
+  'dkp-ecosystem-shop',
+  'dkp-kernel-captcha',
+  'dkp-native-blog-pro',
+  'dkp-neural-playground',
+  'dkp-pulse-nexus-pro',
+  'dkp-translator-pro'
+]
 
-const plugins = fs.readdirSync(pluginsDir)
+console.log('📦 Impacchettamento dei 7 moduli SaaS in public/downloads/...\n')
 
-plugins.forEach(plugin => {
-  const pluginPath = path.join(pluginsDir, plugin)
-  if (fs.statSync(pluginPath).isDirectory()) {
-    const zipName = `${plugin}-v2.0.zip`
-    const zipPath = path.join(outputDir, zipName)
+plugins.forEach((pluginFolder) => {
+  const sourcePath = path.join(pluginsDir, pluginFolder)
+  const zipFileName = `${pluginFolder}-v2.0.zip`
+  const targetZipPath = path.join(downloadsDir, zipFileName)
 
-    console.log(`⚡ Generazione archivio: ${zipName}...`)
+  if (fs.existsSync(sourcePath)) {
+    console.log(`⚡ Zipping: ${pluginFolder} -> ${zipFileName}`)
+    
+    // Comando PowerShell per compattare la cartella
+    const psCommand = `powershell -Command "if (Test-Path '${targetZipPath}') { Remove-Item '${targetZipPath}' }; Compress-Archive -Path '${sourcePath}\\*' -DestinationPath '${targetZipPath}' -Force"`
+    
     try {
-      if (process.platform === 'win32') {
-        execSync(`powershell Compress-Archive -Path "${pluginPath}\\*" -DestinationPath "${zipPath}" -Force`)
-      } else {
-        execSync(`zip -r "${zipPath}" "${pluginPath}"`)
-      }
-      console.log(`✅ ${zipName} creato con successo in public/downloads/\n`)
+      execSync(psCommand, { stdio: 'inherit' })
+      console.log(`✅ Creato: ${zipFileName}\n`)
     } catch (err) {
-      console.error(`❌ Errore durante la creazione di ${zipName}:`, err.message)
+      console.error(`❌ Errore in ${zipFileName}:`, err.message)
     }
+  } else {
+    console.warn(`⚠️ Cartella non trovata: ${sourcePath}`)
   }
 })
 
-console.log('🚀 Tutti i plugin SaaS sono stati impacchettati e sono pronti per lo DKP Shop!')
+console.log('🚀 Impacchettamento completato!')
