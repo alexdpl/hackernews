@@ -1,154 +1,211 @@
-<!-- app/pages/admin/index.vue -->
+<!-- pages/admin/index.vue (o app/pages/admin/index.vue) -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-const { currentUser, isAuthenticated } = useAuthCore()
-const router = useRouter()
-
-// Guard client-side per bloccare chiunque non sia alexdpl / admin
-const isAdmin = computed(() => {
-  if (!currentUser.value) return false
-  const username = currentUser.value.username?.toLowerCase()
-  const role = currentUser.value.role?.toLowerCase()
-  return username === 'alexdpl' || role === 'admin'
+useDkpSeo({
+  title: 'Admin Control Center - DKP Sentinel AI',
+  description: 'Pannello di controllo centrale e monitoraggio difensivo con Pulse Sentinel AI.'
 })
 
-onMounted(() => {
-  if (!isAuthenticated.value || !isAdmin.value) {
-    router.push('/')
-  }
-})
-
-// Tab Admin: 'users' | 'moderation' | 'metrics'
-const activeAdminTab = ref<'users' | 'moderation' | 'metrics'>('users')
-
-// --- METRICHE DI SISTEMA (Neon DB, GCP, PM2) ---
-const systemMetrics = ref({
-  neonStatus: 'CONNECTED',
-  neonLatencyMs: 18,
-  neonConnections: '14/50 active',
-  gcpLoadCpu: '24%',
-  gcpRamUsed: '1.4 GB / 4.0 GB',
-  pm2Status: 'ONLINE',
-  pm2Uptime: '14 giorni, 6 ore',
-  activeUsersOnline: 42
-})
-
-// --- GESTIONE UTENTI ---
+const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('users')
 const searchQuery = ref('')
-const usersList = ref([
-  { id: 'usr-1', username: 'alexdpl', email: 'alex@devkernelpulse.io', role: 'admin', status: 'ACTIVE', joined: '2026-01-10' },
-  { id: 'usr-2', username: 'dev_ninja', email: 'ninja@code.dev', role: 'moderator', status: 'ACTIVE', joined: '2026-03-12' },
-  { id: 'usr-3', username: 'spammer_bot', email: 'bot@spam.com', role: 'user', status: 'SUSPENDED', joined: '2026-09-01' },
-  { id: 'usr-4', username: 'marco_vue', email: 'marco@framework.it', role: 'user', status: 'ACTIVE', joined: '2026-08-15' }
+
+// Gestione Reattiva Utenti
+const users = ref([
+  { id: 1, username: 'alexdpl', email: 'alex@devkernelpulse.io', role: 'Admin', status: 'ACTIVE', joined: '2026-01-10' },
+  { id: 2, username: 'dev_ninja', email: 'ninja@code.dev', role: 'Moderator', status: 'ACTIVE', joined: '2026-03-12' },
+  { id: 3, username: 'bot_scrapper', email: 'crawler@darknet.org', role: 'User', status: 'SUSPENDED', joined: '2026-09-20' }
 ])
 
 const filteredUsers = computed(() => {
-  if (!searchQuery.value.trim()) return usersList.value
+  if (!searchQuery.value.trim()) return users.value
   const q = searchQuery.value.toLowerCase()
-  return usersList.value.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+  return users.value.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
 })
 
-function changeRole(userId: string, newRole: 'user' | 'moderator' | 'admin') {
-  const user = usersList.value.find(u => u.id === userId)
-  if (user) user.role = newRole
-}
+// Dati Sentinel AI Firewall
+const sentinelData = ref<any>({
+  status: 'ACTIVE_PROTECTION',
+  autoDefendEnabled: true,
+  globalThreatIndex: 12,
+  blockedRequests24h: 1420,
+  activeFirewallRules: 18,
+  gcpArmorStatus: 'OPTIMAL',
+  recentThreats: [
+    {
+      id: 'TH-9041',
+      type: 'Prompt Injection Attempt',
+      target: 'Pulse Nexus Chat',
+      ip: '185.220.101.5',
+      severity: 'CRITICAL',
+      timestamp: new Date().toISOString()
+    }
+  ]
+})
 
-function toggleUserStatus(userId: string) {
-  const user = usersList.value.find(u => u.id === userId)
-  if (user) {
-    user.status = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+const isActionLoading = ref(false)
+const notificationMsg = ref('')
+
+async function fetchSentinel() {
+  try {
+    const res = await $fetch<any>('/api/admin/sentinel')
+    if (res?.success && res?.sentinelState) {
+      sentinelData.value = res.sentinelState
+    }
+  } catch (err) {
+    console.warn('Utilizzo dati locali per Sentinel AI:', err)
   }
 }
 
-// --- MODERAZIONE CONTENUTI ---
-const pendingModeration = ref([
-  { id: 'mod-1', type: 'submission', title: 'Script di automazione web scraping in Python', author: 'spammer_bot', flagReason: 'Possibile link malevolo / Spam' },
-  { id: 'mod-2', type: 'comment', title: 'Commento su "Nuovo compilatore Vue"', author: 'anon_dev', content: 'Questo tool è spazzatura, visitate il mio sito xyz.com', flagReason: 'Linguaggio inappropriato' },
-  { id: 'mod-3', type: 'job', title: 'Senior Backend Engineer (Remote)', author: 'tech_corp', company: 'Tech Corp LLC', flagReason: 'In attesa di verifica' }
-])
-
-function approveContent(id: string) {
-  pendingModeration.value = pendingModeration.value.filter(item => item.id !== id)
+async function triggerAction(actionName: string, payload: any = {}) {
+  isActionLoading.value = true
+  try {
+    const res = await $fetch<any>('/api/admin/sentinel/action', {
+      method: 'POST',
+      body: { action: actionName, ...payload }
+    })
+    if (res?.success) {
+      notificationMsg.value = res.message
+      await fetchSentinel()
+      setTimeout(() => { notificationMsg.value = '' }, 4000)
+    }
+  } catch (err: any) {
+    alert('Errore esecuzione azione Sentinel: ' + (err.message || err))
+  } finally {
+    isActionLoading.value = false
+  }
 }
 
-function rejectContent(id: string) {
-  pendingModeration.value = pendingModeration.value.filter(item => item.id !== id)
+function toggleUserStatus(user: any) {
+  user.status = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+  notificationMsg.value = `Stato utente @${user.username} modificato in: ${user.status}`
+  setTimeout(() => { notificationMsg.value = '' }, 3500)
 }
+
+onMounted(() => {
+  fetchSentinel()
+})
 </script>
 
 <template>
-  <div v-if="isAdmin" class="admin-wrapper">
-    <!-- ADMIN HEADER -->
-    <header class="admin-header">
-      <div>
+  <div class="admin-container">
+    <!-- 1. HEADER CONTROL CENTER -->
+    <div class="admin-header">
+      <div class="header-main">
         <h1>🔒 Control Center Admin</h1>
-        <p class="admin-subtitle">Gestione piattaforma, moderazione contenuti e stato dell'infrastruttura.</p>
+        <p>Gestione piattaforma, moderazione contenuti e protezione infrastruttura GCP in tempo reale.</p>
       </div>
-      <div class="server-pill">
-        <span class="status-dot"></span> GCP Region: europe-west1
+      <div class="region-badge">
+        <span class="status-dot green"></span>
+        GCP Region: europe-west1
       </div>
-    </header>
+    </div>
 
-    <!-- SYSTEM METRICS CARDS -->
-    <section class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-top">
-          <span class="metric-label">Neon DB Status</span>
-          <span class="badge-status online">{{ systemMetrics.neonStatus }}</span>
+    <!-- 2. MONITOR FIREWALL SENTINEL AI BANNER -->
+    <div class="sentinel-monitor-banner">
+      <div class="sentinel-monitor-header">
+        <div class="sentinel-brand">
+          <span class="shield-pulse">🛡️</span>
+          <div>
+            <h2>Pulse Sentinel AI <span class="badge-status">Protected</span></h2>
+            <p class="sentinel-sub">Firewall Euristico & System Defense attivi nell'infrastruttura Kernel v2.0</p>
+          </div>
         </div>
-        <div class="metric-value">{{ systemMetrics.neonLatencyMs }} ms</div>
-        <div class="metric-sub">{{ systemMetrics.neonConnections }}</div>
+        <button 
+          @click="triggerAction('toggle_autodefend')" 
+          :disabled="isActionLoading"
+          :class="['btn-toggle-switch', sentinelData.autoDefendEnabled ? 'active' : 'inactive']"
+        >
+          <span>Auto-Defend AI</span>
+          <strong>{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
+        </button>
+      </div>
+
+      <div class="sentinel-monitor-grid">
+        <div class="monitor-cell">
+          <span class="cell-label">Global Threat Index</span>
+          <div class="threat-meter-box">
+            <div class="threat-bar">
+              <div class="threat-fill" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
+            </div>
+            <span class="threat-val">{{ sentinelData.globalThreatIndex }}%</span>
+          </div>
+        </div>
+
+        <div class="monitor-cell">
+          <span class="cell-label">Richieste Malevole Bloccate (24h)</span>
+          <div class="cell-val highlight-purple">{{ sentinelData.blockedRequests24h }}</div>
+        </div>
+
+        <div class="monitor-cell">
+          <span class="cell-label">GCP Armor Engine</span>
+          <div class="cell-val highlight-green">{{ sentinelData.gcpArmorStatus }}</div>
+        </div>
+
+        <div class="monitor-cell">
+          <span class="cell-label">Regole Attive</span>
+          <div class="cell-val highlight-blue">{{ sentinelData.activeFirewallRules }} Rules</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICA SISTEMA -->
+    <Transition name="fade">
+      <div v-if="notificationMsg" class="sentinel-notification">
+        ⚡ {{ notificationMsg }}
+      </div>
+    </Transition>
+
+    <!-- 3. METRICHE TOP DASHBOARD -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="card-title">Neon DB Status <span class="badge green">CONNECTED</span></div>
+        <div class="card-value">18 ms</div>
+        <div class="card-sub">14/50 active connections</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-top">
-          <span class="metric-label">GCP Cloud Load</span>
-          <span class="badge-status normal">STABLE</span>
-        </div>
-        <div class="metric-value">{{ systemMetrics.gcpLoadCpu }}</div>
-        <div class="metric-sub">RAM: {{ systemMetrics.gcpRamUsed }}</div>
+        <div class="card-title">GCP Cloud Load <span class="badge green">STABLE</span></div>
+        <div class="card-value">24%</div>
+        <div class="card-sub">RAM: 1.4 GB / 4.0 GB</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-top">
-          <span class="metric-label">PM2 Process</span>
-          <span class="badge-status online">{{ systemMetrics.pm2Status }}</span>
-        </div>
-        <div class="metric-value">Uptime</div>
-        <div class="metric-sub">{{ systemMetrics.pm2Uptime }}</div>
+        <div class="card-title">PM2 Process <span class="badge green">ONLINE</span></div>
+        <div class="card-value">Uptime</div>
+        <div class="card-sub">14 giorni, 6 ore</div>
       </div>
 
       <div class="metric-card">
-        <div class="metric-top">
-          <span class="metric-label">Utenti Attivi</span>
-          <span class="badge-status live">LIVE</span>
-        </div>
-        <div class="metric-value">{{ systemMetrics.activeUsersOnline }}</div>
-        <div class="metric-sub">Connessioni Socket simultanee</div>
+        <div class="card-title">Utenti Attivi <span class="badge blue">LIVE</span></div>
+        <div class="card-value">42</div>
+        <div class="card-sub">Connessioni Socket simultanee</div>
       </div>
-    </section>
+    </div>
 
-    <!-- NAVIGAZIONE SCHEDE ADMIN -->
-    <nav class="admin-tabs">
-      <button :class="['tab-btn', { active: activeAdminTab === 'users' }]" @click="activeAdminTab = 'users'">
-        👥 Gestione Utenti ({{ usersList.length }})
+    <!-- 4. TAB DI NAVIGAZIONE -->
+    <div class="admin-tabs">
+      <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">
+        👥 Gestione Utenti ({{ users.length }})
       </button>
-      <button :class="['tab-btn', { active: activeAdminTab === 'moderation' }]" @click="activeAdminTab = 'moderation'">
-        🛡️ Coda Moderazione ({{ pendingModeration.length }})
+      <button :class="{ active: activeTab === 'moderation' }" @click="activeTab = 'moderation'">
+        🛡️ Coda Moderazione (3)
       </button>
-      <button :class="['tab-btn', { active: activeAdminTab === 'metrics' }]" @click="activeAdminTab = 'metrics'">
+      <button :class="{ active: activeTab === 'infrastructure' }" @click="activeTab = 'infrastructure'">
         📊 Monitoraggio Infrastruttura
       </button>
-    </nav>
+      <button :class="{ active: activeTab === 'sentinel' }" @click="activeTab = 'sentinel'" class="tab-sentinel">
+        🤖 Log Minacce & Policy Sentinel AI
+      </button>
+    </div>
 
-    <!-- SEZIONE 1: GESTIONE UTENTI -->
-    <section v-if="activeAdminTab === 'users'" class="admin-pane">
-      <div class="pane-controls">
-        <input v-model="searchQuery" type="text" placeholder="Cerca utente per username o email..." class="search-input" />
+    <!-- TAB 1: GESTIONE UTENTI -->
+    <div v-if="activeTab === 'users'" class="tab-content">
+      <div class="search-bar">
+        <input v-model="searchQuery" type="text" placeholder="Cerca utente per username o email..." class="input-search" />
       </div>
 
-      <table class="admin-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>UTENTE</th>
@@ -160,248 +217,168 @@ function rejectContent(id: string) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="u in filteredUsers" :key="u.id">
-            <td><strong>@{{ u.username }}</strong></td>
-            <td class="text-subtle">{{ u.email }}</td>
+          <tr v-for="user in filteredUsers" :key="user.id">
+            <td><strong>@{{ user.username }}</strong></td>
+            <td>{{ user.email }}</td>
+            <td><span class="role-badge">{{ user.role }}</span></td>
             <td>
-              <select :value="u.role" @change="e => changeRole(u.id, (e.target as HTMLSelectElement).value as any)" class="role-select">
-                <option value="user">User</option>
-                <option value="moderator">Moderator</option>
-                <option value="admin">Admin</option>
-              </select>
+              <span :class="['status-badge', user.status === 'ACTIVE' ? 'active' : 'suspended']">
+                {{ user.status }}
+              </span>
             </td>
+            <td>{{ user.joined }}</td>
             <td>
-              <span class="status-pill" :class="u.status.toLowerCase()">{{ u.status }}</span>
-            </td>
-            <td class="text-subtle">{{ u.joined }}</td>
-            <td>
-              <button @click="toggleUserStatus(u.id)" class="action-btn" :class="u.status === 'ACTIVE' ? 'ban' : 'unban'">
-                {{ u.status === 'ACTIVE' ? 'Sospendi' : 'Riabilita' }}
+              <button @click="toggleUserStatus(user)" :class="['btn-action', user.status === 'ACTIVE' ? 'danger' : 'success']">
+                {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
               </button>
             </td>
           </tr>
         </tbody>
       </table>
-    </section>
+    </div>
 
-    <!-- SEZIONE 2: CODA DI MODERAZIONE -->
-    <section v-if="activeAdminTab === 'moderation'" class="admin-pane">
-      <div v-if="pendingModeration.length > 0" class="moderation-list">
-        <div v-for="item in pendingModeration" :key="item.id" class="mod-card">
-          <div class="mod-header">
-            <span class="mod-type">{{ item.type.toUpperCase() }}</span>
-            <span class="mod-reason">Segnalazione: {{ item.flagReason }}</span>
-          </div>
-          <h3 class="mod-title">{{ item.title }}</h3>
-          <p v-if="item.content" class="mod-content">"{{ item.content }}"</p>
-          <p class="mod-author">Autore: <strong>@{{ item.author }}</strong></p>
-          <div class="mod-actions">
-            <button @click="approveContent(item.id)" class="btn-approve">✓ Approva</button>
-            <button @click="rejectContent(item.id)" class="btn-reject">✕ Rimuovi / Ban</button>
+    <!-- TAB 4: SENTINEL LOGS -->
+    <div v-else-if="activeTab === 'sentinel'" class="tab-content sentinel-panel">
+      <div class="policy-warning-box">
+        <div class="warning-icon">⚠️</div>
+        <div class="warning-text">
+          <h4>Policy di Protezione GCP & Uso Etico</h4>
+          <p>
+            Il nostro sistema difensivo monitora attivamente i tentativi di abusare delle API, Prompt Injection sulla chat
+            Pulse Nexus, e attacchi DDoS. Ogni abuso viene registrato e penalizzato con il ban istantaneo dell'IP e dell'account.
+          </p>
+        </div>
+      </div>
+
+      <div v-if="sentinelData && sentinelData.recentThreats" class="threats-section">
+        <div class="section-header">
+          <h3>Registro Minacce Intercettate dall'IA</h3>
+          <button @click="triggerAction('purge_threats')" class="btn-purge">Pulisci Log</button>
+        </div>
+
+        <div class="threats-list">
+          <div v-for="threat in sentinelData.recentThreats" :key="threat.id" class="threat-item">
+            <div class="threat-left">
+              <span :class="['severity-badge', threat.severity.toLowerCase()]">{{ threat.severity }}</span>
+              <div class="threat-info">
+                <strong>{{ threat.type }}</strong>
+                <span>Destinazione: {{ threat.target }} • IP: <code>{{ threat.ip }}</code></span>
+              </div>
+            </div>
+            <div class="threat-right">
+              <span class="threat-time">{{ new Date(threat.timestamp).toLocaleTimeString() }}</span>
+              <button @click="triggerAction('ban_ip', { ip: threat.ip })" class="btn-ban">
+                🚫 Ban Definitivo IP
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      <div v-else class="empty-mod">
-        <p>🎉 Nessun elemento in attesa di moderazione!</p>
-      </div>
-    </section>
-
-    <!-- SEZIONE 3: METRICHE DETTAGLIATE -->
-    <section v-if="activeAdminTab === 'metrics'" class="admin-pane">
-      <div class="metrics-detail-box">
-        <h3>Neon PostgreSQL Cluster Details</h3>
-        <p>Region: <code>aws-eu-central-1</code> | Engine Version: <code>PostgreSQL 16</code></p>
-        <div class="log-box">
-          <code>[SYSTEM LOG] 2026-09-24 20:00:00 - Database Health Check OK (Latency 18ms)</code><br />
-          <code>[SYSTEM LOG] 2026-09-24 20:05:00 - GCP Instance auto-scale pool stable</code><br />
-          <code>[SYSTEM LOG] 2026-09-24 20:10:00 - Nitro SSR worker thread memory clean</code>
-        </div>
-      </div>
-    </section>
-
-  </div>
-  
-  <div v-else class="access-denied">
-    <h2>Reindirizzamento in corso...</h2>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.admin-wrapper {
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #f8fafc;
-}
+.admin-container { max-width: 1240px; margin: 0 auto; padding: 2rem 1.5rem; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
 
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  padding: 1.5rem 2rem;
-  border-radius: 12px;
-}
+.admin-header { display: flex; justify-content: space-between; align-items: center; background: #090d16; border: 1px solid #1e293b; padding: 1.5rem 2rem; border-radius: 14px; margin-bottom: 1.5rem; }
+.admin-header h1 { font-size: 1.8rem; margin: 0 0 0.3rem; font-weight: 900; }
+.admin-header p { margin: 0; color: #94a3b8; font-size: 0.9rem; }
 
-.admin-header h1 { margin: 0 0 0.25rem 0; font-size: 1.6rem; }
-.admin-subtitle { margin: 0; color: #94a3b8; font-size: 0.9rem; }
+.region-badge { background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-dot.green { background: #00dc82; box-shadow: 0 0 8px #00dc82; }
 
-.server-pill {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 0.4rem 0.8rem;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  color: #38bdf8;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+/* SENTINEL AI BANNER */
+.sentinel-monitor-banner { background: linear-gradient(135deg, #090d16 0%, #030712 100%); border: 1px solid #1e293b; border-left: 4px solid #a855f7; border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); }
+.sentinel-monitor-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 1.25rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
+.sentinel-brand { display: flex; align-items: center; gap: 1rem; }
+.shield-pulse { font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5)); }
+.sentinel-brand h2 { margin: 0; font-size: 1.4rem; font-weight: 900; color: #f8fafc; display: flex; align-items: center; gap: 0.75rem; }
+.badge-status { font-size: 0.7rem; background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid #00dc82; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase; }
+.sentinel-sub { margin: 0.2rem 0 0; color: #94a3b8; font-size: 0.85rem; }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  background: #00dc82;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00dc82;
-}
+.btn-toggle-switch { background: #020420; border: 1px solid #1e293b; color: #f8fafc; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
+.btn-toggle-switch span { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
+.btn-toggle-switch.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.05); }
 
-/* CARDS METRICHE */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
+.sentinel-monitor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+.monitor-cell { display: flex; flex-direction: column; gap: 0.4rem; }
+.cell-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
+.cell-val { font-size: 1.5rem; font-weight: 900; }
+.highlight-purple { color: #c084fc; }
+.highlight-green { color: #00dc82; }
+.highlight-blue { color: #38bdf8; }
 
-.metric-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 1.25rem;
-}
+.threat-meter-box { display: flex; align-items: center; gap: 0.75rem; }
+.threat-bar { flex-grow: 1; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+.threat-fill { height: 100%; background: linear-gradient(90deg, #00dc82 0%, #f59e0b 50%, #ef4444 100%); }
+.threat-val { font-size: 1.1rem; font-weight: 900; color: #38bdf8; width: 42px; }
 
-.metric-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
+.sentinel-notification { background: rgba(0, 220, 130, 0.12); border: 1px solid #00dc82; color: #00dc82; padding: 1rem 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; font-weight: 800; }
 
-.metric-label { font-size: 0.8rem; color: #94a3b8; font-weight: 600; }
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.metric-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; }
+.card-title { display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
+.card-value { font-size: 1.8rem; font-weight: 900; color: #f8fafc; margin: 0.5rem 0 0.2rem; }
+.card-sub { font-size: 0.78rem; color: #64748b; }
 
-.badge-status {
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-}
+.badge { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 800; }
+.badge.green { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.badge.blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
 
-.badge-status.online, .badge-status.normal { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.badge-status.live { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+.admin-tabs { display: flex; gap: 0.75rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.admin-tabs button { background: transparent; border: 1px solid transparent; color: #94a3b8; padding: 0.65rem 1.2rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; }
+.admin-tabs button.active { background: #090d16; border-color: #00dc82; color: #00dc82; }
+.admin-tabs button.tab-sentinel.active { border-color: #a855f7; color: #c084fc; }
 
-.metric-value { font-size: 1.5rem; font-weight: 800; color: #f8fafc; margin-bottom: 0.25rem; }
-.metric-sub { font-size: 0.75rem; color: #64748b; }
+.search-bar { margin-bottom: 1rem; }
+.input-search { width: 100%; max-width: 400px; background: #090d16; border: 1px solid #1e293b; padding: 0.75rem 1rem; border-radius: 8px; color: #f8fafc; outline: none; }
 
-/* TABS */
-.admin-tabs {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 1px solid #1e293b;
-  margin-bottom: 1.5rem;
-}
+.data-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; text-align: left; }
+.data-table th, .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
+.data-table th { color: #64748b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; }
 
-.tab-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  padding: 0.75rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
+.role-badge { background: #1e293b; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
+.status-badge.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.status-badge.suspended { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
-.tab-btn.active { color: #00dc82; border-bottom-color: #00dc82; }
+.btn-action { border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.78rem; }
+.btn-action.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.btn-action.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 
-/* PANES & TABLES */
-.admin-pane {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
+.policy-warning-box { background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; }
+.warning-icon { font-size: 1.8rem; }
+.warning-text h4 { margin: 0 0 0.25rem; color: #facc15; font-size: 1rem; }
+.warning-text p { margin: 0; color: #cbd5e1; font-size: 0.88rem; line-height: 1.4; }
 
-.pane-controls { margin-bottom: 1.25rem; }
+.threats-section { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+.section-header h3 { margin: 0; font-size: 1.1rem; }
 
-.search-input {
-  width: 100%;
-  max-width: 400px;
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
+.btn-purge { background: #020420; border: 1px solid #1e293b; color: #94a3b8; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
 
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.85rem;
-}
+.threats-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.threat-item { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
 
-.admin-table th { color: #64748b; border-bottom: 1px solid #1e293b; padding: 0.75rem; }
-.admin-table td { border-bottom: 1px solid #1e293b; padding: 0.75rem; }
-.text-subtle { color: #94a3b8; }
+.threat-left { display: flex; align-items: center; gap: 1rem; }
+.severity-badge { font-size: 0.68rem; font-weight: 900; padding: 0.2rem 0.5rem; border-radius: 4px; }
+.severity-badge.critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+.severity-badge.high { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+.severity-badge.medium { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
 
-.role-select {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
+.threat-info { display: flex; flex-direction: column; }
+.threat-info strong { font-size: 0.95rem; color: #f8fafc; }
+.threat-info span { font-size: 0.8rem; color: #64748b; margin-top: 0.15rem; }
+.threat-info code { color: #38bdf8; }
 
-.status-pill {
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
+.threat-right { display: flex; align-items: center; gap: 1rem; }
+.threat-time { font-size: 0.8rem; color: #64748b; }
 
-.status-pill.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-pill.suspended { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.btn-ban { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #ef4444; padding: 0.45rem 0.85rem; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+.btn-ban:hover { background: #ef4444; color: #ffffff; }
 
-.action-btn {
-  border: none;
-  padding: 0.3rem 0.65rem;
-  border-radius: 4px;
-  font-weight: 700;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.action-btn.ban { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.action-btn.unban { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-
-/* MODERATION LIST */
-.moderation-list { display: flex; flex-direction: column; gap: 1rem; }
-.mod-card { background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 1.25rem; }
-.mod-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
-.mod-type { font-size: 0.7rem; font-weight: 800; color: #38bdf8; }
-.mod-reason { font-size: 0.75rem; color: #eab308; }
-.mod-title { margin: 0 0 0.5rem 0; font-size: 1rem; }
-.mod-content { font-style: italic; color: #cbd5e1; font-size: 0.85rem; margin: 0 0 0.5rem 0; }
-.mod-author { font-size: 0.8rem; color: #94a3b8; margin: 0 0 1rem 0; }
-.mod-actions { display: flex; gap: 0.75rem; }
-
-.btn-approve { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.4rem 0.85rem; border-radius: 4px; cursor: pointer; }
-.btn-reject { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700; padding: 0.4rem 0.85rem; border-radius: 4px; cursor: pointer; }
-
-.log-box { background: #020420; border: 1px solid #1e293b; padding: 1rem; border-radius: 6px; font-size: 0.8rem; color: #38bdf8; line-height: 1.6; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
