@@ -1,26 +1,34 @@
 <!-- app/app.vue -->
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
-// 1. Configurazione Lingua & HTML Head
+// 1. Configurazione Lingua & SEO Head
 useHead({
   htmlAttrs: { lang: 'it' }
 })
 
-// 2. Head & SEO Meta configuration DKP Kernel v2.0
 useSeoMeta({
   titleTemplate: 'DevKernelPulse | %s',
   description: 'DevKernelPulse v2.0 - La piattaforma meritocratica per sviluppatori con Proof of Code basata su GitHub, Nuxt 4, Neon Postgres e GCP.',
   ogImage: 'https://devkernelpulse.duckdns.org/cover.jpg',
   ogImageAlt: 'DevKernelPulse Proof of Code Ecosystem',
-  twitterCard: 'summary_large_image'
+  twitterCard: 'summary_large_image',
 })
 
-// 3. Inizializzazione Automatica Sessione DKP Auth Core
 const { initAuth } = useAuthCore()
 
+// FLAG CRITICO DI BLINDAGGIO HYDRATION:
+// Garantisce che la chat venga caricata SOLO sul client a montaggio avvenuto,
+// eliminando qualsiasi mismatch di SSR su GCP.
+const isClientReady = ref(false)
+
 onMounted(async () => {
-  await initAuth()
+  isClientReady.value = true
+  try {
+    await initAuth()
+  } catch (_) {
+    // Silenzia eventuali chiamate auth iniziali non bloccanti
+  }
 })
 </script>
 
@@ -35,9 +43,9 @@ onMounted(async () => {
       <AuthModal />
     </ClientOnly>
 
-    <!-- Componente Floating Plugin 7 (Pulse Nexus Chat) -->
+    <!-- PULSE NEXUS CHAT - BLINDATA CONTRO OGNI HYDRATION MISMATCH -->
     <ClientOnly>
-      <DkpPulseNexus />
+      <LazyDkpPulseNexus v-if="isClientReady" />
     </ClientOnly>
   </div>
 </template>
