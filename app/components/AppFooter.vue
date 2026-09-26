@@ -14,7 +14,7 @@
         </p>
       </div>
 
-      <!-- Colonna 2: Suite DKP Tools v2.0 -->
+      <!-- Colonna 2: Suite DKP Tools v2.3 -->
       <div class="footer-col">
         <h4>🛠️ DKP Tools Suite</h4>
         <ul class="footer-links">

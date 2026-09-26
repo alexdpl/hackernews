@@ -1,7 +1,7 @@
 <!-- app/pages/index.vue -->
 <script setup lang="ts">
 useDkpSeo({
-  title: 'News Feed - Tech Stories & DKP Kernel v2.0',
+  title: 'News Feed - Tech Stories & DKP Kernel v2.3',
   description: 'Il feed meritocratico in tempo reale per sviluppatori con notizie verificate dal DKP Crawler Engine.'
 })
 
@@ -80,7 +80,7 @@ onMounted(() => {
     <!-- HERO HEADER FEED -->
     <div class="feed-header">
       <div class="header-left">
-        <span class="pulse-tag">LIVE KERNEL FEED v2.0</span>
+        <span class="pulse-tag">LIVE KERNEL FEED v2.3</span>
         <h1>Developer <span class="highlight">Pulse Feed</span></h1>
         <p class="subtitle">Notizie tech, release e discussioni verificate dal nostro motore DKP.</p>
       </div>

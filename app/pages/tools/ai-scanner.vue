@@ -79,7 +79,7 @@ function runScanner() {
   <div class="tool-page-container">
     <div class="tool-header">
       <div class="header-badge">
-        <span class="badge-tag">DKP Core Tool v2.0 Pro</span>
+        <span class="badge-tag">DKP Core Tool v2.3 Pro</span>
         <NuxtLink to="/" class="back-link">← Torna all'Ecosistema</NuxtLink>
       </div>
       <h1>🔍 AI Code Scanner & Security Audit</h1>

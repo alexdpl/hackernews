@@ -10,8 +10,8 @@ export function useDkpSeo(options: {
   const siteName = 'DevKernelPulse'
   const fullTitle = `${options.title} | ${siteName}`
   const description = options.description || 'DevKernelPulse - La piattaforma ad alte prestazioni per developer, notizie tech e DKP Tools.'
-  const image = options.image || 'https://devkernelpulse.duckdns.org/og-cover.png'
-  const url = `https://devkernelpulse.duckdns.org${route.fullPath}`
+  const image = options.image || 'https://devkernelpulse.org/og-cover.png'
+  const url = `https://devkernelpulse.org${route.fullPath}`
 
   useHead({
     title: fullTitle,

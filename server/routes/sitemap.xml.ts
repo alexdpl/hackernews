@@ -1,6 +1,6 @@
 // server/routes/sitemap.xml.ts
 export default defineEventHandler(async (event) => {
-  const baseUrl = 'https://devkernelpulse.duckdns.org'
+  const baseUrl = 'https://devkernelpulse.org'
   const pages = [
     '',
     '/feed',

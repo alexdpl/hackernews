@@ -8,7 +8,7 @@ const db = drizzle(sql)
 
 const initialNews = [
   {
-    title: 'DevKernelPulse v2.0 Released: Modular SaaS Architecture with Nuxt 4 & GCP',
+    title: 'DevKernelPulse v2.3 Released: Modular SaaS Architecture with Nuxt 4 & GCP',
     url: 'https://devkernelpulse.org/blog',
     content: 'Rilasciata la versione 2.0 di DevKernelPulse con DKP Auth Core, 4 DKP Tools (Neural Playground, Terminal, AI Scanner, Proof of Code) e caching Nitro sub-100ms.',
     userId: 1,
@@ -94,7 +94,7 @@ const initialNews = [
 ]
 
 async function main() {
-  console.log('⚡ Popolamento database Neon con le prime 12 notizie DKP v2.0...')
+  console.log('⚡ Popolamento database Neon con le prime 12 notizie DKP v2.3...')
   for (const item of initialNews) {
     await db.insert(posts).values(item)
   }

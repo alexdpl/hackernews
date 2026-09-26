@@ -19,7 +19,7 @@ export const OFFICIAL_LANGUAGES: DkpLanguage[] = [
   { code: 'PL', label: 'Polski', flag: '🇵🇱' }
 ]
 
-// Dizionario Core DKP Kernel v2.0
+// Dizionario Core DKP Kernel v2.3
 const translations: Record<string, Record<string, string>> = {
   IT: {
     news: 'news',

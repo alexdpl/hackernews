@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const mockStories: Record<string, any> = {
     '1': {
       id: 1,
-      title: 'DevKernelPulse v2.0 Released: Modular SaaS Architecture with Nuxt 3 & GCP',
+      title: 'DevKernelPulse v2.3 Released: Modular SaaS Architecture with Nuxt 3 & GCP',
       domain: 'devkernelpulse.org',
       url: 'https://github.com/alexdpl/hackernews',
       user: 'alexdpl',

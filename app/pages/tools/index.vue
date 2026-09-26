@@ -1,15 +1,15 @@
 <!-- app/pages/tools/index.vue -->
 <script setup lang="ts">
 useDkpSeo({
-  title: 'Panoramica DKP Tools v2.0 & Ecosistema Auth',
-  description: 'Guida ufficiale ai 4 DKP Tools v2.0, funzionalità, versioni ed uso del DKP Auth Core.'
+  title: 'Panoramica DKP Tools v2.3 & Ecosistema Auth',
+  description: 'Guida ufficiale ai 4 DKP Tools v2.3, funzionalità, versioni ed uso del DKP Auth Core.'
 })
 
 const toolsList = [
   {
     id: 'auth-core',
     name: 'DKP Auth Core',
-    version: 'v2.0.4',
+    version: 'v2.3.4',
     badge: 'CORE SYSTEM',
     icon: '🔑',
     description: 'Sistema di autenticazione proprietario con state hydration sincronizzata, cookie dkp_session ed integrazione OAuth 2.0 multi-provider.',
@@ -19,7 +19,7 @@ const toolsList = [
   {
     id: 'neural-playground',
     name: 'Neural Playground',
-    version: 'v2.0.1',
+    version: 'v2.3.1',
     badge: 'AI ENGINE',
     icon: '🧠',
     description: 'Ambiente di testing live per Prompt Engineering e benchmarking di modelli di intelligenza artificiale per sviluppatori.',
@@ -29,7 +29,7 @@ const toolsList = [
   {
     id: 'terminal',
     name: 'Terminal Web Shell',
-    version: 'v2.0.0',
+    version: 'v2.3.0',
     badge: 'CLI & SDK',
     icon: '💻',
     description: 'Web CLI in-browser ad alte prestazioni per interagire con le API di DevKernelPulse e l\'SDK proprietario.',
@@ -49,7 +49,7 @@ const toolsList = [
   {
     id: 'proof-of-code',
     name: 'Proof of Code (Vault)',
-    version: 'v2.0.2',
+    version: 'v2.3.2',
     badge: 'CRIPTO VAULT',
     icon: '🛡️',
     description: 'Notarizzazione crittografica delle repository con generazione di Hash immutabili salvati nel Neon PostgreSQL DB.',
@@ -63,7 +63,7 @@ const toolsList = [
   <div class="tools-overview-container">
     <div class="hero-header">
       <span class="pill-tag">OFFICIAL DKP ECOSYSTEM DOCUMENTATION</span>
-      <h1>I Nostri <span class="highlight">DKP Tools v2.0</span> & Auth Core</h1>
+      <h1>I Nostri <span class="highlight">DKP Tools v2.3</span> & Auth Core</h1>
       <p class="subtitle">
         Piattaforma suite proprietaria ad alte prestazioni progettata per sviluppatori, architetti software ed esperti di sicurezza.
       </p>

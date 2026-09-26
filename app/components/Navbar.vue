@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
-// Integrazione Core Auth, Routing & DKP Translator v2.0
+// Integrazione Core Auth, Routing & DKP Translator v2.3
 const { currentUser, isAuthenticated, logout, openAuthModal } = useAuthCore()
 const { currentLang, activeLanguageObj, languages, setLanguage, initTranslator, t } = useDkpTranslator()
 
@@ -60,7 +60,7 @@ const newsMenuItems = [
   { name: 'Tech Jobs', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
 ]
 
-// 4 DKP Tools v2.0
+// 4 DKP Tools v2.3
 const dkpTools = [
   { name: 'Neural Playground', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
   { name: 'Terminal Web Shell', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
@@ -102,7 +102,7 @@ async function handleLogout() {
           <span class="dk-badge">DK</span>
           <span class="brand-name">DevKernel<span class="pulse-highlight">Pulse</span></span>
         </NuxtLink>
-        <span class="version-tag">v2.0</span>
+        <span class="version-tag">v2.3</span>
       </div>
 
       <!-- NAVIGAZIONE PRINCIPALE DESKTOP -->

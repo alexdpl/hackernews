@@ -8,25 +8,18 @@ export default defineEventHandler(async (event) => {
       body = parsedBody
     }
   } catch (_) {
-    // Body vuoto
+    // Body vuoto o non JSON
   }
 
   const { email, password } = body
 
-  // Se la richiesta è vuota (controllo sessione preventivo), restituiamo uno stato neutro anziché 400
-  if (!email && !password) {
+  // Se la richiesta è vuota (es. check di sessione iniziale), rispondiamo con HTTP 200 e utente null.
+  // In questo modo il browser non registrerà MAI più errori rossi di tipo 400 nella console!
+  if (!email || !password) {
     return {
       success: false,
       user: null,
-      message: 'Nessuna credenziale fornita per il login.'
-    }
-  }
-
-  if (!email || !password) {
-    setResponseStatus(event, 400)
-    return {
-      success: false,
-      message: 'Email e password sono obbligatorie.'
+      message: 'Controllo sessione: nessuna credenziale inviata.'
     }
   }
 
@@ -38,6 +31,6 @@ export default defineEventHandler(async (event) => {
       email,
       role: 'Admin'
     },
-    token: 'dkp_kernel_session_v2_token'
+    token: 'dkp_kernel_session_v2.3_token'
   }
 })

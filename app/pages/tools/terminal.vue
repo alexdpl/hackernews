@@ -6,7 +6,7 @@ const { isAuthenticated, currentUser } = useAuthCore()
 
 const inputCommand = ref('')
 const terminalOutput = ref<Array<{ type: 'input' | 'output' | 'error' | 'success'; text: string }>>([
-  { type: 'output', text: 'DevKernelPulse Web Terminal v2.0.0 (x86_64-dkp-linux-gnu)' },
+  { type: 'output', text: 'DevKernelPulse Web Terminal v2.3.0 (x86_64-dkp-linux-gnu)' },
   { type: 'output', text: 'Type "help" to see available ecosystem commands.' },
   { type: 'success', text: 'Kernel secure sandbox initialized successfully.' }
 ])
@@ -90,7 +90,7 @@ function handleCommand() {
   <div class="tool-page-container">
     <div class="tool-header">
       <div class="header-badge">
-        <span class="badge-tag">DKP Core Tool v2.0 Pro</span>
+        <span class="badge-tag">DKP Core Tool v2.3 Pro</span>
         <NuxtLink to="/" class="back-link">← Torna all'Ecosistema</NuxtLink>
       </div>
       <h1>💻 Interactive Terminal Web Shell</h1>

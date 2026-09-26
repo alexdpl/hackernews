@@ -61,7 +61,7 @@ async function saveSettings() {
 
         <div class="setting-item">
           <div class="setting-info">
-            <h3>🔍 AI Code Scanner v2.0</h3>
+            <h3>🔍 AI Code Scanner v2.3</h3>
             <p>Modulo di audit di sicurezza OWASP integrato nell'ecosistema.</p>
           </div>
           <label class="switch">

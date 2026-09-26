@@ -7,11 +7,11 @@ import { ofetch } from 'ofetch'
 
 // System Prompt dell'Agente "Pulse"
 const PULSE_SYSTEM_PROMPT = `
-Sei "Pulse", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse v2.0 (DKP).
+Sei "Pulse", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse v2.3 (DKP).
 Il tuo ruolo è fare da mentore tech, assistente ed entità di gamification per la community dei dev.
 Conosci perfettamente i 7 moduli SaaS dell'ecosistema:
 1. DKP Automated Crawler Engine Pro
-2. DKP Translator Pro v2.0
+2. DKP Translator Pro v2.3
 3. DKP Ecosystem Shop Engine
 4. DKP Kernel Captcha Engine
 5. DKP Native Blog Pro CMS
@@ -105,7 +105,7 @@ export default defineEventHandler(async (event) => {
   // Fallback Locale Intelligente (se non c'è chiave API o in caso di errore)
   if (!aiResponseText) {
     if (lowerText.includes('ciao') || lowerText.includes('salve') || lowerText.includes('pulse')) {
-      aiResponseText = `SISTEMA ONLINE ⚡ Ciao ${username}! Il DevKernelPulse v2.0 è operativo al 100%. Come posso supportare il tuo workflow oggi?`
+      aiResponseText = `SISTEMA ONLINE ⚡ Ciao ${username}! Il DevKernelPulse v2.3 è operativo al 100%. Come posso supportare il tuo workflow oggi?`
     } else if (lowerText.includes('xp') || lowerText.includes('punti') || lowerText.includes('livello')) {
       aiResponseText = `Ottimo lavoro su questo prompt, ${username}! Con questa interazione guadagni +${xpEarned} XP. Continua a esplorare l'ecosistema per salire nella classifica!`
     } else if (lowerText.includes('shop') || lowerText.includes('plugin')) {

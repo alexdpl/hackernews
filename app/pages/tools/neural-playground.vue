@@ -59,7 +59,7 @@ export default defineEventHandler(async (event: H3Event) => {
   <div class="tool-page-container">
     <div class="tool-header">
       <div class="header-badge">
-        <span class="badge-tag">DKP Core Tool v2.0 Pro</span>
+        <span class="badge-tag">DKP Core Tool v2.3 Pro</span>
         <NuxtLink to="/" class="back-link">← Torna all'Ecosistema</NuxtLink>
       </div>
       <h1>🧠 Neural Playground & LLM Benchmark</h1>

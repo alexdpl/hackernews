@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   const ecosystemStories = [
     {
       id: 101,
-      title: 'DevKernelPulse v2.0 Released: Modular SaaS Architecture with Nuxt 3 & GCP',
+      title: 'DevKernelPulse v2.3 Released: Modular SaaS Architecture with Nuxt 3 & GCP',
       domain: 'devkernelpulse.org',
       url: 'https://github.com',
       user: 'alexdpl',

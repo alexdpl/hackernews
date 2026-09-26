@@ -3,7 +3,7 @@
 import { ref, onMounted } from 'vue'
 
 useDkpSeo({
-  title: 'Invia Contenuto - DevKernelPulse v2.0',
+  title: 'Invia Contenuto - DevKernelPulse v2.3',
   description: 'Pubblica notizie, domande Ask, Showcase progetti o annunci Job nel Kernel DKP.'
 })
 
@@ -97,7 +97,7 @@ onMounted(() => {
       
       <!-- BADGE HEADER -->
       <div class="card-header-badge">
-        <span class="badge-tag">DKP KERNEL SUBMIT v2.0</span>
+        <span class="badge-tag">DKP KERNEL SUBMIT v2.3</span>
         <span v-if="isAuthenticated" class="user-identity">
           Autore: <strong class="user-highlight">@{{ currentUser?.username }}</strong>
         </span>

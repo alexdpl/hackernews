@@ -12,14 +12,14 @@ useDkpSeo({
       <div class="legal-header">
         <span class="legal-badge">LEGAL & COMPLIANCE</span>
         <h1>Termini di Servizio & <span class="highlight">Copyright Proprietario</span></h1>
-        <p class="effective-date">Ultimo aggiornamento: Settembre 2026 | Versione Ecosistema v2.0</p>
+        <p class="effective-date">Ultimo aggiornamento: Settembre 2026 | Versione Ecosistema v2.3</p>
       </div>
 
       <div class="legal-body">
         <section>
           <h2>1. Accettazione dei Termini</h2>
           <p>
-            Accedendo ed utilizzando la piattaforma <strong>DevKernelPulse (DKP)</strong>, i DKP Tools v2.0 e il sistema di autenticazione DKP Auth Core, l'utente dichiara di aver letto, compreso ed accettato integralmente i presenti Termini di Servizio.
+            Accedendo ed utilizzando la piattaforma <strong>DevKernelPulse (DKP)</strong>, i DKP Tools v2.3 e il sistema di autenticazione DKP Auth Core, l'utente dichiara di aver letto, compreso ed accettato integralmente i presenti Termini di Servizio.
           </p>
         </section>
 

@@ -42,7 +42,7 @@ async function generateProof() {
   const now = new Date().toISOString()
 
   // Badge Markdown pronto per GitHub / DKP Post
-  const badgeMarkdown = `[![DKP Verified](https://img.shields.io/badge/DKP_Proof-VERIFIED-00dc82?style=for-the-badge&logo=github)](https://devkernelpulse.duckdns.org/tools/proof-of-code?vault=${vaultId})`
+  const badgeMarkdown = `[![DKP Verified](https://img.shields.io/badge/DKP_Proof-VERIFIED-00dc82?style=for-the-badge&logo=github)](https://devkernelpulse.org/tools/proof-of-code?vault=${vaultId})`
 
   setTimeout(() => {
     proofResult.value = {

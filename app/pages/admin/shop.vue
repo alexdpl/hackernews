@@ -3,7 +3,7 @@
 import { ref, computed } from 'vue'
 
 useDkpSeo({
-  title: 'Gestione DKP Shop - Control Center SaaS v2.0',
+  title: 'Gestione DKP Shop - Control Center SaaS v2.3',
   description: 'Pannello di gestione e distribuzione dei plugin proprietari SaaS per l\'ecosistema DevKernelPulse.'
 })
 
@@ -23,7 +23,7 @@ interface SaasProduct {
 const searchQuery = ref('')
 const selectedCategory = ref<string>('all')
 
-// Catalogo 6 Prodotti SaaS Proprietari DKP v2.0
+// Catalogo 6 Prodotti SaaS Proprietari DKP v2.3
 const products = ref<SaasProduct[]>([
   {
     id: 1,
@@ -31,20 +31,20 @@ const products = ref<SaasProduct[]>([
     category: 'saas',
     categoryLabel: 'SAAS MODULE',
     price: 99.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-automated-crawler-pro-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-automated-crawler-pro-v2.3.zip',
     description: 'Modulo di ingestione notizie automatico con integrazione HackerNews, clean-up Neon DB ed API Nitro ad alte prestazioni.',
     downloads: 48,
     status: 'Featured'
   },
   {
     id: 2,
-    title: '🌐 DKP Translator Pro v2.0 Plugin',
+    title: '🌐 DKP Translator Pro v2.3 Plugin',
     category: 'core',
     categoryLabel: 'CORE PLUGIN',
     price: 69.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-translator-pro-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-translator-pro-v2.3.zip',
     description: 'Composable globale e reattivo a 9 lingue con salvataggio cookie/localStorage, supporto Nuxt 4 SSR e zero dipendenze esterne.',
     downloads: 62,
     status: 'Active'
@@ -55,8 +55,8 @@ const products = ref<SaasProduct[]>([
     category: 'saas',
     categoryLabel: 'SAAS MODULE',
     price: 79.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-ecosystem-shop-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-ecosystem-shop-v2.3.zip',
     description: 'Sistema completo di monetizzazione, licenziamento SaaS e download automatico archivi .ZIP proprietari.',
     downloads: 34,
     status: 'Active'
@@ -67,8 +67,8 @@ const products = ref<SaasProduct[]>([
     category: 'core',
     categoryLabel: 'CORE PLUGIN',
     price: 39.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-kernel-captcha-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-kernel-captcha-v2.3.zip',
     description: 'Sistema anti-bot equazionale proprietario a zero costi esterni per la protezione dei form di sottomissione.',
     downloads: 89,
     status: 'Active'
@@ -79,8 +79,8 @@ const products = ref<SaasProduct[]>([
     category: 'cms',
     categoryLabel: 'CMS MODULE',
     price: 49.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-native-blog-pro-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-native-blog-pro-v2.3.zip',
     description: 'Motore CMS nativo per la pubblicazione di articoli tech, guide avanzate ed approfondimenti con supporto SEO.',
     downloads: 27,
     status: 'Active'
@@ -91,8 +91,8 @@ const products = ref<SaasProduct[]>([
     category: 'ai',
     categoryLabel: 'AI & TOOLS',
     price: 89.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-neural-playground-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-neural-playground-v2.3.zip',
     description: 'Pannello di testing prompt e integrazione modelli IA per l\'analisi automatica del codice e generazione contenuti.',
     downloads: 41,
     status: 'Featured'
@@ -104,8 +104,8 @@ const products = ref<SaasProduct[]>([
     category: 'ai',
     categoryLabel: 'FLAGSHIP AI MODULE',
     price: 149.00,
-    version: 'v2.0.0',
-    zipFile: 'dkp-pulse-nexus-pro-v2.0.zip',
+    version: 'v2.3.0',
+    zipFile: 'dkp-pulse-nexus-pro-v2.3.zip',
     description: 'Chat floating glassmorphic in real-time con l\'agente "Pulse Sentinel", motore di Gamification con XP, Livelli e classifica DB.',
     downloads: 112,
     status: 'Featured'

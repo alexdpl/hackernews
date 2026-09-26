@@ -67,7 +67,7 @@ async function resetDatabase() {
 <template>
   <div class="admin-page-container">
     <div class="header-section">
-      <div class="badge">DKP KERNEL CRAWLER ENGINE v2.0</div>
+      <div class="badge">DKP KERNEL CRAWLER ENGINE v2.3</div>
       <h1>Control Center <span class="highlight">Ingestione Notizie</span></h1>
       <p class="subtitle">Interroga i provider tech globali, filtra le storie e popola in tempo reale il database Neon.</p>
     </div>
