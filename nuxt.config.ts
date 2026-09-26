@@ -17,7 +17,17 @@ export default defineNuxtConfig({
     '@nexus-plugin': resolve(__dirname, './dkp-proprietary-plugins/dkp-pulse-nexus-pro')
   },
 
-  // Scansione automatica di tutti i componenti nei plugin proprietari
+  // Registrazione esplicita dei composables dei plugin
+  imports: {
+    dirs: [
+      '~/composables',
+      '~/utils',
+      '~~/dkp-proprietary-plugins/dkp-pulse-nexus-pro/composables',
+      '~~/dkp-proprietary-plugins/dkp-translator-pro/composables',
+      '~~/dkp-proprietary-plugins/dkp-automated-crawler-pro/composables'
+    ]
+  },
+
   components: {
     dirs: [
       '~/components',
