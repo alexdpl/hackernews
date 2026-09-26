@@ -116,38 +116,48 @@ onMounted(() => {
       <NuxtLink to="/admin/crawler" class="btn-crawler-link">🤖 Apri Crawler Admin</NuxtLink>
     </div>
 
-    <!-- LISTA NOTIZIE REALI DKP -->
-    <div v-else class="posts-list">
-      <div v-for="(post, index) in posts" :key="post.id" class="post-item">
-        <div class="vote-section">
-          <button @click="upvote(post)" class="upvote-btn" title="Vota questa notizia">
-            ▲
-          </button>
-          <span class="points-count">{{ post.points }}</span>
-        </div>
-
-        <div class="post-content">
-          <div class="post-title-row">
-            <span class="post-index">{{ index + 1 }}.</span>
-            
-            <a v-if="post.url" :href="post.url" target="_blank" rel="noopener" class="post-title-link">
-              {{ post.title }}
-            </a>
-            <span v-else class="post-title-text">{{ post.title }}</span>
-
-            <span v-if="post.url" class="domain-badge">
-              ({{ getDomain(post.url) }}) ↗
-            </span>
+    <!-- LISTA NOTIZIE REALI DKP + PAGINAZIONE -->
+    <div v-else class="feed-content-wrapper">
+      <div class="posts-list">
+        <div v-for="(post, index) in posts" :key="post.id" class="post-item">
+          <div class="vote-section">
+            <button @click="upvote(post)" class="upvote-btn" title="Vota questa notizia">
+              ▲
+            </button>
+            <span class="points-count">{{ post.points }}</span>
           </div>
 
-          <div class="post-meta">
-            <span>Inviato da <strong class="author-tag">@{{ post.author }}</strong></span>
-            <span class="meta-dot">•</span>
-            <span>🕒 {{ formatTimeAgo(post.created_at) }}</span>
-            <span v-if="post.content" class="meta-dot">•</span>
-            <span v-if="post.content" class="content-excerpt">{{ post.content }}</span>
+          <div class="post-content">
+            <div class="post-title-row">
+              <span class="post-index">{{ index + 1 }}.</span>
+              
+              <a v-if="post.url" :href="post.url" target="_blank" rel="noopener" class="post-title-link">
+                {{ post.title }}
+              </a>
+              <span v-else class="post-title-text">{{ post.title }}</span>
+
+              <span v-if="post.url" class="domain-badge">
+                ({{ getDomain(post.url) }}) ↗
+              </span>
+            </div>
+
+            <div class="post-meta">
+              <span>Inviato da <strong class="author-tag">@{{ post.author }}</strong></span>
+              <span class="meta-dot">•</span>
+              <span>🕒 {{ formatTimeAgo(post.created_at) }}</span>
+              <span v-if="post.content" class="meta-dot">•</span>
+              <span v-if="post.content" class="content-excerpt">{{ post.content }}</span>
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- BARRA DI PAGINAZIONE IN BASSO -->
+      <div class="pagination-bar">
+        <span class="page-indicator">Pagina 1 (Live Feed)</span>
+        <NuxtLink to="/news/2" class="pag-btn next">
+          Altre Notizie (Pagina 2) ►
+        </NuxtLink>
       </div>
     </div>
   </div>
@@ -234,6 +244,7 @@ onMounted(() => {
 .btn-crawler-link { display: inline-block; margin-top: 1rem; color: #00dc82; font-weight: 700; text-decoration: none; border: 1px solid #00dc82; padding: 0.5rem 1rem; border-radius: 6px; }
 
 /* FEED POSTS LIST */
+.feed-content-wrapper { display: flex; flex-direction: column; gap: 1.5rem; }
 .posts-list { display: flex; flex-direction: column; gap: 0.75rem; }
 
 .post-item {
@@ -318,4 +329,38 @@ onMounted(() => {
 .author-tag { color: #00dc82; font-weight: 700; }
 .meta-dot { color: #334155; }
 .content-excerpt { color: #94a3b8; font-style: italic; max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* BARRA PAGINAZIONE FEED */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #1e293b;
+}
+
+.page-indicator {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.pag-btn {
+  background: #020420;
+  border: 1px solid #00dc82;
+  color: #00dc82;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.pag-btn:hover {
+  background: #00dc82;
+  color: #020420;
+  box-shadow: 0 0 15px rgba(0, 220, 130, 0.35);
+}
 </style>

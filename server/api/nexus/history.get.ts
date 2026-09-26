@@ -1,7 +1,7 @@
 // server/api/nexus/history.get.ts
 import { drizzle } from 'drizzle-orm/neon-http'
 import { neon } from '@neondatabase/serverless'
-import { pulseChatMessages, pulseUserXp } from '~/drizzle/schema'
+import { pulseChatMessages, pulseUserXp } from '~~/drizzle/schema'
 import { eq, desc } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {

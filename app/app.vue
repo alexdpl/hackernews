@@ -29,15 +29,8 @@ onMounted(async () => {
 
     <!-- Modale globale di autenticazione (Accedi / Registrati / Social) -->
     <AuthModal />
-  </div>
-</template>
 
-<template>
-  <div>
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
-    <!-- Componente Floating Plugin 7 -->
+    <!-- Componente Floating Plugin 7 (Pulse Nexus Chat) -->
     <DkpPulseNexus />
   </div>
 </template>

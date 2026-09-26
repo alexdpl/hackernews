@@ -1,7 +1,7 @@
 // server/api/nexus/send.post.ts
 import { drizzle } from 'drizzle-orm/neon-http'
 import { neon } from '@neondatabase/serverless'
-import { pulseChatMessages, pulseUserXp } from '~/drizzle/schema'
+import { pulseChatMessages, pulseUserXp } from '~~/drizzle/schema'
 import { eq, sql as drizzleSql } from 'drizzle-orm'
 import { ofetch } from 'ofetch'
 
