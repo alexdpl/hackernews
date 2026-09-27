@@ -1,9 +1,9 @@
 {
   "name": "devkernelpulse-ecosystem",
-  "version": "2.3.0",
+  "version": "2.4.0 GOLD",
   "private": true,
   "type": "module",
-  "description": "DevKernelPulse v2.3 - Core Engine and Proprietary SaaS Modular Ecosystem",
+  "description": "DevKernelPulse v2.4.0 GOLD - Kernel Core Engine and Proprietary SaaS Modular Ecosystem",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
