@@ -45,7 +45,7 @@
           <NuxtLink to="/legal/privacy">🛡️ Privacy Policy</NuxtLink>
 		  <li><NuxtLink to="/guidelines">⚡ Linee Guida</NuxtLink></li>
           <li><NuxtLink to="/legal/terms">⚖️ Termini d'Uso</NuxtLink></li>
-          <li><NuxtLink to="/privacy">🔒 Privacy & Cookie</NuxtLink></li>
+          <li><NuxtLink to="/cookie-policy">🔒 Cookie Policy</NuxtLink></li>
         </ul>
       </div>
 
