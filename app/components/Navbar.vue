@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
-// Integrazione Core Auth, Routing & DKP Translator v2.3
+// Integrazione Core Auth, Routing & DKP Translator v2.4
 const { currentUser, isAuthenticated, logout, openAuthModal } = useAuthCore()
 const { currentLang, activeLanguageObj, languages, setLanguage, initTranslator, t } = useDkpTranslator()
 
@@ -12,7 +12,7 @@ const route = useRoute()
 // DOM Ref per chiusura al click esterno
 const navbarRef = ref<HTMLElement | null>(null)
 
-// Gestore centralizzato Dropdown (Estensibile per futuri moduli SaaS)
+// Gestore centralizzato Dropdown
 const activeDropdown = ref<string | null>(null)
 const isMobileMenuOpen = ref(false)
 
@@ -60,7 +60,7 @@ const newsMenuItems = [
   { name: 'Tech Jobs', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
 ]
 
-// 4 DKP Tools v2.3
+// DKP Tools v2.4
 const dkpTools = [
   { name: 'Neural Playground', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
   { name: 'Terminal Web Shell', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
@@ -102,7 +102,7 @@ async function handleLogout() {
           <span class="dk-badge">DK</span>
           <span class="brand-name">DevKernel<span class="pulse-highlight">Pulse</span></span>
         </NuxtLink>
-        <span class="version-tag">v2.4</span>
+        <span class="version-tag">v2.4-GOLD</span>
       </div>
 
       <!-- NAVIGAZIONE PRINCIPALE DESKTOP -->
@@ -134,7 +134,7 @@ async function handleLogout() {
 
         <span class="slash">/</span>
 
-        <!-- 2. DKP TOOLS V2.0 -->
+        <!-- 2. DKP TOOLS V2.4 -->
         <div class="dropdown-wrapper">
           <button @click="toggleDropdown('tools')" class="tools-btn" :class="{ active: activeDropdown === 'tools' }">
             🛠️ {{ t('tools') }} <span class="arrow">▼</span>
@@ -237,47 +237,46 @@ async function handleLogout() {
 
               <!-- PANNELLO ADMIN & SUB-SEZIONI -->
               <template v-if="isAdmin">
-                <!-- Sezione Dropdown Admin nell'Header -->
-<div class="dropdown-group">
-  <span class="dropdown-label">AMMINISTRAZIONE DKP</span>
-  
-  <NuxtLink to="/admin" class="dropdown-item green-item">
-    🔒 Control Center Admin
-  </NuxtLink>
+                <div class="dropdown-group">
+                  <span class="dropdown-label">AMMINISTRAZIONE DKP</span>
+                  
+                  <NuxtLink to="/admin" class="dropdown-item green-item">
+                    🔒 Control Center Admin
+                  </NuxtLink>
 
-  <!-- NUOVA SEZIONE MAIL ENGINE v2.4 INCOLONNATA -->
-  <div class="mail-menu-block">
-    <span class="mail-block-title">MAIL ENGINE v2.4</span>
-    
-    <NuxtLink to="/admin/mail" class="dropdown-item mail-link">
-      📧 DKP Mail Center
-    </NuxtLink>
-    
-    <NuxtLink to="/admin/newsletter" class="dropdown-item mail-link">
-      📡 Newsletter & Contatti
-    </NuxtLink>
-    
-    <NuxtLink to="/admin/autoresponder" class="dropdown-item mail-link">
-      🤖 Autoresponder Rules
-    </NuxtLink>
-  </div>
+                  <!-- SEZIONE MAIL ENGINE v2.4 INCOLONNATA -->
+                  <div class="mail-menu-block">
+                    <span class="mail-block-title">MAIL ENGINE v2.4</span>
+                    
+                    <NuxtLink to="/admin/mail" class="dropdown-item mail-link">
+                      📧 DKP Mail Center
+                    </NuxtLink>
+                    
+                    <NuxtLink to="/admin/newsletter" class="dropdown-item mail-link">
+                      📡 Newsletter & Contatti
+                    </NuxtLink>
+                    
+                    <NuxtLink to="/admin/autoresponder" class="dropdown-item mail-link">
+                      🤖 Autoresponder Rules
+                    </NuxtLink>
+                  </div>
 
-  <NuxtLink to="/admin/crawler" class="dropdown-item green-item">
-    🤖 DKP Crawler Engine
-  </NuxtLink>
-  
-  <NuxtLink to="/admin/blog" class="dropdown-item green-item">
-    📄 Gestione DKP Blog
-  </NuxtLink>
-  
-  <NuxtLink to="/admin/shop" class="dropdown-item green-item">
-    🛍️ Gestione DKP Shop
-  </NuxtLink>
-  
-  <NuxtLink to="/admin/jobs" class="dropdown-item green-item">
-    💼 Gestione Job Hub
-  </NuxtLink>
-</div>
+                  <NuxtLink to="/admin/crawler" class="dropdown-item green-item">
+                    🤖 DKP Crawler Engine
+                  </NuxtLink>
+                  
+                  <NuxtLink to="/admin/blog" class="dropdown-item green-item">
+                    📄 Gestione DKP Blog
+                  </NuxtLink>
+                  
+                  <NuxtLink to="/admin/shop" class="dropdown-item green-item">
+                    🛍️ Gestione DKP Shop
+                  </NuxtLink>
+                  
+                  <NuxtLink to="/admin/jobs" class="dropdown-item green-item">
+                    💼 Gestione Job Hub
+                  </NuxtLink>
+                </div>
               </template>
 
               <div class="dropdown-divider"></div>
@@ -315,7 +314,7 @@ async function handleLogout() {
           <NuxtLink to="/blog" class="mobile-nav-link">✍️ DKP Blog</NuxtLink>
           
           <div class="mobile-section-divider"></div>
-          <span class="mobile-section-title">🛠️ DKP TOOLS V2.0</span>
+          <span class="mobile-section-title">🛠️ DKP TOOLS V2.4</span>
           
           <NuxtLink v-for="tool in dkpTools" :key="tool.route" :to="tool.route" class="mobile-nav-link tool-link">
             <span>{{ tool.icon }} {{ tool.name }}</span>
@@ -331,6 +330,12 @@ async function handleLogout() {
               <div class="mobile-section-divider"></div>
               <span class="mobile-section-title">🛡️ AMMINISTRAZIONE DKP</span>
               <NuxtLink to="/admin" class="mobile-nav-link admin">🔒 Control Center Admin</NuxtLink>
+
+              <!-- MAIL ENGINE MOBILE -->
+              <NuxtLink to="/admin/mail" class="mobile-nav-link mail-link">📧 DKP Mail Center v2.4</NuxtLink>
+              <NuxtLink to="/admin/newsletter" class="mobile-nav-link mail-link">📡 Newsletter & Contatti</NuxtLink>
+              <NuxtLink to="/admin/autoresponder" class="mobile-nav-link mail-link">🤖 Autoresponder Rules</NuxtLink>
+
               <NuxtLink to="/admin/crawler" class="mobile-nav-link admin">🤖 DKP Crawler Engine</NuxtLink>
               <NuxtLink to="/admin/blog" class="mobile-nav-link admin">📝 Gestione DKP Blog</NuxtLink>
               <NuxtLink to="/admin/shop" class="mobile-nav-link admin">🛍️ Gestione DKP Shop</NuxtLink>
@@ -351,55 +356,6 @@ async function handleLogout() {
 </template>
 
 <style scoped>
-/* Layout Blocco Menu Mail Engine */
-.mail-menu-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin: 0.4rem 0;
-  padding-left: 0.4rem;
-  border-left: 2px solid rgba(0, 220, 130, 0.4); /* Linea guida verticale Cyberpunk */
-}
-
-.mail-block-title {
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 0.5px;
-  padding: 0.2rem 0.4rem;
-  display: block;
-}
-
-/* Regola fondamentale per forzare i link su righe separate */
-.dropdown-item {
-  display: flex !important;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.dropdown-item.green-item {
-  color: #00dc82;
-}
-
-.dropdown-item.mail-link {
-  color: #38bdf8; /* Blu Ciano per distinguere il modulo Mail */
-}
-
-.dropdown-item:hover {
-  background: rgba(0, 220, 130, 0.1);
-  color: #00dc82 !important;
-  transform: translateX(3px);
-}
-
-🚀 Checklist finale prima
 .navbar-wrapper {
   background: #020420;
   border-bottom: 2px solid #00dc82;
@@ -650,7 +606,7 @@ async function handleLogout() {
 .news-menu { left: 0; width: 260px; }
 .tools-menu { left: 0; width: 270px; }
 .lang-menu { right: 0; width: 180px; max-height: 280px; overflow-y: auto; }
-.profile-menu { right: 0; width: 250px; }
+.profile-menu { right: 0; width: 260px; }
 
 .profile-header {
   padding: 0.5rem 0.75rem;
@@ -676,12 +632,65 @@ async function handleLogout() {
   margin: 0.3rem 0;
 }
 
-.dropdown-section-title {
+.dropdown-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dropdown-label {
   font-size: 0.65rem;
   font-weight: 800;
   color: #00dc82;
   padding: 0.3rem 0.75rem 0.1rem;
   letter-spacing: 0.5px;
+}
+
+/* Layout Blocco Menu Mail Engine */
+.mail-menu-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.4rem 0;
+  padding-left: 0.4rem;
+  border-left: 2px solid rgba(0, 220, 130, 0.4);
+}
+
+.mail-block-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.4rem;
+  display: block;
+}
+
+.dropdown-item {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.dropdown-item.green-item {
+  color: #00dc82;
+}
+
+.dropdown-item.mail-link {
+  color: #38bdf8;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 220, 130, 0.1);
+  color: #00dc82 !important;
+  transform: translateX(3px);
 }
 
 .menu-item {
@@ -717,9 +726,6 @@ async function handleLogout() {
 .item-text strong { display: block; font-size: 0.85rem; color: #f8fafc; }
 .item-text small { display: block; font-size: 0.7rem; color: #64748b; }
 
-.admin-item { color: #00dc82; font-weight: 600; }
-.admin-item:hover { background: rgba(0, 220, 130, 0.1); color: #00dc82; }
-
 .logout-item { color: #ef4444; }
 .logout-item:hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
 
@@ -751,6 +757,7 @@ async function handleLogout() {
   .mobile-nav-link { color: #cbd5e1; text-decoration: none; font-size: 0.95rem; font-weight: 700; background: transparent; border: none; text-align: left; cursor: pointer; }
   .mobile-nav-link.highlight { color: #00dc82; }
   .mobile-nav-link.admin { color: #00dc82; }
+  .mobile-nav-link.mail-link { color: #38bdf8; }
   .mobile-nav-link.logout { color: #ef4444; }
   .mobile-section-divider { height: 1px; background: #1e293b; margin: 0.5rem 0; }
   .mobile-section-title { color: #64748b; font-size: 0.75rem; font-weight: 800; }
