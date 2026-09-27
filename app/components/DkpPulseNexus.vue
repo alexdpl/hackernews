@@ -100,7 +100,7 @@ watch(isOpen, (val) => {
     >
       <span class="launcher-pulse-dot"></span>
       <span class="launcher-icon">⚡</span>
-      <span class="launcher-text">Pulse Nexus <span class="launcher-badge">v2.3</span></span>
+      <span class="launcher-text">Pulse Nexus <span class="launcher-badge">v2.4</span></span>
     </button>
   </div>
 </template>

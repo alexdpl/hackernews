@@ -31,6 +31,7 @@ onMounted(() => {
 
 <template>
   <div class="dkp-app-wrapper">
+    <!-- LAYOUT E PAGINA UNICI -->
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -40,17 +41,11 @@ onMounted(() => {
       <AuthModal />
       <DkpPulseNexus v-if="isClientReady" />
     </ClientOnly>
-  </div>
-  
-  <div>
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
 
-    <!-- BADGE TELEMETRIA PROPRIETARIO DKP KERNEL v2.4 -->
+    <!-- BADGE TELEMETRIA PROPRIETARIO DKP KERNEL CENTRATO v2.4 -->
     <DKPKernelBadge />
   </div>
-  </template>
+</template>
 
 <style>
 *, *::before, *::after {

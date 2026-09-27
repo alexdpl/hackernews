@@ -9,7 +9,7 @@ const dbLatency = ref<number>(18)
 const isOpen = ref<boolean>(false)
 const isMeasuring = ref<boolean>(false)
 
-// Calcolo preciso del tempo di caricamento pagina
+// Calcolo tempo di idratazione e rendering pagina
 function measurePerformance() {
   isMeasuring.value = true
   if (typeof window !== 'undefined' && window.performance) {
@@ -27,7 +27,6 @@ function measurePerformance() {
   }
 }
 
-// Rileva cambi pagina e ri-calcola
 watch(() => route.fullPath, () => {
   measurePerformance()
 })
@@ -39,8 +38,13 @@ onMounted(() => {
 
 <template>
   <div class="dkp-badge-wrapper">
-    <!-- FLOATING PILL BADGE -->
-    <button @click="isOpen = !isOpen" class="dkp-badge-pill" :class="{ active: isOpen }">
+    <!-- TAB DOCKED FLUSH AL BORDO INFERIORE -->
+    <button 
+      @click="isOpen = !isOpen" 
+      class="dkp-badge-pill" 
+      :class="{ active: isOpen, measuring: isMeasuring }"
+      title="DKP Kernel Telemetry v2.4 — Clicca per espandere"
+    >
       <!-- LOGO DKP 3 FOGLI VERDI NEON (SVG NATIVO) -->
       <svg class="dkp-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M6 10L16 4L26 10L16 16L6 10Z" fill="#00DC82" fill-opacity="0.9" />
@@ -51,12 +55,12 @@ onMounted(() => {
       <span class="badge-divider">|</span>
 
       <!-- TEMPO DI CARICAMENTO -->
-      <span class="metrics-time" :class="{ pulse: isMeasuring }">{{ loadTime }}</span>
+      <span class="metrics-time">{{ loadTime }}</span>
 
       <span class="badge-divider">|</span>
 
-      <!-- LUCINA AZZURRA CIANO METRICHE ECOSISTEMA -->
-      <div class="cyan-led-container" title="Ecosistema Kernel v2.4 Attivo">
+      <!-- LUCINA AZZURRA CIANO KERNEL PULSANTE -->
+      <div class="cyan-led-container">
         <span class="cyan-led"></span>
         <span class="cyan-led-ring"></span>
       </div>
@@ -68,9 +72,9 @@ onMounted(() => {
         <div class="drawer-header">
           <div class="title-box">
             <span class="brand-title">DEV KERNEL PULSE</span>
-            <span class="version-tag">v2.4.0-NEXUS</span>
+            <span class="version-tag">v2.4-GOLD</span>
           </div>
-          <button @click="isOpen = false" class="close-btn">✕</button>
+          <button @click="isOpen = false" class="close-btn" title="Chiudi">✕</button>
         </div>
 
         <div class="drawer-content">
@@ -95,7 +99,7 @@ onMounted(() => {
           </div>
 
           <div class="drawer-footer">
-            <span class="footer-note">Optimized for Nitro & Nuxt 4 Ecosystem</span>
+            <span class="footer-note">Built with ❤️ by Alessandro De Paola & Gemini AI</span>
           </div>
         </div>
       </div>
@@ -104,41 +108,53 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* POSIZIONAMENTO AGGANCIATO AL BORDO FINE PAGINA */
 .dkp-badge-wrapper {
   position: fixed;
-  bottom: 1rem;
-  right: 1.5rem;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 99999;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* FLOATING PILL STYLING */
+/* TAB FLUSH STYLE DOCKED */
 .dkp-badge-pill {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  background: rgba(9, 13, 22, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(30, 41, 59, 0.8);
-  padding: 0.35rem 0.75rem;
-  border-radius: 9999px;
+  gap: 0.55rem;
+  background: rgba(9, 13, 22, 0.94);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-bottom: none;
+  padding: 0.35rem 0.85rem;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
   color: #f8fafc;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* EFFETTO BRILLANTEZZA BLU KERNEL (#38bdf8) AL PASSAGGIO DEL MOUSE */
 .dkp-badge-pill:hover, .dkp-badge-pill.active {
-  border-color: rgba(0, 220, 130, 0.5);
-  background: rgba(2, 4, 32, 0.95);
-  box-shadow: 0 0 15px rgba(0, 220, 130, 0.25);
+  border-color: #38bdf8;
+  background: rgba(2, 4, 32, 0.98);
+  box-shadow: 0 -4px 22px rgba(56, 189, 248, 0.45);
   transform: translateY(-2px);
 }
 
 .dkp-logo-svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   filter: drop-shadow(0 0 4px rgba(0, 220, 130, 0.6));
+  transition: filter 0.2s ease;
+}
+
+.dkp-badge-pill:hover .dkp-logo-svg {
+  filter: drop-shadow(0 0 6px #38bdf8);
 }
 
 .badge-divider {
@@ -151,13 +167,18 @@ onMounted(() => {
   font-weight: 700;
   color: #e2e8f0;
   letter-spacing: -0.2px;
+  transition: color 0.2s;
 }
 
-/* LUCINA AZZURRA CIANO PULSANTI */
+.dkp-badge-pill:hover .metrics-time {
+  color: #38bdf8;
+}
+
+/* LUCINA AZZURRA CIANO KERNEL */
 .cyan-led-container {
   position: relative;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -187,16 +208,17 @@ onMounted(() => {
   100% { transform: scale(0.8); opacity: 0; }
 }
 
-/* TELEMETRY DRAWER */
+/* TELEMETRY DRAWER MODAL */
 .dkp-telemetry-drawer {
   position: absolute;
   bottom: 2.8rem;
-  right: 0;
-  width: 280px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 290px;
   background: #090d16;
-  border: 1px solid rgba(0, 220, 130, 0.3);
+  border: 1px solid #38bdf8;
   border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.85), 0 0 15px rgba(56, 189, 248, 0.2);
   padding: 1rem;
   overflow: hidden;
 }
@@ -213,6 +235,7 @@ onMounted(() => {
 .brand-title { font-size: 0.75rem; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
 .version-tag { font-size: 0.62rem; color: #00dc82; background: rgba(0, 220, 130, 0.15); padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.4rem; }
 .close-btn { background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.85rem; }
+.close-btn:hover { color: #f87171; }
 
 .drawer-content { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.78rem; }
 .metric-row { display: flex; justify-content: space-between; align-items: center; }
@@ -225,6 +248,6 @@ onMounted(() => {
 .drawer-footer { margin-top: 0.5rem; border-top: 1px solid #1e293b; padding-top: 0.5rem; text-align: center; }
 .footer-note { font-size: 0.65rem; color: #64748b; }
 
-.drawer-fade-enter-active, .drawer-fade-leave-active { transition: all 0.2s ease; }
-.drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; transform: translateY(10px); }
+.drawer-fade-enter-active, .drawer-fade-leave-active { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+.drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; transform: translate(-50%, 10px); }
 </style>

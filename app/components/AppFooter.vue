@@ -1,4 +1,8 @@
 <!-- app/components/AppFooter.vue -->
+.footer-copyright, .footer-container {
+  padding-bottom: 1.8rem !important; /* Mantiene il testo ben visibile sopra la tab */
+}
+
 <template>
   <footer class="dkp-footer">
     <div class="footer-container">

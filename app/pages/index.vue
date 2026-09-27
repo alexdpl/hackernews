@@ -6,7 +6,7 @@
     <div class="feed-header">
       <div class="feed-title-section">
         <h1 class="feed-title">
-          Tech Feed <span class="highlight-badge">v2.3</span>
+          Tech Feed <span class="highlight-badge">v2.4</span>
         </h1>
         <p class="feed-subtitle">
           Le migliori notizie, progetti Open Source e discussioni architetturali verificate dal DKP Crawler.
@@ -64,7 +64,7 @@
             <span class="time-tag">⏱️ {{ story.timeAgo || 'di recente' }}</span>
             <span class="meta-dot">•</span>
             <span class="verify-tag">
-              Verified da <strong>DKP Crawler v2.3</strong>
+              Verified da <strong>DKP Crawler v2.4</strong>
             </span>
           </div>
         </div>
@@ -90,7 +90,7 @@ useHead({
   ]
 })
 
-// Simulazione/Fetch stories dal backend/DB
+// Fetch stories dal backend/DB
 const { data: rawStories, pending } = await useFetch('/api/stories', {
   lazy: true,
   default: () => [
