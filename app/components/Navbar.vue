@@ -237,44 +237,47 @@ async function handleLogout() {
 
               <!-- PANNELLO ADMIN & SUB-SEZIONI -->
               <template v-if="isAdmin">
-                <div class="dropdown-divider"></div>
-                <div class="dropdown-section-title">AMMINISTRAZIONE DKP</div>
-                
-                <NuxtLink to="/admin" class="menu-item admin-item">
-                  <span>🔒</span> {{ t('adminControl') }}
-                </NuxtLink>
-				
-				           <div class="dropdown-section">
-            <span class="dropdown-label">MAIL ENGINE v2.4</span>
+                <!-- Sezione Dropdown Admin nell'Header -->
+<div class="dropdown-group">
+  <span class="dropdown-label">AMMINISTRAZIONE DKP</span>
   
-                <NuxtLink to="/admin/mail" class="dropdown-item">
-                        📧 DKP Mail Center
-                </NuxtLink>
+  <NuxtLink to="/admin" class="dropdown-item green-item">
+    🔒 Control Center Admin
+  </NuxtLink>
+
+  <!-- NUOVA SEZIONE MAIL ENGINE v2.4 INCOLONNATA -->
+  <div class="mail-menu-block">
+    <span class="mail-block-title">MAIL ENGINE v2.4</span>
+    
+    <NuxtLink to="/admin/mail" class="dropdown-item mail-link">
+      📧 DKP Mail Center
+    </NuxtLink>
+    
+    <NuxtLink to="/admin/newsletter" class="dropdown-item mail-link">
+      📡 Newsletter & Contatti
+    </NuxtLink>
+    
+    <NuxtLink to="/admin/autoresponder" class="dropdown-item mail-link">
+      🤖 Autoresponder Rules
+    </NuxtLink>
+  </div>
+
+  <NuxtLink to="/admin/crawler" class="dropdown-item green-item">
+    🤖 DKP Crawler Engine
+  </NuxtLink>
   
-                <NuxtLink to="/admin/newsletter" class="dropdown-item">
-                        📡 Newsletter & Contatti
-                </NuxtLink>
+  <NuxtLink to="/admin/blog" class="dropdown-item green-item">
+    📄 Gestione DKP Blog
+  </NuxtLink>
   
-                <NuxtLink to="/admin/autoresponder" class="dropdown-item">
-                        🤖 Autoresponder Rules
-                </NuxtLink>
-                            </div>
-
-                <NuxtLink to="/admin/crawler" class="menu-item admin-item">
-                  <span>🤖</span> {{ t('crawlerEngine') }}
-                </NuxtLink>
-
-                <NuxtLink to="/admin/blog" class="menu-item admin-item">
-                  <span>📝</span> Gestione DKP Blog
-                </NuxtLink>
-
-                <NuxtLink to="/admin/shop" class="menu-item admin-item">
-                  <span>🛍️</span> {{ t('shopManagement') }}
-                </NuxtLink>
-
-                <NuxtLink to="/admin/jobs" class="menu-item admin-item">
-                  <span>💼</span> {{ t('jobsManagement') }}
-                </NuxtLink>
+  <NuxtLink to="/admin/shop" class="dropdown-item green-item">
+    🛍️ Gestione DKP Shop
+  </NuxtLink>
+  
+  <NuxtLink to="/admin/jobs" class="dropdown-item green-item">
+    💼 Gestione Job Hub
+  </NuxtLink>
+</div>
               </template>
 
               <div class="dropdown-divider"></div>
@@ -348,6 +351,55 @@ async function handleLogout() {
 </template>
 
 <style scoped>
+/* Layout Blocco Menu Mail Engine */
+.mail-menu-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.4rem 0;
+  padding-left: 0.4rem;
+  border-left: 2px solid rgba(0, 220, 130, 0.4); /* Linea guida verticale Cyberpunk */
+}
+
+.mail-block-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.4rem;
+  display: block;
+}
+
+/* Regola fondamentale per forzare i link su righe separate */
+.dropdown-item {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.dropdown-item.green-item {
+  color: #00dc82;
+}
+
+.dropdown-item.mail-link {
+  color: #38bdf8; /* Blu Ciano per distinguere il modulo Mail */
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 220, 130, 0.1);
+  color: #00dc82 !important;
+  transform: translateX(3px);
+}
+
+🚀 Checklist finale prima
 .navbar-wrapper {
   background: #020420;
   border-bottom: 2px solid #00dc82;
