@@ -1,0 +1,52 @@
+// prisma/schema.prisma
+
+enum MailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MailStatus {
+  UNREAD
+  READ
+  ARCHIVED
+  SENT
+  FAILED
+}
+
+model MailMessage {
+  id          String        @id @default(cuid())
+  sender      String
+  recipient   String
+  subject     String
+  bodyText    String?       @db.Text
+  bodyHtml    String?       @db.Text
+  direction   MailDirection @default(INBOUND)
+  status      MailStatus    @default(UNREAD)
+  isStarred   Boolean       @default(false)
+  replyToId   String?       
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([recipient])
+  @@index([sender])
+  @@index([status])
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  status    String   @default("ACTIVE") // ACTIVE | UNSUBSCRIBED
+  source    String   @default("WEB")    // CONTACT_FORM | NEWSLETTER_WIDGET
+  createdAt DateTime @default(now())
+}
+
+model AutoresponderRule {
+  id              String   @id @default(cuid())
+  name            String
+  triggerAddress  String   // es. info@devkernelpulse.org
+  subjectTemplate String
+  bodyTemplate    String   @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
