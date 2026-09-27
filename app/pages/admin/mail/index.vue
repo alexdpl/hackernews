@@ -42,9 +42,6 @@ const composeData = ref({
   replyToId: null as number | null
 })
 
-// Quick reply state
-const quickReplyText = ref('')
-
 // Fetch Mails from Backend
 async function fetchMails() {
   isLoading.value = true
@@ -59,7 +56,7 @@ async function fetchMails() {
     }
   } catch (err) {
     console.error('[FETCH MAILS ERROR]', err)
-  } finally {
+  } fontally {
     isLoading.value = false
   }
 }
@@ -152,7 +149,7 @@ onMounted(() => {
         <h1 class="page-title">
           ⚡ DKP Mail Engine <span class="badge-v">v2.4</span>
         </h1>
-        <p class="page-subtitle">Client Webmail & Autoresponder Control Center</p>
+        <p class="page-subtitle">Client Webmail & Mail Ecosystem Control Center</p>
       </div>
 
       <div class="header-actions">
@@ -177,7 +174,7 @@ onMounted(() => {
 
     <!-- MAIN MAIL DASHBOARD WORKSPACE -->
     <div class="mail-workspace">
-      <!-- SIDEBAR FILTRI -->
+      <!-- SIDEBAR FILTRI & NAVIGAZIONE STRUMENTI -->
       <aside class="mail-sidebar">
         <nav class="sidebar-nav">
           <button 
@@ -213,6 +210,18 @@ onMounted(() => {
           >
             ⭐ Preferiti
           </button>
+
+          <div class="sidebar-divider"></div>
+          <span class="sidebar-section-title">STRUMENTI MAIL</span>
+
+          <!-- LINK INTERNI ROUTING NUXT -->
+          <NuxtLink to="/admin/newsletter" class="nav-item link-item">
+            📡 Newsletter & Contatti
+          </NuxtLink>
+
+          <NuxtLink to="/admin/autoresponder" class="nav-item link-item">
+            🤖 Autoresponder Rules
+          </NuxtLink>
         </nav>
 
         <div class="sidebar-divider"></div>
@@ -512,6 +521,14 @@ onMounted(() => {
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 0.4rem; }
 
+.sidebar-section-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.5rem;
+}
+
 .nav-item {
   display: flex;
   justify-content: space-between;
@@ -526,12 +543,17 @@ onMounted(() => {
   font-size: 0.88rem;
   text-align: left;
   transition: all 0.2s;
+  text-decoration: none;
 }
 
-.nav-item:hover, .nav-item.active {
+.nav-item:hover, .nav-item.active, .nav-item.router-link-exact-active {
   background: #020420;
   color: #00dc82;
   border: 1px solid rgba(0, 220, 130, 0.2);
+}
+
+.link-item {
+  color: #cbd5e1;
 }
 
 .count-badge {

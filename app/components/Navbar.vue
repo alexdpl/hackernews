@@ -243,6 +243,22 @@ async function handleLogout() {
                 <NuxtLink to="/admin" class="menu-item admin-item">
                   <span>🔒</span> {{ t('adminControl') }}
                 </NuxtLink>
+				
+				           <div class="dropdown-section">
+            <span class="dropdown-label">MAIL ENGINE v2.4</span>
+  
+                <NuxtLink to="/admin/mail" class="dropdown-item">
+                        📧 DKP Mail Center
+                </NuxtLink>
+  
+                <NuxtLink to="/admin/newsletter" class="dropdown-item">
+                        📡 Newsletter & Contatti
+                </NuxtLink>
+  
+                <NuxtLink to="/admin/autoresponder" class="dropdown-item">
+                        🤖 Autoresponder Rules
+                </NuxtLink>
+                            </div>
 
                 <NuxtLink to="/admin/crawler" class="menu-item admin-item">
                   <span>🤖</span> {{ t('crawlerEngine') }}
