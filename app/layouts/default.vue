@@ -1,6 +1,7 @@
 <!-- app/layouts/default.vue -->
 <script setup lang="ts">
-// Layout Master per Kernel v2.3
+// Layout Master DKP v2.3
+// Nessun import manuale necessario: Nuxt auto-importa DkpPulseNexus da app/components/
 </script>
 
 <template>
@@ -15,6 +16,9 @@
 
     <!-- Footer DKP -->
     <AppFooter />
+
+    <!-- CHAT FLUTTUANTE NEXUS (Auto-importato) -->
+    <DkpPulseNexus />
   </div>
 </template>
 
