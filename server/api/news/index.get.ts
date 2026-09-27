@@ -1,10 +1,17 @@
-// server/api/news.ts
+// server/api/news/index.get.ts
+import { defineEventHandler, getQuery } from 'h3'
+
 export default defineEventHandler(async (event) => {
-  // Lista ricca di notizie di ecosistema DKP (Fallback / Demo)
+  // 1. Estrazione flessibile dei parametri di paginazione (?page=1&limit=10)
+  const query = getQuery(event)
+  const page = Math.max(1, Number(query.page) || 1)
+  const limit = Math.max(1, Number(query.limit) || 20)
+
+  // 2. Lista ricca di notizie di ecosistema DKP v2.3
   const ecosystemStories = [
     {
       id: 101,
-      title: 'DevKernelPulse v2.3 Released: Modular SaaS Architecture with Nuxt 3 & GCP',
+      title: 'DevKernelPulse v2.3 Released: Modular SaaS Architecture with Nuxt 4 & GCP',
       domain: 'devkernelpulse.org',
       url: 'https://github.com',
       user: 'alexdpl',
@@ -44,7 +51,7 @@ export default defineEventHandler(async (event) => {
     },
     {
       id: 105,
-      title: 'Building High-Performance Nuxt 3 Applications with Rolldown and Vite',
+      title: 'Building High-Performance Nuxt Applications with Rolldown and Vite',
       domain: 'nuxt.com',
       url: 'https://nuxt.com',
       user: 'dev_guru',
@@ -84,21 +91,36 @@ export default defineEventHandler(async (event) => {
     }
   ]
 
+  let results = ecosystemStories
+
+  // 3. Fallback / Integrazione DB Neon
   try {
-    // Tenta di usare il DB se disponibile ed esportato correttamente
     // @ts-ignore
     if (typeof db !== 'undefined' && db) {
       // @ts-ignore
       const dbPosts = await db.select().from(posts).limit(30)
       if (dbPosts && dbPosts.length > 0) {
-        return dbPosts
+        results = dbPosts
       }
     }
   } catch (err) {
-    // Se il DB non è configurato o l'istanza manca, usiamo il fallback senza bloccare il server
-    console.warn('⚠️ DB non raggiungibile o non definito. Utilizzo notizie di ecosistema DKP.')
+    // Se il DB non è pronto o in istanza locale manca, procede col fallback d'ecosistema
   }
 
-  // Restituisce le notizie di ecosistema
-  return ecosystemStories
+  // 4. Calcolo Paginazione
+  const startIndex = (page - 1) * limit
+  const paginatedResults = results.slice(startIndex, startIndex + limit)
+
+  // Se l'interfaccia richiede l'oggetto paginato esplicito
+  if (query.paginated === 'true') {
+    return {
+      page,
+      limit,
+      total: results.length,
+      data: paginatedResults
+    }
+  }
+
+  // Ritorno diretto dell'array per compatibilità con l'interfaccia principale
+  return paginatedResults
 })

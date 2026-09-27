@@ -1,7 +1,7 @@
 // server/api/job.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
-import { getDb } from '../utils/db'
-import { jobs } from '../db/schema'
+import { getDb } from '~~/server/utils/db'
+import { jobs } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   try {

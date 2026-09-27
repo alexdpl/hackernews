@@ -1,10 +1,6 @@
 <!-- app/layouts/default.vue -->
 <script setup lang="ts">
-const { initAuth } = useAuthCore()
-
-onMounted(() => {
-  initAuth()
-})
+// Layout Master per Kernel v2.3
 </script>
 
 <template>
@@ -12,13 +8,10 @@ onMounted(() => {
     <!-- Navbar Master DKP -->
     <Navbar />
     
-    <!-- Contenuto Principale -->
+    <!-- Contenuto Principale delle Pagine -->
     <main class="main-content">
       <slot />
     </main>
-
-    <!-- Modale Autenticazione Globale -->
-    <AuthModal />
 
     <!-- Footer DKP -->
     <AppFooter />

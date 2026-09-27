@@ -1,71 +1,403 @@
 <!-- app/pages/show.vue -->
+<template>
+  <div class="show-page-container">
+    
+    <!-- HEADER DELLA SEZIONE -->
+    <div class="show-header">
+      <div class="header-text">
+        <div class="show-badge">
+          PROJECT SHOWCASE & OPEN SOURCE
+        </div>
+        <h1 class="show-title">
+          Show <span class="highlight-text">DKP</span>
+        </h1>
+        <p class="show-subtitle">
+          Presenta i tuoi progetti Open Source, librerie, SaaS e strumenti innovativi. Ricevi feedback dagli sviluppatori e accumula XP.
+        </p>
+      </div>
+
+      <div class="header-action">
+        <NuxtLink to="/submit?type=show" class="submit-show-btn">
+          🚀 Presenta un Progetto (+15 XP)
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- FEED DEI PROGETTI SHOWCASE -->
+    <div v-if="pending" class="loading-state">
+      <span class="spinner">⚡</span> Caricamento progetti dal Neon Kernel DB...
+    </div>
+
+    <div v-else-if="cleanShowPosts && cleanShowPosts.length > 0" class="show-feed-list">
+      <article 
+        v-for="(post, index) in cleanShowPosts" 
+        :key="post.id || index" 
+        class="show-card"
+      >
+        <!-- BOTTONE VOTAZIONE / UPVOTE -->
+        <button 
+          @click="votePost(post)" 
+          class="vote-btn" 
+          :class="{ voted: post.voted }"
+          :disabled="post.voting"
+          title="Vota questo progetto (+5 XP)"
+        >
+          <span class="vote-icon">▲</span>
+          <span class="vote-count">{{ post.points || 0 }}</span>
+        </button>
+
+        <!-- CONTENUTO PROGETTO -->
+        <div class="show-content">
+          <div class="show-main">
+            <span class="show-index">{{ index + 1 }}.</span>
+            
+            <a v-if="post.url" :href="post.url" target="_blank" rel="noopener" class="post-title-link">
+              {{ post.title }}
+            </a>
+            <NuxtLink v-else :to="`/item/${post.id}`" class="post-title-link">
+              {{ post.title }}
+            </NuxtLink>
+
+            <a v-if="post.domain" :href="post.url || '#'" target="_blank" rel="noopener" class="domain-tag">
+              ({{ post.domain }}) ↗
+            </a>
+          </div>
+
+          <!-- METADATI (Autore, tempo, commenti, veridicità) -->
+          <div class="show-meta">
+            <span>Showcase di <strong class="author-tag">@{{ post.author || 'alexdpl' }}</strong></span>
+            <span class="meta-dot">•</span>
+            <span class="time-tag">⏱️ {{ post.timeAgo || 'di recente' }}</span>
+            <span class="meta-dot">•</span>
+            <NuxtLink :to="`/item/${post.id}`" class="comments-link">
+              💬 {{ post.comments_count || post.commentsCount || 0 }} commenti
+            </NuxtLink>
+            <span class="meta-dot">•</span>
+            <span class="xp-pill">Show DKP Verified</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- EMPTY STATE FALLBACK -->
+    <div v-else class="empty-state">
+      <p>Nessun progetto showcase pubblicato al momento.</p>
+      <NuxtLink to="/submit?type=show" class="submit-inline-link">Sii il primo a mostrare il tuo progetto!</NuxtLink>
+    </div>
+
+  </div>
+</template>
+
 <script setup lang="ts">
-const { data, pending, error } = await useFetch('/api/posts?type=show')
+import { ref, computed } from 'vue'
 
-const posts = computed(() => data.value?.data || [])
+useHead({
+  title: 'Show DKP - Vetrina Progetti Open Source e SaaS',
+  meta: [
+    { name: 'description', content: 'Mostra i tuoi progetti, librerie open source e SaaS alla community di DevKernelPulse v2.3.' }
+  ]
+})
 
-function getDomain(url?: string | null) {
-  if (!url) return null
-  try {
-    return new URL(url).hostname.replace('www.', '')
-  } catch {
-    return null
+// Fetch dei post di tipo Show
+const { data: rawPosts, pending } = await useFetch('/api/posts', {
+  query: { type: 'show' },
+  lazy: true,
+  default: () => [
+    {
+      id: 301,
+      title: 'Show DKP: Ollaya – Ollama for open-source, Jev-style decision models',
+      domain: 'ollaya.dev',
+      url: 'https://ollaya.dev',
+      author: 'alexdpl',
+      points: 18,
+      comments_count: 4,
+      timeAgo: '22h fa',
+      voted: false
+    },
+    {
+      id: 302,
+      title: 'Show DKP: Doom or Bloom, map your AI worldview with Jev',
+      domain: 'doom-or-bloom.com',
+      url: 'https://doom-or-bloom.com',
+      author: 'alexdpl',
+      points: 17,
+      comments_count: 6,
+      timeAgo: '1g fa',
+      voted: false
+    },
+    {
+      id: 303,
+      title: 'Show DKP: DKP Tools v2.3 – In-Browser Web Shell, AI Code Scanner & Proof of Code Vault',
+      domain: 'devkernelpulse.org',
+      url: 'https://devkernelpulse.org',
+      author: 'alexdpl',
+      points: 142,
+      comments_count: 28,
+      timeAgo: '2g fa',
+      voted: false
+    }
+  ]
+})
+
+// De-duplicazione automatica per ID/Titolo e sanificazione delle date "Invalid Date"
+const cleanShowPosts = computed(() => {
+  const postsArray = Array.isArray(rawPosts.value) ? rawPosts.value : (rawPosts.value as any)?.data || []
+  
+  const seen = new Set()
+  return postsArray.filter((item: any) => {
+    const key = item.id || item.title
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).map((post: any) => ({
+    ...post,
+    timeAgo: post.timeAgo || post.time_ago || (post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : 'di recente')
+  }))
+})
+
+// Logica Votazione
+const votePost = (post: any) => {
+  if (post.voted) {
+    post.points--
+    post.voted = false
+  } else {
+    post.points++
+    post.voted = true
   }
 }
 </script>
 
-<template>
-  <div class="page-container">
-    <h2 class="page-title">Show HN</h2>
-
-    <div v-if="pending" class="status-msg">Caricamento progetti in corso...</div>
-    <div v-else-if="error" class="status-msg error">Impossibile caricare i progetti.</div>
-    <div v-else-if="posts.length === 0" class="status-msg">Nessun progetto in mostra al momento.</div>
-
-    <ol v-else class="post-list">
-      <li v-for="(post, index) in posts" :key="post.id" class="post-item">
-        <span class="post-number">{{ index + 1 }}.</span>
-        <div class="post-content">
-          <div class="post-heading">
-            <a v-if="post.url" :href="post.url" target="_blank" rel="noopener noreferrer" class="post-title">
-              {{ post.title }}
-            </a>
-            <NuxtLink v-else :to="`/item/${post.id}`" class="post-title">
-              {{ post.title }}
-            </NuxtLink>
-            <span v-if="getDomain(post.url)" class="post-domain">({{ getDomain(post.url) }})</span>
-          </div>
-
-          <div class="post-meta">
-            {{ post.points || 0 }} punti da <strong>{{ post.author || 'Anonimo' }}</strong>
-            <span class="dot">•</span>
-            {{ new Date(post.createdAt).toLocaleDateString('it-IT') }}
-            <span class="dot">•</span>
-            <NuxtLink :to="`/item/${post.id}`" class="comments-link">
-              {{ post.commentsCount || 0 }} commenti
-            </NuxtLink>
-          </div>
-        </div>
-      </li>
-    </ol>
-  </div>
-</template>
-
 <style scoped>
-.page-container { max-width: 900px; margin: 1.5rem auto; padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; }
-.page-title { font-size: 1.2rem; font-weight: 700; color: #020420; margin-bottom: 1.2rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem; }
-.status-msg { padding: 2rem; text-align: center; color: #64748b; font-size: 0.95rem; }
-.status-msg.error { color: #dc2626; }
-.post-list { list-style: none; padding: 0; margin: 0; }
-.post-item { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.6rem 0; border-bottom: 1px solid #f1f5f9; }
-.post-number { font-size: 0.9rem; font-weight: 600; color: #94a3b8; min-width: 24px; text-align: right; }
-.post-content { display: flex; flex-direction: column; gap: 0.2rem; }
-.post-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem; }
-.post-title { font-size: 0.95rem; font-weight: 600; color: #0f172a; text-decoration: none; }
-.post-title:hover { color: #2563eb; text-decoration: underline; }
-.post-domain { font-size: 0.8rem; color: #64748b; }
-.post-meta { font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
-.comments-link { color: #475569; text-decoration: none; font-weight: 500; }
-.comments-link:hover { text-decoration: underline; color: #2563eb; }
-.dot { color: #cbd5e1; }
+.show-page-container {
+  max-width: 1000px;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #f8fafc;
+}
+
+/* HEADER */
+.show-header {
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.show-badge {
+  display: inline-block;
+  background: rgba(0, 220, 130, 0.12);
+  color: #00dc82;
+  border: 1px solid rgba(0, 220, 130, 0.3);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  margin-bottom: 0.6rem;
+}
+
+.show-title {
+  font-size: 2rem;
+  font-weight: 900;
+  margin: 0 0 0.4rem 0;
+  color: #ffffff;
+}
+
+.highlight-text {
+  color: #00dc82;
+}
+
+.show-subtitle {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 650px;
+  line-height: 1.5;
+}
+
+.submit-show-btn {
+  background: #00dc82;
+  color: #020420;
+  font-weight: 900;
+  font-size: 0.85rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.submit-show-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 220, 130, 0.4);
+}
+
+/* LISTA CARD */
+.show-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.show-card {
+  background: rgba(9, 13, 22, 0.85);
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  transition: border-color 0.2s ease;
+}
+
+.show-card:hover {
+  border-color: rgba(0, 220, 130, 0.35);
+}
+
+/* VOTE BUTTON */
+.vote-btn {
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  min-width: 46px;
+  transition: all 0.2s ease;
+}
+
+.vote-btn:hover {
+  border-color: #00dc82;
+  color: #00dc82;
+}
+
+.vote-btn.voted {
+  background: rgba(0, 220, 130, 0.15);
+  border-color: #00dc82;
+  color: #00dc82;
+}
+
+.vote-icon {
+  font-size: 0.7rem;
+}
+
+.vote-count {
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+/* POST CONTENT */
+.show-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.show-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.show-index {
+  font-size: 0.88rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.post-title-link {
+  color: #f8fafc;
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.post-title-link:hover {
+  color: #00dc82;
+  text-decoration: underline;
+}
+
+.domain-tag {
+  font-size: 0.78rem;
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.domain-tag:hover {
+  text-decoration: underline;
+}
+
+/* METADATA */
+.show-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.author-tag {
+  color: #00dc82;
+}
+
+.meta-dot {
+  color: #334155;
+}
+
+.comments-link {
+  color: #38bdf8;
+  text-decoration: none;
+}
+
+.comments-link:hover {
+  text-decoration: underline;
+}
+
+.xp-pill {
+  background: #020420;
+  color: #00dc82;
+  border: 1px solid rgba(0, 220, 130, 0.2);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #94a3b8;
+}
+
+.submit-inline-link {
+  color: #00dc82;
+  text-decoration: underline;
+  margin-top: 0.5rem;
+  display: inline-block;
+}
+
+@media (max-width: 640px) {
+  .show-header {
+    padding: 1.25rem;
+  }
+  .show-title {
+    font-size: 1.6rem;
+  }
+}
 </style>
