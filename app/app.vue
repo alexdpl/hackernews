@@ -1,3 +1,4 @@
+<!-- app/app.vue -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
@@ -40,7 +41,16 @@ onMounted(() => {
       <DkpPulseNexus v-if="isClientReady" />
     </ClientOnly>
   </div>
-</template>
+  
+  <div>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+
+    <!-- BADGE TELEMETRIA PROPRIETARIO DKP KERNEL v2.4 -->
+    <DKPKernelBadge />
+  </div>
+  </template>
 
 <style>
 *, *::before, *::after {
