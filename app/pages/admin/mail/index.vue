@@ -56,7 +56,7 @@ async function fetchMails() {
     }
   } catch (err) {
     console.error('[FETCH MAILS ERROR]', err)
-  } fontally {
+  } finally {
     isLoading.value = false
   }
 }
