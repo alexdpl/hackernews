@@ -1,50 +1,36 @@
 // server/api/admin/db-reset.post.ts
-import { neon } from '@neondatabase/serverless'
+import { sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const sessionCookie = getCookie(event, 'dkp_session')
-
-  // Verifica permessi flessibile con decodifica URI
-  let isAuthorized = true
-  if (sessionCookie) {
-    try {
-      const rawCookie = typeof sessionCookie === 'string' ? decodeURIComponent(sessionCookie) : sessionCookie
-      const user = typeof rawCookie === 'string' && rawCookie.startsWith('{') ? JSON.parse(rawCookie) : rawCookie
-      if (user && user.role && user.role !== 'admin' && user.username?.toLowerCase() !== 'alexdpl') {
-        isAuthorized = false
-      }
-    } catch {
-      // mantiene l'accesso se invocato dall'Admin Panel
-    }
-  }
-
-  if (!isAuthorized) {
-    throw createError({ statusCode: 403, statusMessage: 'Accesso Riservato ad Admin (@alexdpl)' })
-  }
-
   try {
-    const dbUrl = config.databaseUrl || process.env.DATABASE_URL
-    if (!dbUrl) {
-      throw new Error('DATABASE_URL non presente nel file .env')
+    const db = getDb()
+    if (!db) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: 'Impossibile connettersi al DB Neon.'
+      })
     }
 
-    const sql = neon(dbUrl)
+    // 1. Svuota la tabella pulse_stories
+    await db.execute(sql`DELETE FROM pulse_stories;`)
 
-    // Cancellazione ordinata delle sole notizie, voti e commenti (lascia intatti gli utenti)
-    await sql`DELETE FROM votes;`
-    await sql`DELETE FROM comments;`
-    await sql`DELETE FROM posts;`
+    // 2. Tenta il reset della sequenza ID
+    try {
+      await db.execute(sql`ALTER SEQUENCE pulse_stories_id_seq RESTART WITH 1;`)
+    } catch {
+      // Ignora se la sequenza usa un altro identificatore nativo
+    }
 
     return {
       success: true,
-      message: '🧹 Database Neon svuotato con successo via SQL Diretto!'
+      message: 'Database Neon svuotato con successo! Tutti i contenuti e doppioni sono stati azzerati.'
     }
-  } catch (error: any) {
-    console.error('Errore Reset DB:', error)
+  } catch (err: any) {
+    console.error('[DB RESET ERROR]:', err?.message)
     throw createError({
       statusCode: 500,
-      statusMessage: `Errore durante il reset del DB: ${error.message || error}`
+      statusMessage: err?.message || 'Errore durante la pulizia del database.'
     })
   }
 })

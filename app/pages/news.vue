@@ -11,7 +11,7 @@ useSeoMeta({
 <template>
   <div class="news-container">
     <h1>Notizie Principali</h1>
-    
+    <NewsFeedLayout section="news" title="Tech News Feed" icon="📰" />
     <div v-if="posts && posts.length > 0" class="posts-list">
       <div v-for="(post, index) in posts" :key="post.id" class="post-item">
         <span class="post-index">{{ index + 1 }}.</span>

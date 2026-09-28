@@ -2,402 +2,163 @@
 <template>
   <div class="show-page-container">
     
-    <!-- HEADER DELLA SEZIONE -->
+    <!-- HEADER SHOWCASE UNIFICATO -->
     <div class="show-header">
       <div class="header-text">
         <div class="show-badge">
-          PROJECT SHOWCASE & OPEN SOURCE
+          🚀 DKP SHOWCASE • v2.4-GOLD
         </div>
         <h1 class="show-title">
-          Show <span class="highlight-text">DKP</span>
+          Progetti & Repo <span class="highlight-text">Open Source</span>
         </h1>
         <p class="show-subtitle">
-          Presenta i tuoi progetti Open Source, librerie, SaaS e strumenti innovativi. Ricevi feedback dagli sviluppatori e accumula XP.
+          Le migliori repository GitHub di tendenza e i progetti creati dalla community, sincronizzati dal DKP Crawler. Vota i progetti e accumula XP!
         </p>
       </div>
 
       <div class="header-action">
         <NuxtLink to="/submit?type=show" class="submit-show-btn">
-          🚀 Presenta un Progetto (+15 XP)
+          🚀 Invia Progetto (+30 XP)
         </NuxtLink>
       </div>
     </div>
 
-    <!-- FEED DEI PROGETTI SHOWCASE -->
+    <!-- FEED SHOWCASE DA NEON DB -->
     <div v-if="pending" class="loading-state">
-      <span class="spinner">⚡</span> Caricamento progetti dal Neon Kernel DB...
+      <span class="spinner">⚡</span> Caricamento showcase dal Neon Kernel DB...
     </div>
 
-    <div v-else-if="cleanShowPosts && cleanShowPosts.length > 0" class="show-feed-list">
+    <div v-else-if="projects && projects.length > 0" class="show-feed-list">
       <article 
-        v-for="(post, index) in cleanShowPosts" 
-        :key="post.id || index" 
+        v-for="(project, index) in projects" 
+        :key="project.id || index" 
         class="show-card"
       >
-        <!-- BOTTONE VOTAZIONE / UPVOTE -->
         <button 
-          @click="votePost(post)" 
+          @click="voteProject(project)" 
           class="vote-btn" 
-          :class="{ voted: post.voted }"
-          :disabled="post.voting"
+          :class="{ voted: project.voted }"
           title="Vota questo progetto (+5 XP)"
         >
           <span class="vote-icon">▲</span>
-          <span class="vote-count">{{ post.points || 0 }}</span>
+          <span class="vote-count">{{ project.points || 1 }}</span>
         </button>
 
-        <!-- CONTENUTO PROGETTO -->
-        <div class="show-content">
-          <div class="show-main">
+        <div class="show-info">
+          <div class="show-title-row">
             <span class="show-index">{{ index + 1 }}.</span>
-            
-            <a v-if="post.url" :href="post.url" target="_blank" rel="noopener" class="post-title-link">
-              {{ post.title }}
+            <a :href="project.url" target="_blank" rel="noopener noreferrer" class="show-project-title">
+              {{ project.title }}
             </a>
-            <NuxtLink v-else :to="`/item/${post.id}`" class="post-title-link">
-              {{ post.title }}
-            </NuxtLink>
-
-            <a v-if="post.domain" :href="post.url || '#'" target="_blank" rel="noopener" class="domain-tag">
-              ({{ post.domain }}) ↗
-            </a>
+            <span v-if="project.domain" class="show-domain">({{ project.domain }}) ↗</span>
           </div>
 
-          <!-- METADATI (Autore, tempo, commenti, veridicità) -->
           <div class="show-meta">
-            <span>Showcase di <strong class="author-tag">@{{ post.author || 'alexdpl' }}</strong></span>
+            <span>👤 Owner: <strong class="author-tag">@{{ project.author || 'github_user' }}</strong></span>
             <span class="meta-dot">•</span>
-            <span class="time-tag">⏱️ {{ post.timeAgo || 'di recente' }}</span>
+            <span class="xp-tag">⭐ +{{ project.xp_awarded || 30 }} XP</span>
             <span class="meta-dot">•</span>
-            <NuxtLink :to="`/item/${post.id}`" class="comments-link">
-              💬 {{ post.comments_count || post.commentsCount || 0 }} commenti
-            </NuxtLink>
+            <span class="time-tag">⏱️ {{ formatTime(project.created_at) }}</span>
             <span class="meta-dot">•</span>
-            <span class="xp-pill">Show DKP Verified</span>
+            <span class="verify-tag">Verified da <strong>DKP Crawler</strong></span>
           </div>
         </div>
       </article>
     </div>
 
-    <!-- EMPTY STATE FALLBACK -->
+    <!-- EMPTY STATE FALLBACK (NESSUN DATO MOCK) -->
     <div v-else class="empty-state">
-      <p>Nessun progetto showcase pubblicato al momento.</p>
-      <NuxtLink to="/submit?type=show" class="submit-inline-link">Sii il primo a mostrare il tuo progetto!</NuxtLink>
+      <p>📭 Nessun progetto presente nella vetrina Showcase.</p>
+      <div class="empty-actions">
+        <NuxtLink to="/admin/crawler" class="admin-link">🤖 Avvia Crawler GitHub Trending</NuxtLink>
+        <span class="sep">•</span>
+        <NuxtLink to="/submit?type=show" class="submit-inline-link">Invia il tuo primo progetto!</NuxtLink>
+      </div>
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 
 useHead({
-  title: 'Show DKP - Vetrina Progetti Open Source e SaaS',
+  title: 'Show DKP - Progetti & GitHub Trending v2.4-GOLD',
   meta: [
-    { name: 'description', content: 'Mostra i tuoi progetti, librerie open source e SaaS alla community di DevKernelPulse v2.3.' }
+    { name: 'description', content: 'Vetrina dei migliori progetti Open Source e repository GitHub sincronizzati da DKP Crawler.' }
   ]
 })
 
-// Fetch dei post di tipo Show
-const { data: rawPosts, pending } = await useFetch('/api/posts', {
-  query: { type: 'show' },
-  lazy: true,
-  default: () => [
-    {
-      id: 301,
-      title: 'Show DKP: Ollaya – Ollama for open-source, Jev-style decision models',
-      domain: 'ollaya.dev',
-      url: 'https://ollaya.dev',
-      author: 'alexdpl',
-      points: 18,
-      comments_count: 4,
-      timeAgo: '22h fa',
-      voted: false
-    },
-    {
-      id: 302,
-      title: 'Show DKP: Doom or Bloom, map your AI worldview with Jev',
-      domain: 'doom-or-bloom.com',
-      url: 'https://doom-or-bloom.com',
-      author: 'alexdpl',
-      points: 17,
-      comments_count: 6,
-      timeAgo: '1g fa',
-      voted: false
-    },
-    {
-      id: 303,
-      title: 'Show DKP: DKP Tools v2.3 – In-Browser Web Shell, AI Code Scanner & Proof of Code Vault',
-      domain: 'devkernelpulse.org',
-      url: 'https://devkernelpulse.org',
-      author: 'alexdpl',
-      points: 142,
-      comments_count: 28,
-      timeAgo: '2g fa',
-      voted: false
-    }
-  ]
+// Fetch reattivo dal DB Neon per la sezione 'show' (SENZA FALLBACK MOCK)
+const { data: apiResponse, pending } = await useFetch('/api/pulse/stories?type=show')
+
+const projects = computed(() => {
+  return apiResponse.value?.stories || []
 })
 
-// De-duplicazione automatica per ID/Titolo e sanificazione delle date "Invalid Date"
-const cleanShowPosts = computed(() => {
-  const postsArray = Array.isArray(rawPosts.value) ? rawPosts.value : (rawPosts.value as any)?.data || []
-  
-  const seen = new Set()
-  return postsArray.filter((item: any) => {
-    const key = item.id || item.title
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  }).map((post: any) => ({
-    ...post,
-    timeAgo: post.timeAgo || post.time_ago || (post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : 'di recente')
-  }))
-})
-
-// Logica Votazione
-const votePost = (post: any) => {
-  if (post.voted) {
-    post.points--
-    post.voted = false
+const voteProject = (project: any) => {
+  if (project.voted) {
+    project.points = (project.points || 1) - 1
+    project.voted = false
   } else {
-    post.points++
-    post.voted = true
+    project.points = (project.points || 0) + 1
+    project.voted = true
+  }
+}
+
+function formatTime(dateStr: string | undefined): string {
+  if (!dateStr) return 'di recente'
+  try {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    if (diffHours < 1) return 'poco fa'
+    if (diffHours < 24) return `${diffHours}h fa`
+    return `${Math.floor(diffHours / 24)}g fa`
+  } catch {
+    return 'di recente'
   }
 }
 </script>
 
 <style scoped>
-.show-page-container {
-  max-width: 1000px;
-  margin: 1.5rem auto;
-  padding: 0 1rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #f8fafc;
-}
+.show-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
 
-/* HEADER */
-.show-header {
-  background: rgba(9, 13, 22, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid #1e293b;
-  border-radius: 16px;
-  padding: 1.75rem 2rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1.25rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
+.show-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.show-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
+.show-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.highlight-text { color: #00dc82; }
+.show-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
 
-.show-badge {
-  display: inline-block;
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  margin-bottom: 0.6rem;
-}
+.submit-show-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
+.submit-show-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
-.show-title {
-  font-size: 2rem;
-  font-weight: 900;
-  margin: 0 0 0.4rem 0;
-  color: #ffffff;
-}
+.show-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
+.show-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
+.show-card:hover { border-color: rgba(0, 220, 130, 0.4); }
 
-.highlight-text {
-  color: #00dc82;
-}
+.vote-btn { background: #020420; border: 1px solid #1e293b; color: #94a3b8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 44px; transition: all 0.2s; }
+.vote-btn:hover { border-color: #00dc82; color: #00dc82; }
+.vote-btn.voted { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; color: #00dc82; }
+.vote-icon { font-size: 0.7rem; }
+.vote-count { font-size: 0.82rem; font-weight: 800; }
 
-.show-subtitle {
-  font-size: 0.88rem;
-  color: #94a3b8;
-  margin: 0;
-  max-width: 650px;
-  line-height: 1.5;
-}
+.show-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+.show-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.show-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
+.show-project-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
+.show-project-title:hover { color: #00dc82; text-decoration: underline; }
+.show-domain { font-size: 0.8rem; color: #38bdf8; }
 
-.submit-show-btn {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 900;
-  font-size: 0.85rem;
-  padding: 0.7rem 1.2rem;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
+.show-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.author-tag { color: #00dc82; }
+.xp-tag { color: #f59e0b; font-weight: 800; }
+.verify-tag { color: #94a3b8; }
+.meta-dot { color: #334155; }
 
-.submit-show-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(0, 220, 130, 0.4);
-}
-
-/* LISTA CARD */
-.show-feed-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.show-card {
-  background: rgba(9, 13, 22, 0.85);
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1rem 1.2rem;
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-  transition: border-color 0.2s ease;
-}
-
-.show-card:hover {
-  border-color: rgba(0, 220, 130, 0.35);
-}
-
-/* VOTE BUTTON */
-.vote-btn {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #94a3b8;
-  border-radius: 8px;
-  padding: 0.45rem 0.65rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  min-width: 46px;
-  transition: all 0.2s ease;
-}
-
-.vote-btn:hover {
-  border-color: #00dc82;
-  color: #00dc82;
-}
-
-.vote-btn.voted {
-  background: rgba(0, 220, 130, 0.15);
-  border-color: #00dc82;
-  color: #00dc82;
-}
-
-.vote-icon {
-  font-size: 0.7rem;
-}
-
-.vote-count {
-  font-size: 0.85rem;
-  font-weight: 800;
-}
-
-/* POST CONTENT */
-.show-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  flex: 1;
-}
-
-.show-main {
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.show-index {
-  font-size: 0.88rem;
-  color: #64748b;
-  font-weight: 700;
-}
-
-.post-title-link {
-  color: #f8fafc;
-  font-size: 0.98rem;
-  font-weight: 700;
-  text-decoration: none;
-  line-height: 1.4;
-}
-
-.post-title-link:hover {
-  color: #00dc82;
-  text-decoration: underline;
-}
-
-.domain-tag {
-  font-size: 0.78rem;
-  color: #38bdf8;
-  text-decoration: none;
-}
-
-.domain-tag:hover {
-  text-decoration: underline;
-}
-
-/* METADATA */
-.show-meta {
-  font-size: 0.78rem;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.author-tag {
-  color: #00dc82;
-}
-
-.meta-dot {
-  color: #334155;
-}
-
-.comments-link {
-  color: #38bdf8;
-  text-decoration: none;
-}
-
-.comments-link:hover {
-  text-decoration: underline;
-}
-
-.xp-pill {
-  background: #020420;
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.2);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.loading-state, .empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #94a3b8;
-}
-
-.submit-inline-link {
-  color: #00dc82;
-  text-decoration: underline;
-  margin-top: 0.5rem;
-  display: inline-block;
-}
-
-@media (max-width: 640px) {
-  .show-header {
-    padding: 1.25rem;
-  }
-  .show-title {
-    font-size: 1.6rem;
-  }
-}
+.loading-state, .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; }
+.empty-actions { margin-top: 0.8rem; display: flex; justify-content: center; gap: 0.8rem; align-items: center; }
+.admin-link { color: #38bdf8; text-decoration: underline; font-weight: 700; }
+.submit-inline-link { color: #00dc82; text-decoration: underline; font-weight: 700; }
+.sep { color: #334155; }
 </style>

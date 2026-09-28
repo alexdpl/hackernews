@@ -72,3 +72,20 @@ export const vaultCerts = pgTable('vault_certs', {
   metadata: jsonb('metadata'), // Punteggi AI, dettagli repository o configurazioni
   createdAt: timestamp('created_at').defaultNow().notNull()
 })
+
+export const pulseStories = pgTable('pulse_stories', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  url: text('url'),
+  domain: varchar('domain', { length: 255 }),
+  type: varchar('type', { length: 50 }).notNull(), // 'news', 'ask', 'show', 'jobs'
+  
+  // -- GAMIFICATION & ECOSYSTEM LAYER --
+  author: varchar('author', { length: 255 }), // Nome autore (da HN, Dev.to o user DKP)
+  authorId: integer('author_id'), // ID dell'utente DKP (se è un post nativo, null se da crawler)
+  points: integer('points').default(1), // Upvotes
+  commentsCount: integer('comments_count').default(0), // Contatore cache per performance
+  xpAwarded: integer('xp_awarded').default(0), // Punti XP distribuiti per questo post
+  
+  createdAt: timestamp('created_at').defaultNow(),
+})

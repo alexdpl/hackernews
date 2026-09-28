@@ -1,57 +1,82 @@
-import { defineEventHandler } from 'h3'
+// server/api/stories/index.get.ts
+import { sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+import { getQuery } from 'h3'
+
+/**
+ * Parser sicuro delle query string che gestisce sia le richieste HTTP reali
+ * sia le chiamate simulate in-memory (SSR / node-mock-http).
+ */
+function parseEventQuery(event: any) {
+  try {
+    const q = getQuery(event)
+    if (q && Object.keys(q).length > 0) return q
+  } catch (e) {
+    // Fallback in caso di URL relativo durante l'SSR
+  }
+
+  const rawUrl = event.path || event.node?.req?.url || ''
+  if (!rawUrl) return {}
+
+  const dummyBase = 'http://localhost'
+  const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${dummyBase}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`
+  
+  try {
+    const parsed = new URL(fullUrl)
+    const result: Record<string, string> = {}
+    parsed.searchParams.forEach((val, key) => {
+      result[key] = val
+    })
+    return result
+  } catch {
+    return {}
+  }
+}
 
 export default defineEventHandler(async (event) => {
-  // Feed di storie del Kernel v2.3 (sincronizzabile con Neon DB)
-  return [
-    {
-      id: 1,
-      title: 'Ollaya – Ollama for open-source, Jev-style decision models',
-      url: 'https://ollaya.dev',
-      domain: 'ollaya.dev',
-      points: 18,
-      author: 'alexdpl',
-      timeAgo: '22h fa',
-      voted: false
-    },
-    {
-      id: 2,
-      title: 'Yes, Claude can do Nine Loops',
-      url: 'https://anthropic.com',
-      domain: 'anthropic.com',
-      points: 35,
-      author: 'alexdpl',
-      timeAgo: '23h fa',
-      voted: false
-    },
-    {
-      id: 3,
-      title: 'Show HN: Doom or Bloom, map your AI worldview with Jev',
-      url: 'https://doom-or-bloom.com',
-      domain: 'doom-or-bloom.com',
-      points: 17,
-      author: 'alexdpl',
-      timeAgo: '1g fa',
-      voted: false
-    },
-    {
-      id: 4,
-      title: 'Classified Estimates Show the NSA Is Paying Billions to Test AI Models',
-      url: 'https://washingtonsun.com',
-      domain: 'washingtonsun.com',
-      points: 139,
-      author: 'alexdpl',
-      timeAgo: '1g fa',
-      voted: false
-    },
-    {
-      id: 5,
-      title: 'Allow Carriers on Planes',
-      url: 'https://jefftk.com',
-      domain: 'jefftk.com',
-      points: 31,
-      author: 'alexdpl',
-      timeAgo: '1g fa',
-      voted: false
+  const query = parseEventQuery(event)
+  
+  const page = Math.max(1, parseInt(query.page as string) || 1)
+  const limit = Math.max(1, parseInt(query.limit as string) || 15) // Default 15 notizie per pagina
+  const type = (query.type as string) || 'news' // 'news' | 'ask' | 'show' | 'jobs'
+  const offset = (page - 1) * limit
+
+  const db = getDb()
+  if (!db) {
+    return { stories: [], total: 0, totalPages: 1, currentPage: page }
+  }
+
+  try {
+    // 1. Conteggio totale per tipo
+    const countRes: any = await db.execute(sql`
+      SELECT COUNT(*) as count FROM pulse_stories WHERE type = ${type};
+    `)
+    const total = parseInt(countRes?.rows?.[0]?.count || countRes?.[0]?.count || '0')
+    const totalPages = Math.ceil(total / limit) || 1
+
+    // 2. Fetch notizie per pagina
+    const storiesRes: any = await db.execute(sql`
+      SELECT id, title, url, domain, points, author, type, created_at
+      FROM pulse_stories
+      WHERE type = ${type}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset};
+    `)
+
+    const stories = storiesRes?.rows || storiesRes || []
+
+    return {
+      success: true,
+      stories,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages
+      }
     }
-  ]
+  } catch (err: any) {
+    console.error('[STORIES API ERROR]:', err?.message)
+    return { stories: [], total: 0, totalPages: 1, currentPage: page }
+  }
 })

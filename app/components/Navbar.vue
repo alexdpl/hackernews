@@ -52,12 +52,12 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// Menù a tendina News Unificato
-const newsMenuItems = [
-  { name: 'News Feed', description: 'Ultimi aggiornamenti tech & ecosistema', icon: '📰', route: '/feed' },
-  { name: 'Ask Community', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
-  { name: 'Show DKP', description: 'Showcase progetti della community', icon: '⚡', route: '/show' },
-  { name: 'Tech Jobs', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
+// Menù a tendina News Unificato v2.4 (CLONATO 1:1 DA DKP TOOLS)
+const newsCategories = [
+  { name: 'News Feed', description: 'Ultimi aggiornamenti tech & ecosistema', icon: '📰', route: '/news' },
+  { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
+  { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },
+  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
 ]
 
 // DKP Tools v2.4
@@ -107,20 +107,25 @@ async function handleLogout() {
 
       <!-- NAVIGAZIONE PRINCIPALE DESKTOP -->
       <nav class="nav-links desktop-only">
-        
-        <!-- 1. NEWS DROPDOWN -->
+
+        <!-- 1. NEWS DROPDOWN (CLONATO DA DKP TOOLS CON NUVOLETTA ☁️) -->
         <div class="dropdown-wrapper">
-          <button @click="toggleDropdown('news')" class="nav-dropdown-btn" :class="{ active: activeDropdown === 'news' }">
-            {{ t('news') }} <span class="arrow">▼</span>
+          <button 
+            @click="toggleDropdown('news')" 
+            class="tools-btn" 
+            :class="{ active: activeDropdown === 'news' }"
+          >
+            ☁️ News <span class="arrow" :class="{ rotated: activeDropdown === 'news' }">▼</span>
           </button>
           
           <Transition name="fade-slide">
-            <div v-show="activeDropdown === 'news'" class="menu-dropdown news-menu">
+            <div v-show="activeDropdown === 'news'" class="menu-dropdown tools-menu">
               <NuxtLink 
-                v-for="item in newsMenuItems" 
+                v-for="item in newsCategories" 
                 :key="item.route" 
                 :to="item.route" 
                 class="menu-item"
+                @click="closeAllDropdowns"
               >
                 <span class="icon">{{ item.icon }}</span>
                 <div class="item-text">
@@ -136,8 +141,12 @@ async function handleLogout() {
 
         <!-- 2. DKP TOOLS V2.4 -->
         <div class="dropdown-wrapper">
-          <button @click="toggleDropdown('tools')" class="tools-btn" :class="{ active: activeDropdown === 'tools' }">
-            🛠️ {{ t('tools') }} <span class="arrow">▼</span>
+          <button 
+            @click="toggleDropdown('tools')" 
+            class="tools-btn" 
+            :class="{ active: activeDropdown === 'tools' }"
+          >
+            🛠️ {{ t('tools') }} <span class="arrow" :class="{ rotated: activeDropdown === 'tools' }">▼</span>
           </button>
           
           <Transition name="fade-slide">
@@ -147,6 +156,7 @@ async function handleLogout() {
                 :key="tool.route" 
                 :to="tool.route" 
                 class="menu-item"
+                @click="closeAllDropdowns"
               >
                 <span class="icon">{{ tool.icon }}</span>
                 <div class="item-text">
@@ -176,7 +186,7 @@ async function handleLogout() {
         <!-- TRANSLATOR PRO (9 LINGUE) -->
         <div class="dropdown-wrapper">
           <button @click="toggleDropdown('lang')" class="lang-btn" :class="{ active: activeDropdown === 'lang' }">
-            🌐 {{ activeLanguageObj.flag }} {{ activeLanguageObj.code }} <span class="arrow">▼</span>
+            🌐 {{ activeLanguageObj.flag }} {{ activeLanguageObj.code }} <span class="arrow" :class="{ rotated: activeDropdown === 'lang' }">▼</span>
           </button>
           <Transition name="fade-slide">
             <div v-show="activeDropdown === 'lang'" class="menu-dropdown lang-menu">
@@ -223,15 +233,15 @@ async function handleLogout() {
 
               <div class="dropdown-divider"></div>
 
-              <NuxtLink to="/user/dashboard" class="menu-item">
+              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
                 <span>📊</span> {{ t('dashboard') }}
               </NuxtLink>
 
-              <NuxtLink to="/user/dashboard?tab=vault" class="menu-item">
+              <NuxtLink to="/user/dashboard?tab=vault" class="menu-item" @click="closeAllDropdowns">
                 <span>🛡️</span> {{ t('vault') }}
               </NuxtLink>
 
-              <NuxtLink to="/user/dashboard?tab=profile" class="menu-item">
+              <NuxtLink to="/user/dashboard?tab=profile" class="menu-item" @click="closeAllDropdowns">
                 <span>⚙️</span> {{ t('settings') }}
               </NuxtLink>
 
@@ -240,7 +250,7 @@ async function handleLogout() {
                 <div class="dropdown-group">
                   <span class="dropdown-label">AMMINISTRAZIONE DKP</span>
                   
-                  <NuxtLink to="/admin" class="dropdown-item green-item">
+                  <NuxtLink to="/admin" class="dropdown-item green-item" @click="closeAllDropdowns">
                     🔒 Control Center Admin
                   </NuxtLink>
 
@@ -248,32 +258,32 @@ async function handleLogout() {
                   <div class="mail-menu-block">
                     <span class="mail-block-title">MAIL ENGINE v2.4</span>
                     
-                    <NuxtLink to="/admin/mail" class="dropdown-item mail-link">
+                    <NuxtLink to="/admin/mail" class="dropdown-item mail-link" @click="closeAllDropdowns">
                       📧 DKP Mail Center
                     </NuxtLink>
                     
-                    <NuxtLink to="/admin/newsletter" class="dropdown-item mail-link">
+                    <NuxtLink to="/admin/newsletter" class="dropdown-item mail-link" @click="closeAllDropdowns">
                       📡 Newsletter & Contatti
                     </NuxtLink>
                     
-                    <NuxtLink to="/admin/autoresponder" class="dropdown-item mail-link">
+                    <NuxtLink to="/admin/autoresponder" class="dropdown-item mail-link" @click="closeAllDropdowns">
                       🤖 Autoresponder Rules
                     </NuxtLink>
                   </div>
 
-                  <NuxtLink to="/admin/crawler" class="dropdown-item green-item">
+                  <NuxtLink to="/admin/crawler" class="dropdown-item green-item" @click="closeAllDropdowns">
                     🤖 DKP Crawler Engine
                   </NuxtLink>
                   
-                  <NuxtLink to="/admin/blog" class="dropdown-item green-item">
+                  <NuxtLink to="/admin/blog" class="dropdown-item green-item" @click="closeAllDropdowns">
                     📄 Gestione DKP Blog
                   </NuxtLink>
                   
-                  <NuxtLink to="/admin/shop" class="dropdown-item green-item">
+                  <NuxtLink to="/admin/shop" class="dropdown-item green-item" @click="closeAllDropdowns">
                     🛍️ Gestione DKP Shop
                   </NuxtLink>
                   
-                  <NuxtLink to="/admin/jobs" class="dropdown-item green-item">
+                  <NuxtLink to="/admin/jobs" class="dropdown-item green-item" @click="closeAllDropdowns">
                     💼 Gestione Job Hub
                   </NuxtLink>
                 </div>
@@ -303,20 +313,25 @@ async function handleLogout() {
       <div v-show="isMobileMenuOpen" class="mobile-drawer mobile-only">
         <nav class="mobile-nav-list">
           <span class="mobile-section-title">📰 NEWS & COMMUNITY</span>
-          <NuxtLink to="/feed" class="mobile-nav-link">📰 News Feed</NuxtLink>
-          <NuxtLink to="/ask" class="mobile-nav-link">💬 Ask Community</NuxtLink>
-          <NuxtLink to="/show" class="mobile-nav-link">⚡ Show DKP</NuxtLink>
-          <NuxtLink to="/jobs" class="mobile-nav-link">💼 Tech Jobs</NuxtLink>
+          <NuxtLink 
+            v-for="item in newsCategories" 
+            :key="item.route" 
+            :to="item.route" 
+            class="mobile-nav-link"
+            @click="closeAllDropdowns"
+          >
+            {{ item.icon }} {{ item.name }}
+          </NuxtLink>
           
           <div class="mobile-section-divider"></div>
           
-          <NuxtLink to="/submit" class="mobile-nav-link highlight">+ Submit Link</NuxtLink>
-          <NuxtLink to="/blog" class="mobile-nav-link">✍️ DKP Blog</NuxtLink>
+          <NuxtLink to="/submit" class="mobile-nav-link highlight" @click="closeAllDropdowns">+ Submit Link</NuxtLink>
+          <NuxtLink to="/blog" class="mobile-nav-link" @click="closeAllDropdowns">✍️ DKP Blog</NuxtLink>
           
           <div class="mobile-section-divider"></div>
           <span class="mobile-section-title">🛠️ DKP TOOLS V2.4</span>
           
-          <NuxtLink v-for="tool in dkpTools" :key="tool.route" :to="tool.route" class="mobile-nav-link tool-link">
+          <NuxtLink v-for="tool in dkpTools" :key="tool.route" :to="tool.route" class="mobile-nav-link tool-link" @click="closeAllDropdowns">
             <span>{{ tool.icon }} {{ tool.name }}</span>
           </NuxtLink>
 
@@ -324,22 +339,22 @@ async function handleLogout() {
           
           <div v-if="isAuthenticated" class="mobile-user-block">
             <span class="m-user">👤 @{{ currentUser?.username }}</span>
-            <NuxtLink to="/user/dashboard" class="mobile-nav-link">📊 Dashboard & Vault</NuxtLink>
+            <NuxtLink to="/user/dashboard" class="mobile-nav-link" @click="closeAllDropdowns">📊 Dashboard & Vault</NuxtLink>
             
             <template v-if="isAdmin">
               <div class="mobile-section-divider"></div>
               <span class="mobile-section-title">🛡️ AMMINISTRAZIONE DKP</span>
-              <NuxtLink to="/admin" class="mobile-nav-link admin">🔒 Control Center Admin</NuxtLink>
+              <NuxtLink to="/admin" class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Control Center Admin</NuxtLink>
 
               <!-- MAIL ENGINE MOBILE -->
-              <NuxtLink to="/admin/mail" class="mobile-nav-link mail-link">📧 DKP Mail Center v2.4</NuxtLink>
-              <NuxtLink to="/admin/newsletter" class="mobile-nav-link mail-link">📡 Newsletter & Contatti</NuxtLink>
-              <NuxtLink to="/admin/autoresponder" class="mobile-nav-link mail-link">🤖 Autoresponder Rules</NuxtLink>
+              <NuxtLink to="/admin/mail" class="mobile-nav-link mail-link" @click="closeAllDropdowns">📧 DKP Mail Center v2.4</NuxtLink>
+              <NuxtLink to="/admin/newsletter" class="mobile-nav-link mail-link" @click="closeAllDropdowns">📡 Newsletter & Contatti</NuxtLink>
+              <NuxtLink to="/admin/autoresponder" class="mobile-nav-link mail-link" @click="closeAllDropdowns">🤖 Autoresponder Rules</NuxtLink>
 
-              <NuxtLink to="/admin/crawler" class="mobile-nav-link admin">🤖 DKP Crawler Engine</NuxtLink>
-              <NuxtLink to="/admin/blog" class="mobile-nav-link admin">📝 Gestione DKP Blog</NuxtLink>
-              <NuxtLink to="/admin/shop" class="mobile-nav-link admin">🛍️ Gestione DKP Shop</NuxtLink>
-              <NuxtLink to="/admin/jobs" class="mobile-nav-link admin">💼 Gestione Job Hub</NuxtLink>
+              <NuxtLink to="/admin/crawler" class="mobile-nav-link admin" @click="closeAllDropdowns">🤖 DKP Crawler Engine</NuxtLink>
+              <NuxtLink to="/admin/blog" class="mobile-nav-link admin" @click="closeAllDropdowns">📝 Gestione DKP Blog</NuxtLink>
+              <NuxtLink to="/admin/shop" class="mobile-nav-link admin" @click="closeAllDropdowns">🛍️ Gestione DKP Shop</NuxtLink>
+              <NuxtLink to="/admin/jobs" class="mobile-nav-link admin" @click="closeAllDropdowns">💼 Gestione Job Hub</NuxtLink>
             </template>
 
             <div class="mobile-section-divider"></div>
@@ -431,24 +446,6 @@ async function handleLogout() {
 .nav-link-item:hover,
 .nav-link-item.router-link-active { color: #00dc82; }
 
-.nav-dropdown-btn {
-  background: transparent;
-  border: none;
-  color: #cbd5e1;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  transition: color 0.15s ease;
-}
-
-.nav-dropdown-btn:hover,
-.nav-dropdown-btn.active { color: #00dc82; }
-
 .submit-highlight {
   color: #00dc82 !important;
   font-weight: 700;
@@ -475,6 +472,7 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  transition: all 0.15s ease;
 }
 
 .tools-btn:hover,
@@ -603,7 +601,6 @@ async function handleLogout() {
   z-index: 100;
 }
 
-.news-menu { left: 0; width: 260px; }
 .tools-menu { left: 0; width: 270px; }
 .lang-menu { right: 0; width: 180px; max-height: 280px; overflow-y: auto; }
 .profile-menu { right: 0; width: 260px; }
