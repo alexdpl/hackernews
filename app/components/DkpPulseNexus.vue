@@ -42,7 +42,7 @@ watch(isOpen, (val) => {
           <div class="nexus-title-box">
             <span class="nexus-status-dot"></span>
             <div>
-              <h3 class="nexus-title">DKP Pulse Nexus <span class="badge-v">v2.3</span></h3>
+              <h3 class="nexus-title">DKP Pulse Nexus <span class="badge-v">v2.4</span></h3>
               <p class="nexus-subtitle">Assistente AI & Code Companion</p>
             </div>
           </div>

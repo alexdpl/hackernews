@@ -13,7 +13,7 @@ const messages = ref<ChatMessage[]>([
   {
     id: 'welcome',
     sender: 'assistant',
-    text: '⚡ **DKP Pulse Nexus v2.3 Online**. Chiedimi qualsiasi cosa su Nuxt 4, Neon DB, DKP Tools o chiedi consigli di codice!',
+    text: '⚡ **DKP Pulse Nexus v2.4 Online**. Chiedimi qualsiasi cosa su Nuxt 4, Neon DB, DKP Tools o chiedi consigli di codice!',
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 ])

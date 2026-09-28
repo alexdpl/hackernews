@@ -25,6 +25,7 @@ export function useBlog() {
     { id: 'releases', name: 'Release Ufficiali' },
     { id: 'community', name: 'Community & Karma' },
     { id: 'stack', name: 'Stack & System' }
+	{ id: 'open', name: 'Open Source' }
   ])
 
   const posts = useState<BlogPost[]>('blog_posts', () => [
