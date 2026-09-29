@@ -130,16 +130,27 @@ export const orders = pgTable('orders', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })
 
-// 11. TABELLA LICENZE SAAS
+// 11. TABELLA LICENZE SAAS (Unificata per Stripe e Dashboard)
 export const licenses = pgTable('licenses', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer('user_id').references(() => users.id), // Opzionale per acquisti guest, ma vitale per la Dashboard
   orderId: text('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
-  licenseKey: varchar('license_key', { length: 64 }).notNull().unique(),
   customerEmail: varchar('customer_email', { length: 255 }).notNull(),
   productId: varchar('product_id', { length: 100 }).notNull(),
+  productName: varchar('product_name', { length: 255 }).notNull(), // Per mostrare il nome in Dashboard
+  licenseKey: varchar('license_key', { length: 255 }).notNull().unique(),
   status: licenseStatusEnum('status').default('active').notNull(),
   downloadsCount: integer('downloads_count').default(0).notNull(),
   maxDownloads: integer('max_downloads').default(10).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at')
+})
+
+// 12. TABELLA CRONOLOGIA XP (Gamification)
+export const xpTransactions = pgTable('xp_transactions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(), // Relazione collegata a users
+  action: text('action').notNull(), // es: "News Submission", "Ask Discussion"
+  points: integer('points').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })

@@ -1,9 +1,11 @@
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 // Integrazione Auth Core & Routing Nuxt
 const { currentUser, isAuthenticated } = useAuthCore()
+const route = useRoute()
 const router = useRouter()
 
 // Controllo Accesso / Protezione Rotta Client-Side
@@ -13,8 +15,20 @@ onMounted(() => {
   }
 })
 
-// Tab Attiva: 'profile' | 'activity' | 'vault' | 'tokens'
-const activeTab = ref<'profile' | 'activity' | 'vault' | 'tokens'>('profile')
+// Gestione Schede Attive (Sincronizzate con URL Query String ?tab=...)
+type TabType = 'profile' | 'activity' | 'purchases' | 'gamification' | 'vault' | 'tokens'
+const activeTab = ref<TabType>((route.query.tab as TabType) || 'profile')
+
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && typeof newTab === 'string') {
+    activeTab.value = newTab as TabType
+  }
+})
+
+function changeTab(tabName: TabType) {
+  activeTab.value = tabName
+  router.push({ query: { tab: tabName } })
+}
 
 // --- TAB 1: PROFILO DEVELOPER ---
 const profileForm = reactive({
@@ -28,7 +42,7 @@ const profileForm = reactive({
 // Sincronizza il form appena l'utente autenticato è disponibile
 watch(currentUser, (newUser) => {
   if (newUser) {
-    profileForm.avatarUrl = newUser.avatar || ''
+    profileForm.avatarUrl = newUser.avatar || 'https://github.com/alexdpl.png'
     if (newUser.bio) profileForm.bio = newUser.bio
   }
 }, { immediate: true })
@@ -49,9 +63,9 @@ function saveProfileSettings() {
 const activityFilter = ref<'all' | 'submissions' | 'comments' | 'show'>('all')
 
 const userSubmissions = ref([
-  { id: 1, type: 'submission', title: 'Rilasciato Nuxt 3.12: Nuove ottimizzazioni Nitro e SSR', date: '2 ore fa', points: 42, commentsCount: 12 },
-  { id: 2, type: 'show', title: 'Show DKP: DevKernelPulse Auth Core v1.0 Released', date: '1 giorno fa', points: 128, commentsCount: 34 },
-  { id: 3, type: 'comment', title: 'Commento su "Nuove API WebGPU per browser moderni"', date: '3 giorni fa', content: 'Incredibile incremento di performance per le reti neurali in-browser!' }
+  { id: 1, type: 'submission', title: 'Nuovo Kernel Release v6.12 annunciato', date: 'Ieri', points: 15, commentsCount: 4 },
+  { id: 2, type: 'show', title: 'DKP AI Scanner: Analisi automatica smart contract', date: '3 giorni fa', points: 30, commentsCount: 12 },
+  { id: 3, type: 'comment', title: 'Commento su "Ottimizzazione memorie DDR5"', date: '5 giorni fa', content: 'Ottimo articolo, testato su piattaforma server.' }
 ])
 
 const filteredSubmissions = computed(() => {
@@ -59,27 +73,42 @@ const filteredSubmissions = computed(() => {
   return userSubmissions.value.filter(item => item.type === activityFilter.value)
 })
 
-// --- TAB 3: VAULT PERSONALE DKP TOOLS ---
+// --- TAB 3: LICENZE & ACQUISTI (NUOVA FUNZIONE) ---
+const licenses = ref([
+  { id: 1, product: 'DKP AI Scanner Pro', key: 'dkp_lic_99a882f1...active', expires: '31 Dic 2026', status: 'Attiva' }
+])
+
+// --- TAB 4: GAMIFICATION HUB (NUOVA FUNZIONE) ---
+const userStats = ref({ 
+  xp: 127, 
+  level: 'Developer VIP Member', 
+  nextLevelXp: 200, 
+  progress: 63 
+})
+
+const xpHistory = ref([
+  { id: 1, action: 'Pubblicazione Kernel Release v6.12', date: 'Ieri', points: '+15 XP' },
+  { id: 2, action: 'Audit AI Code Scanner completato', date: '3 giorni fa', points: '+30 XP' }
+])
+
+// --- TAB 5: VAULT PERSONALE DKP TOOLS ---
 const vaultCategory = ref<'poc' | 'scanner' | 'snippets'>('poc')
 
 const pocCertificates = ref([
-  { id: 'poc-98421', repo: 'alexdpl/devkernel-pulse', hash: '0x8f3a9b1c83d12f42a9b', badge: '🌱 Script Kiddie', date: '2026-09-20' },
-  { id: 'poc-98499', repo: 'alexdpl/nitro-auth-plugin', hash: '0x4d12a90fe3b28104c32', badge: '⚡ Code Ninja', date: '2026-09-22' }
+  { id: 'poc-1', repo: 'kernel-exploit-mitigation', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', badge: 'Verified PoC', date: '20 Set 2026' }
 ])
 
 const scannerAudits = ref([
-  { id: 'audit-001', target: 'app/server/api/auth.ts', score: 98, status: 'SECURE', date: '12 ore fa' },
-  { id: 'audit-002', target: 'app/composables/useAuthCore.ts', score: 100, status: 'EXCELLENT', date: '2 giorni fa' }
+  { id: 'aud-1', target: 'nuxt-auth-endpoint.ts', score: 98, status: 'SECURE', date: '24 Set 2026' }
 ])
 
 const savedSnippets = ref([
-  { id: 'snip-101', name: 'DKP Auth Interceptor', lang: 'TypeScript', date: '1 giorno fa' },
-  { id: 'snip-102', name: 'Neural Prompt System Template', lang: 'JSON', date: '5 giorni fa' }
+  { id: 'snip-1', name: 'Drizzle ORM Advanced Join Custom', lang: 'TypeScript', date: '22 Set 2026' }
 ])
 
-// --- TAB 4: API KEYS & DEVELOPER TOKENS ---
+// --- TAB 6: API KEYS & DEVELOPER TOKENS ---
 const apiKeys = ref([
-  { id: 'key-1', name: 'CLI Terminal Local SDK', prefix: 'dkp_live_98a...41b', created: '2026-09-15', lastUsed: 'Oggi 14:20' }
+  { id: 'key-1', name: 'Local CLI Scanner', prefix: 'dkp_live_9f81...', created: '10 Set 2026', lastUsed: 'Oggi 08:30' }
 ])
 
 const newKeyName = ref('')
@@ -90,10 +119,10 @@ function generateNewApiKey() {
   const randomHash = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
   const fullToken = `dkp_live_${randomHash}`
   
-  apiKeys.value.push({
+  apiKeys.value.unshift({
     id: `key-${Date.now()}`,
     name: newKeyName.value.trim(),
-    prefix: `${fullToken.substring(0, 12)}...${fullToken.substring(fullToken.length - 4)}`,
+    prefix: `${fullToken.substring(0, 12)}...`,
     created: 'Adesso',
     lastUsed: 'Mai'
   })
@@ -106,7 +135,7 @@ function revokeApiKey(id: string) {
   apiKeys.value = apiKeys.value.filter(k => k.id !== id)
 }
 
-// System Feedback per il Clipboard
+// System Feedback Clipboard
 const copiedTarget = ref<string | null>(null)
 
 function copyToClipboard(text: string, identifier: string = 'global') {
@@ -129,7 +158,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
           <span v-else>{{ currentUser?.username?.charAt(0).toUpperCase() || 'D' }}</span>
         </div>
         <div class="user-meta">
-          <h1>Pannello Riservato <span class="username-gradient">@{{ currentUser?.username || 'Developer' }}</span></h1>
+          <h1>Pannello Riservato <span class="username-gradient">@{{ currentUser?.username || 'alexdpl' }}</span></h1>
           <p class="role-badge">🛡️ Developer VIP Member • <span class="reputation-text">127 Punti DKP</span></p>
         </div>
       </div>
@@ -139,29 +168,47 @@ function copyToClipboard(text: string, identifier: string = 'global') {
       </NuxtLink>
     </header>
 
-    <!-- NAVIGAZIONE A SCHEDE (TABS) -->
+    <!-- NAVIGAZIONE SCHEDE (TABS) -->
     <nav class="dashboard-tabs">
       <button 
+        type="button"
         :class="['tab-btn', { active: activeTab === 'profile' }]" 
-        @click="activeTab = 'profile'"
+        @click="changeTab('profile')"
       >
         👤 Profilo & Social
       </button>
       <button 
+        type="button"
         :class="['tab-btn', { active: activeTab === 'activity' }]" 
-        @click="activeTab = 'activity'"
+        @click="changeTab('activity')"
       >
         📰 I Miei Contenuti
       </button>
       <button 
-        :class="['tab-btn', { active: activeTab === 'vault' }]" 
-        @click="activeTab = 'vault'"
+        type="button"
+        :class="['tab-btn', { active: activeTab === 'purchases' }]" 
+        @click="changeTab('purchases')"
       >
-        🔐 DKP Vault
+        🛍️ Licenze & Acquisti
       </button>
       <button 
+        type="button"
+        :class="['tab-btn', { active: activeTab === 'gamification' }]" 
+        @click="changeTab('gamification')"
+      >
+        🏆 Gamification Hub
+      </button>
+      <button 
+        type="button"
+        :class="['tab-btn', { active: activeTab === 'vault' }]" 
+        @click="changeTab('vault')"
+      >
+        🔒 DKP Vault
+      </button>
+      <button 
+        type="button"
         :class="['tab-btn', { active: activeTab === 'tokens' }]" 
-        @click="activeTab = 'tokens'"
+        @click="changeTab('tokens')"
       >
         🔑 API Keys & Tokens
       </button>
@@ -180,7 +227,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
         <form @submit.prevent="saveProfileSettings" class="settings-form">
           <div class="form-group">
             <label>URL Avatar Personalizzato</label>
-            <input v-model="profileForm.avatarUrl" type="url" placeholder="https://domain.com/avatar.png" class="dkp-input" />
+            <input v-model="profileForm.avatarUrl" type="url" placeholder="https://github.com/alexdpl.png" class="dkp-input" />
           </div>
 
           <div class="form-group">
@@ -216,14 +263,14 @@ function copyToClipboard(text: string, identifier: string = 'global') {
       <section v-if="activeTab === 'activity'" class="tab-pane">
         <div class="pane-header flex-between">
           <div>
-            <h2>I Miei Contenuti</h2>
-            <p>Storico dei tuoi contributi sulla piattaforma DKP.</p>
+            <h2>I Miei Contenuti Pubblicati</h2>
+            <p>Storico delle tue sottomissioni, showcase e discussioni aperte.</p>
           </div>
           <div class="filter-pills">
-            <button :class="['pill-btn', { active: activityFilter === 'all' }]" @click="activityFilter = 'all'">Tutti</button>
-            <button :class="['pill-btn', { active: activityFilter === 'submissions' }]" @click="activityFilter = 'submissions'">Posts</button>
-            <button :class="['pill-btn', { active: activityFilter === 'show' }]" @click="activityFilter = 'show'">Show DKP</button>
-            <button :class="['pill-btn', { active: activityFilter === 'comments' }]" @click="activityFilter = 'comments'">Commenti</button>
+            <button type="button" :class="['pill-btn', { active: activityFilter === 'all' }]" @click="activityFilter = 'all'">Tutti</button>
+            <button type="button" :class="['pill-btn', { active: activityFilter === 'submissions' }]" @click="activityFilter = 'submissions'">News</button>
+            <button type="button" :class="['pill-btn', { active: activityFilter === 'show' }]" @click="activityFilter = 'show'">Show</button>
+            <button type="button" :class="['pill-btn', { active: activityFilter === 'comments' }]" @click="activityFilter = 'comments'">Commenti</button>
           </div>
         </div>
 
@@ -243,22 +290,95 @@ function copyToClipboard(text: string, identifier: string = 'global') {
         </div>
       </section>
 
-      <!-- TAB 3: VAULT PERSONALE DKP TOOLS -->
+      <!-- TAB 3: LICENZE & ACQUISTI -->
+      <section v-if="activeTab === 'purchases'" class="tab-pane">
+        <div class="pane-header">
+          <h2>Le Mie Licenze SaaS</h2>
+          <p>Gestisci le chiavi di attivazione dei prodotti acquistati nel DKP Shop.</p>
+        </div>
+
+        <div class="keys-list">
+          <table class="keys-table" v-if="licenses.length > 0">
+            <thead>
+              <tr>
+                <th>PRODOTTO</th>
+                <th>LICENSE KEY</th>
+                <th>SCADENZA</th>
+                <th>STATO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="lic in licenses" :key="lic.id">
+                <td><strong>{{ lic.product }}</strong></td>
+                <td><code class="license-key-text">{{ lic.key }}</code></td>
+                <td>{{ lic.expires }}</td>
+                <td><span class="status-badge-active">{{ lic.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="empty-state">Nessuna licenza SaaS attiva trovata.</p>
+        </div>
+      </section>
+
+      <!-- TAB 4: GAMIFICATION HUB -->
+      <section v-if="activeTab === 'gamification'" class="tab-pane">
+        <div class="pane-header">
+          <h2>Gamification & Activity Hub</h2>
+          <p>Traccia i tuoi progressi XP e le ricompense sbloccate sulla piattaforma.</p>
+        </div>
+
+        <div class="gamification-grid">
+          <div class="level-card">
+            <div class="level-header">
+              <div>
+                <span class="level-title-label">Livello Attuale</span>
+                <div class="level-title-value">{{ userStats.level }}</div>
+              </div>
+              <div class="text-right">
+                <span class="level-title-label">Prossimo Rank tra</span>
+                <div class="xp-remaining-text">{{ userStats.nextLevelXp - userStats.xp }} XP</div>
+              </div>
+            </div>
+
+            <div class="progress-container">
+              <div class="progress-bar" :style="{ width: `${userStats.progress}%` }"></div>
+            </div>
+            <div class="progress-labels">
+              <span>{{ userStats.xp }} XP</span>
+              <span>{{ userStats.nextLevelXp }} XP</span>
+            </div>
+          </div>
+
+          <div class="history-card">
+            <h3 class="history-title">Cronologia XP</h3>
+            <ul class="history-list">
+              <li v-for="log in xpHistory" :key="log.id" class="history-item">
+                <div>
+                  <div class="history-action">{{ log.action }}</div>
+                  <div class="history-date">{{ log.date }}</div>
+                </div>
+                <span class="history-points">{{ log.points }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: VAULT PERSONALE DKP TOOLS -->
       <section v-if="activeTab === 'vault'" class="tab-pane">
         <div class="pane-header">
           <h2>Vault Personale DKP Tools</h2>
           <p>Archivio sicuro delle tue certificazioni, audit di sicurezza e snippet salvati.</p>
         </div>
 
-        <!-- Sub-filtri Vault -->
         <div class="vault-subtabs">
-          <button :class="['subtab-btn', { active: vaultCategory === 'poc' }]" @click="vaultCategory = 'poc'">
+          <button type="button" :class="['subtab-btn', { active: vaultCategory === 'poc' }]" @click="vaultCategory = 'poc'">
             ⚡ Proof of Code Hashes ({{ pocCertificates.length }})
           </button>
-          <button :class="['subtab-btn', { active: vaultCategory === 'scanner' }]" @click="vaultCategory = 'scanner'">
+          <button type="button" :class="['subtab-btn', { active: vaultCategory === 'scanner' }]" @click="vaultCategory = 'scanner'">
             🛡️ AI Scanner Audits ({{ scannerAudits.length }})
           </button>
-          <button :class="['subtab-btn', { active: vaultCategory === 'snippets' }]" @click="vaultCategory = 'snippets'">
+          <button type="button" :class="['subtab-btn', { active: vaultCategory === 'snippets' }]" @click="vaultCategory = 'snippets'">
             💻 Snippet & Playground ({{ savedSnippets.length }})
           </button>
         </div>
@@ -272,8 +392,8 @@ function copyToClipboard(text: string, identifier: string = 'global') {
             </div>
             <h4>{{ poc.repo }}</h4>
             <div class="hash-row">
-              <code>Hash: {{ poc.hash.substring(0, 10) }}...</code>
-              <button @click="copyToClipboard(poc.hash, poc.id)" class="copy-small-btn">
+              <code>{{ poc.hash.substring(0, 18) }}...</code>
+              <button type="button" @click="copyToClipboard(poc.hash, poc.id)" class="copy-small-btn">
                 {{ copiedTarget === poc.id ? 'Copiato!' : 'Copia Hash' }}
               </button>
             </div>
@@ -284,7 +404,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
         <div v-if="vaultCategory === 'scanner'" class="vault-grid">
           <div v-for="audit in scannerAudits" :key="audit.id" class="vault-card">
             <div class="vault-card-top">
-              <span class="audit-status" :class="audit.status">{{ audit.status }} ({{ audit.score }}/100)</span>
+              <span class="audit-status">{{ audit.status }} ({{ audit.score }}/100)</span>
               <span class="vault-date">{{ audit.date }}</span>
             </div>
             <h4>{{ audit.target }}</h4>
@@ -300,42 +420,39 @@ function copyToClipboard(text: string, identifier: string = 'global') {
               <span class="vault-date">{{ snip.date }}</span>
             </div>
             <h4>{{ snip.name }}</h4>
-            <button class="open-snippet-btn">Apri in Playground →</button>
+            <button type="button" class="open-snippet-btn">Apri in Playground →</button>
           </div>
         </div>
       </section>
 
-      <!-- TAB 4: API KEYS & DEVELOPER TOKENS -->
+      <!-- TAB 6: API KEYS & DEVELOPER TOKENS -->
       <section v-if="activeTab === 'tokens'" class="tab-pane">
         <div class="pane-header">
           <h2>API Keys & Developer Tokens</h2>
           <p>Genera chiavi di autenticazione per integrare l'ecosistema DKP nei tuoi script CLI o progetti locali.</p>
         </div>
 
-        <!-- Form Generazione Nuova Key -->
         <div class="key-generator-box">
           <h3>Genera Nuova Chiave API</h3>
           <div class="gen-input-group">
             <input v-model="newKeyName" type="text" placeholder="Nome Token (es. Local CLI Scanner)" class="dkp-input" @keyup.enter="generateNewApiKey" />
-            <button @click="generateNewApiKey" class="gen-btn">Genera Key</button>
+            <button type="button" @click="generateNewApiKey" class="gen-btn">Genera Key</button>
           </div>
         </div>
 
-        <!-- Modal/Alert Token Generato -->
         <div v-if="generatedKeyModal" class="key-created-alert">
           <div class="alert-content">
             <h4>⚠️ Salva la tua chiave API adesso! Non verrà più mostrata.</h4>
             <div class="full-token-box">
               <code>{{ generatedKeyModal }}</code>
-              <button @click="copyToClipboard(generatedKeyModal, 'modal-token')" class="copy-btn">
+              <button type="button" @click="copyToClipboard(generatedKeyModal, 'modal-token')" class="copy-btn">
                 {{ copiedTarget === 'modal-token' ? 'Copiato!' : 'Copia Token' }}
               </button>
             </div>
-            <button @click="generatedKeyModal = null" class="close-alert-btn">Ho salvato la chiave</button>
+            <button type="button" @click="generatedKeyModal = null" class="close-alert-btn">Ho salvato la chiave</button>
           </div>
         </div>
 
-        <!-- Tabella Chiavi Attive -->
         <div class="keys-list">
           <h3>Chiavi API Attive</h3>
           <table class="keys-table" v-if="apiKeys.length > 0">
@@ -355,7 +472,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
                 <td>{{ key.created }}</td>
                 <td>{{ key.lastUsed }}</td>
                 <td>
-                  <button @click="revokeApiKey(key.id)" class="revoke-btn">Revoca</button>
+                  <button type="button" @click="revokeApiKey(key.id)" class="revoke-btn">Revoca</button>
                 </td>
               </tr>
             </tbody>
@@ -397,9 +514,14 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   gap: 1.25rem;
 }
 
+/* VINCOLI DIMENSIONALE RIGIDI AVATAR PER IMPEDIRE ESPANSIONE SITO */
 .avatar-box {
   width: 64px;
   height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+  max-width: 64px;
+  max-height: 64px;
   border-radius: 50%;
   background: linear-gradient(135deg, #00dc82, #38bdf8);
   display: flex;
@@ -409,6 +531,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   font-weight: 800;
   color: #020420;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .avatar-box img {
@@ -454,7 +577,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   color: #020420;
 }
 
-/* SCHEDE (TABS) */
+/* SCHEDE (TABS BAR 2.4-GOLD) */
 .dashboard-tabs {
   display: flex;
   gap: 0.5rem;
@@ -466,6 +589,7 @@ function copyToClipboard(text: string, identifier: string = 'global') {
 .tab-btn {
   background: transparent;
   border: none;
+  outline: none;
   color: #94a3b8;
   padding: 0.75rem 1.25rem;
   font-size: 0.95rem;
@@ -599,10 +723,10 @@ function copyToClipboard(text: string, identifier: string = 'global') {
 }
 
 .pill-btn.active {
-  background: #38bdf8;
+  background: #00dc82;
   color: #020420;
   font-weight: 700;
-  border-color: #38bdf8;
+  border-color: #00dc82;
 }
 
 .activity-list {
@@ -647,6 +771,125 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   color: #94a3b8;
   font-size: 0.8rem;
   margin-top: 0.75rem;
+}
+
+/* GAMIFICATION HUB */
+.gamification-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .gamification-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.level-card, .history-card {
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.level-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.level-title-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.level-title-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #00dc82;
+  margin-top: 0.25rem;
+}
+
+.xp-remaining-text {
+  font-family: monospace;
+  color: #ffffff;
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.progress-container {
+  height: 12px;
+  width: 100%;
+  background: #090d16;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid #1e293b;
+  margin-top: 1.25rem;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00bf71, #00dc82);
+  border-radius: 9999px;
+  transition: width 0.8s ease-in-out;
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-family: monospace;
+  margin-top: 0.5rem;
+}
+
+.history-title {
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.history-action {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.history-date {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+.history-points {
+  color: #00dc82;
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 /* VAULT SECTION */
@@ -706,14 +949,16 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   background: #090d16;
   padding: 0.4rem 0.6rem;
   border-radius: 4px;
+  border: 1px solid #1e293b;
 }
 
-.hash-row code { font-size: 0.75rem; color: #cbd5e1; }
+.hash-row code { font-size: 0.75rem; color: #cbd5e1; font-family: monospace; }
 .copy-small-btn {
   background: transparent;
   border: none;
   color: #38bdf8;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -725,11 +970,12 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
   font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
   margin-top: 0.5rem;
 }
 
-/* API KEYS SECTION */
+/* API KEYS & LICENSES TABLES */
 .key-generator-box {
   background: #020420;
   border: 1px solid #1e293b;
@@ -743,16 +989,17 @@ function copyToClipboard(text: string, identifier: string = 'global') {
 .gen-input-group {
   display: flex;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.gen-input-group input { flex: 1; }
+.gen-input-group input { flex: 1; min-width: 200px; }
 
 .gen-btn {
   background: #38bdf8;
   color: #020420;
   font-weight: 800;
   border: none;
-  padding: 0 1.25rem;
+  padding: 0.7rem 1.25rem;
   border-radius: 6px;
   cursor: pointer;
 }
@@ -775,10 +1022,12 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   padding: 0.6rem 1rem;
   border-radius: 6px;
   margin-bottom: 1rem;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  gap: 0.5rem;
 }
 
-.full-token-box code { color: #00dc82; font-size: 0.85rem; font-weight: 700; word-break: break-all; }
-.copy-btn { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.3rem 0.75rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.full-token-box code { color: #00dc82; font-size: 0.85rem; font-weight: 700; word-break: break-all; font-family: monospace; }
+.copy-btn { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 
 .close-alert-btn {
   background: transparent;
@@ -808,6 +1057,22 @@ function copyToClipboard(text: string, identifier: string = 'global') {
 .keys-table td {
   border-bottom: 1px solid #1e293b;
   padding: 0.75rem;
+}
+
+.license-key-text {
+  color: #00dc82;
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.status-badge-active {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  border: 1px solid rgba(0, 220, 130, 0.3);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .revoke-btn {
