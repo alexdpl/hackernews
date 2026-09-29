@@ -98,7 +98,7 @@
 
 <script setup lang="ts">
 useHead({
-  title: 'Cookie Policy - DevKernelPulse v2.3',
+  title: 'Cookie Policy - DevKernelPulse v2.4-Gold',
   meta: [
     { name: 'description', content: 'Informativa sui cookie e la gestione della privacy per la piattaforma DevKernelPulse v2.3.' }
   ]

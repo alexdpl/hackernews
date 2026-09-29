@@ -5,6 +5,7 @@ autoInstallPeers: true
 allowBuilds:
   '@parcel/watcher': false
   esbuild: false
+  puppeteer: true
   unrs-resolver: false
   vue-demi: true
 

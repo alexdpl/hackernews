@@ -38,6 +38,7 @@
           <li><NuxtLink to="/ask">💬 Ask & Discussion</NuxtLink></li>
           <li><NuxtLink to="/show">🚀 Show Projects</NuxtLink></li>
           <li><NuxtLink to="/jobs">💼 Tech Jobs</NuxtLink></li>
+		  <li><NuxtLink to="/shop">🛍️ DKP Shop</NuxtLink></li>
         </ul>
       </div>
 
