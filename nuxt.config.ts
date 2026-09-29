@@ -38,7 +38,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL || '',
     public: {
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.duckdns.org'
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || process.env.PUBLIC_SITE_URL || 'https://devkernelpulse.org'
     }
   }
 })
