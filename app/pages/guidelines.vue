@@ -13,7 +13,7 @@
         Linee Guida della <span class="highlight-text">Community</span>
       </h1>
       <p class="guidelines-subtitle">
-        Regole d'oro per mantenere DevKernelPulse un hub tecnico ad alto valore aggiunto | Versione Ecosistema v2.3
+        Regole d'oro per mantenere DevKernelPulse un hub tecnico ad alto valore aggiunto | Versione Ecosistema v2.4-Gold
       </p>
 
       <hr class="guidelines-divider" />
@@ -80,9 +80,9 @@
 
 <script setup lang="ts">
 useHead({
-  title: 'Linee Guida della Community - DevKernelPulse v2.3',
+  title: 'Linee Guida della Community - DevKernelPulse v2.4-Gold',
   meta: [
-    { name: 'description', content: 'Linee guida, codice di condotta e regole di pubblicazione per la community di DevKernelPulse v2.3.' }
+    { name: 'description', content: 'Linee guida, codice di condotta e regole di pubblicazione per la community di DevKernelPulse v2.4-Gold.' }
   ]
 })
 </script>

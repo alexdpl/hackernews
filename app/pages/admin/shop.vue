@@ -1,435 +1,218 @@
-<!-- app/pages/admin/shop.vue -->
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-
-useDkpSeo({
-  title: 'Gestione DKP Shop - Control Center SaaS v2.3',
-  description: 'Pannello di gestione e distribuzione dei plugin proprietari SaaS per l\'ecosistema DevKernelPulse.'
-})
-
-interface SaasProduct {
-  id: number
-  title: string
-  category: 'saas' | 'core' | 'ai' | 'cms'
-  categoryLabel: string
-  price: number
-  version: string
-  zipFile: string
-  description: string
-  downloads: number
-  status: 'Active' | 'Beta' | 'Featured'
-}
-
-const searchQuery = ref('')
-const selectedCategory = ref<string>('all')
-
-// Catalogo 6 Prodotti SaaS Proprietari DKP v2.3
-const products = ref<SaasProduct[]>([
-  {
-    id: 1,
-    title: '🤖 DKP Automated Crawler Engine Pro',
-    category: 'saas',
-    categoryLabel: 'SAAS MODULE',
-    price: 99.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-automated-crawler-pro-v2.3.zip',
-    description: 'Modulo di ingestione notizie automatico con integrazione HackerNews, clean-up Neon DB ed API Nitro ad alte prestazioni.',
-    downloads: 48,
-    status: 'Featured'
-  },
-  {
-    id: 2,
-    title: '🌐 DKP Translator Pro v2.3 Plugin',
-    category: 'core',
-    categoryLabel: 'CORE PLUGIN',
-    price: 69.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-translator-pro-v2.3.zip',
-    description: 'Composable globale e reattivo a 9 lingue con salvataggio cookie/localStorage, supporto Nuxt 4 SSR e zero dipendenze esterne.',
-    downloads: 62,
-    status: 'Active'
-  },
-  {
-    id: 3,
-    title: '🛍️ DKP Ecosystem Shop Engine',
-    category: 'saas',
-    categoryLabel: 'SAAS MODULE',
-    price: 79.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-ecosystem-shop-v2.3.zip',
-    description: 'Sistema completo di monetizzazione, licenziamento SaaS e download automatico archivi .ZIP proprietari.',
-    downloads: 34,
-    status: 'Active'
-  },
-  {
-    id: 4,
-    title: '🛡️ DKP Kernel Captcha Engine',
-    category: 'core',
-    categoryLabel: 'CORE PLUGIN',
-    price: 39.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-kernel-captcha-v2.3.zip',
-    description: 'Sistema anti-bot equazionale proprietario a zero costi esterni per la protezione dei form di sottomissione.',
-    downloads: 89,
-    status: 'Active'
-  },
-  {
-    id: 5,
-    title: '📝 DKP Native Blog Pro CMS',
-    category: 'cms',
-    categoryLabel: 'CMS MODULE',
-    price: 49.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-native-blog-pro-v2.3.zip',
-    description: 'Motore CMS nativo per la pubblicazione di articoli tech, guide avanzate ed approfondimenti con supporto SEO.',
-    downloads: 27,
-    status: 'Active'
-  },
-  {
-    id: 6,
-    title: '🧠 DKP Neural Playground Suite',
-    category: 'ai',
-    categoryLabel: 'AI & TOOLS',
-    price: 89.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-neural-playground-v2.3.zip',
-    description: 'Pannello di testing prompt e integrazione modelli IA per l\'analisi automatica del codice e generazione contenuti.',
-    downloads: 41,
-    status: 'Featured'
-  },
-  
-  {
-    id: 7,
-    title: '⚡ DKP Pulse Nexus Pro (AI Agent & Gamification)',
-    category: 'ai',
-    categoryLabel: 'FLAGSHIP AI MODULE',
-    price: 149.00,
-    version: 'v2.3.0',
-    zipFile: 'dkp-pulse-nexus-pro-v2.3.zip',
-    description: 'Chat floating glassmorphic in real-time con l\'agente "Pulse Sentinel", motore di Gamification con XP, Livelli e classifica DB.',
-    downloads: 112,
-    status: 'Featured'
-  }
-  
-])
-
-// KPI / Stats Calcolate
-const totalProducts = computed(() => products.value.length)
-const totalDownloads = computed(() => products.value.reduce((acc, p) => acc + p.downloads, 0))
-const totalCatalogValue = computed(() => products.value.reduce((acc, p) => acc + p.price, 0))
-
-// Prodotti Filtrati
-const filteredProducts = computed(() => {
-  return products.value.filter(p => {
-    const matchesSearch = p.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          p.description.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesCategory = selectedCategory.value === 'all' || p.category === selectedCategory.value
-    return matchesSearch && matchesCategory
-  })
-})
-</script>
-
 <template>
   <div class="shop-admin-container">
-    
-    <!-- HEADER SHOP ADMIN -->
-    <div class="shop-header">
-      <div class="header-titles">
-        <span class="admin-badge">ADMIN CONTROL CENTER</span>
-        <h1>Gestione <span class="highlight">DKP Shop SaaS</span></h1>
-        <p class="subtitle">Catalogo ufficiale dei plugin proprietari ed applicazioni distribuite nell'ecosistema.</p>
-      </div>
-      <div class="header-actions">
-        <NuxtLink to="/user/dashboard" class="btn-secondary">
-          📊 Torna alla Dashboard
-        </NuxtLink>
-      </div>
+    <!-- Header & Breadcrumb -->
+    <div class="shop-top-bar">
+      <div class="badge-admin">ADMIN CONTROL CENTER</div>
+      <NuxtLink to="/admin" class="btn-back">📊 Torna alla Dashboard</NuxtLink>
     </div>
 
-    <!-- METRICHE E KPI DASHBOARD -->
+    <h1 class="shop-title">Gestione <span class="highlight">DKP Shop SaaS</span></h1>
+    <p class="shop-subtitle">Catalogo ufficiale dei plugin proprietari ed applicazioni distribuite nell'ecosistema.</p>
+
+    <!-- Statistiche -->
     <div class="stats-grid">
       <div class="stat-card">
-        <span class="stat-label">Prodotti In Catalogo</span>
-        <strong class="stat-value">{{ totalProducts }} Moduli</strong>
-        <small class="stat-sub">100% Architettura Modulare</small>
+        <div class="stat-label">Prodotti In Catalogo</div>
+        <div class="stat-value">7 Moduli</div>
+        <div class="stat-sub">100% Architettura Modulare</div>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Download Totali SaaS</span>
-        <strong class="stat-value highlight-blue">{{ totalDownloads }}</strong>
-        <small class="stat-sub">File .ZIP erogati</small>
+        <div class="stat-label">Download Totali SaaS</div>
+        <div class="stat-value">413</div>
+        <div class="stat-sub">File .ZIP erogati</div>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Valore Pacchetto Suite</span>
-        <strong class="stat-value highlight-green">€{{ totalCatalogValue.toFixed(2) }}</strong>
-        <small class="stat-sub">Licenza Lifetime Full Access</small>
+        <div class="stat-label">Valore Pacchetto Suite</div>
+        <div class="stat-value">€673.00</div>
+        <div class="stat-sub">Licenza Lifetime Full Access</div>
       </div>
     </div>
 
-    <!-- CONTROLLI RICERCA E FILTRI -->
-    <div class="filters-bar">
-      <input 
-        v-model="searchQuery" 
-        type="text" 
-        placeholder="🔍 Cerca modulo, plugin o funzionalità..." 
-        class="search-input"
-      />
-      <div class="category-pills">
-        <button 
-          @click="selectedCategory = 'all'" 
-          :class="{ active: selectedCategory === 'all' }"
-          class="pill-btn"
-        >
-          Tutti ({{ products.length }})
-        </button>
-        <button 
-          @click="selectedCategory = 'saas'" 
-          :class="{ active: selectedCategory === 'saas' }"
-          class="pill-btn"
-        >
-          SaaS Modules
-        </button>
-        <button 
-          @click="selectedCategory = 'core'" 
-          :class="{ active: selectedCategory === 'core' }"
-          class="pill-btn"
-        >
-          Core Plugins
-        </button>
-        <button 
-          @click="selectedCategory = 'ai'" 
-          :class="{ active: selectedCategory === 'ai' }"
-          class="pill-btn"
-        >
-          AI & Tools
-        </button>
+    <!-- Filtri e Ricerca -->
+    <div class="controls-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" v-model="searchQuery" placeholder="Cerca modulo, plugin o funzionalità..." />
+      </div>
+      <div class="filter-pills">
+        <button class="pill active">Tutti (7)</button>
+        <button class="pill">SaaS Modules</button>
+        <button class="pill">Core Plugins</button>
+        <button class="pill">AI & Tools</button>
       </div>
     </div>
 
-    <!-- GRID PRODOTTI SAAS PROPRIETARI -->
-    <div class="shop-products-grid">
-      <div v-for="product in filteredProducts" :key="product.id" class="product-card">
-        
-        <div class="product-header">
-          <span class="product-badge" :class="product.category">{{ product.categoryLabel }}</span>
-          <span class="product-price">€{{ product.price.toFixed(2) }}</span>
+    <!-- Griglia Prodotti -->
+    <div class="products-grid">
+      <article v-for="product in products" :key="product.id" class="product-card">
+        <div class="card-header">
+          <span :class="['category-badge', product.categoryClass]">{{ product.category }}</span>
+          <span class="price">€{{ product.price.toFixed(2) }}</span>
         </div>
-
-        <h3>{{ product.title }}</h3>
+        
+        <h3 class="product-title">{{ product.title }}</h3>
         <p class="product-desc">{{ product.description }}</p>
 
-        <div class="product-meta">
+        <div class="file-meta">
           <div class="meta-row">
-            <span>📦 versione: <strong>{{ product.version }}</strong></span>
-            <span>📥 download: <strong>{{ product.downloads }}</strong></span>
+            <span>📦 versione: <strong class="text-white">{{ product.version }}</strong></span>
+            <span>📥 download: <strong class="text-white">{{ product.downloads }}</strong></span>
           </div>
-          <div class="meta-file">
-            📁 file: <code>/downloads/{{ product.zipFile }}</code>
+          <div class="file-path">
+            📁 file: <span class="path-text">{{ product.filePath }}</span>
           </div>
         </div>
 
-        <div class="product-actions">
-          <a :href="`/downloads/${product.zipFile}`" download class="btn-purchase">
-            🛒 Acquista / Scarica .ZIP
-          </a>
-        </div>
-
-      </div>
+        <button @click="initiateCheckout(product)" class="btn-buy">
+          💳 Acquista Licenza / Scarica .ZIP
+        </button>
+      </article>
     </div>
-
   </div>
 </template>
 
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const searchQuery = ref('')
+
+// Mock Data aggiornato alla v2.4-GOLD e con i nuovi prezzi
+const products = ref([
+  {
+    id: 1,
+    title: 'DKP Automated Crawler Engine Pro',
+    category: 'SAAS MODULE',
+    categoryClass: 'badge-saas',
+    price: 199.00,
+    description: 'Modulo di ingestione notizie automatico con integrazione HackerNews, clean-up Neon DB ed API Nitro ad alte prestazioni.',
+    version: 'v2.4-GOLD',
+    downloads: 45,
+    filePath: '/downloads/dkp-automated-crawler-v2.4.zip'
+  },
+  {
+    id: 2,
+    title: 'DKP Translator Pro v2.4 Plugin',
+    category: 'CORE PLUGIN',
+    categoryClass: 'badge-core',
+    price: 69.00,
+    description: 'Composable globale e reattivo a 9 lingue con salvataggio cookie/localStorage, supporto Nuxt 3.',
+    version: 'v2.4-GOLD',
+    downloads: 120,
+    filePath: '/downloads/dkp-translator-pro-v2.4.zip'
+  },
+  {
+    id: 3,
+    title: 'DKP Ecosystem Shop Engine',
+    category: 'SAAS MODULE',
+    categoryClass: 'badge-saas',
+    price: 79.00,
+    description: 'Sistema completo di monetizzazione, licenziamento SaaS e download automatico archivi .ZIP proprietari.',
+    version: 'v2.4-GOLD',
+    downloads: 34,
+    filePath: '/downloads/dkp-ecosystem-shop-v2.4.zip'
+  },
+  {
+    id: 4,
+    title: 'DKP Kernel Captcha Engine',
+    category: 'CORE PLUGIN',
+    categoryClass: 'badge-core',
+    price: 39.00,
+    description: 'Sistema anti-bot equazionale proprietario a zero costi esterni per la protezione dei form di sottomissione.',
+    version: 'v2.4-GOLD',
+    downloads: 89,
+    filePath: '/downloads/dkp-kernel-captcha-v2.4.zip'
+  },
+  {
+    id: 5,
+    title: 'DKP Native Blog Pro CMS',
+    category: 'CMS MODULE',
+    categoryClass: 'badge-cms',
+    price: 49.00,
+    description: 'Motore CMS nativo per la pubblicazione di articoli tech, guide avanzate ed approfondimenti con supporto SEO.',
+    version: 'v2.4-GOLD',
+    downloads: 27,
+    filePath: '/downloads/dkp-native-blog-pro-v2.4.zip'
+  },
+  {
+    id: 6,
+    title: 'DKP Neural Playground Suite',
+    category: 'AI & TOOLS',
+    categoryClass: 'badge-ai',
+    price: 89.00,
+    description: 'Pannello di testing prompt e integrazione modelli IA per l\'analisi automatica del codice e generazione contenuti.',
+    version: 'v2.4-GOLD',
+    downloads: 41,
+    filePath: '/downloads/dkp-neural-playground-v2.4.zip'
+  },
+  {
+    id: 7,
+    title: 'DKP Pulse Nexus Pro (AI Agent)',
+    category: 'FLAGSHIP AI MODULE',
+    categoryClass: 'badge-flagship',
+    price: 149.00,
+    description: 'Chat floating glassmorphic in real-time con l\'agente "Pulse Sentinel", motore di Gamification con XP, Livelli e classifica DB.',
+    version: 'v2.4-GOLD',
+    downloads: 112,
+    filePath: '/downloads/dkp-pulse-nexus-pro-v2.4.zip'
+  }
+])
+
+const initiateCheckout = (product: any) => {
+  // Placeholder per l'integrazione Stripe/PayPal della Roadmap Fase 1
+  alert(`Inizializzazione pagamento per ${product.title} a €${product.price}\nProssimo step: Integrazione Stripe Checkout!`)
+}
+</script>
+
 <style scoped>
-.shop-admin-container {
-  max-width: 1280px;
-  margin: 2.5rem auto;
-  padding: 0 1.5rem;
-  color: #f8fafc;
-}
+.shop-admin-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; color: #f8fafc; }
 
-.shop-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  gap: 1rem;
-}
+.shop-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.badge-admin { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; padding: 0.3rem 0.8rem; border-radius: 4px; font-weight: 800; font-size: 0.75rem; letter-spacing: 1px; }
+.btn-back { background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 0.4rem 1rem; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: 0.2s; }
+.btn-back:hover { background: #1e293b; color: #fff; }
 
-.admin-badge {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.shop-header h1 {
-  font-size: 2.25rem;
-  font-weight: 900;
-  margin: 0.4rem 0 0.2rem;
-}
-
+.shop-title { font-size: 2.5rem; font-weight: 900; margin: 0 0 0.5rem 0; }
 .highlight { color: #00dc82; }
-.subtitle { color: #94a3b8; font-size: 0.95rem; margin: 0; }
+.shop-subtitle { color: #94a3b8; font-size: 1rem; margin-bottom: 2rem; }
 
-.btn-secondary {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.6rem 1.1rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.85rem;
-  transition: all 0.2s;
-}
+/* Statistiche */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.stat-card { background: rgba(9, 13, 22, 0.6); border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; text-align: left; }
+.stat-label { color: #64748b; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem; }
+.stat-value { color: #fff; font-size: 2rem; font-weight: 900; margin-bottom: 0.25rem; }
+.stat-sub { color: #475569; font-size: 0.8rem; }
 
-.btn-secondary:hover { border-color: #38bdf8; color: #ffffff; }
+/* Filtri */
+.controls-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+.search-box { display: flex; align-items: center; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.5rem 1rem; flex: 1; max-width: 400px; }
+.search-box input { background: transparent; border: none; color: #fff; width: 100%; outline: none; margin-left: 0.5rem; font-size: 0.9rem; }
+.filter-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pill { background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+.pill:hover { border-color: #64748b; }
+.pill.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.1); }
 
-/* STATS GRID */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 2rem;
-}
+/* Prodotti */
+.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem; }
+.product-card { background: rgba(9, 13, 22, 0.8); border: 1px solid #1e293b; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; transition: all 0.2s; }
+.product-card:hover { border-color: #38bdf8; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
-.stat-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-}
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.category-badge { font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; letter-spacing: 0.5px; }
+.badge-saas { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
+.badge-core { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+.badge-cms { background: rgba(167, 139, 250, 0.1); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3); }
+.badge-ai { background: rgba(244, 114, 182, 0.1); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); }
+.badge-flagship { background: linear-gradient(90deg, rgba(167,139,250,0.1), rgba(244,114,182,0.1)); color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.4); }
 
-.stat-label { font-size: 0.8rem; font-weight: 700; color: #64748b; }
-.stat-value { font-size: 1.75rem; font-weight: 900; color: #ffffff; margin: 0.2rem 0; }
-.highlight-blue { color: #38bdf8; }
-.highlight-green { color: #00dc82; }
-.stat-sub { font-size: 0.75rem; color: #94a3b8; }
+.price { font-size: 1.5rem; font-weight: 900; color: #38bdf8; }
+.product-title { font-size: 1.25rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #fff; }
+.product-desc { font-size: 0.9rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem; flex-grow: 1; }
 
-/* FILTRI E RICERCA */
-.filters-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
+.file-meta { background: #060a12; border: 1px solid #1e293b; border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.8rem; color: #64748b; }
+.meta-row { display: flex; justify-content: space-between; margin-bottom: 0.4rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.4rem; }
+.text-white { color: #f8fafc; }
+.path-text { color: #00dc82; font-family: monospace; }
 
-.search-input {
-  flex: 1;
-  min-width: 280px;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  color: #ffffff;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  outline: none;
-  font-size: 0.9rem;
-}
-
-.search-input:focus { border-color: #00dc82; }
-
-.category-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-.pill-btn {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  color: #94a3b8;
-  padding: 0.5rem 0.85rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.pill-btn:hover { color: #ffffff; border-color: #38bdf8; }
-.pill-btn.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; border-color: #00dc82; }
-
-/* GRID PRODOTTI */
-.shop-products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 1.5rem;
-}
-
-.product-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  padding: 1.75rem;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.2s, border-color 0.2s;
-}
-
-.product-card:hover {
-  transform: translateY(-2px);
-  border-color: #38bdf8;
-}
-
-.product-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.product-badge {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-}
-
-.product-badge.core { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
-.product-badge.ai { background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3); }
-
-.product-price { font-size: 1.35rem; font-weight: 900; color: #38bdf8; }
-
-.product-card h3 { font-size: 1.15rem; color: #ffffff; margin: 0 0 0.5rem; font-weight: 800; }
-.product-desc { color: #cbd5e1; font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.25rem; flex: 1; }
-
-.product-meta {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  color: #94a3b8;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 1.25rem;
-}
-
-.meta-row { display: flex; justify-content: space-between; }
-.meta-file code { color: #00dc82; font-family: monospace; }
-
-.btn-purchase {
-  display: block;
-  background: #00dc82;
-  color: #020420;
-  text-align: center;
-  font-weight: 800;
-  font-size: 0.9rem;
-  padding: 0.75rem;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-.btn-purchase:hover {
-  background: #00bf71;
-  box-shadow: 0 0 15px rgba(0, 220, 130, 0.3);
-}
+.btn-buy { background: #00dc82; color: #020420; border: none; padding: 0.8rem; border-radius: 8px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: 0.2s; width: 100%; }
+.btn-buy:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
 </style>

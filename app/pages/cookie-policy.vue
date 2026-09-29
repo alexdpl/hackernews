@@ -13,7 +13,7 @@
         Cookie Policy & <span class="highlight-text">Gestione Dati</span>
       </h1>
       <p class="legal-subtitle">
-        Ultimo aggiornamento: Settembre 2026 | Versione Ecosistema v2.3
+        Ultimo aggiornamento: Settembre 2026 | Versione Ecosistema v2.4-Gold
       </p>
 
       <hr class="legal-divider" />
@@ -22,7 +22,7 @@
       <section class="policy-section">
         <h2>1. Filosofia Zero-Profilazione</h2>
         <p>
-          La tua privacy è un pilastro fondamentale dell'architettura di <strong>DevKernelPulse (DKP v2.3)</strong>. 
+          La tua privacy è un pilastro fondamentale dell'architettura di <strong>DevKernelPulse (DKP v2.4-Gold)</strong>. 
           Raccogliamo ed elaboriamo esclusivamente il minimo indispensabile dei dati tecnici necessari al corretto funzionamento della piattaforma, dell'autenticazione e dei servizi integrati nel DKP Auth Core.
         </p>
       </section>

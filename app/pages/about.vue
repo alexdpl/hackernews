@@ -13,7 +13,7 @@
         Chi Siamo • <span class="highlight-text">DevKernelPulse</span>
       </h1>
       <p class="about-subtitle">
-        Piattaforma indipendente, fulminea e guidata dall'IA per sviluppatori e maker | Versione Ecosistema v2.3
+        Piattaforma indipendente, fulminea e guidata dall'IA per sviluppatori e maker | Versione Ecosistema v2.4-Gold
       </p>
 
       <hr class="about-divider" />
@@ -44,9 +44,9 @@
 
       <!-- SEZIONE 3: ECOSISTEMA V2.3 -->
       <section class="about-section">
-        <h2>3. L'Ecosistema Tecnologico v2.3</h2>
+        <h2>3. L'Ecosistema Tecnologico v2.4-Gold</h2>
         <p>
-          La versione 2.3 di DevKernelPulse integra uno stack all'avanguardia progettato per offrire reattività e interattività estreme:
+          La versione 2.4-Gold di DevKernelPulse integra uno stack all'avanguardia progettato per offrire reattività e interattività estreme:
         </p>
         
         <div class="tech-grid">
@@ -92,7 +92,7 @@
             <span class="creator-avatar">👨‍💻</span>
             <div>
               <strong class="creator-name">Alessandro De Paola</strong>
-              <span class="creator-role">Creator & Lead Architect</span>
+              <span class="creator-role">Founder Creator & Lead Engineer Architect</span>
             </div>
           </div>
           <p class="creator-desc">
@@ -107,7 +107,7 @@
 
 <script setup lang="ts">
 useHead({
-  title: 'Chi Siamo - DevKernelPulse v2.3',
+  title: 'Chi Siamo - DevKernelPulse v2.4-Gold',
   meta: [
     { name: 'description', content: 'Scopri la missione, la filosofia e la tecnologia alla base di DevKernelPulse v2.3.' }
   ]

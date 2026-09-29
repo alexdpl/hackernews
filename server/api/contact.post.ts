@@ -18,11 +18,11 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Qui viene simulato l'inoltro a alexdpl@gmail.com (in produzione collegabile a Resend, SendGrid o SMTP)
-  console.log(`[DKP Mailer] Nuovo messaggio da ${name} (${email}) per alexdpl@gmail.com - Oggetto: ${subject}`)
+  // Qui viene simulato l'inoltro a info@devkernelpulse.org (in produzione collegabile a Resend, SendGrid o SMTP)
+  console.log(`[DKP Mailer] Nuovo messaggio da ${name} (${email}) per info@devkernelpulse.org - Oggetto: ${subject}`)
 
   return {
     success: true,
-    message: 'Messaggio inviato con successo! Ti risponderemo presto su alexdpl@gmail.com'
+    message: 'Messaggio inviato con successo! Ti risponderemo presto su info@devkernelpulse.org'
   }
 })

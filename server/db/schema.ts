@@ -1,5 +1,15 @@
 // server/db/schema.ts
-import { pgTable, serial, text, integer, timestamp, varchar, jsonb, unique } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+
+// Enum per lo stato dell'ordine
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'completed', 'failed', 'refunded'])
+
+// Enum per lo stato della licenza
+export const licenseStatusEnum = pgEnum('license_status', ['active', 'suspended', 'revoked', 'expired'])
+
+// Enum per il provider di pagamento
+export const paymentProviderEnum = pgEnum('payment_provider', ['stripe', 'paypal'])
 
 // 1. TABELLA UTENTI (Users)
 export const users = pgTable('users', {
@@ -88,4 +98,37 @@ export const pulseStories = pgTable('pulse_stories', {
   xpAwarded: integer('xp_awarded').default(0), // Punti XP distribuiti per questo post
   
   createdAt: timestamp('created_at').defaultNow(),
+})
+
+/**
+ * TABELLA ORDINI (Tracciamento Transazioni Finanziarie)
+ */
+export const orders = pgTable('orders', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  customerEmail: varchar('customer_email', { length: 255 }).notNull(),
+  productId: varchar('product_id', { length: 100 }).notNull(), // es. 'dkp-automated-crawler-pro'
+  productName: varchar('product_name', { length: 255 }).notNull(),
+  amount: numeric('amount', { precision: 10, scale: 2 }).notNull(), // es. 199.00
+  currency: varchar('currency', { length: 10 }).default('EUR').notNull(),
+  paymentProvider: paymentProviderEnum('payment_provider').notNull(), // 'stripe' | 'paypal'
+  paymentIntentId: varchar('payment_intent_id', { length: 255 }).notNull().unique(), // Stripe Session ID o PayPal Order ID
+  status: orderStatusEnum('status').default('pending').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+})
+
+/**
+ * TABELLA LICENZE SAAS (Gestione Chiavi, Download e Permessi)
+ */
+export const licenses = pgTable('licenses', {
+  id: text('id').primaryKey().default(sql`gen_random_uuid()`),
+  orderId: text('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+  licenseKey: varchar('license_key', { length: 64 }).notNull().unique(), // es. 'DKP-CRW-8F3A-91BC-2026'
+  customerEmail: varchar('customer_email', { length: 255 }).notNull(),
+  productId: varchar('product_id', { length: 100 }).notNull(),
+  status: licenseStatusEnum('status').default('active').notNull(),
+  downloadsCount: integer('downloads_count').default(0).notNull(),
+  maxDownloads: integer('max_downloads').default(10).notNull(), // -1 per illimitati
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  expiresAt: timestamp('expires_at') // NULL = Licenza Lifetime
 })

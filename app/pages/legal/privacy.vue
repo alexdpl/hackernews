@@ -12,7 +12,7 @@ useDkpSeo({
       <div class="legal-header">
         <span class="legal-badge">DATA PROTECTION</span>
         <h1>Informativa sulla <span class="highlight">Privacy & Cookie</span></h1>
-        <p class="effective-date">Conforme al GDPR ed ai requisiti di sicurezza DKP Auth Core | Versione Ecosistema v2.3</p>
+        <p class="effective-date">Conforme al GDPR ed ai requisiti di sicurezza DKP Auth Core | Versione Ecosistema v2.4-Gold</p>
       </div>
 
       <div class="legal-body">

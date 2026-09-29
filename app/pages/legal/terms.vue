@@ -12,7 +12,7 @@ useDkpSeo({
       <div class="legal-header">
         <span class="legal-badge">LEGAL & COMPLIANCE</span>
         <h1>Termini di Servizio & <span class="highlight">Copyright Proprietario</span></h1>
-        <p class="effective-date">Ultimo aggiornamento: Settembre 2026 | Versione Ecosistema v2.3</p>
+        <p class="effective-date">Ultimo aggiornamento: Settembre 2026 | Versione Ecosistema v2.4-gold</p>
       </div>
 
       <div class="legal-body">
