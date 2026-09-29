@@ -5,15 +5,15 @@
     <div class="shop-header">
       <span class="badge-gold">DKP v2.4-GOLD</span>
       <h1 class="shop-title">DKP SaaS <span class="highlight">Plugin Store</span></h1>
-      <p class="shop-subtitle">Acquista licenze lifetime con aggiornamenti nativi per Nuxt 3 e Nitro.</p>
+      <p class="shop-subtitle">Acquista licenze lifetime ed abbonamenti API con aggiornamenti nativi per Nuxt 3 e Nitro.</p>
     </div>
 
     <!-- Griglia Prodotti -->
     <div class="products-grid">
-      <article v-for="product in products" :key="product.id" class="product-card">
+      <article v-for="product in products" :key="product.id" class="product-card" :class="{ 'featured-card': product.isFeatured }">
         <div class="card-header">
           <span :class="['category-badge', product.categoryClass]">{{ product.category }}</span>
-          <span class="price">€{{ product.price.toFixed(2) }}</span>
+          <span class="price">€{{ product.price.toFixed(2) }}<span v-if="product.recurring" class="recurring-text">/mo</span></span>
         </div>
         
         <h3 class="product-title">{{ product.title }}</h3>
@@ -22,15 +22,15 @@
         <div class="file-meta">
           <div class="meta-row">
             <span>📦 versione: <strong class="text-white">{{ product.version }}</strong></span>
-            <span>📥 download: <strong class="text-white">{{ product.downloads }}</strong></span>
+            <span>📥 attivi/down: <strong class="text-white">{{ product.downloads }}</strong></span>
           </div>
           <div class="file-path">
-            📁 file: <span class="path-text">{{ product.filePath }}</span>
+            📁 {{ product.isApi ? 'endpoint' : 'file' }}: <span class="path-text">{{ product.filePath }}</span>
           </div>
         </div>
 
-        <button @click="openCheckoutModal(product)" class="btn-buy">
-          💳 Acquista Licenza
+        <button @click="openCheckoutModal(product)" class="btn-buy" :class="{ 'btn-gold': product.isFeatured }">
+          💳 {{ product.isApi ? 'Sblocca Licenza API' : 'Acquista Licenza' }}
         </button>
       </article>
     </div>
@@ -42,15 +42,18 @@
           <button class="modal-close" @click="closeModal">✕</button>
           
           <div class="modal-header">
-            <span class="modal-badge">CHECKOUT SICURO</span>
+            <span class="modal-badge">CHECKOUT SICURO DKP</span>
             <h3>{{ selectedProduct?.title }}</h3>
-            <div class="modal-price">€{{ selectedProduct?.price.toFixed(2) }} <span class="tax-info">(IVA incl. - Licenza Lifetime)</span></div>
+            <div class="modal-price">
+              €{{ selectedProduct?.price.toFixed(2) }} 
+              <span class="tax-info">(IVA incl. - {{ selectedProduct?.recurring ? 'Abbonamento Mese' : 'Licenza Lifetime' }})</span>
+            </div>
           </div>
 
           <form @submit.prevent="executeCheckout" class="modal-form">
             <!-- Email Cliente -->
             <div class="form-group">
-              <label for="email">La tua Email (per la consegna della License Key):</label>
+              <label for="email">La tua Email (per la consegna della License Key / API Token):</label>
               <input 
                 id="email" 
                 v-model="customerEmail" 
@@ -111,6 +114,37 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 
 const products = ref([
+  // ⚡ NUOVA LICENZA API PRO
+  {
+    id: 'dkp-api-pro-gold',
+    title: 'DKP API Kernel 2.4-Gold (Pro Pass)',
+    category: 'API LICENSE',
+    categoryClass: 'badge-api',
+    price: 29.00,
+    recurring: true,
+    isApi: true,
+    isFeatured: true,
+    description: 'Sblocca il backend DKP con 100.000 req/mese, AI Code Scanner v2.3 illimitato e priorità Vault SHA-256.',
+    version: 'v2.4-GOLD',
+    downloads: 312,
+    filePath: '/api/v2.4/kernel-pro-bearer'
+  },
+  // ⚡ NUOVA LICENZA API ENTERPRISE
+  {
+    id: 'dkp-api-enterprise-gold',
+    title: 'DKP Kernel Enterprise Cluster API',
+    category: 'ENTERPRISE API',
+    categoryClass: 'badge-flagship',
+    price: 99.00,
+    recurring: true,
+    isApi: true,
+    isFeatured: false,
+    description: 'Infrastruttura riservata GCP per team enterprise con req illimitate, SLA 99.99% e Webhook personalizzati.',
+    version: 'v2.4-GOLD',
+    downloads: 48,
+    filePath: '/api/v2.4/enterprise-cluster'
+  },
+  // PRODOTTI SAAS E PLUGIN ESISTENTI
   {
     id: 'dkp-automated-crawler-pro',
     title: 'DKP Automated Crawler Engine Pro',
@@ -220,26 +254,24 @@ const executeCheckout = async () => {
     }
 
     if (paymentProvider.value === 'stripe') {
-      // 💳 STRIPE / GOOGLE PAY CHECKOUT
       const res: any = await $fetch('/api/checkout/stripe', {
         method: 'POST',
         body: payload
       })
 
       if (res?.checkoutUrl) {
-        window.location.href = res.checkoutUrl // Reindirizza a Stripe Checkout
+        window.location.href = res.checkoutUrl
       } else {
         throw new Error('URL Stripe Checkout non generato')
       }
     } else {
-      // 🅿️ PAYPAL CHECKOUT
       const res: any = await $fetch('/api/checkout/paypal', {
         method: 'POST',
         body: payload
       })
 
       if (res?.approveUrl) {
-        window.location.href = res.approveUrl // Reindirizza ad approvazione PayPal
+        window.location.href = res.approveUrl
       } else {
         throw new Error('URL di approvazione PayPal non generato')
       }
@@ -262,8 +294,12 @@ const executeCheckout = async () => {
 
 /* Product Cards */
 .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem; }
-.product-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
+.product-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; backdrop-filter: blur(10px); transition: all 0.25s ease; }
 .product-card:hover { border-color: #00dc82; box-shadow: 0 10px 30px rgba(0,220,130,0.15); }
+
+/* Highlight per Licenza API Gold */
+.product-card.featured-card { border-color: #eab308; box-shadow: 0 0 20px rgba(234, 179, 8, 0.15); }
+
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .category-badge { font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; }
 .badge-saas { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
@@ -272,7 +308,12 @@ const executeCheckout = async () => {
 .badge-ai { background: rgba(244, 114, 182, 0.1); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); }
 .badge-flagship { background: linear-gradient(90deg, rgba(167,139,250,0.1), rgba(244,114,182,0.1)); color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.4); }
 
+/* Badge Speciale per API Pass */
+.badge-api { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); }
+
 .price { font-size: 1.6rem; font-weight: 900; color: #38bdf8; }
+.recurring-text { font-size: 0.8rem; color: #94a3b8; font-weight: 500; }
+
 .product-title { font-size: 1.25rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #fff; }
 .product-desc { font-size: 0.9rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem; flex-grow: 1; }
 
@@ -283,6 +324,9 @@ const executeCheckout = async () => {
 
 .btn-buy { background: #00dc82; color: #020420; border: none; padding: 0.85rem; border-radius: 8px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: 0.2s; width: 100%; }
 .btn-buy:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
+
+.btn-gold { background: #eab308; color: #020420; }
+.btn-gold:hover { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); }
 
 /* Modal Styling */
 .modal-overlay { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem; }

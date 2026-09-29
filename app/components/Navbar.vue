@@ -25,6 +25,17 @@ function closeAllDropdowns() {
   isMobileMenuOpen.value = false
 }
 
+function goToApiConsole() {
+  closeAllDropdowns()
+
+  if (!isAuthenticated.value) {
+    alert('🔒 Accesso Riservato: Devi essere loggato per accedere alla DKP API Console!')
+    return
+  }
+
+  router.push('/api-console')
+}
+
 // Chiusura automatica dei dropdown al cambio pagina
 watch(() => route.fullPath, () => {
   closeAllDropdowns()
@@ -168,7 +179,7 @@ async function handleLogout() {
           </Transition>
         </div>
 
-        <!-- 4. LINK DKP API -->
+        <!-- 3. LINK DKP API -->
         <div class="dropdown-wrapper">
           <button 
             @click="toggleDropdown('api')" 
@@ -180,31 +191,27 @@ async function handleLogout() {
           
           <Transition name="fade-slide">
             <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
-              <NuxtLink 
-                v-for="tool in dkpTools" 
-                :key="tool.route" 
-                :to="tool.route" 
+              <a 
+                href="#"
                 class="menu-item"
-                @click="closeAllDropdowns"
+                @click.prevent="goToApiConsole"
               >
-                <span class="icon">{{ tool.icon }}</span>
+                <span class="icon">⚡</span>
                 <div class="item-text">
-                  <strong>{{ tool.name }}</strong>
-                  <small>{{ tool.description }}</small>
+                  <strong>DKP API Console</strong>
+                  <small>Gestione Key, Metriche e Consumi API</small>
                 </div>
-              </NuxtLink>
+              </a>
             </div>
           </Transition>
         </div>
 		
-	<span class="slash">/</span>
-      <!-- 3. SUBMIT LINK -->
+        <span class="slash">/</span>
+        <!-- 4. SUBMIT LINK -->
         <NuxtLink to="/submit" class="submit-highlight">{{ t('submit') }}</NuxtLink>
-    <span class="slash">/</span>
+        <span class="slash">/</span>
       </nav> 
 	  
-	  <!-- TAG DI CHIUSURA RIPRISTINATO -->
-
       <!-- SEZIONE DESTRA -->
       <div class="right-actions desktop-only">
         
@@ -264,6 +271,15 @@ async function handleLogout() {
               <NuxtLink to="/user/dashboard?tab=profile" class="menu-item" @click="closeAllDropdowns">
                 <span>⚙️</span> {{ t('settings') }}
               </NuxtLink>
+			  
+              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <NuxtLink to="/api-console" class="public-profile-link" style="border-color: #38bdf8; color: #38bdf8; background: rgba(56, 189, 248, 0.08);">
+                  ⚡ DKP API Console
+                </NuxtLink>
+                <NuxtLink :to="`/user/${currentUser?.username || 'alexdpl'}`" class="public-profile-link">
+                  🌐 Vedi Profilo Pubblico
+                </NuxtLink>
+              </div>
 
               <!-- PANNELLO ADMIN & SUB-SEZIONI -->
               <template v-if="isAdmin">
