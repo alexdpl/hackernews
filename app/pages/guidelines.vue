@@ -66,7 +66,7 @@
       <section class="guidelines-section">
         <h2>4. Uso Responsabile di DKP Tools & Pulse Nexus</h2>
         <p>
-          L'ecosistema DKP v2.3 mette a disposizione strumenti avanzati in-browser (Pulse Nexus AI, DKP Web Shell, Neural Playground). Chiediamo di utilizzarli responsabilmente:
+          L'ecosistema DKP v2.4-Gold mette a disposizione strumenti avanzati in-browser (Pulse Nexus AI, DKP Web Shell, Neural Playground). Chiediamo di utilizzarli responsabilmente:
         </p>
         <ul class="styled-list">
           <li><strong>No Spam/Automazioni:</strong> È vietato abusare delle API di Pulse Nexus o del sistema di XP Gamification tramite bot o script automatici.</li>
