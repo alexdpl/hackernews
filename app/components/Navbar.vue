@@ -65,8 +65,7 @@ const dkpTools = [
   { name: 'Neural Playground', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
   { name: 'Terminal Web Shell', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
   { name: 'AI Code Scanner v2', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
-  { name: 'Proof of Code (Vault)', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' 
-  }
+  { name: 'Proof of Code (Vault)', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' }
 ]
 
 // Controllo ruoli per accedere al Pannello Admin
@@ -109,7 +108,7 @@ async function handleLogout() {
       <!-- NAVIGAZIONE PRINCIPALE DESKTOP -->
       <nav class="nav-links desktop-only">
 
-        <!-- 1. NEWS DROPDOWN (CLONATO DA DKP TOOLS CON NUVOLETTA ☁️) -->
+        <!-- 1. NEWS DROPDOWN -->
         <div class="dropdown-wrapper">
           <button 
             @click="toggleDropdown('news')" 
@@ -169,17 +168,42 @@ async function handleLogout() {
           </Transition>
         </div>
 
-        <span class="slash">/</span>
-
-        <!-- 3. SUBMIT LINK -->
+        <!-- 4. LINK DKP API -->
+        <div class="dropdown-wrapper">
+          <button 
+            @click="toggleDropdown('api')" 
+            class="tools-btn" 
+            :class="{ active: activeDropdown === 'api' }"
+          >
+            🔌 DKP API <span class="arrow" :class="{ rotated: activeDropdown === 'api' }">▼</span>
+          </button>
+          
+          <Transition name="fade-slide">
+            <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
+              <NuxtLink 
+                v-for="tool in dkpTools" 
+                :key="tool.route" 
+                :to="tool.route" 
+                class="menu-item"
+                @click="closeAllDropdowns"
+              >
+                <span class="icon">{{ tool.icon }}</span>
+                <div class="item-text">
+                  <strong>{{ tool.name }}</strong>
+                  <small>{{ tool.description }}</small>
+                </div>
+              </NuxtLink>
+            </div>
+          </Transition>
+        </div>
+		
+	<span class="slash">/</span>
+      <!-- 3. SUBMIT LINK -->
         <NuxtLink to="/submit" class="submit-highlight">{{ t('submit') }}</NuxtLink>
-
-        <span class="slash">/</span>
-
-        <!-- 4. DKP BLOG -->
-        <NuxtLink to="/blog" class="nav-link-item">{{ t('blog') }}</NuxtLink>
-
-      </nav>
+    <span class="slash">/</span>
+      </nav> 
+	  
+	  <!-- TAG DI CHIUSURA RIPRISTINATO -->
 
       <!-- SEZIONE DESTRA -->
       <div class="right-actions desktop-only">
@@ -203,11 +227,6 @@ async function handleLogout() {
             </div>
           </Transition>
         </div>
-
-        <!-- LINK GITHUB -->
-        <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener" class="github-link">
-          GitHub <strong style="color: #00dc82;">↗</strong>
-        </a>
 
         <!-- PULSANTE ACCEDI / PILL UTENTE LOGGATO -->
         <button v-if="!isAuthenticated" @click="handleLogin" class="btn-accedi">
