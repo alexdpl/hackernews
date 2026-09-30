@@ -73,11 +73,11 @@ const newsCategories = [
 
 // DKP Tools v2.4
 const dkpTools = [
-  { name: 'Neural Playground', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
-  { name: 'Terminal Web Shell', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
-  { name: 'AI Code Scanner v2.3', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
-  { name: 'Proof of Code (Vault)', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' },
-  { name: 'DKP CLI Toolkit', description: 'CLI Nativi per Devs & Terminal', link: '/tools/cli-toolkit', icon: '⚡', badge: 'v2.4-GOLD' }
+  { name: 'Neural Playground v2.3', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
+  { name: 'Terminal Web Shell v2.3', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
+  { name: 'AI Code Scanner v2.3 Pro', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
+  { name: 'Proof of Code (Vault) v2.3', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' },
+  { name: 'DKP CLI Toolkitv v2.4-Gold', description: 'CLI Nativi per Devs & Terminal', icon: '⚡', route: '/tools/cli-toolkit' }
 ]
 
 // Controllo ruoli per accedere al Pannello Admin
