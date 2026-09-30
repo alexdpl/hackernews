@@ -58,6 +58,14 @@ useDkpSeo({
           <p>
             I DKP Tools e i certificati notarizzati Proof of Code sono forniti "così come sono" (AS-IS). DevKernelPulse non garantisce l'assenza totale di errori ed esclude qualsiasi responsabilità per danni indiretti derivanti dall'uso non corretto dei propri strumenti.
           </p>
+		   <p>
+		   Inoltre si sottolinea che:
+		   </p>
+		   <p>
+		   Art. 8 — Per la totale Tutela e Sicurezza dell'Infrastruttura di DevKernelPulse© & Pulse Sentinel AI v2.4-Gold,
+
+          l'intero ecosistema DevKernelPulse è sorvegliato dal sistema di sicurezza integrato Pulse Sentinel AI v2.4-Gold©. E, qualsiasi tentativo di scansione malevola non autorizzata, abuso dei limiti di frequenza (Rate Limit Abuse), attacchi di Prompt Injection o invio di payload di tipo Injection (XSS/SQLi) comporterà l'immediato ban permanente e irrevocabile dell'indirizzo IP e l'annullamento immediato delle chiavi API associate all'account.
+		   </p>
         </section>
       </div>
     </div>
