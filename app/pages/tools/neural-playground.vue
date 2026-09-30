@@ -4,170 +4,139 @@ import { ref } from 'vue'
 
 const { isAuthenticated, currentUser } = useAuthCore()
 
+useHead({
+  title: 'Neural Playground v2.3 — DKP Tools',
+  meta: [{ name: 'description', content: 'Testing Prompt e Modelli IA con DKP Neural Engine v2.3' }]
+})
+
+// Stato reattivo originale con DKP-Neural-v4 (Coder) e parametri LLM
 const selectedModel = ref('DKP-Neural-v4 (Coder)')
 const systemPrompt = ref('Sei il Kernel Architect di DevKernelPulse, un assistente IA esperto in sicurezza, architetture SaaS modulari e Nuxt.js.')
 const userPrompt = ref('Scrivi un middleware di autenticazione sicuro in TypeScript per proteggere le rotte admin.')
 const temperature = ref(0.7)
 const maxTokens = ref(1024)
 
-const isGenerating = ref(false)
-const aiResponse = ref<string | null>(null)
-const metrics = ref<{ latencyMs: number; tokensPerSec: number; costEstimate: string } | null>(null)
+const isLoading = ref(false)
+const responseOutput = ref('')
+const errorMessage = ref('')
 
-function runNeuralInference() {
-  if (!userPrompt.value.trim()) return
-
-  isGenerating.value = true
-  aiResponse.value = null
-  metrics.value = null
-
-  const startTime = performance.now()
-
-  setTimeout(() => {
-    const endTime = performance.now()
-    const latency = Math.round(endTime - startTime)
-
-    aiResponse.value = `// Generato da ${selectedModel.value} (Temp: ${temperature.value})
-import type { H3Event } from 'h3'
-
-export default defineEventHandler(async (event: H3Event) => {
-  // DKP Auth Core - Security Middleware
-  const session = await useAuthCoreSession(event)
+async function runNeuralTest() {
+  errorMessage.value = ''
   
-  if (!session || session.role !== 'admin') {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Accesso negato: richiesti privilegi amministrativi DKP.'
-    })
+  if (!isAuthenticated.value) {
+    errorMessage.value = 'Autenticazione richiesta per accedere al Neural Playground.'
+    return
   }
 
-  return { authorized: true, user: session.username, timestamp: Date.now() }
-})`
+  isLoading.value = true
+  responseOutput.value = ''
 
-    metrics.value = {
-      latencyMs: latency + 140,
-      tokensPerSec: 58.4,
-      costEstimate: '$0.0000 (DKP Free Tier)'
-    }
+  try {
+    const res = await $fetch('/api/v2.3/neural/execute', {
+      method: 'POST',
+      body: {
+        model: selectedModel.value,
+        systemPrompt: systemPrompt.value,
+        userPrompt: userPrompt.value,
+        temperature: temperature.value,
+        maxTokens: maxTokens.value,
+        user: currentUser.value?.username || 'guest'
+      }
+    })
 
-    isGenerating.value = false
-  }, 800)
+    responseOutput.value = res.result || 'Elaborazione completata con successo.'
+  } catch (err: any) {
+    errorMessage.value = err.data?.message || 'Errore durante l\'esecuzione del test neurale.'
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
 <template>
-  <div class="tool-page-container">
+  <div class="tool-page">
     <div class="tool-header">
-      <div class="header-badge">
-        <span class="badge-tag">DKP Core Tool v2.3 Pro</span>
-        <NuxtLink to="/" class="back-link">← Torna all'Ecosistema</NuxtLink>
+      <div class="title-group">
+        <h1>🧠 Neural Playground</h1>
+        <span class="version-badge v23">v2.3</span>
       </div>
-      <h1>🧠 Neural Playground & LLM Benchmark</h1>
-      <p class="subtitle">
-        Ambiente di testing avanzato per prompt engineering, tuning di modelli neurali dedicati e simulazione di risposte per sviluppatori SaaS.
-      </p>
+      <p class="subtitle">Testing interattivo di prompt e modelli IA con parametri avanzati dell'ecosistema DKP.</p>
     </div>
 
-    <div class="tool-grid">
-      <!-- Pannello Configurazione & Prompt -->
-      <div class="card-box">
-        <h2>⚙️ Configurazione Modello & Prompt</h2>
-        
+    <div class="tool-card">
+      <!-- SELEZIONE MODELLO & PARAMETRI -->
+      <div class="grid-2">
         <div class="form-group">
-          <label>Modello Neurale Selezionato</label>
-          <select v-model="selectedModel" class="select-input">
-            <option>DKP-Neural-v4 (Coder)</option>
-            <option>Kernel-LLM-70B (Security Audit)</option>
-            <option>Pulse-Code-Coder (Fast Gen)</option>
+          <label>Seleziona Modello IA</label>
+          <select v-model="selectedModel" class="dark-input">
+            <option value="DKP-Neural-v4 (Coder)">DKP-Neural-v4 (Coder)</option>
+            <option value="DKP-SecAudit-v2">DKP-SecAudit-v2 (Security)</option>
+            <option value="DKP-FastKernel-v1">DKP-FastKernel-v1 (Lightweight)</option>
           </select>
         </div>
 
-        <div class="form-group">
-          <label>System Prompt (Istruzioni di Sistema)</label>
-          <textarea v-model="systemPrompt" rows="3" class="text-input"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>User Prompt (Richiesta Utente)</label>
-          <textarea v-model="userPrompt" rows="4" class="text-input" placeholder="Cosa deve generare l'IA..."></textarea>
-        </div>
-
-        <div class="params-row">
-          <div class="form-group half">
-            <label>Temperatura: {{ temperature }}</label>
-            <input type="range" v-model.number="temperature" min="0" max="1" step="0.1" class="range-input" />
+        <div class="params-group">
+          <div class="form-group">
+            <label>Temperature: {{ temperature }}</label>
+            <input v-model.number="temperature" type="range" min="0" max="1" step="0.1" class="slider" />
           </div>
-          <div class="form-group half">
+          <div class="form-group">
             <label>Max Tokens: {{ maxTokens }}</label>
-            <input type="number" v-model.number="maxTokens" class="number-input" />
+            <input v-model.number="maxTokens" type="number" step="128" min="256" max="4096" class="dark-input" />
           </div>
         </div>
-
-        <button @click="runNeuralInference" :disabled="!userPrompt.trim() || isGenerating" class="action-btn">
-          {{ isGenerating ? '⚡ Elaborazione Neurale in corso...' : '🚀 Esegui Inferenza LLM' }}
-        </button>
       </div>
 
-      <!-- Pannello Risposta & Metriche -->
-      <div class="card-box">
-        <h2>📊 Output & Benchmark</h2>
+      <!-- SYSTEM PROMPT -->
+      <div class="form-group">
+        <label>System Prompt (Istruzioni di Ruolo)</label>
+        <textarea v-model="systemPrompt" rows="2" class="dark-input code-font"></textarea>
+      </div>
 
-        <div v-if="aiResponse" class="response-container">
-          <div class="metrics-bar">
-            <span class="metric">⏱️ Latenza: <strong>{{ metrics?.latencyMs }}ms</strong></span>
-            <span class="metric">⚡ Velocità: <strong>{{ metrics?.tokensPerSec }} tok/s</strong></span>
-            <span class="metric">💰 Costo: <strong class="green">{{ metrics?.costEstimate }}</strong></span>
-          </div>
+      <!-- USER PROMPT -->
+      <div class="form-group">
+        <label>User Prompt / Input Code</label>
+        <textarea v-model="userPrompt" rows="4" class="dark-input code-font" placeholder="Inserisci il prompt o il codice da elaborare..."></textarea>
+      </div>
 
-          <div class="code-output-box">
-            <pre><code>{{ aiResponse }}</code></pre>
-          </div>
-        </div>
+      <div v-if="errorMessage" class="error-box">
+        ⚠️ {{ errorMessage }}
+      </div>
 
-        <div v-else class="placeholder-box">
-          <div class="icon">✨</div>
-          <p>Configura il prompt a sinistra e avvia l'inferenza neurale per testare la potenza dei modelli DKP.</p>
-        </div>
+      <button @click="runNeuralTest" :disabled="isLoading || !userPrompt.trim()" class="action-btn">
+        <span v-if="isLoading">⚡ Elaborazione con {{ selectedModel }} in corso...</span>
+        <span v-else>🚀 Esegui Test Neurale</span>
+      </button>
+
+      <!-- OUTPUT -->
+      <div v-if="responseOutput" class="output-box">
+        <h3>Risultato {{ selectedModel }}:</h3>
+        <pre><code>{{ responseOutput }}</code></pre>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.tool-page-container { max-width: 1200px; margin: 2.5rem auto; padding: 0 1.5rem; font-family: ui-sans-serif, system-ui, sans-serif; }
-.tool-header { margin-bottom: 2.5rem; }
-.header-badge { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.badge-tag { background: rgba(0, 220, 130, 0.15); color: #00dc82; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; border: 1px solid rgba(0, 220, 130, 0.3); }
-.back-link { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-.tool-header h1 { font-size: 2.25rem; color: #020420; font-weight: 800; margin-top: 0.5rem; }
-.subtitle { color: #64748b; font-size: 1rem; max-width: 800px; margin-top: 0.5rem; }
-
-.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-@media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
-
-.card-box { background: #020420; border: 1px solid #1e293b; border-radius: 12px; padding: 2rem; color: #ffffff; }
-.card-box h2 { font-size: 1.25rem; color: #00dc82; margin-bottom: 1.5rem; }
-
-.form-group { margin-bottom: 1.1rem; }
-.form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.3rem; }
-
-.select-input, .text-input, .number-input { width: 100%; background: #090d16; border: 1px solid #1e293b; color: #00dc82; padding: 0.65rem; border-radius: 8px; font-size: 0.85rem; outline: none; box-sizing: border-box; font-family: monospace; }
-.select-input:focus, .text-input:focus, .number-input:focus { border-color: #00dc82; }
-
-.params-row { display: flex; gap: 1rem; }
-.form-group.half { flex: 1; }
-.range-input { width: 100%; accent-color: #00dc82; cursor: pointer; }
-
-.action-btn { width: 100%; background: #00dc82; color: #020420; font-weight: 800; padding: 0.85rem; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; margin-top: 0.5rem; }
-.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.metrics-bar { display: flex; justify-content: space-between; background: #090d16; border: 1px solid #1e293b; padding: 0.75rem; border-radius: 8px; font-size: 0.75rem; margin-bottom: 1rem; color: #94a3b8; }
-.metrics-bar strong { color: #ffffff; }
-.metrics-bar strong.green { color: #00dc82; }
-
-.code-output-box { background: #090d16; border: 1px solid #00dc82; border-radius: 8px; padding: 1rem; max-height: 380px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: #00dc82; }
-.code-output-box pre { margin: 0; white-space: pre-wrap; }
-
-.placeholder-box { text-align: center; padding: 4rem 1rem; color: #64748b; }
-.placeholder-box .icon { font-size: 3rem; margin-bottom: 1rem; }
+.tool-page { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; color: #cbd5e1; }
+.tool-header { margin-bottom: 2rem; }
+.title-group { display: flex; align-items: center; gap: 0.75rem; }
+.title-group h1 { font-size: 2rem; color: #fff; margin: 0; font-weight: 900; }
+.version-badge.v23 { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; }
+.subtitle { color: #94a3b8; margin-top: 0.5rem; }
+.tool-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+.params-group { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.form-group label { font-size: 0.85rem; font-weight: 700; color: #94a3b8; }
+.dark-input { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.75rem; border-radius: 8px; font-family: inherit; font-size: 0.9rem; }
+.code-font { font-family: monospace; font-size: 0.85rem; color: #38bdf8; }
+.slider { accent-color: #00dc82; height: 8px; margin-top: 0.5rem; }
+.action-btn { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.85rem; border-radius: 8px; cursor: pointer; transition: opacity 0.2s; }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.error-box { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem; }
+.output-box { background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+.output-box h3 { color: #00dc82; font-size: 0.95rem; margin-top: 0; }
+.output-box pre { color: #38bdf8; font-family: monospace; white-space: pre-wrap; margin: 0; }
 </style>

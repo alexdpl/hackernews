@@ -33,7 +33,7 @@ const currentYear = new Date().getFullYear()
           <li><NuxtLink to="/tools/ai-scanner">🔍 AI Code Scanner v2.3</NuxtLink></li>
           <li><NuxtLink to="/tools/terminal">💻 Terminal Web Shell</NuxtLink></li>
           <li><NuxtLink to="/tools/neural-playground">🧠 Neural Playground</NuxtLink></li>
-          <li><NuxtLink to="/tools/cli">⚡ DKP CLI Toolkit <span class="new-tag">v2.4-GOLD</span></NuxtLink></li>
+          <li><NuxtLink to="/tools/cli-toolkit">⚡ DKP CLI Toolkit <span class="new-tag">v2.4-GOLD</span></NuxtLink></li>
         </ul>
       </div>
 
