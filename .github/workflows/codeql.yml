@@ -1,0 +1,46 @@
+name: "DKP CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    # Esegue la scansione automatica ogni domenica notte alle 02:00 UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  analyze:
+    name: Scansione Sicurezza CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # Necessario per pubblicare gli alert nella scheda Security
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Analizziamo JavaScript e TypeScript (gestisce anche il codice nei file .vue e Node/Nuxt)
+        language: [ 'javascript-typescript' ]
+        # Se nel progetto DKP usate anche script Python per AI o crawler, aggiungi 'python':
+        # language: [ 'javascript-typescript', 'python' ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Inizializzazione di CodeQL
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Usiamo le regole estese di sicurezza per un'analisi approfondita
+          queries: security-extended
+
+      # Esecuzione dell'analisi
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+        
