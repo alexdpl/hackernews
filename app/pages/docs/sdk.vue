@@ -64,9 +64,9 @@ function scrollToSection(id: string) {
             <button @click="activeTab = 'go'" :class="{ active: activeTab === 'go' }">Go Modules</button>
           </div>
 
-          <pre class="code-block" v-if="activeTab === 'node'"><code>npm install @devkernelpulse/sdk # Oppure yarn add / pnpm add</code></pre>
-          <pre class="code-block" v-if="activeTab === 'python'"><code>pip install dkp-sdk</code></pre>
-          <pre class="code-block" v-if="activeTab === 'go'"><code>go get github.com/devkernelpulse/dkp-go-sdk/v2</code></pre>
+          <pre class="code-block" v-if="activeTab === 'node'"><code>pnpm install @alexdpl/sdk # Oppure yarn add / npm add</code></pre>
+          <pre class="code-block" v-if="activeTab === 'python'"><code>pip install alexdpl-sdk</code></pre>
+          <pre class="code-block" v-if="activeTab === 'go'"><code>go get github.com/alexdpl/dkp-go-sdk/v2</code></pre>
         </section>
 
         <!-- QUICKSTART -->
@@ -74,7 +74,7 @@ function scrollToSection(id: string) {
           <h2><span class="sec-icon">⚡</span> Inizializzazione Client</h2>
           <p>Crea un'istanza del client passando la tua <code>DKP_API_KEY</code> ottenibile dalla dashboard utente.</p>
 
-          <pre class="code-block"><code>import { DevKernelPulse } from '@devkernelpulse/sdk';
+          <pre class="code-block"><code>import { DevKernelPulse } from '@alexdpl/sdk';
 
 const dkp = new DevKernelPulse({
   apiKey: process.env.DKP_API_KEY,
