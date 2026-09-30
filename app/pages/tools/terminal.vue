@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const { user, userToken } = useAuthCore()
+const { currentUser, userToken } = useAuthCore()
 
 useHead({
   title: 'Terminal Web Shell v2.3 — DKP Tools',
@@ -58,7 +58,7 @@ async function executeCommand() {
         <span class="dot red"></span>
         <span class="dot yellow"></span>
         <span class="dot green"></span>
-        <span class="term-title">dkp-sh — @{{ user?.username || 'guest' }}</span>
+        <span class="term-title">dkp-sh — @{{ currentUser?.username || 'guest' }}</span>
       </div>
 
       <div class="terminal-body">
@@ -103,10 +103,12 @@ async function executeCommand() {
 .dot.green { background: #10b981; }
 .term-title { color: #64748b; font-size: 0.8rem; margin-left: auto; }
 .terminal-body { padding: 1.25rem; min-height: 350px; max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem; }
+.history-item { display: flex; flex-direction: column; gap: 0.25rem; }
 .prompt-line { display: flex; gap: 0.5rem; color: #fff; }
 .user-tag { color: #00dc82; font-weight: 700; }
-.res-line { color: #94a3b8; padding-left: 1rem; line-height: 1.4; }
+.cmd-text { color: #38bdf8; }
+.res-line { color: #94a3b8; padding-left: 1rem; line-height: 1.4; white-space: pre-wrap; }
 .res-line.error-text { color: #f87171; }
 .input-line { display: flex; gap: 0.5rem; align-items: center; }
 .term-input { background: transparent; border: none; color: #38bdf8; outline: none; width: 100%; font-family: inherit; font-size: 0.9rem; }
-</style
+</style>

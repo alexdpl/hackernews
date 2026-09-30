@@ -76,8 +76,8 @@ const dkpTools = [
   { name: 'Neural Playground', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
   { name: 'Terminal Web Shell', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
   { name: 'AI Code Scanner v2.3', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
-  { name: 'Proof of Code (Vault)', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' }
-  { name: 'DKP CLI Toolkit', desc: 'CLI Nativi per Devs & Terminal', link: '/tools/cli-toolkit', icon: '⚡', badge: 'v2.4-GOLD' }
+  { name: 'Proof of Code (Vault)', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' },
+  { name: 'DKP CLI Toolkit', description: 'CLI Nativi per Devs & Terminal', link: '/tools/cli-toolkit', icon: '⚡', badge: 'v2.4-GOLD' }
 ]
 
 // Controllo ruoli per accedere al Pannello Admin
