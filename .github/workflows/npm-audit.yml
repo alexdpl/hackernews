@@ -1,0 +1,26 @@
+name: "DKP Dependency Security Audit"
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  schedule:
+    - cron: '0 3 * * 1' # Ogni lunedì alle 03:00 UTC
+
+jobs:
+  audit:
+    name: Scansione Dipendenze npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Esegui npm audit
+        run: npm audit --audit-level=high
