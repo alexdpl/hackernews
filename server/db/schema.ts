@@ -1,17 +1,16 @@
-// server/db/schema.ts
-import { pgTable, serial, text, integer, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core'
-import { sql } from 'drizzle-orm'
+import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core';
+import { sql, relations } from 'drizzle-orm';
 
-// Enum per lo stato dell'ordine
-export const orderStatusEnum = pgEnum('order_status', ['pending', 'completed', 'failed', 'refunded'])
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'completed', 'failed', 'refunded']);
+export const licenseStatusEnum = pgEnum('license_status', ['active', 'suspended', 'revoked', 'expired']);
+export const paymentProviderEnum = pgEnum('payment_provider', ['stripe', 'paypal']);
 
-// Enum per lo stato della licenza
-export const licenseStatusEnum = pgEnum('license_status', ['active', 'suspended', 'revoked', 'expired'])
-
-// Enum per il provider di pagamento
-export const paymentProviderEnum = pgEnum('payment_provider', ['stripe', 'paypal'])
-
+// -------------------------------------------------------------
 // 1. TABELLA UTENTI (Users + Gamification)
+// -------------------------------------------------------------
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: varchar('username', { length: 50 }).notNull().unique(),
@@ -21,13 +20,86 @@ export const users = pgTable('users', {
   bio: text('bio'),
   avatarUrl: text('avatar_url'),
   reputation: integer('reputation').default(100).notNull(),
-  xp: integer('xp').default(0).notNull(), // <--- RIPRISTINATO
-  level: integer('level').default(1).notNull(), // <--- RIPRISTINATO
+  xp: integer('xp').default(0).notNull(),
+  level: integer('level').default(1).notNull(),
   githubHandle: varchar('github_handle', { length: 100 }),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-})
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
-// 2. TABELLA POST (News, Ask, Show)
+// -------------------------------------------------------------
+// 2. CATEGORIE & BLOG v2.4-GOLD
+// -------------------------------------------------------------
+export const blogCategories = pgTable('blog_categories', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  slug: varchar('slug', { length: 120 }).notNull().unique(),
+  description: text('description'),
+  icon: varchar('icon', { length: 50 }).default('i-heroicons-folder'),
+  color: varchar('color', { length: 30 }).default('#10B981'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const blogSubcategories = pgTable('blog_subcategories', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id')
+    .references(() => blogCategories.id, { onDelete: 'cascade' })
+    .notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  slug: varchar('slug', { length: 120 }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const blogPosts = pgTable('blog_posts', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(),
+  content: text('content').notNull(),
+  excerpt: text('excerpt'),
+  categoryId: integer('category_id').references(() => blogCategories.id, { onDelete: 'set null' }),
+  subcategoryId: integer('subcategory_id').references(() => blogSubcategories.id, { onDelete: 'set null' }),
+  authorId: integer('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  status: varchar('status', { length: 20 }).default('pending_vault').notNull(), // 'draft' | 'pending_vault' | 'approved' | 'rejected'
+  isVerified: boolean('is_verified').default(false).notNull(),
+  vaultCertificateId: varchar('vault_certificate_id', { length: 100 }),
+  vaultHash: varchar('vault_hash', { length: 64 }), // Impronta SHA-256
+  views: integer('views').default(0).notNull(),
+  likes: integer('likes').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Relazioni Drizzle per Query annidate del Blog
+export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
+  subcategories: many(blogSubcategories),
+  posts: many(blogPosts),
+}));
+
+export const blogSubcategoriesRelations = relations(blogSubcategories, ({ one, many }) => ({
+  category: one(blogCategories, {
+    fields: [blogSubcategories.categoryId],
+    references: [blogCategories.id],
+  }),
+  posts: many(blogPosts),
+}));
+
+export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
+  category: one(blogCategories, {
+    fields: [blogPosts.categoryId],
+    references: [blogCategories.id],
+  }),
+  subcategory: one(blogSubcategories, {
+    fields: [blogPosts.subcategoryId],
+    references: [blogSubcategories.id],
+  }),
+  author: one(users, {
+    fields: [blogPosts.authorId],
+    references: [users.id],
+  }),
+}));
+
+// -------------------------------------------------------------
+// 3. POSTS, COMMENTI, VOTI, JOBS, VAULT CERTS, STORIES & CHAT
+// -------------------------------------------------------------
 export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
@@ -37,29 +109,26 @@ export const posts = pgTable('posts', {
   userId: integer('user_id').references(() => users.id).notNull(),
   points: integer('points').default(1).notNull(),
   commentsCount: integer('comments_count').default(0).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-})
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
-// 3. TABELLA COMMENTI
 export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }).notNull(),
   userId: integer('user_id').references(() => users.id).notNull(),
   content: text('content').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-})
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
-// 4. TABELLA VOTI
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
   postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }).notNull(),
   username: text('username').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
-  uniqueUserPostVote: unique('unique_user_post_vote').on(table.postId, table.username)
-}))
+  uniqueUserPostVote: unique('unique_user_post_vote').on(table.postId, table.username),
+}));
 
-// 5. TABELLA OFFERTE DI LAVORO
 export const jobs = pgTable('jobs', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
@@ -68,10 +137,9 @@ export const jobs = pgTable('jobs', {
   type: varchar('type', { length: 50 }).default('Remote').notNull(),
   applyUrl: text('apply_url').notNull(),
   userId: integer('user_id').references(() => users.id).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-})
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
-// 6. TABELLA CERTIFICATI VAULT DKP TOOLS
 export const vaultCerts = pgTable('vault_certs', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id).notNull(),
@@ -79,10 +147,9 @@ export const vaultCerts = pgTable('vault_certs', {
   title: text('title').notNull(),
   hash: text('hash').notNull(),
   metadata: jsonb('metadata'),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-})
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
-// 7. TABELLA PULSE STORIES
 export const pulseStories = pgTable('pulse_stories', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
@@ -94,28 +161,28 @@ export const pulseStories = pgTable('pulse_stories', {
   points: integer('points').default(1),
   commentsCount: integer('comments_count').default(0),
   xpAwarded: integer('xp_awarded').default(0),
-  createdAt: timestamp('created_at').defaultNow()
-})
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
-// 8. TABELLA PULSE CHAT MESSAGES (Ripristinata)
 export const pulseChatMessages = pgTable('pulse_chat_messages', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id),
   username: varchar('username', { length: 100 }).notNull(),
   message: text('message').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-})
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
-// 9. TABELLA PULSE USER XP (Ripristinata)
 export const pulseUserXp = pgTable('pulse_user_xp', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id).notNull(),
   xp: integer('xp').default(0).notNull(),
   level: integer('level').default(1).notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
-})
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
-// 10. TABELLA ORDINI
+// -------------------------------------------------------------
+// 4. ORDINI, LICENZE & GAMIFICATION TRANSACTIONS
+// -------------------------------------------------------------
 export const orders = pgTable('orders', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`),
   customerEmail: varchar('customer_email', { length: 255 }).notNull(),
@@ -127,30 +194,28 @@ export const orders = pgTable('orders', {
   paymentIntentId: varchar('payment_intent_id', { length: 255 }).notNull().unique(),
   status: orderStatusEnum('status').default('pending').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
-})
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
-// 11. TABELLA LICENZE SAAS (Unificata per Stripe e Dashboard)
 export const licenses = pgTable('licenses', {
   id: text('id').primaryKey().default(sql`gen_random_uuid()`),
-  userId: integer('user_id').references(() => users.id), // Opzionale per acquisti guest, ma vitale per la Dashboard
+  userId: integer('user_id').references(() => users.id),
   orderId: text('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
   customerEmail: varchar('customer_email', { length: 255 }).notNull(),
   productId: varchar('product_id', { length: 100 }).notNull(),
-  productName: varchar('product_name', { length: 255 }).notNull(), // Per mostrare il nome in Dashboard
+  productName: varchar('product_name', { length: 255 }).notNull(),
   licenseKey: varchar('license_key', { length: 255 }).notNull().unique(),
   status: licenseStatusEnum('status').default('active').notNull(),
   downloadsCount: integer('downloads_count').default(0).notNull(),
   maxDownloads: integer('max_downloads').default(10).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  expiresAt: timestamp('expires_at')
-})
+  expiresAt: timestamp('expires_at'),
+});
 
-// 12. TABELLA CRONOLOGIA XP (Gamification)
 export const xpTransactions = pgTable('xp_transactions', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id).notNull(), // Relazione collegata a users
-  action: text('action').notNull(), // es: "News Submission", "Ask Discussion"
+  userId: integer('user_id').references(() => users.id).notNull(),
+  action: text('action').notNull(),
   points: integer('points').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+});
