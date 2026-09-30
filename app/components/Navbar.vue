@@ -148,8 +148,6 @@ async function handleLogout() {
           </Transition>
         </div>
 
-        <span class="slash">/</span>
-
         <!-- 2. DKP TOOLS V2.4 -->
         <div class="dropdown-wrapper">
           <button 
@@ -178,7 +176,7 @@ async function handleLogout() {
             </div>
           </Transition>
         </div>
-
+		
         <!-- 3. LINK DKP API -->
         <div class="dropdown-wrapper">
           <button 
