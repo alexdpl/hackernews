@@ -1,5 +1,17 @@
-import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core';
-import { sql, relations } from 'drizzle-orm';
+import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core'
+import { sql, relations } from 'drizzle-orm'
+import { neon } from '@neondatabase/serverless'
+import * as schema from '~~/server/db/schema'
+
+let dbInstance: any = null
+
+export function getDb() {
+  if (!dbInstance) {
+    const sql = neon(process.env.DATABASE_URL!)
+    dbInstance = drizzle(sql, { schema })
+  }
+  return dbInstance
+}
 
 // -------------------------------------------------------------
 // ENUMS
