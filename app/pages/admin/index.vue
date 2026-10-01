@@ -101,6 +101,34 @@ onMounted(() => {
       </div>
     </div>
 
+<!-- 2. NUOVA NAVBAR ORIZZONTALE V2.4-GOLD -->
+      <nav class="admin-horizontal-nav">
+        <NuxtLink to="/admin" class="nav-tab" exact-active-class="active">
+          🏠 Dashboard
+        </NuxtLink>
+        <NuxtLink to="/admin/api-gateway" class="nav-tab" active-class="active">
+          ⚙️ API Gateway
+        </NuxtLink>
+        <NuxtLink to="/admin/mail" class="nav-tab" active-class="active">
+          📧 Mail Center
+        </NuxtLink>
+        <NuxtLink to="/admin/newsletter" class="nav-tab" active-class="active">
+          📣 Newsletter
+        </NuxtLink>
+		<NuxtLink to="/admin/autoresponder" class="nav-tab" active-class="active">
+          📡 Autoresponder
+        </NuxtLink>
+        <NuxtLink to="/admin/crawler" class="nav-tab" active-class="active">
+          🤖 Crawler Engine
+        </NuxtLink>
+        <NuxtLink to="/admin/blog" class="nav-tab" active-class="active">
+          📝 Gestione Blog
+        </NuxtLink>
+        <NuxtLink to="/admin/shop" class="nav-tab" active-class="active">
+          🛍️ Gestione Shop
+        </NuxtLink>
+      </nav>
+
    <!-- 2. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
 <div class="sentinel-monitor-banner">
   <div class="sentinel-monitor-header">
@@ -287,99 +315,545 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.admin-container { max-width: 1240px; margin: 0 auto; padding: 2rem 1.5rem; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+/* ==========================================================================
+   1. LAYOUT GENERALE & CONTAINER DASHBOARD
+   ========================================================================== */
+.admin-dashboard-page {
+  background: #020420;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem 5rem;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
-.admin-header { display: flex; justify-content: space-between; align-items: center; background: #090d16; border: 1px solid #1e293b; padding: 1.5rem 2rem; border-radius: 14px; margin-bottom: 1.5rem; }
-.admin-header h1 { font-size: 1.8rem; margin: 0 0 0.3rem; font-weight: 900; }
-.admin-header p { margin: 0; color: #94a3b8; font-size: 0.9rem; }
+.admin-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Spaziatura costante e pulita tra i moduli */
+}
 
-.region-badge { background: rgba(15, 23, 42, 0.8); border: 1px solid #1e293b; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.8rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; }
-.status-dot.green { background: #00dc82; box-shadow: 0 0 8px #00dc82; }
+/* ==========================================================================
+   2. HERO BANNER & STATUS REGIONALE
+   ========================================================================== */
+.admin-hero,
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
 
-/* SENTINEL AI BANNER v2.4-GOLD */
-.sentinel-monitor-banner { background: linear-gradient(135deg, #090d16 0%, #030712 100%); border: 1px solid #1e293b; border-left: 4px solid #a855f7; border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); }
-.sentinel-monitor-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: 1.25rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
-.sentinel-brand { display: flex; align-items: center; gap: 1rem; }
-.shield-pulse { font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5)); }
-.sentinel-brand h2 { margin: 0; font-size: 1.4rem; font-weight: 900; color: #f8fafc; display: flex; align-items: center; gap: 0.75rem; }
+.admin-hero h1,
+.admin-header h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.4rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
 
-/* BADGES STATUS & GOLD v2.4 */
-.badge-status { font-size: 0.7rem; background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid #00dc82; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase; }
-.badge-status.gold { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid #00dc82; font-weight: 800; box-shadow: 0 0 10px rgba(0, 220, 130, 0.2); }
+.admin-hero .subtitle,
+.admin-header p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
 
-.sentinel-sub { margin: 0.2rem 0 0; color: #94a3b8; font-size: 0.85rem; }
+.region-badge {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #1e293b;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
 
-/* TOGGLE SWITCH */
-.btn-toggle-switch { background: #020420; border: 1px solid #1e293b; color: #f8fafc; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; transition: all 0.2s ease; }
-.btn-toggle-switch span { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
-.btn-toggle-switch.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.05); }
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
 
-/* GRID & METRICHE SENTINEL */
-.sentinel-monitor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
-.monitor-cell { display: flex; flex-direction: column; gap: 0.4rem; }
-.cell-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
-.cell-val { font-size: 1.5rem; font-weight: 900; }
+.status-dot.green {
+  background: #00dc82;
+  box-shadow: 0 0 10px #00dc82;
+}
+
+/* ==========================================================================
+   3. NAVBAR ORIZZONTALE DI AMMINISTRAZIONE v2.4-GOLD
+   ========================================================================== */
+.admin-horizontal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  padding: 0.5rem;
+  border-radius: 10px;
+  overflow-x: auto;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Nasconde la scrollbar pur mantenendo lo scroll orizzontale */
+.admin-horizontal-nav::-webkit-scrollbar { display: none; }
+.admin-horizontal-nav { -ms-overflow-style: none; scrollbar-width: none; }
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.15rem;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+.nav-tab.active {
+  background: rgba(0, 220, 130, 0.12);
+  color: #00dc82;
+  border-color: rgba(0, 220, 130, 0.35);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.15);
+}
+
+/* ==========================================================================
+   4. PULSE SENTINEL AI BANNER & FIREWALL MONITOR
+   ========================================================================== */
+.sentinel-widget,
+.sentinel-monitor-banner {
+  background: linear-gradient(135deg, #090d16 0%, #030712 100%);
+  border: 1px solid #1e293b;
+  border-left: 4px solid #a855f7;
+  border-radius: 12px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.sentinel-monitor-header,
+.sentinel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sentinel-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.shield-pulse {
+  font-size: 2.2rem;
+  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5));
+}
+
+.sentinel-title h2,
+.sentinel-brand h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.version-tag,
+.badge-status.gold {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  border: 1px solid #00dc82;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
+  text-transform: uppercase;
+}
+
+.sentinel-sub,
+.sentinel-desc {
+  margin: 0.3rem 0 1.25rem;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+/* SWITCH SENTINEL ACTIVE */
+.btn-toggle-switch {
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #f8fafc;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-switch span {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.btn-toggle-switch.active {
+  border-color: #00dc82;
+  color: #00dc82;
+  background: rgba(0, 220, 130, 0.05);
+}
+
+/* GRID METRICHE SENTINEL */
+.sentinel-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.monitor-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cell-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.cell-val {
+  font-size: 1.55rem;
+  font-weight: 900;
+}
+
 .cell-val.purple, .highlight-purple { color: #c084fc; }
 .cell-val.green, .highlight-green { color: #00dc82; }
 .cell-val.blue, .highlight-blue { color: #38bdf8; }
 
-.threat-meter-box { display: flex; align-items: center; gap: 0.75rem; }
-.threat-bar { flex-grow: 1; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
-.threat-fill { height: 100%; background: linear-gradient(90deg, #00dc82 0%, #f59e0b 50%, #ef4444 100%); transition: width 0.3s ease; }
-.threat-val { font-size: 1.1rem; font-weight: 900; color: #38bdf8; width: 42px; }
+.threat-meter-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 
-.sentinel-notification { background: rgba(0, 220, 130, 0.12); border: 1px solid #00dc82; color: #00dc82; padding: 1rem 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; font-weight: 800; }
+.threat-bar {
+  flex-grow: 1;
+  height: 8px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+}
 
-/* TABELLA E SEZIONI ADMIN */
-.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.metric-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; }
-.card-title { display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
-.card-value { font-size: 1.8rem; font-weight: 900; color: #f8fafc; margin: 0.5rem 0 0.2rem; }
-.card-sub { font-size: 0.78rem; color: #64748b; }
+.threat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00dc82 0%, #f59e0b 50%, #ef4444 100%);
+  transition: width 0.3s ease;
+}
 
-.badge { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 800; }
+.threat-val {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #38bdf8;
+  width: 42px;
+}
+
+.sentinel-notification {
+  background: rgba(0, 220, 130, 0.12);
+  border: 1px solid #00dc82;
+  color: #00dc82;
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 800;
+}
+
+/* ==========================================================================
+   5. CARDS METRICHE DI SISTEMA (NEON, GCP, PM2)
+   ========================================================================== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.metric-card {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  border-color: #334155;
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.card-value {
+  font-size: 1.85rem;
+  font-weight: 900;
+  color: #f8fafc;
+  margin: 0.5rem 0 0.2rem;
+}
+
+.card-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 800;
+}
+
 .badge.green { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 .badge.blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
 
-.admin-tabs { display: flex; gap: 0.75rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.admin-tabs button { background: transparent; border: 1px solid transparent; color: #94a3b8; padding: 0.65rem 1.2rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; }
-.admin-tabs button.active { background: #090d16; border-color: #00dc82; color: #00dc82; }
-.admin-tabs button.tab-sentinel.active { border-color: #a855f7; color: #c084fc; }
+/* ==========================================================================
+   6. TAB ED ELEMENTI DI FILTRAGGIO
+   ========================================================================== */
+.admin-tabs {
+  display: flex;
+  gap: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
 
-.search-bar { margin-bottom: 1rem; }
-.input-search { width: 100%; max-width: 400px; background: #090d16; border: 1px solid #1e293b; padding: 0.75rem 1rem; border-radius: 8px; color: #f8fafc; outline: none; }
+.admin-tabs button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  padding: 0.65rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
 
-.data-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; text-align: left; }
-.data-table th, .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
-.data-table th { color: #64748b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; }
+.admin-tabs button:hover {
+  color: #ffffff;
+}
 
-.role-badge { background: #1e293b; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
-.status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
+.admin-tabs button.active {
+  background: #090d16;
+  border-color: #00dc82;
+  color: #00dc82;
+}
+
+.admin-tabs button.tab-sentinel.active {
+  border-color: #a855f7;
+  color: #c084fc;
+}
+
+.search-bar {
+  margin-bottom: 0.5rem;
+}
+
+.input-search {
+  width: 100%;
+  max-width: 400px;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: #f8fafc;
+  outline: none;
+  font-size: 0.88rem;
+  transition: border-color 0.2s ease;
+}
+
+.input-search:focus {
+  border-color: #00dc82;
+}
+
+/* ==========================================================================
+   7. TABELLA DATI & BADGES AZIONE
+   ========================================================================== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid #1e293b;
+  font-size: 0.88rem;
+}
+
+.data-table th {
+  background: #020420;
+  color: #64748b;
+  font-weight: 800;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.role-badge {
+  background: #1e293b;
+  color: #38bdf8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .status-badge.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 .status-badge.suspended { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
-.btn-action { border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.78rem; }
-.btn-action.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.btn-action.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.btn-action {
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: all 0.15s ease;
+}
 
-.policy-warning-box { background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; }
+.btn-action.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.btn-action.danger:hover { background: #ef4444; color: #ffffff; }
+
+.btn-action.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.btn-action.success:hover { background: #00dc82; color: #020420; }
+
+/* ==========================================================================
+   8. ALERT DI SICUREZZA & SEZIONE MINACCE SENTINEL
+   ========================================================================== */
+.policy-warning-box {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
 .warning-icon { font-size: 1.8rem; }
 .warning-text h4 { margin: 0 0 0.25rem; color: #facc15; font-size: 1rem; }
 .warning-text p { margin: 0; color: #cbd5e1; font-size: 0.88rem; line-height: 1.4; }
 
-/* ELENCO MINACCE SENTINEL */
-.threats-section { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-.section-header h3 { margin: 0; font-size: 1.1rem; }
+.threats-section {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
 
-.btn-purge { background: #020420; border: 1px solid #1e293b; color: #94a3b8; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
 
-.threats-list { display: flex; flex-direction: column; gap: 0.75rem; }
-.threat-item { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+.section-header h3 { margin: 0; font-size: 1.1rem; color: #ffffff; }
+
+.btn-purge {
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.btn-purge:hover {
+  border-color: #00dc82;
+  color: #00dc82;
+}
+
+.threats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.threat-item {
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
 
 .threat-left { display: flex; align-items: center; gap: 1rem; }
-.severity-badge { font-size: 0.68rem; font-weight: 900; padding: 0.2rem 0.5rem; border-radius: 4px; }
+
+.severity-badge {
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
 .severity-badge.critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
 .severity-badge.high { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
 .severity-badge.medium { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
@@ -387,14 +861,60 @@ onMounted(() => {
 .threat-info { display: flex; flex-direction: column; }
 .threat-info strong { font-size: 0.95rem; color: #f8fafc; }
 .threat-info span { font-size: 0.8rem; color: #64748b; margin-top: 0.15rem; }
-.threat-info code { color: #38bdf8; }
+.threat-info code { color: #38bdf8; font-family: monospace; }
 
 .threat-right { display: flex; align-items: center; gap: 1rem; }
 .threat-time { font-size: 0.8rem; color: #64748b; }
 
-.btn-ban { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #ef4444; padding: 0.45rem 0.85rem; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
-.btn-ban:hover { background: #ef4444; color: #ffffff; }
+.btn-ban {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
 
+.btn-ban:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   9. MEDIA QUERIES & RESPONSIVE DESIGN
+   ========================================================================== */
+@media (max-width: 900px) {
+  .admin-dashboard-page {
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .admin-hero,
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .sentinel-monitor-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .threat-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .threat-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* TRANSITIONS */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

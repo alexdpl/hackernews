@@ -77,7 +77,7 @@ const dkpTools = [
   { name: 'Terminal Web Shell v2.3', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
   { name: 'AI Code Scanner v2.3 Pro', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
   { name: 'Proof of Code (Vault) v2.3', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' },
-  { name: 'DKP CLI Toolkitv v2.4-Gold', description: 'CLI Nativi per Devs & Terminal', icon: '⚡', route: '/tools/cli-toolkit' }
+  { name: 'DKP CLI Toolkit v2.4-Gold', description: 'CLI Nativi per Devs & Terminal', icon: '⚡', route: '/tools/cli-toolkit' }
 ]
 
 // Controllo ruoli per accedere al Pannello Admin
@@ -249,16 +249,21 @@ async function handleLogout() {
             <span class="arrow" :class="{ rotated: activeDropdown === 'user' }">▼</span>
           </button>
 
-          <!-- MENU A TENDINA PROFILO UTENTE / ADMIN COMPLETO -->
+          <!-- MENU A TENDINA PROFILO UTENTE / ADMIN SNELLED V2.4-GOLD -->
           <Transition name="fade-slide">
             <div v-show="activeDropdown === 'user'" class="menu-dropdown profile-menu">
+              
+              <!-- HEADER UTENTE -->
               <div class="profile-header">
                 <span class="user-display-name">@{{ currentUser?.username }}</span>
-                <span class="user-role-badge">{{ isAdmin ? '🛡️ Administrator' : '🌱 VIP Developer' }}</span>
+                <span class="user-role-badge" :class="{ admin: isAdmin }">
+                  {{ isAdmin ? '🛡️ Administrator' : '🌱 VIP Developer' }}
+                </span>
               </div>
 
               <div class="dropdown-divider"></div>
 
+              <!-- VOCI UTENTE STANDARD -->
               <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
                 <span>📊</span> {{ t('dashboard') }}
               </NuxtLink>
@@ -270,70 +275,39 @@ async function handleLogout() {
               <NuxtLink to="/user/dashboard?tab=profile" class="menu-item" @click="closeAllDropdowns">
                 <span>⚙️</span> {{ t('settings') }}
               </NuxtLink>
-			  
-              <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-                <NuxtLink to="/api-console" class="public-profile-link" style="border-color: #38bdf8; color: #38bdf8; background: rgba(56, 189, 248, 0.08);">
-                  ⚡ DKP API Console
-                </NuxtLink>
-                <NuxtLink :to="`/user/${currentUser?.username || 'alexdpl'}`" class="public-profile-link">
-                  🌐 Vedi Profilo Pubblico
-                </NuxtLink>
-              </div>
 
-              <!-- PANNELLO ADMIN & SUB-SEZIONI -->
+              <NuxtLink to="/api-console" class="menu-item api-console-item" @click="closeAllDropdowns">
+                <span>⚡</span> DKP API Console
+              </NuxtLink>
+
+              <NuxtLink :to="`/user/${currentUser?.username || 'alexdpl'}`" class="menu-item" @click="closeAllDropdowns">
+                <span>🌐</span> Vedi Profilo Pubblico
+              </NuxtLink>
+
+              <!-- PANNELLO AMMINISTRAZIONE (ESCLUSIVAMENTE CONTROL CENTER) -->
               <template v-if="isAdmin">
+                <div class="dropdown-divider"></div>
                 <div class="dropdown-group">
                   <span class="dropdown-label">AMMINISTRAZIONE DKP</span>
                   
-                  <NuxtLink to="/admin" class="dropdown-item green-item" @click="closeAllDropdowns">
-                    🔒 Control Center Admin
-                  </NuxtLink>
-
-                  <!-- SEZIONE MAIL ENGINE v2.4 INCOLONNATA -->
-                  <div class="mail-menu-block">
-                    <span class="mail-block-title">MAIL ENGINE v2.4</span>
-                    
-                    <NuxtLink to="/admin/mail" class="dropdown-item mail-link" @click="closeAllDropdowns">
-                      📧 DKP Mail Center
-                    </NuxtLink>
-                    
-                    <NuxtLink to="/admin/newsletter" class="dropdown-item mail-link" @click="closeAllDropdowns">
-                      📡 Newsletter & Contatti
-                    </NuxtLink>
-                    
-                    <NuxtLink to="/admin/autoresponder" class="dropdown-item mail-link" @click="closeAllDropdowns">
-                      🤖 Autoresponder Rules
-                    </NuxtLink>
-                  </div>
-
-                  <NuxtLink to="/admin/crawler" class="dropdown-item green-item" @click="closeAllDropdowns">
-                    🤖 DKP Crawler Engine
-                  </NuxtLink>
-                  
-                  <NuxtLink to="/admin/blog" class="dropdown-item green-item" @click="closeAllDropdowns">
-                    📄 Gestione DKP Blog
-                  </NuxtLink>
-                  
-                  <NuxtLink to="/admin/shop" class="dropdown-item green-item" @click="closeAllDropdowns">
-                    🛍️ Gestione DKP Shop
-                  </NuxtLink>
-                  
-                  <NuxtLink to="/admin/jobs" class="dropdown-item green-item" @click="closeAllDropdowns">
-                    💼 Gestione Job Hub
+                  <NuxtLink to="/admin" class="menu-item admin-control-item" @click="closeAllDropdowns">
+                    <span>🔒</span> Control Center Admin
                   </NuxtLink>
                 </div>
               </template>
 
               <div class="dropdown-divider"></div>
 
+              <!-- LOGOUT -->
               <button @click="handleLogout" class="menu-item logout-item">
                 <span>🚪</span> {{ t('logout') }}
               </button>
+
             </div>
           </Transition>
         </div>
 
-      </div>
+      </div> <!-- CHIUSURA CORRETTA DI RIGHT-ACTIONS -->
 
       <!-- BOTTONE TOGGLE HAMBURGER DKP MOBILE -->
       <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="mobile-hamburger-btn mobile-only" aria-label="Toggle Menu">
@@ -380,16 +354,6 @@ async function handleLogout() {
               <div class="mobile-section-divider"></div>
               <span class="mobile-section-title">🛡️ AMMINISTRAZIONE DKP</span>
               <NuxtLink to="/admin" class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Control Center Admin</NuxtLink>
-
-              <!-- MAIL ENGINE MOBILE -->
-              <NuxtLink to="/admin/mail" class="mobile-nav-link mail-link" @click="closeAllDropdowns">📧 DKP Mail Center v2.4</NuxtLink>
-              <NuxtLink to="/admin/newsletter" class="mobile-nav-link mail-link" @click="closeAllDropdowns">📡 Newsletter & Contatti</NuxtLink>
-              <NuxtLink to="/admin/autoresponder" class="mobile-nav-link mail-link" @click="closeAllDropdowns">🤖 Autoresponder Rules</NuxtLink>
-
-              <NuxtLink to="/admin/crawler" class="mobile-nav-link admin" @click="closeAllDropdowns">🤖 DKP Crawler Engine</NuxtLink>
-              <NuxtLink to="/admin/blog" class="mobile-nav-link admin" @click="closeAllDropdowns">📝 Gestione DKP Blog</NuxtLink>
-              <NuxtLink to="/admin/shop" class="mobile-nav-link admin" @click="closeAllDropdowns">🛍️ Gestione DKP Shop</NuxtLink>
-              <NuxtLink to="/admin/jobs" class="mobile-nav-link admin" @click="closeAllDropdowns">💼 Gestione Job Hub</NuxtLink>
             </template>
 
             <div class="mobile-section-divider"></div>
@@ -406,6 +370,9 @@ async function handleLogout() {
 </template>
 
 <style scoped>
+/* ==========================================================================
+   1. NAVBAR WRAPPER & CONTAINER
+   ========================================================================== */
 .navbar-wrapper {
   background: #020420;
   border-bottom: 2px solid #00dc82;
@@ -414,6 +381,7 @@ async function handleLogout() {
   z-index: 1000;
   padding: 0.6rem 1.5rem;
   box-shadow: 0 4px 20px rgba(0, 220, 130, 0.08);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .navbar-inner {
@@ -425,6 +393,9 @@ async function handleLogout() {
   gap: 1rem;
 }
 
+/* ==========================================================================
+   2. BRANDING & LOGO
+   ========================================================================== */
 .brand-section {
   display: flex;
   align-items: center;
@@ -451,24 +422,33 @@ async function handleLogout() {
   letter-spacing: -0.5px;
 }
 
-.brand-name { letter-spacing: -0.3px; }
-.pulse-highlight { color: #00dc82; }
+.brand-name { 
+  letter-spacing: -0.3px; 
+}
+
+.pulse-highlight { 
+  color: #00dc82; 
+}
 
 .version-tag {
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #00dc82;
   background: rgba(0, 220, 130, 0.1);
   border: 1px solid rgba(0, 220, 130, 0.3);
-  padding: 0.1rem 0.35rem;
+  padding: 0.15rem 0.4rem;
   border-radius: 4px;
+  letter-spacing: 0.03em;
 }
 
+/* ==========================================================================
+   3. NAV LINKS & DROPDOWN TRIGGERS
+   ========================================================================== */
 .nav-links {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 
@@ -476,10 +456,13 @@ async function handleLogout() {
   color: #cbd5e1;
   text-decoration: none;
   transition: color 0.15s ease;
+  padding: 0.2rem 0.4rem;
 }
 
 .nav-link-item:hover,
-.nav-link-item.router-link-active { color: #00dc82; }
+.nav-link-item.router-link-active { 
+  color: #00dc82; 
+}
 
 .submit-highlight {
   color: #00dc82 !important;
@@ -493,7 +476,10 @@ async function handleLogout() {
   user-select: none;
 }
 
-.dropdown-wrapper { position: relative; }
+.dropdown-wrapper { 
+  position: relative; 
+  display: inline-block;
+}
 
 .tools-btn {
   background: transparent;
@@ -502,27 +488,34 @@ async function handleLogout() {
   font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   transition: all 0.15s ease;
 }
 
 .tools-btn:hover,
 .tools-btn.active {
   color: #7dd3fc;
-  background: rgba(56, 189, 248, 0.1);
+  background: rgba(56, 189, 248, 0.12);
 }
 
 .arrow {
   font-size: 0.65rem;
   transition: transform 0.2s ease;
+  color: #64748b;
 }
 
-.arrow.rotated { transform: rotate(180deg); }
+.arrow.rotated { 
+  transform: rotate(180deg); 
+  color: #00dc82;
+}
 
+/* ==========================================================================
+   4. RIGHT ACTIONS & USER PILL
+   ========================================================================== */
 .right-actions {
   display: flex;
   align-items: center;
@@ -533,7 +526,7 @@ async function handleLogout() {
   background: #090d16;
   border: 1px solid #1e293b;
   color: #cbd5e1;
-  padding: 0.3rem 0.65rem;
+  padding: 0.35rem 0.7rem;
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 700;
@@ -541,7 +534,7 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  transition: border-color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .lang-btn:hover,
@@ -549,16 +542,6 @@ async function handleLogout() {
   border-color: #00dc82;
   color: #ffffff;
 }
-
-.github-link {
-  color: #94a3b8;
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  transition: color 0.15s ease;
-}
-
-.github-link:hover { color: #ffffff; }
 
 .btn-accedi {
   background: #00dc82;
@@ -580,7 +563,7 @@ async function handleLogout() {
 .user-pill-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   background: #090d16;
   border: 1px solid #1e293b;
   padding: 0.3rem 0.75rem;
@@ -600,8 +583,8 @@ async function handleLogout() {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #38bdf8;
-  color: #020420;
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -622,13 +605,16 @@ async function handleLogout() {
   color: #cbd5e1;
 }
 
+/* ==========================================================================
+   5. DROPDOWN MENUS (TOOLS, LANG & PROFILE V2.4-GOLD)
+   ========================================================================== */
 .menu-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
   background: #090d16;
   border: 1px solid #1e293b;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -638,30 +624,36 @@ async function handleLogout() {
 
 .tools-menu { left: 0; width: 270px; }
 .lang-menu { right: 0; width: 180px; max-height: 280px; overflow-y: auto; }
-.profile-menu { right: 0; width: 260px; }
+.profile-menu { right: 0; width: 250px; }
 
+/* HEADER DROPDOWN UTENTE */
 .profile-header {
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
   display: flex;
   flex-direction: column;
+  gap: 0.15rem;
 }
 
 .user-display-name {
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: #ffffff;
 }
 
 .user-role-badge {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.user-role-badge.admin {
   color: #00dc82;
-  font-weight: 600;
 }
 
 .dropdown-divider {
   height: 1px;
   background: #1e293b;
-  margin: 0.3rem 0;
+  margin: 0.35rem 0;
 }
 
 .dropdown-group {
@@ -674,65 +666,21 @@ async function handleLogout() {
   font-size: 0.65rem;
   font-weight: 800;
   color: #00dc82;
-  padding: 0.3rem 0.75rem 0.1rem;
-  letter-spacing: 0.5px;
+  padding: 0.35rem 0.6rem 0.15rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-/* Layout Blocco Menu Mail Engine */
-.mail-menu-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin: 0.4rem 0;
-  padding-left: 0.4rem;
-  border-left: 2px solid rgba(0, 220, 130, 0.4);
-}
-
-.mail-block-title {
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 0.5px;
-  padding: 0.2rem 0.4rem;
-  display: block;
-}
-
-.dropdown-item {
-  display: flex !important;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.dropdown-item.green-item {
-  color: #00dc82;
-}
-
-.dropdown-item.mail-link {
-  color: #38bdf8;
-}
-
-.dropdown-item:hover {
-  background: rgba(0, 220, 130, 0.1);
-  color: #00dc82 !important;
-  transform: translateX(3px);
-}
-
+/* ITEM GENERICI MENU */
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.75rem;
+  gap: 0.65rem;
+  padding: 0.55rem 0.65rem;
   color: #cbd5e1;
   text-decoration: none;
   font-size: 0.85rem;
+  font-weight: 600;
   border-radius: 6px;
   background: transparent;
   border: none;
@@ -740,14 +688,38 @@ async function handleLogout() {
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.menu-item.api-console-item {
+  color: #38bdf8;
+}
+
+.menu-item.api-console-item:hover {
   background: rgba(56, 189, 248, 0.1);
   color: #38bdf8;
 }
 
-.lang-item { font-size: 0.8rem; padding: 0.45rem 0.65rem; }
+.menu-item.admin-control-item {
+  color: #00dc82;
+  font-weight: 700;
+}
+
+.menu-item.admin-control-item:hover {
+  background: rgba(0, 220, 130, 0.12);
+  color: #00dc82;
+}
+
+.lang-item { 
+  font-size: 0.8rem; 
+  padding: 0.45rem 0.65rem; 
+}
 
 .lang-item.selected {
   color: #00dc82;
@@ -755,12 +727,30 @@ async function handleLogout() {
   background: rgba(0, 220, 130, 0.1);
 }
 
-.item-text strong { display: block; font-size: 0.85rem; color: #f8fafc; }
-.item-text small { display: block; font-size: 0.7rem; color: #64748b; }
+.item-text strong { 
+  display: block; 
+  font-size: 0.85rem; 
+  color: #f8fafc; 
+}
 
-.logout-item { color: #ef4444; }
-.logout-item:hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+.item-text small { 
+  display: block; 
+  font-size: 0.7rem; 
+  color: #64748b; 
+}
 
+.logout-item { 
+  color: #ef4444; 
+}
+
+.logout-item:hover { 
+  background: rgba(239, 68, 68, 0.1); 
+  color: #f87171; 
+}
+
+/* ==========================================================================
+   6. RESPONSIVE MOBILE DRAWER
+   ========================================================================== */
 .mobile-only { display: none; }
 
 @media (max-width: 900px) {
@@ -788,17 +778,25 @@ async function handleLogout() {
   .mobile-nav-list { display: flex; flex-direction: column; gap: 0.75rem; }
   .mobile-nav-link { color: #cbd5e1; text-decoration: none; font-size: 0.95rem; font-weight: 700; background: transparent; border: none; text-align: left; cursor: pointer; }
   .mobile-nav-link.highlight { color: #00dc82; }
-  .mobile-nav-link.admin { color: #00dc82; }
-  .mobile-nav-link.mail-link { color: #38bdf8; }
+  .mobile-nav-link.admin { color: #00dc82; font-weight: 800; }
   .mobile-nav-link.logout { color: #ef4444; }
   .mobile-section-divider { height: 1px; background: #1e293b; margin: 0.5rem 0; }
-  .mobile-section-title { color: #64748b; font-size: 0.75rem; font-weight: 800; }
+  .mobile-section-title { color: #64748b; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
   .full-width { width: 100%; margin-top: 0.5rem; }
   .m-user { color: #38bdf8; font-weight: 800; font-size: 0.9rem; }
 }
 
+/* ==========================================================================
+   7. TRANSITIONS
+   ========================================================================== */
 .fade-slide-enter-active,
-.fade-slide-leave-active { transition: all 0.15s ease-out; }
+.fade-slide-leave-active { 
+  transition: all 0.15s ease-out; 
+}
+
 .fade-slide-enter-from,
-.fade-slide-leave-to { opacity: 0; transform: translateY(-6px); }
+.fade-slide-leave-to { 
+  opacity: 0; 
+  transform: translateY(-6px); 
+}
 </style>
