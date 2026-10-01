@@ -46,9 +46,9 @@ const milestones: RoadmapItem[] = [
     id: 'm3',
     quarter: 'Q2',
     year: '2026',
-    title: 'AI Scanner v2.3 con Analisi Statica SAST',
+    title: 'AI Scanner v2.3 Pro con Analisi Statica SAST',
     description: 'Supporto esteso a 18+ linguaggi con rilevamento automatico secret-leak, SQL Injection e antipattern.',
-    status: 'in-progress',
+    status: 'completed',
     module: 'AI Code Scanner',
     xpReward: '+30 XP'
   },
@@ -58,7 +58,7 @@ const milestones: RoadmapItem[] = [
     year: '2026',
     title: 'DKP Native SDK (Node.js, Python, Go)',
     description: 'Pacchetti SDK ufficiali pubblicati su npm, PyPI e pkg.go.dev con client tipizzato e rate-limiting integrato.',
-    status: 'in-progress',
+    status: 'completed',
     module: 'Developer Tools'
   },
   {
@@ -67,7 +67,7 @@ const milestones: RoadmapItem[] = [
     year: '2026',
     title: 'Marketplace di Integrazioni & Webhook API',
     description: 'Possibilità di collegare DKP a GitHub Actions, GitLab CI, Slack e Discord tramite pipeline ad eventi.',
-    status: 'planned',
+    status: 'completed',
     module: 'API Ecosystem'
   },
   {

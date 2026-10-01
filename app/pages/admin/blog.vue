@@ -4,10 +4,7 @@ import { ref, onMounted } from 'vue'
 
 definePageMeta({ middleware: 'admin-only' })
 
-// Active Tab ('categories' | 'articles')
-const activeTab = ref<'categories' | 'articles'>('categories')
-
-// --- STATI CATEGORIE & SOTTOCATEGORIE (REAL DB) ---
+// --- STRUTTURA DATI TAXONOMY & DB ---
 interface Subcategory {
   id: number
   categoryId: number
@@ -30,28 +27,41 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-// Modal Categoria
+// Presets Emojis & Colori v2.4-GOLD
+const presetEmojis = [
+  '💻', '⚙️', '⚡', '🧠', '🛡️', '🔒',
+  // Infrastructure & AI
+  '🤖', '☁️', '🐳', '🌐', '📦', '🚀',
+  // Low-Level, Security & Data
+  '🖲️', '🔑', '📊', '🧬', '🎯', '🛠️',
+  // News & Highlights
+  '🔥', '✨', '💡', '📌', '🏆', '📰'
+]
+
+const presetColors = ['#00dc82', '#38bdf8', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4']
+
+// Modal Form Categoria
 const isCatModalOpen = ref(false)
 const catForm = ref({
   id: null as number | null,
   name: '',
   slug: '',
   description: '',
-  icon: 'i-heroicons-folder',
-  color: '#10B981',
+  icon: '🔥',
+  color: '#00dc82'
 })
 
-// Modal Sottocategoria
+// Modal Form Sottocategoria
 const isSubModalOpen = ref(false)
 const subForm = ref({
   id: null as number | null,
   categoryId: null as number | null,
+  categoryName: '',
   name: '',
-  slug: '',
+  slug: ''
 })
 
-const presetColors = ['#10B981', '#F59E0B', '#06B6D4', '#8B5CF6', '#EC4899', '#EF4444', '#3B82F6']
-
+// Generatore Automatico Slug
 const autoSlug = (text: string) => {
   return text
     .toLowerCase()
@@ -69,36 +79,35 @@ const handleSubNameInput = () => {
   if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name)
 }
 
-// Fetch Categorie dal DB
+// Fetch Categorie dal DB Neon
 const fetchCategories = async () => {
   isLoading.value = true
   errorMessage.value = ''
   try {
     const res: any = await $fetch('/api/blog/categories')
     if (res.success) {
-      categories.value = res.data
+      categories.value = res.data || []
     }
   } catch (err: any) {
-    errorMessage.value = err.statusMessage || 'Errore caricamento categorie'
+    errorMessage.value = err.statusMessage || 'Errore durante il caricamento delle categorie'
   } finally {
     isLoading.value = false
   }
 }
 
-// Salva Categoria
+// Salva Categoria (Creazione o Modifica)
 const saveCategory = async () => {
   if (!catForm.value.name || !catForm.value.slug) return
   isLoading.value = true
   try {
     const res: any = await $fetch('/api/admin/blog/categories', {
       method: 'POST',
-      body: { type: 'category', ...catForm.value },
+      body: { type: 'category', ...catForm.value }
     })
     if (res.success) {
-      successMessage.value = catForm.value.id ? 'Categoria aggiornata!' : 'Categoria creata!'
+      showSuccess(catForm.value.id ? 'Categoria aggiornata con successo!' : 'Nuova categoria creata!')
       isCatModalOpen.value = false
       await fetchCategories()
-      setTimeout(() => (successMessage.value = ''), 3000)
     }
   } catch (err: any) {
     errorMessage.value = err.statusMessage || 'Errore salvataggio categoria'
@@ -107,20 +116,19 @@ const saveCategory = async () => {
   }
 }
 
-// Salva Sottocategoria
+// Salva Sottocategoria (Creazione o Modifica)
 const saveSubcategory = async () => {
   if (!subForm.value.name || !subForm.value.slug || !subForm.value.categoryId) return
   isLoading.value = true
   try {
     const res: any = await $fetch('/api/admin/blog/categories', {
       method: 'POST',
-      body: { type: 'subcategory', ...subForm.value },
+      body: { type: 'subcategory', ...subForm.value }
     })
     if (res.success) {
-      successMessage.value = subForm.value.id ? 'Sottocategoria aggiornata!' : 'Sottocategoria creata!'
+      showSuccess(subForm.value.id ? 'Sottocategoria aggiornata!' : 'Sottocategoria aggiunta!')
       isSubModalOpen.value = false
       await fetchCategories()
-      setTimeout(() => (successMessage.value = ''), 3000)
     }
   } catch (err: any) {
     errorMessage.value = err.statusMessage || 'Errore salvataggio sottocategoria'
@@ -129,26 +137,27 @@ const saveSubcategory = async () => {
   }
 }
 
-// Eliminazione Categoria/Sottocategoria
+// Eliminazione Categoria / Sottocategoria
 const deleteItem = async (id: number, type: 'category' | 'subcategory') => {
-  if (!confirm(`Sei sicuro di voler eliminare questo elemento?`)) return
+  const targetLabel = type === 'category' ? 'questa categoria (e relative sottocategorie)' : 'questa sottocategoria'
+  if (!confirm(`Sei sicuro di voler eliminare ${targetLabel}?`)) return
   isLoading.value = true
   try {
     const res: any = await $fetch(`/api/admin/blog/categories?id=${id}&type=${type}`, {
-      method: 'DELETE',
+      method: 'DELETE'
     })
     if (res.success) {
-      successMessage.value = 'Eliminato con successo!'
+      showSuccess('Elemento eliminato con successo!')
       await fetchCategories()
-      setTimeout(() => (successMessage.value = ''), 3000)
     }
   } catch (err: any) {
-    errorMessage.value = err.statusMessage || "Errore eliminazione"
+    errorMessage.value = err.statusMessage || 'Errore durante l\'eliminazione'
   } finally {
     isLoading.value = false
   }
 }
 
+// Gestione Modali
 const openCatModal = (cat: Category | null = null) => {
   if (cat) {
     catForm.value = {
@@ -156,17 +165,18 @@ const openCatModal = (cat: Category | null = null) => {
       name: cat.name,
       slug: cat.slug,
       description: cat.description || '',
-      icon: cat.icon || 'i-heroicons-folder',
-      color: cat.color || '#10B981',
+      icon: cat.icon || '🏷️',
+      color: cat.color || '#00dc82'
     }
   } else {
-    catForm.value = { id: null, name: '', slug: '', description: '', icon: 'i-heroicons-folder', color: '#10B981' }
+    catForm.value = { id: null, name: '', slug: '', description: '', icon: '🔥', color: '#00dc82' }
   }
   isCatModalOpen.value = true
 }
 
-const openSubModal = (categoryId: number, sub: Subcategory | null = null) => {
-  subForm.value.categoryId = categoryId
+const openSubModal = (category: Category, sub: Subcategory | null = null) => {
+  subForm.value.categoryId = category.id
+  subForm.value.categoryName = category.name
   if (sub) {
     subForm.value.id = sub.id
     subForm.value.name = sub.name
@@ -179,32 +189,47 @@ const openSubModal = (categoryId: number, sub: Subcategory | null = null) => {
   isSubModalOpen.value = true
 }
 
-// --- STATI MOCK ARTICOLI ---
+const showSuccess = (msg: string) => {
+  successMessage.value = msg
+  setTimeout(() => (successMessage.value = ''), 3500)
+}
+
+// --- STATI ARTICOLI & MODERAZIONE ---
 const posts = ref([
-  { id: 1, title: 'Lancio Ufficiale DevKernelPulse v1.0', category: 'Release Ufficiali', views: 1420, date: '2026-09-20' },
-  { id: 2, title: 'Proof of Code: Il futuro della meritocrazia dev', category: 'Tech & Kernel', views: 890, date: '2026-09-22' }
+  { id: 1, title: 'Lancio Ufficiale DevKernelPulse v2.4-GOLD', categoryId: 1, views: 1420, date: '2026-09-28', status: 'published' },
+  { id: 2, title: 'Guida completa a Vault & Hashing Avanzato', categoryId: 2, views: 890, date: '2026-09-25', status: 'published' },
+  { id: 3, title: 'Analisi Vulnerabilità AI Model Injection', categoryId: null, views: 0, date: '2026-10-01', status: 'pending_vault' }
 ])
 
 const newArticle = ref({
   title: '',
-  category: '',
+  categoryId: '',
   author: 'Alessandro De Paola',
   excerpt: '',
   content: ''
 })
 
 function publishArticle() {
-  if (!newArticle.value.title) return
+  if (!newArticle.value.title || !newArticle.value.categoryId) return
   posts.value.unshift({
     id: Date.now(),
     title: newArticle.value.title,
-    category: newArticle.value.category || 'Generale',
+    categoryId: Number(newArticle.value.categoryId),
     views: 0,
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    status: 'published'
   })
   newArticle.value.title = ''
   newArticle.value.excerpt = ''
   newArticle.value.content = ''
+  newArticle.value.categoryId = ''
+  showSuccess('Articolo pubblicato con successo!')
+}
+
+const getCategoryName = (id: number | null) => {
+  if (!id) return 'Non Assegnata'
+  const cat = categories.value.find(c => c.id === id)
+  return cat ? cat.name : 'Non Assegnata'
 }
 
 onMounted(() => {
@@ -214,159 +239,185 @@ onMounted(() => {
 
 <template>
   <div class="admin-page-container">
-    <!-- Header Section -->
+    <!-- Header Admin Control Center -->
     <div class="header-section">
-      <div class="badge">DKP v2.4-GOLD ADMIN CONTROL CENTER</div>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        DKP v2.4-GOLD TAXONOMY & BLOG SYSTEM
+      </div>
       <h1>Gestione <span class="highlight">DKP Blog & Taxonomy</span></h1>
-      <p class="subtitle">Amministra le categorie sul Database Neon e pubblica gli articoli dell'ecosistema.</p>
+      <p class="subtitle">Amministra le categorie sul Database Neon, assegna icone/badge e pubblica gli articoli dell'ecosistema.</p>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="tab-nav">
-      <button 
-        @click="activeTab = 'categories'" 
-        :class="['tab-btn', { active: activeTab === 'categories' }]"
-      >
-        📂 Gestione Categorie & Taxonomy
-      </button>
-      <button 
-        @click="activeTab = 'articles'" 
-        :class="['tab-btn', { active: activeTab === 'articles' }]"
-      >
-        ✍️ Articoli & Moderazione
-      </button>
-    </div>
-
-    <!-- Alerts Feedback -->
+    <!-- Feedback Alerts -->
     <div v-if="successMessage" class="alert success">✅ {{ successMessage }}</div>
     <div v-if="errorMessage" class="alert error">⚠️ {{ errorMessage }}</div>
 
-    <!-- ================= TAB 1: CATEGORIE REAL DB ================= -->
-    <div v-if="activeTab === 'categories'" class="tab-content">
-      <div class="top-bar">
-        <h3>Categorie attive sul DB Neon ({{ categories.length }})</h3>
-        <button @click="openCatModal()" class="btn-primary">+ Nuova Categoria</button>
-      </div>
+    <!-- MAIN HYBRID GRID (30% / 70%) -->
+    <div class="hybrid-grid">
+      
+      <!-- ================= COLONNA SINISTRA (30%): CATEGORIE ================= -->
+      <div class="sidebar-panel">
+        <div class="sidebar-header">
+          <h3 class="flex items-center gap-2">
+            <UIcon name="i-heroicons-folder-open" class="text-xl text-[#00dc82]" />
+            Categorie ({{ categories.length }})
+          </h3>
+          <button @click="openCatModal()" class="btn-primary btn-sm">+ Nuova</button>
+        </div>
 
-      <div v-if="isLoading && !categories.length" class="loading-state">
-        Caricamento taxonomy dal database in corso...
-      </div>
-
-      <div v-else class="categories-grid">
-        <div v-for="cat in categories" :key="cat.id" class="cat-card">
-          <div class="cat-card-header" :style="{ borderLeftColor: cat.color || '#10B981' }">
-            <div>
-              <h4 class="cat-title">{{ cat.name }}</h4>
-              <span class="cat-slug">/{{ cat.slug }}</span>
+        <div v-if="isLoading && !categories.length" class="loading-state">
+          Caricamento...
+        </div>
+        <div v-else-if="!categories.length" class="empty-state">
+          Nessuna categoria.
+        </div>
+        
+        <div v-else class="compact-cat-list">
+          <div v-for="cat in categories" :key="cat.id" class="compact-cat-item">
+            <div class="cat-item-top">
+              <div class="cat-info-head">
+                <div 
+                  class="cat-icon-badge mini" 
+                  :style="{ backgroundColor: `${cat.color || '#00dc82'}20`, color: cat.color || '#00dc82', borderColor: `${cat.color || '#00dc82'}40` }"
+                >
+                  <span class="text-base">{{ cat.icon || '🏷️' }}</span>
+                </div>
+                <div>
+                  <h4 class="cat-title-sm">{{ cat.name }}</h4>
+                  <span class="cat-slug-sm">/{{ cat.slug }}</span>
+                </div>
+              </div>
+              <div class="actions">
+                <button @click="openCatModal(cat)" class="btn-icon" title="Modifica">✏</button>
+                <button @click="deleteItem(cat.id, 'category')" class="btn-icon danger" title="Elimina">🗑️</button>
+              </div>
             </div>
-            <div class="actions">
-              <button @click="openCatModal(cat)" class="btn-icon" title="Modifica">✏️</button>
-              <button @click="deleteItem(cat.id, 'category')" class="btn-icon danger" title="Elimina">🗑️</button>
-            </div>
-          </div>
-
-          <p class="cat-desc">{{ cat.description || 'Nessuna descrizione presente.' }}</p>
-
-          <!-- Sottocategorie Section -->
-          <div class="subcategories-box">
-            <div class="sub-header">
-              <span>Sottocategorie ({{ cat.subcategories?.length || 0 }})</span>
-              <button @click="openSubModal(cat.id)" class="btn-link">+ Aggiungi</button>
-            </div>
-            <div class="sub-badges">
-              <span v-for="sub in cat.subcategories" :key="sub.id" class="sub-badge">
-                {{ sub.name }}
-                <button @click="openSubModal(cat.id, sub)" class="sub-edit">✏️</button>
-                <button @click="deleteItem(sub.id, 'subcategory')" class="sub-del">×</button>
-              </span>
-              <span v-if="!cat.subcategories?.length" class="empty-sub">Nessuna sottocategoria.</span>
+            
+            <!-- Sottocategorie Compatte -->
+            <div class="subcategories-mini">
+              <div class="sub-header-mini">
+                <span>Sub ({{ cat.subcategories?.length || 0 }})</span>
+                <button @click="openSubModal(cat)" class="btn-link">+ Aggiungi</button>
+              </div>
+              <div class="sub-badges">
+                <span v-for="sub in cat.subcategories" :key="sub.id" class="sub-badge mini-badge">
+                  {{ sub.name }}
+                  <button @click="deleteItem(sub.id, 'subcategory')" class="sub-del-mini" title="Elimina">×</button>
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- ================= TAB 2: ARTICOLI & MODERAZIONE ================= -->
-    <div v-if="activeTab === 'articles'" class="tab-content">
-      <div class="admin-grid">
+      <!-- ================= COLONNA DESTRA (70%): ARTICOLI & MODERAZIONE ================= -->
+      <div class="main-panel">
+        
         <!-- Form Pubblicazione -->
-        <div class="main-panel">
-          <div class="card">
-            <h3>✍️ Pubblica Nuovo Articolo</h3>
-            <form @submit.prevent="publishArticle" class="form-stack">
+        <div class="card mb-6">
+          <h3 class="card-title"><span class="text-xl">✍️</span> Pubblica Nuovo Articolo</h3>
+          <form @submit.prevent="publishArticle" class="form-stack">
+            <div class="form-group">
+              <label>Titolo Articolo *</label>
+              <input v-model="newArticle.title" type="text" placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4" required />
+            </div>
+
+            <div class="form-row">
               <div class="form-group">
-                <label>Titolo Articolo *</label>
-                <input v-model="newArticle.title" type="text" placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4" required />
+                <label>Categoria *</label>
+                <select v-model="newArticle.categoryId" required>
+                  <option value="" disabled>Seleziona una categoria</option>
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                    {{ cat.icon || '🏷️' }} {{ cat.name }}
+                  </option>
+                </select>
               </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Categoria</label>
-                  <select v-model="newArticle.category">
-                    <option value="" disabled>Seleziona una categoria</option>
-                    <option v-for="cat in categories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Autore</label>
-                  <input v-model="newArticle.author" type="text" readonly />
-                </div>
-              </div>
-
               <div class="form-group">
-                <label>Estratto Breve</label>
-                <textarea v-model="newArticle.excerpt" rows="2" placeholder="Sintesi per le anteprime..."></textarea>
+                <label>Autore</label>
+                <input v-model="newArticle.author" type="text" readonly />
               </div>
+            </div>
 
-              <button type="submit" class="btn-submit">🚀 Pubblica nel Blog DKP</button>
-            </form>
-          </div>
+            <div class="form-group">
+              <label>Estratto Breve</label>
+              <textarea v-model="newArticle.excerpt" rows="2" placeholder="Sintesi per le anteprime nel blog..."></textarea>
+            </div>
 
-          <!-- Tabella Articoli Pubblicati -->
-          <div class="card table-card">
-            <h3>📚 Articoli Pubblicati ({{ posts.length }})</h3>
-            <table class="dkp-table">
-              <thead>
-                <tr>
-                  <th>Titolo</th>
-                  <th>Categoria</th>
-                  <th>Data</th>
-                  <th>Visualizzazioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="post in posts" :key="post.id">
-                  <td class="font-bold">{{ post.title }}</td>
-                  <td><span class="cat-badge">{{ post.category }}</span></td>
-                  <td>{{ post.date }}</td>
-                  <td>👁️ {{ post.views }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+            <button type="submit" class="btn-submit">🚀 Pubblica nel Blog DKP</button>
+          </form>
+        </div>
+
+        <!-- Coda di Moderazione & Tabella Articoli -->
+        <div class="card table-card">
+          <h3 class="card-title">📚 Gestione Pubblicazioni ({{ posts.length }})</h3>
+          <table class="dkp-table">
+            <thead>
+              <tr>
+                <th>Titolo</th>
+                <th>Categoria</th>
+                <th>Status</th>
+                <th>Data</th>
+                <th>Views</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="post in posts" :key="post.id" :class="{'bg-yellow-500/5': post.status === 'pending_vault'}">
+                <td class="font-bold">{{ post.title }}</td>
+                <td><span class="cat-badge">{{ getCategoryName(post.categoryId) }}</span></td>
+                <td>
+                  <span v-if="post.status === 'published'" class="status-badge success">Online</span>
+                  <span v-if="post.status === 'pending_vault'" class="status-badge warning">DKP Vault (In Analisi)</span>
+                </td>
+                <td>{{ post.date }}</td>
+                <td>👁️ {{ post.views }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- MODAL CATEGORIA -->
+    <!-- ================= MODALE CATEGORIA ================= -->
     <div v-if="isCatModalOpen" class="modal-backdrop">
       <div class="modal-box">
         <h3>{{ catForm.id ? '✏️ Modifica Categoria' : '➕ Nuova Categoria' }}</h3>
-        <div class="form-stack">
+        
+        <div class="form-stack mt-4">
           <div class="form-group">
-            <label>Nome Categoria</label>
-            <input v-model="catForm.name" @input="handleCatNameInput" type="text" placeholder="es. Cybersecurity" />
+            <label>Nome Categoria *</label>
+            <input v-model="catForm.name" @input="handleCatNameInput" type="text" placeholder="Es. Cybersecurity & Vault" required />
           </div>
+
           <div class="form-group">
-            <label>URL Slug</label>
-            <input v-model="catForm.slug" type="text" placeholder="es. cybersecurity" />
+            <label>URL Slug *</label>
+            <input v-model="catForm.slug" type="text" placeholder="cybersecurity-vault" required />
           </div>
+
           <div class="form-group">
             <label>Descrizione</label>
-            <textarea v-model="catForm.description" rows="2"></textarea>
+            <textarea v-model="catForm.description" rows="2" placeholder="Breve panoramica della categoria..."></textarea>
           </div>
+
+          <!-- Selettore Icona Emoji -->
           <div class="form-group">
-            <label>Colore Badge</label>
+            <label>Seleziona Icona Emoji</label>
+            <div class="icons-grid">
+              <button 
+                v-for="emoji in presetEmojis" 
+                :key="emoji"
+                type="button"
+                @click="catForm.icon = emoji"
+                :class="['icon-btn text-xl', { active: catForm.icon === emoji }]"
+              >
+                {{ emoji }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Selettore Colore Accent -->
+          <div class="form-group">
+            <label>Colore Badge & Accent</label>
             <div class="color-picker">
               <span 
                 v-for="color in presetColors" 
@@ -375,96 +426,179 @@ onMounted(() => {
                 :style="{ backgroundColor: color }"
                 :class="['color-dot', { active: catForm.color === color }]"
               ></span>
+              <input v-model="catForm.color" type="color" class="color-input" />
             </div>
           </div>
+
+          <!-- Anteprima Badge Live -->
+          <div class="badge-preview-box">
+            <span class="preview-label">Anteprima Badge:</span>
+            <span 
+              class="preview-badge"
+              :style="{ backgroundColor: `${catForm.color}20`, color: catForm.color, borderColor: `${catForm.color}40` }"
+            >
+              <span>{{ catForm.icon }}</span>
+              {{ catForm.name || 'Nome Categoria' }}
+            </span>
+          </div>
         </div>
+
         <div class="modal-footer">
           <button @click="isCatModalOpen = false" class="btn-cancel">Annulla</button>
-          <button @click="saveCategory" class="btn-primary">Salva Categoria</button>
+          <button @click="saveCategory" class="btn-primary" :disabled="isLoading">
+            {{ isLoading ? 'Salvataggio...' : 'Salva Categoria' }}
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL SOTTOCATEGORIA -->
+    <!-- ================= MODALE SOTTOCATEGORIA ================= -->
     <div v-if="isSubModalOpen" class="modal-backdrop">
       <div class="modal-box">
-        <h3>{{ subForm.id ? '✏️ Modifica Sottocategoria' : '➕ Nuova Sottocategoria' }}</h3>
+        <h3>{{ subForm.id ? '✏ Modifica Sottocategoria' : '➕ Nuova Sottocategoria' }}</h3>
+        <p class="modal-sub-info">Categoria Padre: <strong class="highlight">{{ subForm.categoryName }}</strong></p>
+
         <div class="form-stack">
           <div class="form-group">
-            <label>Nome Sottocategoria</label>
-            <input v-model="subForm.name" @input="handleSubNameInput" type="text" placeholder="es. PenTesting" />
+            <label>Nome Sottocategoria *</label>
+            <input v-model="subForm.name" @input="handleSubNameInput" type="text" placeholder="Es. Penetration Testing" required />
           </div>
+
           <div class="form-group">
-            <label>URL Slug</label>
-            <input v-model="subForm.slug" type="text" placeholder="es. pentesting" />
+            <label>URL Slug *</label>
+            <input v-model="subForm.slug" type="text" placeholder="penetration-testing" required />
           </div>
         </div>
+
         <div class="modal-footer">
           <button @click="isSubModalOpen = false" class="btn-cancel">Annulla</button>
-          <button @click="saveSubcategory" class="btn-primary">Salva Sottocategoria</button>
+          <button @click="saveSubcategory" class="btn-primary" :disabled="isLoading">
+            {{ isLoading ? 'Salvataggio...' : 'Salva Sottocategoria' }}
+          </button>
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <style scoped>
-.admin-page-container { padding: 2rem; background: #020420; min-height: 90vh; color: #f8fafc; font-family: sans-serif; }
-.header-section { margin-bottom: 1.5rem; }
-.badge { display: inline-block; background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.75rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; border: 1px solid rgba(0, 220, 130, 0.3); margin-bottom: 0.5rem; }
+.admin-page-container {
+  padding: 2rem;
+  background-color: #020420;
+  min-height: 100vh;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.header-section { margin-bottom: 2rem; }
+.badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: rgba(0, 220, 130, 0.12); color: #00dc82; font-size: 0.75rem;
+  font-weight: 800; padding: 0.3rem 0.75rem; border-radius: 9999px;
+  border: 1px solid rgba(0, 220, 130, 0.3); margin-bottom: 0.75rem; letter-spacing: 0.05em;
+}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #00dc82; box-shadow: 0 0 8px #00dc82; }
+.header-section h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.5rem 0; letter-spacing: -0.02em; }
 .highlight { color: #00dc82; }
-.subtitle { color: #94a3b8; font-size: 0.9rem; }
+.subtitle { color: #94a3b8; font-size: 0.9rem; margin: 0; }
 
-/* Tabs */
-.tab-nav { display: flex; gap: 0.5rem; border-bottom: 1px solid #1e293b; margin-bottom: 1.5rem; }
-.tab-btn { background: transparent; border: none; color: #94a3b8; padding: 0.75rem 1.25rem; font-weight: 700; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-.tab-btn.active { color: #00dc82; border-bottom-color: #00dc82; background: rgba(0, 220, 130, 0.05); }
+.hybrid-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+@media (max-width: 1024px) {
+  .hybrid-grid { grid-template-columns: 1fr; }
+}
 
-/* Alerts */
-.alert { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; }
-.alert.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.alert.error { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.sidebar-panel {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.sidebar-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.25rem; border-bottom: 1px solid #1e293b; padding-bottom: 1rem;
+}
+.sidebar-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }
 
-/* Top bar & Grid */
-.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.categories-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
-.cat-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; }
-.cat-card-header { display: flex; justify-content: space-between; align-items: flex-start; border-left: 4px solid #00dc82; padding-left: 0.75rem; margin-bottom: 0.75rem; }
-.cat-title { margin: 0; font-size: 1.1rem; color: #fff; }
-.cat-slug { font-size: 0.75rem; color: #64748b; font-family: monospace; }
-.cat-desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 1rem; min-height: 2.5rem; }
+.compact-cat-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.compact-cat-item {
+  background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 0.85rem;
+  transition: border-color 0.2s;
+}
+.compact-cat-item:hover { border-color: #334155; }
+.cat-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+.cat-info-head { display: flex; align-items: center; gap: 0.6rem; }
+.cat-title-sm { margin: 0; font-size: 0.95rem; color: #fff; font-weight: 600; }
+.cat-slug-sm { font-size: 0.7rem; color: #64748b; font-family: monospace; }
+.cat-icon-badge.mini { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; }
 
-/* Actions & Subcategories */
-.actions { display: flex; gap: 0.25rem; }
-.btn-icon { background: #1e293b; border: none; padding: 0.25rem 0.4rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-.btn-icon.danger:hover { background: rgba(239, 68, 68, 0.3); }
-.subcategories-box { border-top: 1px solid #1e293b; padding-top: 0.75rem; margin-top: 0.5rem; }
-.sub-header { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; }
-.btn-link { background: none; border: none; color: #00dc82; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
-.sub-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.sub-badge { background: #020420; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.3rem; }
-.sub-edit, .sub-del { background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.65rem; padding: 0; }
-.sub-del:hover { color: #ef4444; }
-.empty-sub { font-size: 0.75rem; color: #475569; font-style: italic; }
+.subcategories-mini { border-top: 1px solid #1e293b; padding-top: 0.5rem; }
+.sub-header-mini { display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-bottom: 0.4rem; font-weight: 700; }
+.mini-badge { padding: 0.15rem 0.4rem; font-size: 0.65rem; }
+.sub-del-mini { background: none; border: none; color: #ef4444; margin-left: 0.2rem; cursor: pointer; padding: 0; }
 
-/* Form & Tables */
-.card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.alert { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 600; }
+.alert.success { background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
+.alert.error { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+.card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; }
+.card-title { margin: 0 0 1.25rem 0; font-size: 1.25rem; font-weight: 700; color: #fff; }
+
 .form-stack { display: flex; flex-direction: column; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.form-group label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.65rem;
+  border-radius: 8px; outline: none; font-size: 0.875rem; box-sizing: border-box;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #00dc82; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.form-group input, .form-group select, .form-group textarea { width: 100%; background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.65rem; border-radius: 6px; outline: none; }
-.form-group input:focus { border-color: #00dc82; }
-.btn-primary, .btn-submit { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.65rem 1.2rem; border-radius: 8px; cursor: pointer; }
-.dkp-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
-.dkp-table th, .dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; }
-.dkp-table th { color: #64748b; font-size: 0.75rem; text-transform: uppercase; }
-.cat-badge { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
 
-/* Modal */
-.modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(2, 4, 32, 0.85); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal-box { background: #090d16; border: 1px solid #1e293b; width: 100%; max-width: 480px; border-radius: 12px; padding: 1.5rem; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem; }
-.btn-cancel { background: transparent; border: none; color: #94a3b8; cursor: pointer; }
-.color-picker { display: flex; gap: 0.5rem; }
-.color-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; opacity: 0.6; border: 2px solid transparent; }
-.color-dot.active { opacity: 1; border-color: #fff; transform: scale(1.1); }
+.btn-primary, .btn-submit {
+  background: #00dc82; color: #020420; font-weight: 800; border: none;
+  padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; transition: opacity 0.2s;
+}
+.btn-primary:hover, .btn-submit:hover { opacity: 0.9; }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+.btn-link { background: none; border: none; color: #00dc82; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
+.btn-link:hover { text-decoration: underline; }
+.actions { display: flex; gap: 0.3rem; }
+.btn-icon { background: #1e293b; border: none; padding: 0.3rem 0.5rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+.btn-icon.danger:hover { background: rgba(239, 68, 68, 0.3); }
+.btn-cancel { background: transparent; border: none; color: #94a3b8; cursor: pointer; font-weight: 600; }
+
+.dkp-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
+.dkp-table th, .dkp-table td { padding: 0.85rem; border-bottom: 1px solid #1e293b; }
+.dkp-table th { color: #64748b; font-size: 0.75rem; text-transform: uppercase; }
+.cat-badge { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.2rem 0.55rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+.status-badge { padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+.status-badge.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.status-badge.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+.icons-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; background: #020420; padding: 0.5rem; border-radius: 8px; border: 1px solid #1e293b; }
+.icon-btn { background: transparent; border: 1px solid transparent; color: #64748b; padding: 0.4rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.icon-btn:hover { background: #0d1322; }
+.icon-btn.active { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; }
+
+.color-picker { display: flex; align-items: center; gap: 0.5rem; }
+.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; opacity: 0.5; border: 2px solid transparent; transition: all 0.2s; }
+.color-dot.active { opacity: 1; border-color: #fff; transform: scale(1.15); }
+.color-input { width: 28px !important; height: 28px !important; padding: 0 !important; border: none !important; background: transparent !important; cursor: pointer; }
+
+.sub-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.sub-badge { background: #020420; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.35rem; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+.modal-box { background: #090d16; border: 1px solid #1e293b; width: 100%; max-width: 480px; border-radius: 14px; padding: 1.5rem; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); }
+.modal-box h3 { margin: 0 0 0.5rem 0; color: #fff; font-size: 1.2rem; }
+.modal-sub-info { font-size: 0.8rem; color: #94a3b8; margin-bottom: 1.25rem; }
+.badge-preview-box { background: #020420; padding: 0.75rem; border-radius: 8px; border: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between; }
+.preview-label { font-size: 0.75rem; color: #64748b; font-family: monospace; }
+.preview-badge { padding: 0.3rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid transparent; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
 </style>

@@ -101,7 +101,7 @@ function scrollToSection(id: string) {
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🛡️</span>
-                <h3>Proof of Code (Vault)</h3>
+                <h3>Proof of Code (Vault) v2.3 Pro</h3>
               </div>
               <p>Consente di generare un'impronta digitale immutabile del tuo sorgente o algoritmo. Utile per dimostrare la titolarità intellettuale del codice prima del rilascio pubblico.</p>
             </div>
@@ -117,7 +117,7 @@ function scrollToSection(id: string) {
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">💻</span>
-                <h3>Terminal Web Shell</h3>
+                <h3>Terminal Web Shell v2.3</h3>
               </div>
               <p>Un ambiente CLI in-browser completamente simulato basato su xterm.js per interrogare l'API DKP, eseguire comandi rapido ed emulare scenari devops.</p>
             </div>
@@ -125,10 +125,19 @@ function scrollToSection(id: string) {
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🧠</span>
-                <h3>Neural Playground</h3>
+                <h3>Neural Playground v2.3</h3>
               </div>
               <p>Ambiente di testing sandbox per ottimizzare prompt per la generazione di codice, il refactoring automatico e l'audit logico delle funzioni.</p>
             </div>
+			
+			<div class="module-box">
+              <div class="mod-header">
+                <span class="mod-icon">⚡</span>
+                <h3>DKP CLI Toolkit v.2.4-Gold</h3>
+              </div>
+              <p>L'interfaccia a riga di comando nativa per sviluppatori. Lancia scansioni AI, notarizza codice sul Vault e interagisci con le API direttamente dal tuo terminale.</p>
+            </div>
+			
           </div>
         </section>
 
