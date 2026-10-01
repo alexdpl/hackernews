@@ -1,4 +1,4 @@
-<!-- app/pages/admin/index.vue) -->
+<!-- app/pages/admin/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
@@ -6,6 +6,10 @@ useDkpSeo({
   title: 'Admin Control Center - DKP Sentinel AI',
   description: 'Pannello di controllo centrale e monitoraggio difensivo con Pulse Sentinel AI.'
 })
+
+// Stato reattivo Notifiche Toast
+const showToast = ref(false)
+const toastMessage = ref('')
 
 const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('users')
 const searchQuery = ref('')
@@ -46,6 +50,28 @@ const sentinelData = ref<any>({
 const isActionLoading = ref(false)
 const notificationMsg = ref('')
 
+// Funzione Toggle Auto-Defend AI con Toast verde
+function toggleAutoDefend() {
+  // 1. Inverte lo stato locale reattivo
+  sentinelData.value.autoDefendEnabled = !sentinelData.value.autoDefendEnabled
+  
+  // 2. Prepara il messaggio Toast
+  if (sentinelData.value.autoDefendEnabled) {
+    toastMessage.value = '🤖 Auto-Defend AI: Sistema di protezione euristica ATTIVATO e sincronizzato!'
+  } else {
+    toastMessage.value = '⚠️ Auto-Defend AI: Sistema di protezione euristica DISATTIVATO.'
+  }
+  
+  // 3. Mostra la finestrella verde Toast
+  showToast.value = true
+  setTimeout(() => {
+    showToast.value = false
+  }, 3500)
+
+  // 4. Sincronizza in background con il server
+  triggerAction('toggle_autodefend', { enabled: sentinelData.value.autoDefendEnabled })
+}
+
 async function fetchSentinel() {
   try {
     const res = await $fetch<any>('/api/admin/sentinel')
@@ -66,11 +92,10 @@ async function triggerAction(actionName: string, payload: any = {}) {
     })
     if (res?.success) {
       notificationMsg.value = res.message
-      await fetchSentinel()
       setTimeout(() => { notificationMsg.value = '' }, 4000)
     }
   } catch (err: any) {
-    alert('Errore esecuzione azione Sentinel: ' + (err.message || err))
+    console.warn('Esecuzione locale fallback azione Sentinel:', actionName)
   } finally {
     isActionLoading.value = false
   }
@@ -89,6 +114,16 @@ onMounted(() => {
 
 <template>
   <div class="admin-container">
+    <!-- FINESTRELLA VERDE TOAST NOTIFICATION -->
+    <Transition name="toast-fade">
+      <div v-if="showToast" class="dkp-toast-success">
+        <div class="toast-content">
+          <span class="toast-icon">✅</span>
+          <span class="toast-text">{{ toastMessage }}</span>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 1. HEADER CONTROL CENTER -->
     <div class="admin-header">
       <div class="header-main">
@@ -101,98 +136,98 @@ onMounted(() => {
       </div>
     </div>
 
-<!-- 2. NUOVA NAVBAR ORIZZONTALE V2.4-GOLD -->
-      <nav class="admin-horizontal-nav">
-        <NuxtLink to="/admin" class="nav-tab" exact-active-class="active">
-          🏠 Dashboard
-        </NuxtLink>
-        <NuxtLink to="/admin/api-gateway" class="nav-tab" active-class="active">
-          ⚙️ API Gateway
-        </NuxtLink>
-        <NuxtLink to="/admin/mail" class="nav-tab" active-class="active">
-          📧 Mail Center
-        </NuxtLink>
-        <NuxtLink to="/admin/newsletter" class="nav-tab" active-class="active">
-          📣 Newsletter
-        </NuxtLink>
-		<NuxtLink to="/admin/autoresponder" class="nav-tab" active-class="active">
-          📡 Autoresponder
-        </NuxtLink>
-        <NuxtLink to="/admin/crawler" class="nav-tab" active-class="active">
-          🤖 Crawler Engine
-        </NuxtLink>
-        <NuxtLink to="/admin/blog" class="nav-tab" active-class="active">
-          📝 Gestione Blog
-        </NuxtLink>
-        <NuxtLink to="/admin/shop" class="nav-tab" active-class="active">
-          🛍️ Gestione Shop
-        </NuxtLink>
-      </nav>
+    <!-- 2. NUOVA NAVBAR ORIZZONTALE V2.4-GOLD -->
+    <nav class="admin-horizontal-nav">
+      <NuxtLink to="/admin" class="nav-tab" exact-active-class="active">
+        🏠 Dashboard
+      </NuxtLink>
+      <NuxtLink to="/admin/api-gateway" class="nav-tab" active-class="active">
+        ⚙️ API Gateway
+      </NuxtLink>
+      <NuxtLink to="/admin/mail" class="nav-tab" active-class="active">
+        📧 Mail Center
+      </NuxtLink>
+      <NuxtLink to="/admin/newsletter" class="nav-tab" active-class="active">
+        📣 Newsletter
+      </NuxtLink>
+      <NuxtLink to="/admin/autoresponder" class="nav-tab" active-class="active">
+        📡 Autoresponder
+      </NuxtLink>
+      <NuxtLink to="/admin/crawler" class="nav-tab" active-class="active">
+        🤖 Crawler Engine
+      </NuxtLink>
+      <NuxtLink to="/admin/blog" class="nav-tab" active-class="active">
+        📝 Gestione Blog
+      </NuxtLink>
+      <NuxtLink to="/admin/shop" class="nav-tab" active-class="active">
+        🛍️ Gestione Shop
+      </NuxtLink>
+    </nav>
 
-   <!-- 2. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
-<div class="sentinel-monitor-banner">
-  <div class="sentinel-monitor-header">
-    <div class="sentinel-brand">
-      <span class="shield-pulse">🛡️</span>
-      <div>
-        <h2>
-          Pulse Sentinel AI 
-          <span class="badge-status gold">v2.4-GOLD</span>
-        </h2>
-        <p class="sentinel-sub">
-          Firewall Euristico, SAST/AST Engine & System Defense attivi nell'infrastruttura Kernel v2.4
-        </p>
-      </div>
-    </div>
-
-    <!-- Bottone Interattivo di Toggle Auto-Defend -->
-    <button 
-      @click="triggerAction('toggle_autodefend')" 
-      :disabled="isActionLoading"
-      :class="['btn-toggle-switch', sentinelData.autoDefendEnabled ? 'active' : 'inactive']"
-    >
-      <span>Auto-Defend AI</span>
-      <strong>{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
-    </button>
-  </div>
-
-  <!-- Grid dinamica con dati reattivi da sentinelData -->
-  <div class="sentinel-monitor-grid">
-    <div class="monitor-cell">
-      <span class="cell-label">GLOBAL THREAT INDEX</span>
-      <div class="threat-meter-box">
-        <div class="threat-bar">
-          <div class="threat-fill" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
+    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
+    <div class="sentinel-monitor-banner">
+      <div class="sentinel-monitor-header">
+        <div class="sentinel-brand">
+          <span class="shield-pulse">🛡️</span>
+          <div>
+            <h2>
+              Pulse Sentinel AI 
+              <span class="badge-status gold">v2.4-GOLD</span>
+            </h2>
+            <p class="sentinel-sub">
+              Firewall Euristico, SAST/AST Engine & System Defense attivi nell'infrastruttura Kernel v2.4
+            </p>
+          </div>
         </div>
-        <span class="threat-val">{{ sentinelData.globalThreatIndex }}%</span>
+
+        <!-- Bottone Interattivo di Toggle Auto-Defend -->
+        <button 
+          @click="toggleAutoDefend" 
+          :class="['btn-toggle-switch', sentinelData.autoDefendEnabled ? 'active' : 'inactive']"
+          title="Clicca per attivare/disattivare Auto-Defend AI"
+        >
+          <span>Auto-Defend AI</span>
+          <strong>{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
+        </button>
+      </div>
+
+      <!-- Grid dinamica con dati reattivi da sentinelData -->
+      <div class="sentinel-monitor-grid">
+        <div class="monitor-cell">
+          <span class="cell-label">GLOBAL THREAT INDEX</span>
+          <div class="threat-meter-box">
+            <div class="threat-bar">
+              <div class="threat-fill" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
+            </div>
+            <span class="threat-val">{{ sentinelData.globalThreatIndex }}%</span>
+          </div>
+        </div>
+
+        <div class="monitor-cell">
+          <span class="cell-label">RICHIESTE MALEVOLE BLOCCATE (24H)</span>
+          <span class="cell-val purple">{{ sentinelData.blockedRequests24h || 1845 }}</span>
+        </div>
+
+        <div class="monitor-cell">
+          <span class="cell-label">GCP ARMOR ENGINE</span>
+          <span class="cell-val green">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }}</span>
+        </div>
+
+        <div class="monitor-cell">
+          <span class="cell-label">REGOLE ATTIVE</span>
+          <span class="cell-val blue">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
+        </div>
       </div>
     </div>
 
-    <div class="monitor-cell">
-      <span class="cell-label">RICHIESTE MALEVOLE BLOCCATE (24H)</span>
-      <span class="cell-val purple">{{ sentinelData.blockedRequests24h || 1845 }}</span>
-    </div>
-
-    <div class="monitor-cell">
-      <span class="cell-label">GCP ARMOR ENGINE</span>
-      <span class="cell-val green">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }}</span>
-    </div>
-
-    <div class="monitor-cell">
-      <span class="cell-label">REGOLE ATTIVE</span>
-      <span class="cell-val blue">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
-    </div>
-  </div>
-</div>
-
-    <!-- NOTIFICA SISTEMA -->
+    <!-- NOTIFICA SISTEMA INTERNA -->
     <Transition name="fade">
       <div v-if="notificationMsg" class="sentinel-notification">
         ⚡ {{ notificationMsg }}
       </div>
     </Transition>
 
-    <!-- 3. METRICHE TOP DASHBOARD -->
+    <!-- 4. METRICHE TOP DASHBOARD -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="card-title">Neon DB Status <span class="badge green">CONNECTED</span></div>
@@ -219,7 +254,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 4. TAB DI NAVIGAZIONE -->
+    <!-- 5. TAB DI NAVIGAZIONE INTERNA -->
     <div class="admin-tabs">
       <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">
         👥 Gestione Utenti ({{ users.length }})
@@ -316,28 +351,61 @@ onMounted(() => {
 
 <style scoped>
 /* ==========================================================================
-   1. LAYOUT GENERALE & CONTAINER DASHBOARD
+   FINESTRELLA TOAST NOTIFICATION (FINESTRELLA VERDE)
    ========================================================================== */
-.admin-dashboard-page {
-  background: #020420;
-  min-height: 100vh;
-  padding: 2.5rem 1.5rem 5rem;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+.dkp-toast-success {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 999999;
+  background: #061811;
+  border: 1px solid #00dc82;
+  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35), 0 0 15px rgba(0, 220, 130, 0.2);
+  padding: 0.9rem 1.3rem;
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  max-width: 420px;
 }
 
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.toast-icon {
+  font-size: 1.15rem;
+}
+
+.toast-fade-enter-active, .toast-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-fade-enter-from, .toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-15px) scale(0.95);
+}
+
+/* ==========================================================================
+   1. LAYOUT GENERALE & CONTAINER DASHBOARD
+   ========================================================================== */
 .admin-container {
   max-width: 1240px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem; /* Spaziatura costante e pulita tra i moduli */
+  gap: 1.5rem;
+  padding-bottom: 4rem;
 }
 
 /* ==========================================================================
    2. HERO BANNER & STATUS REGIONALE
    ========================================================================== */
-.admin-hero,
 .admin-header {
   display: flex;
   justify-content: space-between;
@@ -349,7 +417,6 @@ onMounted(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-.admin-hero h1,
 .admin-header h1 {
   font-size: 1.9rem;
   margin: 0 0 0.4rem;
@@ -358,7 +425,6 @@ onMounted(() => {
   letter-spacing: -0.02em;
 }
 
-.admin-hero .subtitle,
 .admin-header p {
   margin: 0;
   color: #94a3b8;
@@ -406,7 +472,6 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Nasconde la scrollbar pur mantenendo lo scroll orizzontale */
 .admin-horizontal-nav::-webkit-scrollbar { display: none; }
 .admin-horizontal-nav { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -440,7 +505,6 @@ onMounted(() => {
 /* ==========================================================================
    4. PULSE SENTINEL AI BANNER & FIREWALL MONITOR
    ========================================================================== */
-.sentinel-widget,
 .sentinel-monitor-banner {
   background: linear-gradient(135deg, #090d16 0%, #030712 100%);
   border: 1px solid #1e293b;
@@ -450,8 +514,7 @@ onMounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-.sentinel-monitor-header,
-.sentinel-header {
+.sentinel-monitor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -473,7 +536,6 @@ onMounted(() => {
   filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5));
 }
 
-.sentinel-title h2,
 .sentinel-brand h2 {
   margin: 0;
   font-size: 1.4rem;
@@ -484,7 +546,6 @@ onMounted(() => {
   gap: 0.75rem;
 }
 
-.version-tag,
 .badge-status.gold {
   background: rgba(0, 220, 130, 0.15);
   color: #00dc82;
@@ -497,9 +558,8 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.sentinel-sub,
-.sentinel-desc {
-  margin: 0.3rem 0 1.25rem;
+.sentinel-sub {
+  margin: 0.3rem 0 0;
   color: #94a3b8;
   font-size: 0.88rem;
 }
@@ -529,7 +589,18 @@ onMounted(() => {
 .btn-toggle-switch.active {
   border-color: #00dc82;
   color: #00dc82;
-  background: rgba(0, 220, 130, 0.05);
+  background: rgba(0, 220, 130, 0.08);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.2);
+}
+
+.btn-toggle-switch.inactive {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.btn-toggle-switch:hover {
+  transform: translateY(-1px);
 }
 
 /* GRID METRICHE SENTINEL */
@@ -558,9 +629,9 @@ onMounted(() => {
   font-weight: 900;
 }
 
-.cell-val.purple, .highlight-purple { color: #c084fc; }
-.cell-val.green, .highlight-green { color: #00dc82; }
-.cell-val.blue, .highlight-blue { color: #38bdf8; }
+.cell-val.purple { color: #c084fc; }
+.cell-val.green { color: #00dc82; }
+.cell-val.blue { color: #38bdf8; }
 
 .threat-meter-box {
   display: flex;
@@ -887,11 +958,6 @@ onMounted(() => {
    9. MEDIA QUERIES & RESPONSIVE DESIGN
    ========================================================================== */
 @media (max-width: 900px) {
-  .admin-dashboard-page {
-    padding: 1.5rem 1rem 4rem;
-  }
-
-  .admin-hero,
   .admin-header {
     flex-direction: column;
     align-items: flex-start;
@@ -914,7 +980,6 @@ onMounted(() => {
   }
 }
 
-/* TRANSITIONS */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

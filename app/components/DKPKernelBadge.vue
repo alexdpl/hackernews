@@ -43,7 +43,7 @@ onMounted(() => {
       @click="isOpen = !isOpen" 
       class="dkp-badge-pill" 
       :class="{ active: isOpen, measuring: isMeasuring }"
-      title="DKP Kernel Telemetry v2.4 — Clicca per espandere"
+      title="DKP Kernel Telemetry v2.4-GOLD — Clicca per espandere"
     >
       <!-- LOGO DKP 3 FOGLI VERDI NEON (SVG NATIVO) -->
       <svg class="dkp-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -88,18 +88,25 @@ onMounted(() => {
             <span class="value text-cyan">{{ dbLatency }}ms</span>
           </div>
 
+          <!-- NUOVE METRICHE ENTERPRISE V2.4-GOLD -->
           <div class="metric-row">
-            <span class="label">📧 Mail Nexus v2.4:</span>
-            <span class="value status-online">ONLINE</span>
+            <span class="label">🤖 api.devkernelpulse.org:</span>
+            <span class="value status-ai">SENTINEL ACTIVE</span>
           </div>
 
           <div class="metric-row">
-            <span class="label">🛡️ Cloudflare Routing:</span>
-            <span class="value status-online">ENCRYPTED</span>
+            <span class="label">📧 mail.devkernelpulse.org:</span>
+            <span class="value status-online">NEXUS ONLINE</span>
+          </div>
+
+          <div class="metric-row">
+            <span class="label">🛡️️ Cloudflare Edge:</span>
+            <span class="value status-secure">ENCRYPTED</span>
           </div>
 
           <div class="drawer-footer">
             <span class="footer-note">Built with ❤️ by Alessandro De Paola & Gemini AI</span>
+            <div class="sub-footer">Managed by Pulse Sentinel AI Architecture</div>
           </div>
         </div>
       </div>
@@ -214,7 +221,7 @@ onMounted(() => {
   bottom: 2.8rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 290px;
+  width: 330px;
   background: #090d16;
   border: 1px solid #38bdf8;
   border-radius: 12px;
@@ -233,20 +240,65 @@ onMounted(() => {
 }
 
 .brand-title { font-size: 0.75rem; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
-.version-tag { font-size: 0.62rem; color: #00dc82; background: rgba(0, 220, 130, 0.15); padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.4rem; }
+.version-tag { font-size: 0.62rem; color: #00dc82; background: rgba(0, 220, 130, 0.15); padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.4rem; font-weight: bold; }
 .close-btn { background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.85rem; }
 .close-btn:hover { color: #f87171; }
 
-.drawer-content { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.78rem; }
+.drawer-content { display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.78rem; }
 .metric-row { display: flex; justify-content: space-between; align-items: center; }
 .label { color: #94a3b8; }
 .value { font-weight: 700; }
 .text-neon { color: #00dc82; }
 .text-cyan { color: #38bdf8; }
-.status-online { color: #34d399; font-size: 0.7rem; background: rgba(52, 211, 153, 0.1); padding: 0.1rem 0.4rem; border-radius: 4px; }
 
-.drawer-footer { margin-top: 0.5rem; border-top: 1px solid #1e293b; padding-top: 0.5rem; text-align: center; }
+/* NUOVI STILI PER STATI ENTERPRISE */
+.status-ai {
+  color: #a855f7;
+  font-weight: 800;
+  background: rgba(168, 85, 247, 0.15);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  animation: pulse-ai 2s infinite;
+}
+
+@keyframes pulse-ai {
+  0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+  70% { box-shadow: 0 0 0 5px rgba(168, 85, 247, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+}
+
+.status-online { 
+  color: #34d399; 
+  font-size: 0.68rem; 
+  background: rgba(52, 211, 153, 0.12); 
+  padding: 0.1rem 0.4rem; 
+  border-radius: 4px; 
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  font-weight: 700;
+}
+
+.status-secure { 
+  color: #38bdf8; 
+  font-size: 0.68rem; 
+  background: rgba(56, 189, 248, 0.12); 
+  padding: 0.1rem 0.4rem; 
+  border-radius: 4px; 
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  font-weight: 700;
+}
+
+.drawer-footer { 
+  margin-top: 0.6rem; 
+  border-top: 1px solid #1e293b; 
+  padding-top: 0.5rem; 
+  text-align: center; 
+}
+
 .footer-note { font-size: 0.65rem; color: #64748b; }
+.sub-footer { font-size: 0.60rem; color: #a855f7; font-style: italic; margin-top: 2px; }
 
 .drawer-fade-enter-active, .drawer-fade-leave-active { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; transform: translate(-50%, 10px); }
