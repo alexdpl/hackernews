@@ -75,7 +75,7 @@ const endpoints: Endpoint[] = [
   "vault_id": "vlt_88120491",
   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "timestamp": "2026-09-29T15:45:00Z",
-  "verification_url": "https://devkernelpulse.com/tools/proof-of-code?v=vlt_88120491"
+  "verification_url": "https://devkernelpulse.org/tools/proof-of-code?v=vlt_88120491"
 }`
   },
   {
@@ -122,7 +122,7 @@ const filteredEndpoints = computed(() => {
 })
 
 function getSnippet(endpoint: Endpoint, lang: string) {
-  const baseUrl = 'https://api.devkernelpulse.com'
+  const baseUrl = 'https://api.devkernelpulse.org'
   
   if (lang === 'curl') {
     return `curl -X ${endpoint.method} "${baseUrl}${endpoint.path}" \\

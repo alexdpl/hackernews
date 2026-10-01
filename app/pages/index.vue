@@ -138,13 +138,13 @@ const headerInfo = computed(() => {
     case 'show':
       return {
         title: 'Show DKP Projects',
-        badge: 'Showcase',
+        badge: 'Showcasev 2.4',
         subtitle: 'Progetti Open Source, repository GitHub di tendenza e librerie create dagli sviluppatori.'
       }
     case 'jobs':
       return {
         title: 'Tech Jobs Hub',
-        badge: 'Remote & Global',
+        badge: 'Remote & Global v2.4',
         subtitle: 'Le migliori opportunità lavorative tech e posizioni da remoto verificate.'
       }
     default:
