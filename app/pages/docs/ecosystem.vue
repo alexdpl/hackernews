@@ -3,9 +3,9 @@
 import { ref } from 'vue'
 
 useHead({
-  title: 'Guida Ecosistema & Architettura — DKP Docs',
+  title: 'Guida Ecosistema & Architettura v2.4-GOLD — DKP Docs',
   meta: [
-    { name: 'description', content: 'Documentazione ufficiale sull\'architettura di DevKernelPulse, moduli proprietari e sistema di Gamification XP.' }
+    { name: 'description', content: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.4-GOLD, moduli SaaS proprietari, CLI Toolkit e sistema di Gamification XP.' }
   ]
 })
 
@@ -14,6 +14,7 @@ const activeSection = ref('architettura')
 const sections = [
   { id: 'architettura', title: '🏗️ Architettura DKP', icon: '⚡' },
   { id: 'moduli', title: '🛠️ Moduli & Strumenti SaaS', icon: '🧩' },
+  { id: 'cli-toolkit', title: '⚡ DKP CLI Toolkit', icon: '💻' },
   { id: 'gamification', title: '🏆 Gamification & XP System', icon: '🎮' },
   { id: 'best-practices', title: '💡 Best Practices & Growth', icon: '🚀' }
 ]
@@ -35,7 +36,7 @@ function scrollToSection(id: string) {
       <aside class="docs-sidebar">
         <div class="sidebar-header">
           <span class="badge">DKP DOCS</span>
-          <h3>Ecosistema v2.4</h3>
+          <h3>Ecosistema v2.4-GOLD</h3>
         </div>
 
         <nav class="sidebar-nav">
@@ -62,86 +63,129 @@ function scrollToSection(id: string) {
         
         <!-- HERO DOCS -->
         <header class="docs-hero">
-          <div class="breadcrumb">Docs / Ecosistema & Architettura</div>
+          <div class="breadcrumb">Docs / Ecosistema & Architettura v2.4-GOLD</div>
           <h1>DevKernelPulse Knowledge Base</h1>
           <p class="subtitle">
-            Guida completa all'architettura modulare DKP, al motore di Proof of Code, all'integrazione IA e al sistema di reputazione decentralizzato.
+            Guida completa all'architettura modulare DKP, al motore di Proof of Code, all'integrazione IA, al DKP CLI Toolkit e al sistema di reputazione decentralizzato.
           </p>
         </header>
 
         <!-- SEZIONE 1: ARCHITETTURA -->
         <section id="architettura" class="doc-section">
-          <h2><span class="sec-icon">🏗️</span> Architettura di Sistema DKP</h2>
+          <h2><span class="sec-icon">🏗️️</span> Architettura di Sistema DKP v2.4-GOLD</h2>
           <p>
-            <strong>DevKernelPulse (DKP)</strong> è costruito secondo un paradigma micro-frontend ad alte prestazioni orientato agli eventi, alimentato da <strong>Nuxt 3 (Vue 3, Nitro Engine)</strong> nel layer di frontend e da microservizi Rust/Go per il processing crittografico.
+            <strong>DevKernelPulse (DKP)</strong> è costruito secondo un paradigma micro-frontend ad alte prestazioni orientato agli eventi, alimentato da <strong>Nuxt 3 (Vue 3, Nitro Engine)</strong>, database serverless <strong>Neon PostgreSQL</strong> con ORM <strong>Drizzle</strong> e microservizi in Rust/Go per la notarizzazione crittografica.
           </p>
 
           <div class="architecture-grid">
             <div class="arch-card">
               <h4>🌐 Edge Processing & Crawler</h4>
-              <p>Il crawler automatizzato DKP v2.4 estrae, analizza e vettorizza in tempo reale contenuti da GitHub, dev.to, Hacker News e feed RSS di sicurezza.</p>
+              <p>Il crawler automatizzato DKP v2.4-GOLD estrae, analizza e vettorizza in tempo reale contenuti da GitHub, dev.to, Hacker News e feed RSS di sicurezza.</p>
             </div>
             <div class="arch-card">
               <h4>🛡️ Vault Crittografico</h4>
-              <p>Hashing SHA-256 e notarizzazione Proof-of-Code direttamente in-memory con esportazione firmata crittograficamente in formato JSON-LD/Proof.</p>
+              <p>Hashing SHA-256 e notarizzazione Proof-of-Code direttamente sul database Neon con esportazione firmata crittograficamente in formato JSON-LD/Proof.</p>
             </div>
             <div class="arch-card">
               <h4>🧠 Neural Inference Gateway</h4>
               <p>Pipeline multi-LLM che gestisce sia i prompt di testing nel Playground sia l'analisi statica di sicurezza del codice con tempo di risposta &lt; 150ms.</p>
+            </div>
+            <div class="arch-card">
+              <h4>🗄️ Neon Serverless DB & Drizzle</h4>
+              <p>Persistenza dati ultra-veloce con schema tipizzato, gestione relazionale a 2 livelli per la tassonomia del Blog e calcolo real-time degli XP.</p>
             </div>
           </div>
         </section>
 
         <!-- SEZIONE 2: MODULI & STRUMENTI -->
         <section id="moduli" class="doc-section">
-          <h2><span class="sec-icon">🛠️</span> Moduli Proprietari DKP</h2>
-          <p>La piattaforma è strutturata in strumenti specializzati focalizzati sulla produttività dello sviluppatore e sulla notarizzazione del software:</p>
+          <h2><span class="sec-icon">🛠️</span> Moduli Proprietari DKP v2.4-GOLD</h2>
+          <p>La piattaforma offre una suite completa di strumenti integrati per la produttività dello sviluppatore e la certificazione del codice:</p>
 
           <div class="module-list">
             <div class="module-box">
               <div class="mod-header">
-                <span class="mod-icon">🛡️</span>
-                <h3>Proof of Code (Vault) v2.3 Pro</h3>
+                <span class="mod-icon">🛡️️</span>
+                <h3>Proof of Code (Vault) v2.4-GOLD</h3>
               </div>
-              <p>Consente di generare un'impronta digitale immutabile del tuo sorgente o algoritmo. Utile per dimostrare la titolarità intellettuale del codice prima del rilascio pubblico.</p>
+              <p>Consente di generare un'impronta digitale immutabile del tuo sorgente o algoritmo. Dimostra la titolarità intellettuale del codice registrando un certificato SHA-256 nel Vault DKP prima del rilascio pubblico.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🔍</span>
-                <h3>AI Code Scanner v2.3</h3>
+                <h3>AI Code Scanner v2.4-GOLD</h3>
               </div>
-              <p>Analizzatore di vulnerabilità (SAST/DAST) potenziato da modelli IA che rileva secret leaking, SQLi, Buffer Overflow e antipattern in oltre 18 linguaggi.</p>
+              <p>Analizzatore di vulnerabilità (SAST/DAST) potenziato da modelli IA che rileva secret leaking, SQLi, Buffer Overflow e antipattern in oltre 18 linguaggi di programmazione.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">💻</span>
-                <h3>Terminal Web Shell v2.3</h3>
+                <h3>Terminal Web Shell v2.4-GOLD</h3>
               </div>
-              <p>Un ambiente CLI in-browser completamente simulato basato su xterm.js per interrogare l'API DKP, eseguire comandi rapido ed emulare scenari devops.</p>
+              <p>Un ambiente CLI in-browser completamente simulato basato su xterm.js per interrogare l'API DKP, eseguire comandi rapidi ed emulare scenari DevOps direttamente nel browser.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🧠</span>
-                <h3>Neural Playground v2.3</h3>
+                <h3>Neural Playground v2.4-GOLD</h3>
               </div>
-              <p>Ambiente di testing sandbox per ottimizzare prompt per la generazione di codice, il refactoring automatico e l'audit logico delle funzioni.</p>
+              <p>Ambiente di testing sandbox per ottimizzare prompt per la generazione di codice, il refactoring automatico e l'audit logico delle funzioni con supporto multi-provider.</p>
             </div>
-			
-			<div class="module-box">
+
+            <div class="module-box">
               <div class="mod-header">
-                <span class="mod-icon">⚡</span>
-                <h3>DKP CLI Toolkit v.2.4-Gold</h3>
+                <span class="mod-icon">📰</span>
+                <h3>DKP Blog & Content Vault v2.4-GOLD</h3>
               </div>
-              <p>L'interfaccia a riga di comando nativa per sviluppatori. Lancia scansioni AI, notarizza codice sul Vault e interagisci con le API direttamente dal tuo terminale.</p>
+              <p>Sistema editoriale avanzato con categorizzazione a 2 livelli (Categorie & Sottocategorie con iconografia Emoji e badge al neon), notarizzazione automatica degli articoli e verifica di autenticità.</p>
             </div>
-			
+
+            <div class="module-box">
+              <div class="mod-header">
+                <span class="mod-icon">🔑</span>
+                <h3>License & Enterprise API Gateway</h3>
+              </div>
+              <p>Gestione decentralizzata delle licenze SaaS, emissione chiavi API per gli sviluppatori, controllo dei rate-limit e integrazione con pagamenti automatizzati.</p>
+            </div>
           </div>
         </section>
 
-        <!-- SEZIONE 3: GAMIFICATION & XP -->
+        <!-- SEZIONE 3: DKP CLI TOOLKIT -->
+        <section id="cli-toolkit" class="doc-section">
+          <h2><span class="sec-icon">⚡</span> DKP CLI Toolkit v2.4-GOLD</h2>
+          <p>
+            L'interfaccia a riga di comando nativa per sviluppatori. Consente di integrare l'ecosistema DKP nei terminali locali, negli script bash e nelle pipeline CI/CD.
+          </p>
+
+          <div class="cli-command-box">
+            <div class="cli-header">
+              <span>Terminal / Bash</span>
+              <span class="cli-badge">v2.4-GOLD</span>
+            </div>
+            <pre><code><span class="comment"># Installazione globale tramite NPM</span>
+npm install -g @devkernelpulse/cli
+
+<span class="comment"># Autenticazione con API Key DKP</span>
+dkp auth login --key DKP-SECRET-KEY-12345
+
+<span class="comment"># Scansione di sicurezza del codice locale</span>
+dkp scan ./src --output json
+
+<span class="comment"># Notarizzazione istantanea sul Vault</span>
+dkp vault notarize ./src/core/kernel.ts --title "Kernel Core v2.4"
+
+<span class="comment"># Pubblicazione veloce bozza sul Blog DKP</span>
+dkp blog publish --title "Nuovo modulo Rust" --category "kernel"
+
+<span class="comment"># Verifica del saldo XP e Badge profilo</span>
+dkp stats</code></pre>
+          </div>
+        </section>
+
+        <!-- SEZIONE 4: GAMIFICATION & XP -->
         <section id="gamification" class="doc-section">
           <h2><span class="sec-icon">🏆</span> Gamification & XP Reputation Engine</h2>
           <p>
@@ -158,9 +202,9 @@ function scrollToSection(id: string) {
             </thead>
             <tbody>
               <tr>
-                <td><strong>Submit Link / Articolo</strong></td>
-                <td><span class="xp-badge">+15 XP</span></td>
-                <td>Curator Badge</td>
+                <td><strong>Pubblicazione Articolo Blog</strong></td>
+                <td><span class="xp-badge gold">+50 XP</span></td>
+                <td>Tech Publisher</td>
               </tr>
               <tr>
                 <td><strong>Notarizzazione Code Vault</strong></td>
@@ -168,7 +212,12 @@ function scrollToSection(id: string) {
                 <td>Vault Guardian</td>
               </tr>
               <tr>
-                <td><strong>Audit Codice con AI Scanner</strong></td>
+                <td><strong>Submit Link / News Story</strong></td>
+                <td><span class="xp-badge">+15 XP</span></td>
+                <td>Curator Badge</td>
+              </tr>
+              <tr>
+                <td><strong>Audit Codice con AI Scanner / CLI</strong></td>
                 <td><span class="xp-badge">+10 XP</span></td>
                 <td>SecInspector</td>
               </tr>
@@ -181,16 +230,20 @@ function scrollToSection(id: string) {
           </table>
         </section>
 
-        <!-- SEZIONE 4: BEST PRACTICES -->
+        <!-- SEZIONE 5: BEST PRACTICES -->
         <section id="best-practices" class="doc-section">
           <h2><span class="sec-icon">💡</span> Best Practices per gli Sviluppatori</h2>
           <div class="tip-box">
             <h4>⚡ Integrazione CI/CD Raccomandata</h4>
-            <p>Usa la CLI DKP o gli endpoint API nel tuo workflow di GitHub Actions per automatizzare la scansione di sicurezza e la notarizzazione ad ogni <code>git push main</code>.</p>
+            <p>Usa la CLI <code>dkp scan</code> o gli endpoint API nel tuo workflow di GitHub Actions per automatizzare la scansione di sicurezza e la notarizzazione ad ogni <code>git push main</code>.</p>
           </div>
           <div class="tip-box green">
             <h4>🔑 Sicurezza delle API Key</h4>
             <p>Non committare mai la tua <code>DKP-Api-Key</code> nei repository pubblici. Utilizza sempre variabili d'ambiente protette come <code>DKP_TOKEN</code>.</p>
+          </div>
+          <div class="tip-box purple">
+            <h4>🛡️ Certificazione Pre-Release</h4>
+            <p>Genera sempre l'hash di Vault prima del primo commit o rilascio open source per proteggere la proprietà intellettuale dei tuoi algoritmi.</p>
           </div>
         </section>
 
@@ -206,6 +259,7 @@ function scrollToSection(id: string) {
   color: #cbd5e1;
   min-height: 100vh;
   padding: 2rem 1.5rem 5rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .docs-container {
@@ -356,7 +410,13 @@ function scrollToSection(id: string) {
 .arch-card h4 {
   color: #00dc82;
   margin: 0 0 0.5rem;
+}
 
+.arch-card p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+  color: #94a3b8;
 }
 
 .module-list {
@@ -373,6 +433,13 @@ function scrollToSection(id: string) {
   border-radius: 8px;
 }
 
+.module-box p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #94a3b8;
+}
+
 .mod-header {
   display: flex;
   align-items: center;
@@ -386,6 +453,55 @@ function scrollToSection(id: string) {
   font-size: 1.05rem;
 }
 
+.mod-icon {
+  font-size: 1.2rem;
+}
+
+/* CLI COMMAND BOX */
+.cli-command-box {
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 1.25rem;
+}
+
+.cli-header {
+  background: #0d1322;
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #64748b;
+  border-bottom: 1px solid #1e293b;
+  font-family: monospace;
+}
+
+.cli-badge {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.cli-command-box pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  color: #00dc82;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.cli-command-box .comment {
+  color: #64748b;
+  font-style: italic;
+}
+
+/* GAMIFICATION TABLE */
 .xp-table {
   width: 100%;
   border-collapse: collapse;
@@ -413,6 +529,13 @@ function scrollToSection(id: string) {
   font-size: 0.8rem;
 }
 
+.xp-badge.gold {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* TIP BOXES */
 .tip-box {
   background: #020420;
   border-left: 4px solid #38bdf8;
@@ -425,8 +548,27 @@ function scrollToSection(id: string) {
   border-left-color: #00dc82;
 }
 
+.tip-box.purple {
+  border-left-color: #8b5cf6;
+}
+
 .tip-box h4 {
   margin: 0 0 0.3rem;
   color: #ffffff;
+}
+
+.tip-box p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #94a3b8;
+}
+
+code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #38bdf8;
 }
 </style>

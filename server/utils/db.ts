@@ -14,15 +14,15 @@ export function getDb() {
     return dbInstance
   }
 
-  // Lettura sicura tramite le runtimeConfig tipizzate di Nuxt 4
+  // Lettura sicura tramite le runtimeConfig tipizzate di Nuxt 4 (con fallback a process.env)
   const config = useRuntimeConfig()
-  const connectionString = config.databaseUrl
+  const connectionString = (config?.databaseUrl || process.env.DATABASE_URL) as string
 
   // 2. TRACCIAMENTO VARIABILE: Verifica immediata della lettura del file .env o delle var di Vercel
-  console.log('=== [DB DEBUG] Verifica runtimeConfig ===')
+  console.log('=== [DB DEBUG] Verifica runtimeConfig / env ===')
   if (!connectionString) {
     console.error('❌ ERRORE: La stringa di connessione è VUOTA o UNDEFINED!')
-    throw new Error('NUXT_DATABASE_URL (mappata su databaseUrl) non è definita nella runtimeConfig')
+    throw new Error('NUXT_DATABASE_URL o DATABASE_URL non è definita nell\'ambiente o nella runtimeConfig.')
   } else {
     console.log('✅ Stringa trovata! Inizia con:', connectionString.substring(0, 20) + '...')
   }
@@ -30,11 +30,11 @@ export function getDb() {
   try {
     // 3. INIZIALIZZAZIONE: Configurazione sicura del client Neon HTTP e passaggio dello schema a Drizzle
     console.log('=== [DB DEBUG] Inizializzazione client Neon e Drizzle ===')
-    
+
     sqlInstance = neon(connectionString)
     // Passiamo esplicitamente l'oggetto di configurazione con lo schema importato
     dbInstance = drizzle(sqlInstance, { schema })
-    
+
     console.log('✅ Client DB e istanza Drizzle ORM inizializzati con successo.')
     return dbInstance
   } catch (error: any) {

@@ -268,7 +268,7 @@ export const dkpCrawlerLogs = pgTable("dkp_crawler_logs", {
 ]);
 
 export const orders = pgTable("orders", {
-	id: text().default(gen_random_uuid()).primaryKey().notNull(),
+	id: text().default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	customerEmail: varchar("customer_email", { length: 255 }).notNull(),
 	productId: varchar("product_id", { length: 100 }).notNull(),
 	productName: varchar("product_name", { length: 255 }).notNull(),
@@ -284,7 +284,7 @@ export const orders = pgTable("orders", {
 ]);
 
 export const licenses = pgTable("licenses", {
-	id: text().default(gen_random_uuid()).primaryKey().notNull(),
+	id: text().default(sql`gen_random_uuid()`).primaryKey().notNull(),
 	orderId: text("order_id").notNull(),
 	licenseKey: varchar("license_key", { length: 64 }).notNull(),
 	customerEmail: varchar("customer_email", { length: 255 }).notNull(),
