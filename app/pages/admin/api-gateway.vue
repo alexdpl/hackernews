@@ -113,7 +113,9 @@ async function resetQuotaUsage(id: string) {
       <!-- BREADCRUMB & HEADER -->
       <header class="page-header">
         <div class="header-main">
-          <NuxtLink to="/api-console" class="back-link">← Torna alla API Console</NuxtLink>
+          <NuxtLink to="/api-console" class="back-link"> 🔌 Torna alla API Console</NuxtLink>
+		  <span class="separator" style="color: #50c878; font-weight: bold;"> | </span>
+		   <NuxtLink to="/admin" class="back-link"> 📊 Torna alla Dashboard</NuxtLink>
           <div class="title-row">
             <h1>⚙️ API Gateway & Rate Limit Management</h1>
             <span class="badge-gold">v2.4-GOLD ADMIN</span>

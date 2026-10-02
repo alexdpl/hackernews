@@ -58,6 +58,7 @@ const currentYear = new Date().getFullYear()
           <li><NuxtLink to="/legal/privacy">🛡️ Privacy Policy</NuxtLink></li>
           <li><NuxtLink to="/legal/terms">⚖️ Termini d'Uso</NuxtLink></li>
           <li><NuxtLink to="/legal/cookies">🔒 Cookie Policy</NuxtLink></li>
+		  <li><NuxtLink to="/contact">📧 Contatti</NuxtLink></li>
         </ul>
       </div>
 

@@ -136,33 +136,51 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 2. NUOVA NAVBAR ORIZZONTALE V2.4-GOLD -->
-    <nav class="admin-horizontal-nav">
-      <NuxtLink to="/admin" class="nav-tab" exact-active-class="active">
-        🏠 Dashboard
-      </NuxtLink>
-      <NuxtLink to="/admin/api-gateway" class="nav-tab" active-class="active">
-        ⚙️ API Gateway
-      </NuxtLink>
-      <NuxtLink to="/admin/mail" class="nav-tab" active-class="active">
-        📧 Mail Center
-      </NuxtLink>
-      <NuxtLink to="/admin/newsletter" class="nav-tab" active-class="active">
-        📣 Newsletter
-      </NuxtLink>
-      <NuxtLink to="/admin/autoresponder" class="nav-tab" active-class="active">
-        📡 Autoresponder
-      </NuxtLink>
-      <NuxtLink to="/admin/crawler" class="nav-tab" active-class="active">
-        🤖 Crawler Engine
-      </NuxtLink>
-      <NuxtLink to="/admin/blog" class="nav-tab" active-class="active">
-        📝 Gestione Blog
-      </NuxtLink>
-      <NuxtLink to="/admin/shop" class="nav-tab" active-class="active">
-        🛍️ Gestione Shop
-      </NuxtLink>
-    </nav>
+    <!-- NUOVA NAVBAR GRID v2.4-GOLD (DASHBOARD IN ALTO + 2 RIGHE X 4 MODULI) -->
+<div class="admin-nav-container">
+  <!-- TOP BAR SUPERIORE: BRANDING & DASHBOARD IN ALTO A DESTRA -->
+  <div class="admin-nav-top">
+    <div class="nav-branding">
+      <span class="status-dot green"></span>
+      <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
+    </div>
+
+    <NuxtLink to="/admin" class="nav-tab btn-dashboard" exact-active-class="active">
+      🏠 Dashboard Main
+    </NuxtLink>
+  </div>
+
+  <!-- GRID MODULI: 2 RIGHE DA 4 LINK (8 MODULI TOTALI) -->
+  <nav class="admin-grid-nav">
+    <!-- RIGA 1 (4 LINK) -->
+    <NuxtLink to="/admin/api-gateway" class="nav-tab" active-class="active">
+      ⚙️ API Gateway
+    </NuxtLink>
+    <NuxtLink to="/admin/mail" class="nav-tab" active-class="active">
+      📧 Mail Center
+    </NuxtLink>
+    <NuxtLink to="/admin/newsletter" class="nav-tab" active-class="active">
+      📣 Newsletter
+    </NuxtLink>
+    <NuxtLink to="/admin/autoresponder" class="nav-tab" active-class="active">
+      📡 Autoresponder
+    </NuxtLink>
+
+    <!-- RIGA 2 (4 LINK INCLUSO JOBS) -->
+    <NuxtLink to="/admin/crawler" class="nav-tab" active-class="active">
+      🤖 Crawler Engine
+    </NuxtLink>
+    <NuxtLink to="/admin/blog" class="nav-tab" active-class="active">
+      📝 Gestione Blog
+    </NuxtLink>
+    <NuxtLink to="/admin/shop" class="nav-tab" active-class="active">
+      🛍️ Gestione Shop
+    </NuxtLink>
+    <NuxtLink to="/admin/jobs" class="nav-tab" active-class="active">
+      💼 Gestione Jobs
+    </NuxtLink>
+  </nav>
+</div>
 
     <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
     <div class="sentinel-monitor-banner">
@@ -350,6 +368,104 @@ onMounted(() => {
 </template>
 
 <style scoped>
+
+/* ==========================================================================
+   NAVBAR COMPATTA A 2 RIGHE CON DASHBOARD IN ALTO A DESTRA
+   ========================================================================== */
+.admin-nav-container {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.admin-nav-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nav-branding {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+}
+
+/* PULSANTE DASHBOARD IN ALTO A DESTRA */
+.btn-dashboard {
+  background: rgba(0, 220, 130, 0.1) !important;
+  color: #00dc82 !important;
+  border: 1px solid rgba(0, 220, 130, 0.35) !important;
+  font-weight: 800 !important;
+}
+
+.btn-dashboard:hover {
+  background: rgba(0, 220, 130, 0.2) !important;
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.25);
+}
+
+/* GRID PERFETTA 4 COLONNE X 2 RIGHE */
+.admin-grid-nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.55rem;
+}
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.83rem;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+  border-color: #334155;
+  transform: translateY(-1px);
+}
+
+.nav-tab.active {
+  background: rgba(0, 220, 130, 0.12);
+  color: #00dc82;
+  border-color: rgba(0, 220, 130, 0.35);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.15);
+}
+
+/* ADATTAMENTO PER SCHERMI PICCOLI / TABLET */
+@media (max-width: 1024px) {
+  .admin-grid-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 580px) {
+  .admin-grid-nav {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ==========================================================================
    FINESTRELLA TOAST NOTIFICATION (FINESTRELLA VERDE)
    ========================================================================== */

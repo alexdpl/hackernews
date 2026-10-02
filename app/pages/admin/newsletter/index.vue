@@ -106,6 +106,17 @@ onMounted(() => {
 
 <template>
   <div class="newsletter-admin-container">
+  <!-- TOP BAR DI NAVIGAZIONE ADMIN -->
+<div class="admin-top-bar">
+  <div class="admin-breadcrumb">
+    <span class="status-dot green"></span>
+    <span class="breadcrumb-text">ADMIN CONTROL CENTER</span>
+  </div>
+
+  <NuxtLink to="/admin" class="btn-back-dashboard">
+    📊 Torna alla Dashboard
+  </NuxtLink>
+</div>
     <!-- HEADER TOOLBAR -->
     <header class="header-bar">
       <div>
@@ -250,6 +261,75 @@ onMounted(() => {
 </template>
 
 <style scoped>
+
+/* ==========================================================================
+   TOP BAR NAVIGAZIONE ADMIN (TORNA ALLA DASHBOARD)
+   ========================================================================== */
+.admin-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.admin-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+}
+
+.breadcrumb-text {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.status-dot.green {
+  background: #00dc82;
+  box-shadow: 0 0 8px #00dc82;
+}
+
+/* BOTTONE NEON TORNA ALLA DASHBOARD */
+.btn-back-dashboard {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-back-dashboard:hover {
+  border-color: #00dc82;
+  color: #00dc82;
+  background: rgba(0, 220, 130, 0.08);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.2);
+  transform: translateY(-1px);
+}
+
 .newsletter-admin-container {
   padding: 1.5rem;
   background-color: #020420;
