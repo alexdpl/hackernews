@@ -1,0 +1,10 @@
+{
+  "buildCommand": "exit 0",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://devkernelpulse.org/:path*",
+      "permanent": true
+    }
+  ]
+}

@@ -16,7 +16,7 @@ const searchQuery = ref('')
 
 // Gestione Reattiva Utenti
 const users = ref([
-  { id: 1, username: 'alexdpl', email: 'alex@devkernelpulse.io', role: 'Admin', status: 'ACTIVE', joined: '2026-01-10' },
+  { id: 1, username: 'alexdpl', email: 'alex@devkernelpulse.org', role: 'Admin', status: 'ACTIVE', joined: '2026-01-10' },
   { id: 2, username: 'dev_ninja', email: 'ninja@code.dev', role: 'Moderator', status: 'ACTIVE', joined: '2026-03-12' },
   { id: 3, username: 'bot_scrapper', email: 'crawler@darknet.org', role: 'User', status: 'SUSPENDED', joined: '2026-09-20' }
 ])

@@ -130,7 +130,7 @@ async function handleSubmit() {
             <span class="method-icon">📧</span>
             <div>
               <span class="method-label">Email Ufficiale</span>
-              <a href="mailto:support@devkernelpulse.io" class="method-val">support@devkernelpulse.io</a>
+              <a href="mailto:support@devkernelpulse.org" class="method-val">support@devkernelpulse.org</a>
             </div>
           </div>
 
