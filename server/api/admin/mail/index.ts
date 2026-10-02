@@ -1,4 +1,4 @@
-// server/api/admin/mail/index.get.ts
+// server/api/admin/mail/index.ts
 import { defineEventHandler, getQuery } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'

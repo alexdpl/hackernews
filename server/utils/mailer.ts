@@ -1,38 +1,47 @@
 // server/utils/mailer.ts
 import nodemailer from 'nodemailer'
 
-export const getSmtpTransporter = () => {
-  const config = useRuntimeConfig()
-
-  return nodemailer.createTransport({
-    host: config.smtpHost || process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(config.smtpPort || process.env.SMTP_PORT || 587),
-    secure: Number(config.smtpPort) === 465,
-    auth: {
-      user: config.smtpUser || process.env.SMTP_USER,
-      pass: config.smtpPass || process.env.SMTP_PASS,
-    },
-  })
-}
-
-export interface SendMailOptions {
+interface SendEmailOptions {
   from: string
   to: string
   subject: string
   html: string
-  text?: string
 }
 
-export async function sendKernelEmail(options: SendMailOptions) {
-  const transporter = getSmtpTransporter()
+export async function sendKernelEmail({ from, to, subject, html }: SendEmailOptions) {
+  // 1. Recupero configurazione sia da Nuxt RuntimeConfig che da process.env
+  const config = useRuntimeConfig()
 
-  const mailData = {
-    from: `DKP Kernel <${options.from}>`,
-    to: options.to,
-    subject: options.subject,
-    text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
-    html: options.html,
+  const host = (config.smtpHost as string) || process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com'
+  const port = Number((config.smtpPort as string) || process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587)
+  const user = (config.smtpUser as string) || process.env.SMTP_USER || process.env.NUXT_SMTP_USER
+  const pass = (config.smtpPass as string) || process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS
+
+  // 2. Controllo di sicurezza prima di tentare l'invio
+  if (!user || !pass) {
+    console.error('❌ [MAILER ERROR] Credenziali SMTP non trovate nell ambiente!')
+    throw new Error(`Credenziali SMTP mancanti! User: ${user ? 'OK' : 'MANCANTE'}, Pass: ${pass ? 'OK' : 'MANCANTE'}`)
   }
 
-  return await transporter.sendMail(mailData)
+  // 3. Creazione Transporter Nodemailer
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // false per 587 (STARTTLS)
+    auth: {
+      user,
+      pass
+    }
+  })
+
+  // 4. Invio dell'e-mail
+  const info = await transporter.sendMail({
+    from: from || process.env.SMTP_FROM || 'alex@devkernelpulse.org',
+    to,
+    subject,
+    html
+  })
+
+  console.log('✅ [MAILER SUCCESS] Email inviata con ID:', info.messageId)
+  return info
 }

@@ -48,3 +48,13 @@ export default defineNuxtConfig({
     }
   }
 })
+
+export default defineNuxtConfig({
+  runtimeConfig: {
+    smtpHost: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    smtpPort: process.env.SMTP_PORT || 587,
+    smtpUser: process.env.SMTP_USER || 'alexdpl@gmail.com',
+    smtpPass: process.env.SMTP_PASS || 'process.env.NUXT_SMTP_PASS || ',
+    smtpFrom: process.env.SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>'
+  }
+})
