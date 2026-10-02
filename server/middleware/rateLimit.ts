@@ -1,5 +1,5 @@
 // server/middleware/rateLimit.ts
-import { defineEventHandler, createError, setResponseHeaders, getMethod, getRequestHeader, getRequestIP } from 'h3'
+import { defineEventHandler, createError, setResponseHeaders, getMethod } from 'h3'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { licenses } from '~~/drizzle/schema'
@@ -14,12 +14,16 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 2. Estrazione sicura degli header con utility H3 (compatibile GCP Cloud Run)
-    const rawApiKey = getRequestHeader(event, 'x-api-key') || getRequestHeader(event, 'authorization') || ''
+    // 2. Estrazione sicura degli header tramite getSafeHeader (auto-importato da server/utils/headers.ts)
+    const rawApiKey = getSafeHeader(event, 'x-api-key') || getSafeHeader(event, 'authorization') || ''
     const apiKey = rawApiKey.replace(/^Bearer\s+/i, '').trim()
 
-    // Estrazione dell'IP reale client tramite proxy GCP
-    const clientIp = getRequestIP(event, { xForwardedFor: true }) || '127.0.0.1'
+    // Estrazione dell'IP reale client tramite proxy GCP / Cloudflare / Node in totale sicurezza
+    const clientIp =
+      getSafeHeader(event, 'x-forwarded-for')?.split(',')[0]?.trim() ||
+      getSafeHeader(event, 'x-real-ip') ||
+      event.node?.req?.socket?.remoteAddress ||
+      '127.0.0.1'
 
     // Estrazione ruolo e username dalla sessione
     const userRole = event.context.user?.role?.toLowerCase() || ''

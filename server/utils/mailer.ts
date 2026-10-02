@@ -14,8 +14,17 @@ export async function sendKernelEmail({ from, to, subject, html }: SendEmailOpti
 
   const host = (config.smtpHost as string) || process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com'
   const port = Number((config.smtpPort as string) || process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587)
-  const user = (config.smtpUser as string) || process.env.SMTP_USER || process.env.NUXT_SMTP_USER
-  const pass = (config.smtpPass as string) || process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS
+  const user = (config.smtpUser as string) || process.env.SMTP_USER || process.env.NUXT_SMTP_USER || ''
+  const pass = (config.smtpPass as string) || process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || ''
+
+  // 🔍 LOG DI DEBUG IN CONSOLE PER VERIFICARE LE VALORI IN RUNTIME
+  console.log('--------------------------------------------------')
+  console.log('📧 [MAILER DEBUG] Host:', host)
+  console.log('📧 [MAILER DEBUG] Port:', port)
+  console.log('📧 [MAILER DEBUG] User:', user)
+  console.log('📧 [MAILER DEBUG] Pass Length:', pass ? `${pass.length} caratteri` : '❌ MANCANTE')
+  console.log('📧 [MAILER DEBUG] Pass Prefix:', pass ? pass.substring(0, 10) + '...' : 'N/A')
+  console.log('--------------------------------------------------')
 
   // 2. Controllo di sicurezza prima di tentare l'invio
   if (!user || !pass) {

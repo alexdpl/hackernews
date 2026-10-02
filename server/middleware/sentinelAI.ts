@@ -3,14 +3,37 @@ import {
   defineEventHandler,
   createError,
   setResponseHeaders,
-  getHeader,
-  getMethod,
-  getRequestHost
+  getMethod
 } from 'h3'
+
+// Helper ultra-sicuro per leggere gli header senza dipendere dai metodi h3 buggati su Node.js
+function getSafeHeader(event: any, name: string): string {
+  const lowerName = name.toLowerCase()
+
+  // 1. Lettura diretta da Node.js IncomingMessage (Ambiente locale e PM2)
+  const nodeHeaders = event.node?.req?.headers
+  if (nodeHeaders) {
+    const val = nodeHeaders[lowerName]
+    if (Array.isArray(val)) return val[0] || ''
+    if (typeof val === 'string') return val
+  }
+
+  // 2. Lettura da Web Fetch API (se eseguito su Workers/Edge)
+  if (event.req?.headers?.get && typeof event.req.headers.get === 'function') {
+    return event.req.headers.get(lowerName) || ''
+  }
+
+  return ''
+}
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
-  const host = getRequestHost(event, { xForwardedHost: true }) || ''
+
+  // Recupero Host in totale sicurezza
+  const host =
+    getSafeHeader(event, 'x-forwarded-host') ||
+    getSafeHeader(event, 'host') ||
+    ''
 
   // Rilevamento Sottodomini GCP / Localhost
   const isApiSubdomain = host.startsWith('api.')
@@ -19,7 +42,7 @@ export default defineEventHandler(async (event) => {
   // -------------------------------------------------------------
   // 🌐 1. CONFIGURAZIONE CORS UNIVERSALE PER SUBDOMAINS GCP
   // -------------------------------------------------------------
-  const origin = getHeader(event, 'origin') || ''
+  const origin = getSafeHeader(event, 'origin')
   const allowedOrigins = [
     'https://devkernelpulse.org',
     'https://api.devkernelpulse.org',
@@ -38,8 +61,10 @@ export default defineEventHandler(async (event) => {
 
   // Risposta istantanea per richieste Preflight CORS (OPTIONS)
   if (method === 'OPTIONS') {
-    event.node.res.statusCode = 204
-    event.node.res.end()
+    if (event.node?.res) {
+      event.node.res.statusCode = 204
+      event.node.res.end()
+    }
     return
   }
 
@@ -58,7 +83,6 @@ export default defineEventHandler(async (event) => {
       // A. Visita da browser alla radice -> reindirizza a Console API
       if (path === '/' || path === '') {
         if (event.node?.req) event.node.req.url = '/api-console'
-        event.path = '/api-console'
         return
       }
 
@@ -76,7 +100,6 @@ export default defineEventHandler(async (event) => {
       if (!path.startsWith('/api/')) {
         const rewrittenPath = `/api${path.startsWith('/') ? '' : '/'}${path}`
         if (event.node?.req) event.node.req.url = rewrittenPath
-        event.path = rewrittenPath
         path = rewrittenPath
       }
 
@@ -86,7 +109,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // E. Estrazione della chiave API per le chiamate pubbliche sul sottodominio API
-      const rawApiKey = getHeader(event, 'x-api-key') || getHeader(event, 'authorization') || ''
+      const rawApiKey = getSafeHeader(event, 'x-api-key') || getSafeHeader(event, 'authorization')
       const apiKey = rawApiKey.replace(/^Bearer\s+/i, '').trim()
 
       // F. Verifica presenza API Key
@@ -97,9 +120,6 @@ export default defineEventHandler(async (event) => {
           message: 'API Sentinel AI: Accesso negato. Header "x-api-key" obbligatorio per il sottodominio API.'
         })
       }
-
-      // Nota: La verifica della validità della licenza e l'incremento quota DB
-      // vengono gestiti in modo unico e centralizzato da `rateLimit.ts`.
     }
 
     // -------------------------------------------------------------
@@ -113,7 +133,6 @@ export default defineEventHandler(async (event) => {
 
       if (path === '/' || path === '') {
         if (event.node?.req) event.node.req.url = '/mail'
-        event.path = '/mail'
       }
     }
 
