@@ -40,21 +40,18 @@ export default defineNuxtConfig({
     // SERVER-ONLY (Non visibile al browser / Safe per DB & Secret Keys)
     databaseUrl: process.env.DATABASE_URL || '',
 
+    // Configurazione SMTP per Brevo (Server-Only)
+    smtpHost: process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com',
+    smtpPort: Number(process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587),
+    smtpUser: process.env.SMTP_USER || process.env.NUXT_SMTP_USER || '',
+    smtpPass: process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || '',
+    smtpFrom: process.env.SMTP_FROM || process.env.NUXT_SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>',
+
     // PUBLIC (Visibile sia lato Server che lato Client / Browser)
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org',
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
       mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'
     }
-  }
-})
-
-export default defineNuxtConfig({
-  runtimeConfig: {
-    smtpHost: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    smtpPort: process.env.SMTP_PORT || 587,
-    smtpUser: process.env.SMTP_USER || 'alexdpl@gmail.com',
-    smtpPass: process.env.SMTP_PASS || 'process.env.NUXT_SMTP_PASS || ',
-    smtpFrom: process.env.SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>'
   }
 })
