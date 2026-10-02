@@ -35,10 +35,16 @@ export default defineNuxtConfig({
     ]
   },
 
+  // Configurazione Runtime dinamica (Server vs Client)
   runtimeConfig: {
+    // SERVER-ONLY (Non visibile al browser / Safe per DB & Secret Keys)
     databaseUrl: process.env.DATABASE_URL || '',
+
+    // PUBLIC (Visibile sia lato Server che lato Client / Browser)
     public: {
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || process.env.PUBLIC_SITE_URL || 'https://devkernelpulse.org'
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org',
+      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
+      mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'
     }
   }
 })

@@ -6,6 +6,9 @@ definePageMeta({
   title: 'DKP Autoresponder Manager | DevKernelPulse'
 })
 
+// 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
+const config = useRuntimeConfig()
+
 interface AutoRule {
   id: number
   name: string
@@ -28,10 +31,11 @@ const formRule = ref({
   is_active: true
 })
 
+// Fetch Autoresponder Rules via Mail Service
 async function fetchRules() {
   isLoading.value = true
   try {
-    const res: any = await $fetch('/api/admin/autoresponder')
+    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/autoresponder`)
     if (res && res.success) {
       rules.value = res.rules || []
     }
@@ -42,9 +46,10 @@ async function fetchRules() {
   }
 }
 
+// Save Autoresponder Rule via Mail Service
 async function handleSaveRule() {
   try {
-    const res: any = await $fetch('/api/admin/autoresponder', {
+    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/autoresponder`, {
       method: 'POST',
       body: formRule.value
     })
@@ -52,7 +57,7 @@ async function handleSaveRule() {
       showModal.value = false
       formRule.value = {
         name: '',
-        trigger_address: 'support@devkernelpulse.org',
+        trigger_address: 'noreply@devkernelpulse.org',
         subject_template: 'Ricevuto! Risponderemo a breve.',
         body_template: '',
         is_active: true

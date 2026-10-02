@@ -6,6 +6,9 @@ definePageMeta({
   title: 'DKP Newsletter Studio | DevKernelPulse',
 })
 
+// 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
+const config = useRuntimeConfig()
+
 interface Subscriber {
   id: number
   email: string
@@ -35,10 +38,11 @@ const campaignData = ref({
 const showAddModal = ref(false)
 const newSub = ref({ email: '', name: '', source: 'ADMIN_MANUAL' })
 
+// Fetch Subscribers from Mail Service
 async function fetchSubscribers() {
   isLoading.value = true
   try {
-    const res: any = await $fetch('/api/admin/newsletter/subscribers')
+    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/newsletter/subscribers`)
     if (res && res.success) {
       subscribers.value = res.subscribers || []
       stats.value = res.stats || { total: 0, active: 0, unsubscribed: 0 }
@@ -50,9 +54,10 @@ async function fetchSubscribers() {
   }
 }
 
+// Add Subscriber via Mail Service
 async function handleAddSubscriber() {
   try {
-    const res: any = await $fetch('/api/newsletter/subscribe', {
+    const res: any = await $fetch(`${config.public.mailUrl}/api/newsletter/subscribe`, {
       method: 'POST',
       body: newSub.value
     })
@@ -66,13 +71,14 @@ async function handleAddSubscriber() {
   }
 }
 
+// Send Broadcast via Mail Service
 async function handleSendBroadcast() {
   sendSuccessMsg.value = ''
   sendErrorMsg.value = ''
   isSending.value = true
 
   try {
-    const res: any = await $fetch('/api/admin/newsletter/broadcast', {
+    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/newsletter/broadcast`, {
       method: 'POST',
       body: campaignData.value
     })

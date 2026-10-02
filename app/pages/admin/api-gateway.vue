@@ -9,6 +9,9 @@ useHead({
   ]
 })
 
+// 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
+const config = useRuntimeConfig()
+
 interface LicenseItem {
   id: string
   userId: number | null
@@ -32,11 +35,11 @@ const editingLicense = ref<LicenseItem | null>(null)
 const newMaxDownloads = ref<number>(1000)
 const newStatus = ref<'active' | 'suspended' | 'revoked' | 'expired'>('active')
 
-// Carica la lista licenze dal backend Admin
+// Carica la lista licenze dal backend API Gateway
 async function fetchGatewayData() {
   isLoading.value = true
   try {
-    const res = await $fetch<{ success: boolean; data: LicenseItem[] }>('/api/admin/api-gateway')
+    const res = await $fetch<{ success: boolean; data: LicenseItem[] }>(`${config.public.apiUrl}/api/admin/api-gateway`)
     if (res.success) {
       licenses.value = res.data
     }
@@ -69,12 +72,12 @@ function openEditModal(license: LicenseItem) {
   isEditModalOpen.value = true
 }
 
-// Salvataggio modifiche quota/stato
+// Salvataggio modifiche quota/stato tramite API Gateway
 async function saveLicenseChanges() {
   if (!editingLicense.value) return
 
   try {
-    await $fetch('/api/admin/api-gateway', {
+    await $fetch(`${config.public.apiUrl}/api/admin/api-gateway`, {
       method: 'POST',
       body: {
         id: editingLicense.value.id,
@@ -90,12 +93,12 @@ async function saveLicenseChanges() {
   }
 }
 
-// Reset Istantaneo Quota Consumata
+// Reset Istantaneo Quota Consumata tramite API Gateway
 async function resetQuotaUsage(id: string) {
   if (!confirm('Vuoi davvero azzerare le chiamate effettuate da questo utente per il mese corrente?')) return
 
   try {
-    await $fetch('/api/admin/api-gateway', {
+    await $fetch(`${config.public.apiUrl}/api/admin/api-gateway`, {
       method: 'POST',
       body: { id, resetUsage: true }
     })
@@ -105,7 +108,6 @@ async function resetQuotaUsage(id: string) {
   }
 }
 </script>
-
 <template>
   <div class="gateway-admin-page">
     <div class="admin-container">

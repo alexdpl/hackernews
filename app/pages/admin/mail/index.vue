@@ -6,6 +6,9 @@ definePageMeta({
   title: 'DKP Mail Engine Admin | DevKernelPulse',
 })
 
+// 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
+const config = useRuntimeConfig()
+
 interface MailMessage {
   id: number
   sender: string
@@ -42,11 +45,11 @@ const composeData = ref({
   replyToId: null as number | null
 })
 
-// Fetch Mails from Backend
+// Fetch Mails from Backend (Usa mailUrl)
 async function fetchMails() {
   isLoading.value = true
   try {
-    const res: any = await $fetch('/api/admin/mail')
+    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/mail`)
     if (res && res.success) {
       mails.value = res.mails || []
       unreadCount.value = res.unreadCount || 0
@@ -101,13 +104,14 @@ function openReply(mail: MailMessage) {
   showComposeModal.value = true
 }
 
+// Send Mail (Usa mailUrl)
 async function handleSendMail() {
   sendSuccessMsg.value = ''
   sendErrorMsg.value = ''
   isSending.value = true
 
   try {
-    const res: any = await $fetch('/api/admin/mail/send', {
+    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/mail/send`, {
       method: 'POST',
       body: composeData.value
     })
