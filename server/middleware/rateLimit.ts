@@ -1,25 +1,27 @@
 // server/middleware/rateLimit.ts
-import { defineEventHandler, createError, setResponseHeaders } from 'h3'
+import { defineEventHandler, createError, setResponseHeaders, getMethod, getRequestHeader, getRequestIP } from 'h3'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { licenses } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
-  const path = event.node?.req?.url || event.path || ''
+  const path = event.path || event.node?.req?.url || ''
+  const method = getMethod(event)
 
-  // 1. Applica il middleware solo alle chiamate verso gli endpoint API (/api/...)
-  if (!path.startsWith('/api/') || path.startsWith('/_nuxt') || path.startsWith('/api/_')) {
+  // 1. Bypass all'istante per chiamate non-API e per le richieste Preflight CORS (OPTIONS)
+  if (!path.startsWith('/api/') || path.startsWith('/_nuxt') || path.startsWith('/api/_') || method === 'OPTIONS') {
     return
   }
 
   try {
-    // 2. Estrazione sicura degli header direttamente da Node.js (senza .get())
-    const headers = event.node?.req?.headers || {}
-    const rawApiKey = headers['x-api-key'] || headers['authorization']
-    const apiKeyString = Array.isArray(rawApiKey) ? rawApiKey[0] : rawApiKey
-    const apiKey = apiKeyString ? String(apiKeyString).replace(/^Bearer\s+/i, '').trim() : ''
+    // 2. Estrazione sicura degli header con utility H3 (compatibile GCP Cloud Run)
+    const rawApiKey = getRequestHeader(event, 'x-api-key') || getRequestHeader(event, 'authorization') || ''
+    const apiKey = rawApiKey.replace(/^Bearer\s+/i, '').trim()
 
-    // Estrazione ruolo dalla sessione
+    // Estrazione dell'IP reale client tramite proxy GCP
+    const clientIp = getRequestIP(event, { xForwardedFor: true }) || '127.0.0.1'
+
+    // Estrazione ruolo e username dalla sessione
     const userRole = event.context.user?.role?.toLowerCase() || ''
     const username = event.context.user?.username?.toLowerCase() || ''
 
@@ -34,7 +36,7 @@ export default defineEventHandler(async (event) => {
         'X-RateLimit-Bypass': 'true-god-mode',
         'X-DKP-Version': 'v2.4-GOLD'
       })
-      return // L'admin passa all'istante senza interrogar il DB!
+      return // L'admin passa all'istante senza interrogare il DB!
     }
 
     // -------------------------------------------------------------
@@ -89,6 +91,7 @@ export default defineEventHandler(async (event) => {
       setResponseHeaders(event, {
         'X-RateLimit-Limit': String(limit),
         'X-RateLimit-Remaining': String(remaining),
+        'X-DKP-Client-IP': clientIp,
         'X-DKP-Version': 'v2.4-GOLD'
       })
     }

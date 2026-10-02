@@ -1,134 +1,126 @@
 // server/middleware/sentinelAI.ts
-import { defineEventHandler } from 'h3'
-import { eq, sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { licenses } from '~~/drizzle/schema'
+import {
+  defineEventHandler,
+  createError,
+  setResponseHeaders,
+  getHeader,
+  getMethod,
+  getRequestHost
+} from 'h3'
 
 export default defineEventHandler(async (event) => {
-  const req = event.node?.req
-  const res = event.node?.res
+  const method = getMethod(event)
+  const host = getRequestHost(event, { xForwardedHost: true }) || ''
 
-  if (!req || !res) return
-
-  const headers = req.headers || {}
-  const host = String(headers['host'] || headers['x-forwarded-host'] || '')
-  let path = req.url || event.path || ''
-
+  // Rilevamento Sottodomini GCP / Localhost
   const isApiSubdomain = host.startsWith('api.')
   const isMailSubdomain = host.startsWith('mail.')
 
+  // -------------------------------------------------------------
+  // 🌐 1. CONFIGURAZIONE CORS UNIVERSALE PER SUBDOMAINS GCP
+  // -------------------------------------------------------------
+  const origin = getHeader(event, 'origin') || ''
+  const allowedOrigins = [
+    'https://devkernelpulse.org',
+    'https://api.devkernelpulse.org',
+    'https://mail.devkernelpulse.org',
+    'http://localhost:3000'
+  ]
+
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.devkernelpulse.org'))) {
+    setResponseHeaders(event, {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Requested-With'
+    })
+  }
+
+  // Risposta istantanea per richieste Preflight CORS (OPTIONS)
+  if (method === 'OPTIONS') {
+    event.node.res.statusCode = 204
+    event.node.res.end()
+    return
+  }
+
+  let path = event.path || event.node?.req?.url || ''
+
   try {
     // -------------------------------------------------------------
-    // 🤖 1. ROUTING & API SENTINEL AI (api.devkernelpulse.org)
+    // 🤖 2. ROUTING & API SENTINEL AI (api.devkernelpulse.org)
     // -------------------------------------------------------------
     if (isApiSubdomain) {
-      // A. Se l'utente visita la radice da browser, serviamo la console API
+      setResponseHeaders(event, {
+        'X-Sentinel-AI': 'API-Guard-Active',
+        'X-DKP-Version': 'v2.4-GOLD'
+      })
+
+      // A. Visita da browser alla radice -> reindirizza a Console API
       if (path === '/' || path === '') {
-        req.url = '/api-console'
+        if (event.node?.req) event.node.req.url = '/api-console'
+        event.path = '/api-console'
         return
       }
 
-      // B. Ignora asset statici e percorsi interni di sistema
+      // B. Ignora asset statici, console e percorsi interni
       if (
-        path.startsWith('/_nuxt') || 
-        path.startsWith('/api/_') || 
+        path.startsWith('/_nuxt') ||
+        path.startsWith('/api/_') ||
         path.startsWith('/favicon') ||
         path === '/api-console'
       ) {
         return
       }
 
-      // C. Mappatura automatica: trasforma api.domain.com/v2/news -> /api/v2/news
+      // C. Mappatura automatica URL: api.domain.com/v2/news -> /api/v2/news
       if (!path.startsWith('/api/')) {
-        req.url = `/api${path.startsWith('/') ? '' : '/'}${path}`
+        const rewrittenPath = `/api${path.startsWith('/') ? '' : '/'}${path}`
+        if (event.node?.req) event.node.req.url = rewrittenPath
+        event.path = rewrittenPath
+        path = rewrittenPath
       }
 
-      // D. Estrazione della chiave API dall'header
-      const rawApiKey = headers['x-api-key'] || headers['authorization']
-      const apiKeyString = Array.isArray(rawApiKey) ? rawApiKey[0] : rawApiKey
-      const apiKey = apiKeyString ? String(apiKeyString).replace(/^Bearer\s+/i, '').trim() : ''
+      // D. Eccezione per rotte Admin o Public che non richiedono API Key esterna
+      if (path.startsWith('/api/admin/') || path.startsWith('/api/public/')) {
+        return
+      }
 
-      // E. BLOCCO 401: Manca la chiave API
+      // E. Estrazione della chiave API per le chiamate pubbliche sul sottodominio API
+      const rawApiKey = getHeader(event, 'x-api-key') || getHeader(event, 'authorization') || ''
+      const apiKey = rawApiKey.replace(/^Bearer\s+/i, '').trim()
+
+      // F. Verifica presenza API Key
       if (!apiKey) {
-        res.statusCode = 401
-        res.setHeader('Content-Type', 'application/json')
-        res.setHeader('X-Sentinel-AI', 'API-Guard-Active')
-        res.setHeader('X-Error-Reason', 'Missing-API-Key')
-        res.end(JSON.stringify({
-          error: true,
+        throw createError({
           statusCode: 401,
           statusMessage: 'Unauthorized',
-          message: 'API Sentinel AI: Accesso negato. Header "x-api-key" obbligatorio.'
-        }))
-        return
+          message: 'API Sentinel AI: Accesso negato. Header "x-api-key" obbligatorio per il sottodominio API.'
+        })
       }
 
-      // F. Connessione al DB Neon e verifica licenza
-      const db = getDb()
-      const [license] = await db
-        .select()
-        .from(licenses)
-        .where(eq(licenses.licenseKey, apiKey))
-        .limit(1)
-
-      // G. BLOCCO 403: Licenza non valida o non attiva
-      if (!license || license.status !== 'active') {
-        res.statusCode = 403
-        res.setHeader('Content-Type', 'application/json')
-        res.setHeader('X-Sentinel-AI', 'API-Guard-Active')
-        res.end(JSON.stringify({
-          error: true,
-          statusCode: 403,
-          statusMessage: 'Forbidden',
-          message: 'API Sentinel AI: Licenza non valida o non attiva.'
-        }))
-        return
-      }
-
-      // H. BLOCCO 429: Rate Limit / Quota Esaurita
-      const used = license.downloadsCount || 0
-      const limit = license.maxDownloads || 1000
-
-      if (used >= limit) {
-        res.statusCode = 429
-        res.setHeader('Content-Type', 'application/json')
-        res.setHeader('X-RateLimit-Limit', String(limit))
-        res.setHeader('X-RateLimit-Remaining', '0')
-        res.setHeader('Retry-After', '3600')
-        res.end(JSON.stringify({
-          error: true,
-          statusCode: 429,
-          statusMessage: 'Too Many Requests',
-          message: 'API Sentinel AI: Quota mensile esaurita.'
-        }))
-        return
-      }
-
-      // Incremento contatore
-      await db
-        .update(licenses)
-        .set({ downloadsCount: sql`${licenses.downloadsCount} + 1` })
-        .where(eq(licenses.id, license.id))
-
-      // Intestazioni per risposte valide
-      res.setHeader('X-Sentinel-Status', 'Protected-By-Pulse-AI')
-      res.setHeader('X-RateLimit-Limit', String(limit))
-      res.setHeader('X-RateLimit-Remaining', String(Math.max(0, limit - (used + 1))))
+      // Nota: La verifica della validità della licenza e l'incremento quota DB
+      // vengono gestiti in modo unico e centralizzato da `rateLimit.ts`.
     }
 
     // -------------------------------------------------------------
-    // 📧 2. ROUTING & NEXUS MAIL SENTINEL AI (mail.devkernelpulse.org)
+    // 📧 3. ROUTING MAIL SUBDOMAIN (mail.devkernelpulse.org)
     // -------------------------------------------------------------
     if (isMailSubdomain) {
-      res.setHeader('X-Nexus-Mail-Sentinel', 'Active-Delivery-Engine')
-      res.setHeader('X-DKP-Version', 'v2.4-GOLD')
+      setResponseHeaders(event, {
+        'X-Nexus-Mail-Sentinel': 'Active-Delivery-Engine',
+        'X-DKP-Version': 'v2.4-GOLD'
+      })
 
-      if (path === '/') {
-        req.url = '/mail'
+      if (path === '/' || path === '') {
+        if (event.node?.req) event.node.req.url = '/mail'
+        event.path = '/mail'
       }
     }
 
   } catch (error: any) {
-    console.error('❌ Errore critico nel Pulse Sentinel AI:', error)
+    if (error.statusCode) {
+      throw error
+    }
+    console.error('❌ Errore critico in Sentinel AI:', error)
   }
 })
