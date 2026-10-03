@@ -157,13 +157,13 @@ onMounted(() => {
     <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard" active-class="active">
       ⚙️ API Gateway
     </NuxtLink>
-    <NuxtLink :to="getMailUrl('/admin/mail')" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/mail')" external class="nav-tab btn-dashboard" active-class="active">
       📧 Mail Center
     </NuxtLink>
-    <NuxtLink :to="getMailUrl('/admin/newsletter')" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="nav-tab btn-dashboard" active-class="active">
       📣 Newsletter
     </NuxtLink>
-    <NuxtLink :to="getMailUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard" active-class="active">
       📡 Autoresponder
     </NuxtLink>
 

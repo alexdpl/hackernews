@@ -92,12 +92,13 @@ function removeSubscriber(id: number) {
           🏠 Dashboard Main
         </NuxtLink>
       </div>
-
+	  
+ <!-- GRID MODULI -->
       <nav class="admin-grid-nav">
         <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMailUrl('/admin/mail')" external class="nav-tab btn-dashboard">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMailUrl('/admin/newsletter')" external class="nav-tab btn-dashboard active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMailUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard">📡 Autoresponder</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/mail')" external class="nav-tab btn-dashboard">📧 Mail Center</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="nav-tab btn-dashboard active">📣 Newsletter</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard">📡 Autoresponder</NuxtLink>
 
         <NuxtLink :to="getMainUrl('/admin/crawler')" external class="nav-tab btn-dashboard">🤖 Crawler Engine</NuxtLink>
         <NuxtLink :to="getMainUrl('/admin/blog')" external class="nav-tab btn-dashboard">📝 Gestione Blog</NuxtLink>
