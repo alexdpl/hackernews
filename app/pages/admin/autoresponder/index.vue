@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-definePageMeta({ middleware: 'admin-only' })
+// definePageMeta({ middleware: 'admin-only' })
 
 useDkpSeo({
   title: 'Autoresponder Engine v2.4-GOLD - DKP Admin Control Center',
