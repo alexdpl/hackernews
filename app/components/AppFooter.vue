@@ -21,11 +21,14 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
           <li>
             <NuxtLink :to="getMainUrl('/docs/ecosystem')" external>📖 Cos'è DKP & Guida Ecosistema</NuxtLink>
           </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/news')" external>☁️ Tech News Feed</NuxtLink>
+          </li>
           <li>
             <NuxtLink :to="getMainUrl('/blog')" external>📰 DKP Blog & Release Notes</NuxtLink>
           </li>
           <li>
-            <NuxtLink :to="getMainUrl('/news')" external>☁️ Tech News Feed</NuxtLink>
+            <NuxtLink :to="getMainUrl('/jobs')" external>💼 DKP Jobs Hub Center</NuxtLink>
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/roadmap')" external>🚀 Roadmap Ecosistema 2026</NuxtLink>
