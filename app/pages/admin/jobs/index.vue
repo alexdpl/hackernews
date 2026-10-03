@@ -147,7 +147,7 @@ async function saveJob() {
       })
       const index = jobs.value.findIndex(j => j.id === currentJob.value.id)
       if (index !== -1) jobs.value[index] = { ...currentJob.value }
-      triggerToast('✅ Offer di lavoro aggiornata con successo!')
+      triggerToast('✅ Offerta di lavoro aggiornata con successo!')
     } else {
       const newId = Date.now()
       const newJobEntry = { ...currentJob.value, id: newId, createdAt: new Date().toISOString().split('T')[0] }
@@ -245,22 +245,21 @@ const filteredJobs = computed(() => {
           <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
         </div>
 
-        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
+        <NuxtLink to="/admin" class="nav-tab btn-dashboard-main" exact-active-class="active">
           🏠 Dashboard Main
         </NuxtLink>
       </div>
 
       <!-- GRID MODULI ADMIN -->
       <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
-
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
+        <NuxtLink to="/admin/api-gateway" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
+        <NuxtLink to="/admin/mail" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
+        <NuxtLink to="/admin/newsletter" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
+        <NuxtLink to="/admin/autoresponder" class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
+        <NuxtLink to="/admin/crawler" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
+        <NuxtLink to="/admin/blog" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
+        <NuxtLink to="/admin/shop" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
+        <NuxtLink to="/admin/jobs" class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
       </nav>
     </div>
 
@@ -393,7 +392,7 @@ const filteredJobs = computed(() => {
       <div class="modal-content">
         <div class="modal-header">
           <h3>{{ isEditing ? '✏️ Modifica Offerta di Lavoro' : '➕ Crea Nuovo Annuncio Tech' }}</h3>
-          <button @click="showModal = false" class="btn-close">&times;</button>
+          <button type="button" @click="showModal = false" class="btn-close">&times;</button>
         </div>
 
         <div class="modal-body">
@@ -456,8 +455,8 @@ const filteredJobs = computed(() => {
         </div>
 
         <div class="modal-footer">
-          <button @click="showModal = false" class="btn-secondary">Annulla</button>
-          <button @click="saveJob" :disabled="isLoading" class="btn-primary-action">
+          <button type="button" @click="showModal = false" class="btn-secondary">Annulla</button>
+          <button type="button" @click="saveJob" :disabled="isLoading" class="btn-primary-action">
             💾 {{ isEditing ? 'Aggiorna Annuncio' : 'Pubblica Job' }}
           </button>
         </div>
