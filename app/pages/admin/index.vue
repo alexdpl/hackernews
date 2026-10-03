@@ -11,6 +11,8 @@ useDkpSeo({
 const showToast = ref(false)
 const toastMessage = ref('')
 
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+
 const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('users')
 const searchQuery = ref('')
 
@@ -145,7 +147,7 @@ onMounted(() => {
       <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
     </div>
 
-    <NuxtLink to="/admin" class="nav-tab btn-dashboard" exact-active-class="active">
+    <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main" exact-active-class="active">
       🏠 Dashboard Main
     </NuxtLink>
   </div>
@@ -153,30 +155,30 @@ onMounted(() => {
   <!-- GRID MODULI: 2 RIGHE DA 4 LINK (8 MODULI TOTALI) -->
   <nav class="admin-grid-nav">
     <!-- RIGA 1 (4 LINK) -->
-    <NuxtLink to="/admin/api-gateway" class="nav-tab" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard" active-class="active">
       ⚙️ API Gateway
     </NuxtLink>
-    <NuxtLink to="/admin/mail" class="nav-tab" active-class="active">
+    <NuxtLink :to="getMailUrl('/admin/mail')" external class="nav-tab btn-dashboard" active-class="active">
       📧 Mail Center
     </NuxtLink>
-    <NuxtLink to="/admin/newsletter" class="nav-tab" active-class="active">
+    <NuxtLink :to="getMailUrl('/admin/newsletter')" external class="nav-tab btn-dashboard" active-class="active">
       📣 Newsletter
     </NuxtLink>
-    <NuxtLink to="/admin/autoresponder" class="nav-tab" active-class="active">
+    <NuxtLink :to="getMailUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard" active-class="active">
       📡 Autoresponder
     </NuxtLink>
 
     <!-- RIGA 2 (4 LINK INCLUSO JOBS) -->
-    <NuxtLink to="/admin/crawler" class="nav-tab" active-class="active">
+    <NuxtLink to="/admin/crawler" external class="nav-tab btn-dashboard" active-class="active">
       🤖 Crawler Engine
     </NuxtLink>
-    <NuxtLink to="/admin/blog" class="nav-tab" active-class="active">
+    <NuxtLink to="/admin/blog" external class="nav-tab btn-dashboard" active-class="active">
       📝 Gestione Blog
     </NuxtLink>
-    <NuxtLink to="/admin/shop" class="nav-tab" active-class="active">
+    <NuxtLink to="/admin/shop" external class="nav-tab btn-dashboard" active-class="active">
       🛍️ Gestione Shop
     </NuxtLink>
-    <NuxtLink to="/admin/jobs" class="nav-tab" active-class="active">
+    <NuxtLink to="/admin/jobs" external class="nav-tab btn-dashboard" active-class="active">
       💼 Gestione Jobs
     </NuxtLink>
   </nav>
@@ -369,88 +371,99 @@ onMounted(() => {
 
 <style scoped>
 
-/* ==========================================================================
-   NAVBAR COMPATTA A 2 RIGHE CON DASHBOARD IN ALTO A DESTRA
-   ========================================================================== */
+/* -------------------------------------------------------------
+   🎨 STILI DKP ADMIN NAVBAR v2.4-GOLD
+------------------------------------------------------------- */
 .admin-nav-container {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  gap: 12px;
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 20px;
 }
 
 .admin-nav-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 0.65rem;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .nav-branding {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
+  gap: 8px;
+}
+
+.status-dot.green {
+  width: 8px;
+  height: 8px;
+  background-color: #00ff87;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00ff87;
+}
+
+.nav-title {
+  color: #00f0ff;
   font-weight: 800;
-  color: #38bdf8;
+  font-size: 0.85rem;
   letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
 }
 
-/* PULSANTE DASHBOARD IN ALTO A DESTRA */
-.btn-dashboard {
-  background: rgba(0, 220, 130, 0.1) !important;
-  color: #00dc82 !important;
-  border: 1px solid rgba(0, 220, 130, 0.35) !important;
-  font-weight: 800 !important;
-}
-
-.btn-dashboard:hover {
-  background: rgba(0, 220, 130, 0.2) !important;
-  box-shadow: 0 0 12px rgba(0, 220, 130, 0.25);
-}
-
-/* GRID PERFETTA 4 COLONNE X 2 RIGHE */
+/* GRID MODULI (2 RIGHE X 4 LINK) */
 .admin-grid-nav {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.55rem;
+  gap: 10px;
 }
 
 .nav-tab {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.65rem 0.85rem;
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #94a3b8;
-  text-decoration: none;
-  font-size: 0.83rem;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
   font-weight: 700;
-  border-radius: 8px;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  text-align: center;
-  white-space: nowrap;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
 }
 
-.nav-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f8fafc;
-  border-color: #334155;
+/* 🟢 MODULI STANDARD (VERDE NEON) */
+.btn-dashboard {
+  color: #00ff87;
+  background: rgba(0, 255, 135, 0.04);
+  border: 1px solid rgba(0, 255, 135, 0.3);
+}
+
+.btn-dashboard:hover,
+.btn-dashboard.active {
+  background: rgba(0, 255, 135, 0.12);
+  border-color: #00ff87;
+  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
   transform: translateY(-1px);
 }
 
-.nav-tab.active {
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  border-color: rgba(0, 220, 130, 0.35);
-  box-shadow: 0 0 12px rgba(0, 220, 130, 0.15);
+/* 🌐 TASTO MAIN DASHBOARD (CIANO ELECTRIC) */
+.btn-dashboard-main {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+}
+
+.btn-dashboard-main:hover,
+.btn-dashboard-main.active {
+  background: rgba(0, 240, 255, 0.16);
+  border-color: #00f0ff;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+  transform: translateY(-1px);
 }
 
 /* ADATTAMENTO PER SCHERMI PICCOLI / TABLET */

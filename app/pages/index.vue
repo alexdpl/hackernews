@@ -1,4 +1,5 @@
 <!-- app/pages/index.vue -->
+
 <template>
   <div class="feed-container">
     
@@ -114,7 +115,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 // 1. Riconoscimento Dinamico Categoria (Supporta sia URL query ?type=ask che rotte dirette /ask, /show, /jobs)
 const currentCategory = computed(() => {
   const qType = route.query.type?.toString().toLowerCase()

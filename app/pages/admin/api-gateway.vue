@@ -11,6 +11,7 @@ useHead({
 
 // 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
 const config = useRuntimeConfig()
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 interface LicenseItem {
   id: string
@@ -112,21 +113,32 @@ async function resetQuotaUsage(id: string) {
   <div class="gateway-admin-page">
     <div class="admin-container">
       
-      <!-- BREADCRUMB & HEADER -->
-      <header class="page-header">
-        <div class="header-main">
-          <NuxtLink to="/api-console" class="back-link"> 🔌 Torna alla API Console</NuxtLink>
-		  <span class="separator" style="color: #50c878; font-weight: bold;"> | </span>
-		   <NuxtLink to="/admin" class="back-link"> 📊 Torna alla Dashboard</NuxtLink>
-          <div class="title-row">
-            <h1>⚙️ API Gateway & Rate Limit Management</h1>
-            <span class="badge-gold">v2.4-GOLD ADMIN</span>
-          </div>
-          <p class="subtitle">
-            Gestisci le allocazioni di traffico, assegna quote personalizzate e controlla lo stato operativo delle API Key utenti.
-          </p>
-        </div>
-      </header>
+      <!-- BREADCRUMB & HEADER AGGIORNATO v2.4-GOLD -->
+<header class="page-header">
+  <div class="header-main">
+    <!-- BARRA BREADCRUMB CON PULSANTI UNIFORMATI -->
+    <div class="breadcrumb-nav">
+      <NuxtLink :to="getApiUrl('/api-console')" external class="btn-breadcrumb api">
+        🔌 Torna alla API Console
+      </NuxtLink>
+      
+      <span class="breadcrumb-separator">|</span>
+      
+      <NuxtLink :to="getMainUrl('/admin')" external class="btn-breadcrumb admin">
+        📊 Torna alla Dashboard
+      </NuxtLink>
+    </div>
+	<p class="subtitle">
+      Gestisci le allocazioni di traffico, assegna quote personalizzate e controlla lo stato operativo delle API Key utenti.
+    </p>
+  </div>
+</header>
+
+    <!-- TITOLO E SUBTITLE -->
+    <div class="title-row">
+      <h1>⚙️ API Gateway & Rate Limit Management</h1>
+      <span class="badge-gold">v2.4-GOLD ADMIN</span>
+    </div>
 
       <!-- BARRA FILTRI & SEARCH -->
       <section class="controls-bar">
@@ -252,6 +264,99 @@ async function resetQuotaUsage(id: string) {
 </template>
 
 <style scoped>
+
+/* -------------------------------------------------------------
+   🎨 BREADCRUMB & HEADER STYLES (api-gateway.vue)
+------------------------------------------------------------- */
+.page-header {
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.breadcrumb-separator {
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 700;
+}
+
+/* TASTI BREADCRUMB STILE CHIP */
+.btn-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+/* TORNA ALLA API CONSOLE (BLU/CIANO) */
+.btn-breadcrumb.api {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.btn-breadcrumb.api:hover {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: #00f0ff;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+/* TORNA ALLA DASHBOARD (VERDE EMERALD) */
+.btn-breadcrumb.admin {
+  color: #00ff87;
+  background: rgba(0, 255, 135, 0.08);
+  border: 1px solid rgba(0, 255, 135, 0.3);
+}
+
+.btn-breadcrumb.admin:hover {
+  background: rgba(0, 255, 135, 0.2);
+  border-color: #00ff87;
+  box-shadow: 0 0 10px rgba(0, 255, 135, 0.3);
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.title-row h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.badge-gold {
+  background: linear-gradient(135deg, #ffb703, #fb8500);
+  color: #000;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.subtitle {
+  color: #8a99ad;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 .gateway-admin-page {
   background: #020420;
   color: #cbd5e1;

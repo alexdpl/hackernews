@@ -8,7 +8,7 @@ const { currentLang, activeLanguageObj, languages, setLanguage, initTranslator, 
 
 const router = useRouter()
 const route = useRoute()
-
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 // DOM Ref per chiusura al click esterno
 const navbarRef = ref<HTMLElement | null>(null)
 
@@ -179,31 +179,32 @@ async function handleLogout() {
         </div>
 		
         <!-- 3. LINK DKP API -->
-        <div class="dropdown-wrapper">
-          <button 
-            @click="toggleDropdown('api')" 
-            class="tools-btn" 
-            :class="{ active: activeDropdown === 'api' }"
-          >
-            🔌 DKP API <span class="arrow" :class="{ rotated: activeDropdown === 'api' }">▼</span>
-          </button>
-          
-          <Transition name="fade-slide">
-            <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
-              <a 
-                href="#"
-                class="menu-item"
-                @click.prevent="goToApiConsole"
-              >
-                <span class="icon">⚡</span>
-                <div class="item-text">
-                  <strong>DKP API Console</strong>
-                  <small>Gestione Key, Metriche e Consumi API</small>
-                </div>
-              </a>
-            </div>
-          </Transition>
-        </div>
+<div class="dropdown-wrapper">
+  <button 
+    @click="toggleDropdown('api')" 
+    class="tools-btn" 
+    :class="{ active: activeDropdown === 'api' }"
+  >
+    🔌 DKP API <span class="arrow" :class="{ rotated: activeDropdown === 'api' }">▼</span>
+  </button>
+  
+  <Transition name="fade-slide">
+    <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
+      <NuxtLink 
+  :to="getApiUrl('/api-console')"
+  external
+  class="menu-item"
+  @click="activeDropdown = null"
+>
+  <span class="icon">⚡</span>
+  <div class="item-text">
+    <strong>DKP API Console</strong>
+    <small>Gestione Key, Metriche e Consumi API</small>
+  </div>
+</NuxtLink>
+    </div>
+  </Transition>
+</div>
 		
         <span class="slash">/</span>
         <!-- 4. SUBMIT LINK -->
