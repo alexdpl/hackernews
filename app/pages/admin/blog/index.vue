@@ -9,7 +9,7 @@ useDkpSeo({
   description: 'Gestione categorie, sottocategorie e pubblicazione articoli sull\'ecosistema DevKernelPulse.'
 })
 
-const { getMainUrl, getMailUrl } = useDomain()
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 // --- STRUTTURA DATI TAXONOMY & DB ---
 interface Subcategory {

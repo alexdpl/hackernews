@@ -8,6 +8,7 @@ definePageMeta({
 
 // 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
 const config = useRuntimeConfig()
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 interface AutoRule {
   id: number
@@ -76,27 +77,57 @@ onMounted(() => {
 
 <template>
   <div class="autoresponder-admin-container">
-  <!-- TOP BAR DI NAVIGAZIONE ADMIN -->
-<div class="admin-top-bar">
-  <div class="admin-breadcrumb">
-    <span class="status-dot green"></span>
-    <span class="breadcrumb-text">ADMIN CONTROL CENTER</span>
+  
+  <!-- TOP BAR SUPERIORE: BRANDING & DASHBOARD IN ALTO A DESTRA -->
+  <div class="admin-nav-top">
+    <div class="nav-branding">
+      <span class="status-dot green"></span>
+      <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
+    </div>
+
+    <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main" exact-active-class="active">
+      🏠 Dashboard Main
+    </NuxtLink>
   </div>
 
-  <NuxtLink to="/admin" class="btn-back-dashboard">
-    📊 Torna alla Dashboard
-  </NuxtLink>
+  <!-- GRID MODULI: 2 RIGHE DA 4 LINK (8 MODULI TOTALI) -->
+  <nav class="admin-grid-nav">
+    <!-- RIGA 1 (4 LINK) -->
+    <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard" active-class="active">
+      ⚙️ API Gateway
+    </NuxtLink>
+    <NuxtLink :to="getMailUrl('/admin/mail')" external class="nav-tab btn-dashboard" active-class="active">
+      📧 Mail Center
+    </NuxtLink>
+    <NuxtLink :to="getMailUrl('/admin/newsletter')" external class="nav-tab btn-dashboard" active-class="active">
+      📣 Newsletter
+    </NuxtLink>
+    <NuxtLink :to="getMailUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard" active-class="active">
+      📡 Autoresponder
+    </NuxtLink>
+
+    <!-- RIGA 2 (4 LINK CORRETTI CON getMainUrl) -->
+    <NuxtLink :to="getMainUrl('/admin/crawler')" external class="nav-tab btn-dashboard" active-class="active">
+      🤖 Crawler Engine
+    </NuxtLink>
+    <NuxtLink :to="getMainUrl('/admin/blog')" external class="nav-tab btn-dashboard" active-class="active">
+      📝 Gestione Blog
+    </NuxtLink>
+    <NuxtLink :to="getMainUrl('/admin/shop')" external class="nav-tab btn-dashboard" active-class="active">
+      🛍️ Gestione Shop
+    </NuxtLink>
+    <NuxtLink :to="getMainUrl('/admin/jobs')" external class="nav-tab btn-dashboard" active-class="active">
+      💼 Gestione Jobs
+    </NuxtLink>
+  </nav>
 </div>
+  
     <header class="header-bar">
       <div>
         <h1 class="page-title">🤖 DKP Autoresponder Rules <span class="badge-v">v2.4</span></h1>
         <p class="page-subtitle">Configurazione risponditori automatici in ingresso per le caselle Cloudflare</p>
       </div>
-
-      <div class="header-actions">
-        <NuxtLink to="/admin/mail" class="btn-secondary">📧 Torna alla Webmail</NuxtLink>
-        <button @click="showModal = true" class="btn-primary">➕ Nuova Regola</button>
-      </div>
+	  
     </header>
 
     <div class="rules-card">
@@ -172,73 +203,155 @@ onMounted(() => {
 
 <style scoped>
 
-/* ==========================================================================
-   TOP BAR NAVIGAZIONE ADMIN (TORNA ALLA DASHBOARD)
-   ========================================================================== */
-.admin-top-bar {
+/* -------------------------------------------------------------
+   🎨 STILI DKP ADMIN NAVBAR v2.4-GOLD
+------------------------------------------------------------- */
+.admin-nav-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.admin-nav-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 0.6rem 1rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.admin-breadcrumb {
+.nav-branding {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-}
-
-.breadcrumb-text {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #38bdf8;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  gap: 8px;
 }
 
 .status-dot.green {
-  background: #00dc82;
-  box-shadow: 0 0 8px #00dc82;
+  width: 8px;
+  height: 8px;
+  background-color: #00ff87;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00ff87;
 }
 
-/* BOTTONE NEON TORNA ALLA DASHBOARD */
-.btn-back-dashboard {
-  display: flex;
+.nav-title {
+  color: #00f0ff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+/* GRID MODULI (2 RIGHE X 4 LINK) */
+.admin-grid-nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.nav-tab {
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  font-size: 0.82rem;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
   font-weight: 700;
+  font-size: 0.88rem;
   text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
 }
 
-.btn-back-dashboard:hover {
-  border-color: #00dc82;
-  color: #00dc82;
-  background: rgba(0, 220, 130, 0.08);
-  box-shadow: 0 0 12px rgba(0, 220, 130, 0.2);
+/* 🟢 MODULI STANDARD (VERDE NEON) */
+.btn-dashboard {
+  color: #00ff87;
+  background: rgba(0, 255, 135, 0.04);
+  border: 1px solid rgba(0, 255, 135, 0.3);
+}
+
+.btn-dashboard:hover,
+.btn-dashboard.active {
+  background: rgba(0, 255, 135, 0.12);
+  border-color: #00ff87;
+  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
   transform: translateY(-1px);
 }
+
+/* 🌐 TASTO MAIN DASHBOARD (CIANO ELECTRIC) */
+.btn-dashboard-main {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+}
+
+.btn-dashboard-main:hover,
+.btn-dashboard-main.active {
+  background: rgba(0, 240, 255, 0.16);
+  border-color: #00f0ff;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+/* ADATTAMENTO PER SCHERMI PICCOLI / TABLET */
+@media (max-width: 1024px) {
+  .admin-grid-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 580px) {
+  .admin-grid-nav {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   FINESTRELLA TOAST NOTIFICATION (FINESTRELLA VERDE)
+   ========================================================================== */
+.dkp-toast-success {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 999999;
+  background: #061811;
+  border: 1px solid #00dc82;
+  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35), 0 0 15px rgba(0, 220, 130, 0.2);
+  padding: 0.9rem 1.3rem;
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  max-width: 420px;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #f8fafc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.toast-icon {
+  font-size: 1.15rem;
+}
+
+.toast-fade-enter-active, .toast-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-fade-enter-from, .toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-15px) scale(0.95);
+}
+
 
 .autoresponder-admin-container {
   padding: 1.5rem;
