@@ -1,6 +1,7 @@
 <!-- components/TheFooter.vue -->
 <script setup lang="ts">
 const currentYear = new Date().getFullYear()
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 </script>
 
 <template>
@@ -17,10 +18,18 @@ const currentYear = new Date().getFullYear()
           Ecosistema SaaS modulare e suite di strumenti crittografici e IA proprietari per developer, security researcher e software architect.
         </p>
         <ul class="footer-links">
-          <li><NuxtLink to="/docs/ecosystem">📖 Cos'è DKP & Guida Ecosistema</NuxtLink></li>
-          <li><NuxtLink to="/blog">📰 DKP Blog & Release Notes</NuxtLink></li>
-          <li><NuxtLink to="/news">☁️ Tech News Feed</NuxtLink></li>
-          <li><NuxtLink to="/roadmap">🚀 Roadmap Ecosistema 2026</NuxtLink></li>
+          <li>
+            <NuxtLink :to="getMainUrl('/docs/ecosystem')" external>📖 Cos'è DKP & Guida Ecosistema</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/blog')" external>📰 DKP Blog & Release Notes</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/news')" external>☁️ Tech News Feed</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/roadmap')" external>🚀 Roadmap Ecosistema 2026</NuxtLink>
+          </li>
         </ul>
       </div>
 
@@ -28,12 +37,24 @@ const currentYear = new Date().getFullYear()
       <div class="footer-col">
         <h4>🛠️ DKP TOOLS SUITE</h4>
         <ul class="footer-links">
-          <li><NuxtLink to="/tools">🛠️ Panoramica DKP Tools</NuxtLink></li>
-          <li><NuxtLink to="/tools/proof-of-code">🛡️ Proof of Code (Vault)</NuxtLink></li>
-          <li><NuxtLink to="/tools/ai-scanner">🔍 AI Code Scanner v2.3</NuxtLink></li>
-          <li><NuxtLink to="/tools/terminal">💻 Terminal Web Shell</NuxtLink></li>
-          <li><NuxtLink to="/tools/neural-playground">🧠 Neural Playground</NuxtLink></li>
-          <li><NuxtLink to="/tools/cli-toolkit">⚡ DKP CLI Toolkit <span class="new-tag">v2.4-GOLD</span></NuxtLink></li>
+          <li>
+            <NuxtLink :to="getMainUrl('/tools')" external>🛠️ Panoramica DKP Tools</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/tools/proof-of-code')" external>🛡️ Proof of Code (Vault)</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/tools/ai-scanner')" external>🔍 AI Code Scanner v2.3</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/tools/terminal')" external>💻 Terminal Web Shell</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/tools/neural-playground')" external>🧠 Neural Playground</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/tools/cli-toolkit')" external>⚡ DKP CLI Toolkit <span class="new-tag">v2.4-GOLD</span></NuxtLink>
+          </li>
         </ul>
       </div>
 
@@ -41,11 +62,21 @@ const currentYear = new Date().getFullYear()
       <div class="footer-col">
         <h4>🔌 DEVELOPERS & API</h4>
         <ul class="footer-links">
-          <li><NuxtLink to="/api-console" class="highlight-link">⚡ DKP API Console</NuxtLink></li>
-          <li><NuxtLink to="/docs/api">📖 Documentazione API (OpenAPI)</NuxtLink></li>
-          <li><NuxtLink to="/docs/sdk">⚙️ SDK & Guida Integrazione</NuxtLink></li>
-          <li><NuxtLink to="/status">🟢 API Status & Latency</NuxtLink></li>
-          <li><a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener">🐙 GitHub Repository ↗</a></li>
+          <li>
+            <NuxtLink :to="getApiUrl('/api-console')" external class="highlight-link">⚡ DKP API Console</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/docs/api')" external>📖 Documentazione API (OpenAPI)</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/docs/sdk')" external>⚙️ SDK & Guida Integrazione</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/status')" external>🟢 API Status & Latency</NuxtLink>
+          </li>
+          <li>
+            <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener">🐙 GitHub Repository ↗</a>
+          </li>
         </ul>
       </div>
 
@@ -53,12 +84,24 @@ const currentYear = new Date().getFullYear()
       <div class="footer-col">
         <h4>📜 RISORSE & LEGALE</h4>
         <ul class="footer-links">
-          <li><NuxtLink to="/shop">🛍️ DKP Shop & Licenze SaaS</NuxtLink></li>
-          <li><NuxtLink to="/about">👥 Chi Siamo</NuxtLink></li>
-          <li><NuxtLink to="/legal/privacy">🛡️ Privacy Policy</NuxtLink></li>
-          <li><NuxtLink to="/legal/terms">⚖️ Termini d'Uso</NuxtLink></li>
-          <li><NuxtLink to="/legal/cookies">🔒 Cookie Policy</NuxtLink></li>
-		  <li><NuxtLink to="/contact">📧 Contatti</NuxtLink></li>
+          <li>
+            <NuxtLink :to="getMainUrl('/shop')" external>🛍️ DKP Shop & Licenze SaaS</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/about')" external>👥 Chi Siamo</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/legal/privacy')" external>🛡️ Privacy Policy</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/legal/terms')" external>⚖️ Termini d'Uso</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/legal/cookies')" external>🔒 Cookie Policy</NuxtLink>
+          </li>
+          <li>
+            <NuxtLink :to="getMainUrl('/contact')" external>📧 Contatti</NuxtLink>
+          </li>
         </ul>
       </div>
 

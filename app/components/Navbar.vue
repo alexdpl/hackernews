@@ -9,6 +9,7 @@ const { currentLang, activeLanguageObj, languages, setLanguage, initTranslator, 
 const router = useRouter()
 const route = useRoute()
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+
 // DOM Ref per chiusura al click esterno
 const navbarRef = ref<HTMLElement | null>(null)
 
@@ -23,17 +24,6 @@ function toggleDropdown(name: string) {
 function closeAllDropdowns() {
   activeDropdown.value = null
   isMobileMenuOpen.value = false
-}
-
-function goToApiConsole() {
-  closeAllDropdowns()
-
-  if (!isAuthenticated.value) {
-    alert('🔒 Accesso Riservato: Devi essere loggato per accedere alla DKP API Console!')
-    return
-  }
-
-  router.push('/api-console')
 }
 
 // Chiusura automatica dei dropdown al cambio pagina
@@ -100,7 +90,7 @@ function handleLogin() {
 async function handleLogout() {
   closeAllDropdowns()
   await logout()
-  router.push('/')
+  window.location.href = getMainUrl('/')
 }
 </script>
 
@@ -108,9 +98,9 @@ async function handleLogout() {
   <header class="navbar-wrapper" ref="navbarRef">
     <div class="navbar-inner">
       
-      <!-- BRAND LOGO -->
+      <!-- BRAND LOGO (Forza ritorno al dominio principale) -->
       <div class="brand-section">
-        <NuxtLink to="/" class="brand-link">
+        <NuxtLink :to="getMainUrl('/')" external class="brand-link">
           <span class="dk-badge">DK</span>
           <span class="brand-name">DevKernel<span class="pulse-highlight">Pulse</span></span>
         </NuxtLink>
@@ -135,7 +125,8 @@ async function handleLogout() {
               <NuxtLink 
                 v-for="item in newsCategories" 
                 :key="item.route" 
-                :to="item.route" 
+                :to="getMainUrl(item.route)" 
+                external
                 class="menu-item"
                 @click="closeAllDropdowns"
               >
@@ -164,7 +155,8 @@ async function handleLogout() {
               <NuxtLink 
                 v-for="tool in dkpTools" 
                 :key="tool.route" 
-                :to="tool.route" 
+                :to="getMainUrl(tool.route)" 
+                external
                 class="menu-item"
                 @click="closeAllDropdowns"
               >
@@ -179,36 +171,36 @@ async function handleLogout() {
         </div>
 		
         <!-- 3. LINK DKP API -->
-<div class="dropdown-wrapper">
-  <button 
-    @click="toggleDropdown('api')" 
-    class="tools-btn" 
-    :class="{ active: activeDropdown === 'api' }"
-  >
-    🔌 DKP API <span class="arrow" :class="{ rotated: activeDropdown === 'api' }">▼</span>
-  </button>
-  
-  <Transition name="fade-slide">
-    <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
-      <NuxtLink 
-  :to="getApiUrl('/api-console')"
-  external
-  class="menu-item"
-  @click="activeDropdown = null"
->
-  <span class="icon">⚡</span>
-  <div class="item-text">
-    <strong>DKP API Console</strong>
-    <small>Gestione Key, Metriche e Consumi API</small>
-  </div>
-</NuxtLink>
-    </div>
-  </Transition>
-</div>
+        <div class="dropdown-wrapper">
+          <button 
+            @click="toggleDropdown('api')" 
+            class="tools-btn" 
+            :class="{ active: activeDropdown === 'api' }"
+          >
+            🔌 DKP API <span class="arrow" :class="{ rotated: activeDropdown === 'api' }">▼</span>
+          </button>
+          
+          <Transition name="fade-slide">
+            <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
+              <NuxtLink 
+                :to="getApiUrl('/api-console')"
+                external
+                class="menu-item"
+                @click="closeAllDropdowns"
+              >
+                <span class="icon">⚡</span>
+                <div class="item-text">
+                  <strong>DKP API Console</strong>
+                  <small>Gestione Key, Metriche e Consumi API</small>
+                </div>
+              </NuxtLink>
+            </div>
+          </Transition>
+        </div>
 		
         <span class="slash">/</span>
         <!-- 4. SUBMIT LINK -->
-        <NuxtLink to="/submit" class="submit-highlight">{{ t('submit') }}</NuxtLink>
+        <NuxtLink :to="getMainUrl('/submit')" external class="submit-highlight">{{ t('submit') }}</NuxtLink>
         <span class="slash">/</span>
       </nav> 
 	  
@@ -250,7 +242,7 @@ async function handleLogout() {
             <span class="arrow" :class="{ rotated: activeDropdown === 'user' }">▼</span>
           </button>
 
-          <!-- MENU A TENDINA PROFILO UTENTE / ADMIN SNELLED V2.4-GOLD -->
+          <!-- MENU A TENDINA PROFILO UTENTE / ADMIN -->
           <Transition name="fade-slide">
             <div v-show="activeDropdown === 'user'" class="menu-dropdown profile-menu">
               
@@ -265,33 +257,33 @@ async function handleLogout() {
               <div class="dropdown-divider"></div>
 
               <!-- VOCI UTENTE STANDARD -->
-              <NuxtLink to="/user/dashboard" class="menu-item" @click="closeAllDropdowns">
+              <NuxtLink :to="getMainUrl('/user/dashboard')" external class="menu-item" @click="closeAllDropdowns">
                 <span>📊</span> {{ t('dashboard') }}
               </NuxtLink>
 
-              <NuxtLink to="/user/dashboard?tab=vault" class="menu-item" @click="closeAllDropdowns">
+              <NuxtLink :to="getMainUrl('/user/dashboard?tab=vault')" external class="menu-item" @click="closeAllDropdowns">
                 <span>🛡️</span> {{ t('vault') }}
               </NuxtLink>
 
-              <NuxtLink to="/user/dashboard?tab=profile" class="menu-item" @click="closeAllDropdowns">
+              <NuxtLink :to="getMainUrl('/user/dashboard?tab=profile')" external class="menu-item" @click="closeAllDropdowns">
                 <span>⚙️</span> {{ t('settings') }}
               </NuxtLink>
 
-              <NuxtLink to="/api-console" class="menu-item api-console-item" @click="closeAllDropdowns">
+              <NuxtLink :to="getApiUrl('/api-console')" external class="menu-item api-console-item" @click="closeAllDropdowns">
                 <span>⚡</span> DKP API Console
               </NuxtLink>
 
-              <NuxtLink :to="`/user/${currentUser?.username || 'alexdpl'}`" class="menu-item" @click="closeAllDropdowns">
+              <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="menu-item" @click="closeAllDropdowns">
                 <span>🌐</span> Vedi Profilo Pubblico
               </NuxtLink>
 
-              <!-- PANNELLO AMMINISTRAZIONE (ESCLUSIVAMENTE CONTROL CENTER) -->
+              <!-- PANNELLO AMMINISTRAZIONE -->
               <template v-if="isAdmin">
                 <div class="dropdown-divider"></div>
                 <div class="dropdown-group">
                   <span class="dropdown-label">AMMINISTRAZIONE DKP</span>
                   
-                  <NuxtLink to="/admin" class="menu-item admin-control-item" @click="closeAllDropdowns">
+                  <NuxtLink :to="getMainUrl('/admin')" external class="menu-item admin-control-item" @click="closeAllDropdowns">
                     <span>🔒</span> Control Center Admin
                   </NuxtLink>
                 </div>
@@ -308,7 +300,7 @@ async function handleLogout() {
           </Transition>
         </div>
 
-      </div> <!-- CHIUSURA CORRETTA DI RIGHT-ACTIONS -->
+      </div>
 
       <!-- BOTTONE TOGGLE HAMBURGER DKP MOBILE -->
       <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="mobile-hamburger-btn mobile-only" aria-label="Toggle Menu">
@@ -326,7 +318,8 @@ async function handleLogout() {
           <NuxtLink 
             v-for="item in newsCategories" 
             :key="item.route" 
-            :to="item.route" 
+            :to="getMainUrl(item.route)" 
+            external
             class="mobile-nav-link"
             @click="closeAllDropdowns"
           >
@@ -335,13 +328,13 @@ async function handleLogout() {
           
           <div class="mobile-section-divider"></div>
           
-          <NuxtLink to="/submit" class="mobile-nav-link highlight" @click="closeAllDropdowns">+ Submit Link</NuxtLink>
-          <NuxtLink to="/blog" class="mobile-nav-link" @click="closeAllDropdowns">✍️ DKP Blog</NuxtLink>
+          <NuxtLink :to="getMainUrl('/submit')" external class="mobile-nav-link highlight" @click="closeAllDropdowns">+ Submit Link</NuxtLink>
+          <NuxtLink :to="getMainUrl('/blog')" external class="mobile-nav-link" @click="closeAllDropdowns">✍️ DKP Blog</NuxtLink>
           
           <div class="mobile-section-divider"></div>
           <span class="mobile-section-title">🛠️ DKP TOOLS V2.4</span>
           
-          <NuxtLink v-for="tool in dkpTools" :key="tool.route" :to="tool.route" class="mobile-nav-link tool-link" @click="closeAllDropdowns">
+          <NuxtLink v-for="tool in dkpTools" :key="tool.route" :to="getMainUrl(tool.route)" external class="mobile-nav-link tool-link" @click="closeAllDropdowns">
             <span>{{ tool.icon }} {{ tool.name }}</span>
           </NuxtLink>
 
@@ -349,12 +342,12 @@ async function handleLogout() {
           
           <div v-if="isAuthenticated" class="mobile-user-block">
             <span class="m-user">👤 @{{ currentUser?.username }}</span>
-            <NuxtLink to="/user/dashboard" class="mobile-nav-link" @click="closeAllDropdowns">📊 Dashboard & Vault</NuxtLink>
+            <NuxtLink :to="getMainUrl('/user/dashboard')" external class="mobile-nav-link" @click="closeAllDropdowns">📊 Dashboard & Vault</NuxtLink>
             
             <template v-if="isAdmin">
               <div class="mobile-section-divider"></div>
               <span class="mobile-section-title">🛡️ AMMINISTRAZIONE DKP</span>
-              <NuxtLink to="/admin" class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Control Center Admin</NuxtLink>
+              <NuxtLink :to="getMainUrl('/admin')" external class="mobile-nav-link admin" @click="closeAllDropdowns">🔒 Control Center Admin</NuxtLink>
             </template>
 
             <div class="mobile-section-divider"></div>
@@ -371,9 +364,7 @@ async function handleLogout() {
 </template>
 
 <style scoped>
-/* ==========================================================================
-   1. NAVBAR WRAPPER & CONTAINER
-   ========================================================================== */
+/* Stili CSS invariati */
 .navbar-wrapper {
   background: #020420;
   border-bottom: 2px solid #00dc82;
@@ -394,9 +385,6 @@ async function handleLogout() {
   gap: 1rem;
 }
 
-/* ==========================================================================
-   2. BRANDING & LOGO
-   ========================================================================== */
 .brand-section {
   display: flex;
   align-items: center;
@@ -442,27 +430,12 @@ async function handleLogout() {
   letter-spacing: 0.03em;
 }
 
-/* ==========================================================================
-   3. NAV LINKS & DROPDOWN TRIGGERS
-   ========================================================================== */
 .nav-links {
   display: flex;
   align-items: center;
   gap: 0.6rem;
   font-size: 0.92rem;
   font-weight: 600;
-}
-
-.nav-link-item {
-  color: #cbd5e1;
-  text-decoration: none;
-  transition: color 0.15s ease;
-  padding: 0.2rem 0.4rem;
-}
-
-.nav-link-item:hover,
-.nav-link-item.router-link-active { 
-  color: #00dc82; 
 }
 
 .submit-highlight {
@@ -514,9 +487,6 @@ async function handleLogout() {
   color: #00dc82;
 }
 
-/* ==========================================================================
-   4. RIGHT ACTIONS & USER PILL
-   ========================================================================== */
 .right-actions {
   display: flex;
   align-items: center;
@@ -606,9 +576,6 @@ async function handleLogout() {
   color: #cbd5e1;
 }
 
-/* ==========================================================================
-   5. DROPDOWN MENUS (TOOLS, LANG & PROFILE V2.4-GOLD)
-   ========================================================================== */
 .menu-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
@@ -627,7 +594,6 @@ async function handleLogout() {
 .lang-menu { right: 0; width: 180px; max-height: 280px; overflow-y: auto; }
 .profile-menu { right: 0; width: 250px; }
 
-/* HEADER DROPDOWN UTENTE */
 .profile-header {
   padding: 0.4rem 0.6rem;
   display: flex;
@@ -672,7 +638,6 @@ async function handleLogout() {
   text-transform: uppercase;
 }
 
-/* ITEM GENERICI MENU */
 .menu-item {
   display: flex;
   align-items: center;
@@ -749,9 +714,6 @@ async function handleLogout() {
   color: #f87171; 
 }
 
-/* ==========================================================================
-   6. RESPONSIVE MOBILE DRAWER
-   ========================================================================== */
 .mobile-only { display: none; }
 
 @media (max-width: 900px) {
@@ -787,9 +749,6 @@ async function handleLogout() {
   .m-user { color: #38bdf8; font-weight: 800; font-size: 0.9rem; }
 }
 
-/* ==========================================================================
-   7. TRANSITIONS
-   ========================================================================== */
 .fade-slide-enter-active,
 .fade-slide-leave-active { 
   transition: all 0.15s ease-out; 
