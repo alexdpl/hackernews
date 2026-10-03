@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-definePageMeta({ middleware: 'admin-only' })
+// definePageMeta({ middleware: 'admin-only' })
 
 useDkpSeo({
   title: 'Newsletter & Subscriber Hub v2.4-GOLD - DKP Admin',
@@ -95,15 +95,15 @@ function removeSubscriber(id: number) {
 	  
  <!-- GRID MODULI -->
       <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" external class="nav-tab btn-dashboard">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="nav-tab btn-dashboard active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard">📡 Autoresponder</NuxtLink>
+        <NuxtLink :to="getApiUrl('/admin/api-gateway') class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/mail') class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/newsletter') class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/autoresponder') class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
 
-        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="nav-tab btn-dashboard">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" external class="nav-tab btn-dashboard">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" external class="nav-tab btn-dashboard">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="nav-tab btn-dashboard">💼 Gestione Jobs</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/crawler') class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/blog') class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/shop') class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/jobs') class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
       </nav>
     </div>
 
