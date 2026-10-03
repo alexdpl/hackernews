@@ -7,12 +7,11 @@ useDkpSeo({
   description: 'Pannello di controllo centrale e monitoraggio difensivo con Pulse Sentinel AI.'
 })
 
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+
 // Stato reattivo Notifiche Toast
 const showToast = ref(false)
 const toastMessage = ref('')
-
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
-
 const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('users')
 const searchQuery = ref('')
 
@@ -127,18 +126,18 @@ onMounted(() => {
     </Transition>
 
     <!-- 1. HEADER CONTROL CENTER -->
-    <div class="admin-header">
-      <div class="header-main">
-        <h1>🔒 Control Center Admin</h1>
-        <p>Gestione piattaforma, moderazione contenuti e protezione infrastruttura GCP in tempo reale.</p>
-      </div>
-      <div class="region-badge">
-        <span class="status-dot green"></span>
-        GCP Region: europe-west1
-      </div>
-    </div>
+<div class="admin-header">
+  <div class="header-main">
+    <h1>🔒 Control Center Admin</h1>
+    <p>Gestione piattaforma, moderazione contenuti e protezione infrastruttura GCP in tempo reale.</p>
+  </div>
+  <div class="region-badge">
+    <span class="status-dot green"></span>
+    GCP Region: europe-west1
+  </div>
+</div>
 
-    <!-- NUOVA NAVBAR GRID v2.4-GOLD (DASHBOARD IN ALTO + 2 RIGHE X 4 MODULI) -->
+<!-- NAVBAR GRID v2.4-GOLD (DASHBOARD IN ALTO + 2 RIGHE X 4 MODULI CORRETTI CON useDomain) -->
 <div class="admin-nav-container">
   <!-- TOP BAR SUPERIORE: BRANDING & DASHBOARD IN ALTO A DESTRA -->
   <div class="admin-nav-top">
@@ -155,7 +154,7 @@ onMounted(() => {
   <!-- GRID MODULI: 2 RIGHE DA 4 LINK (8 MODULI TOTALI) -->
   <nav class="admin-grid-nav">
     <!-- RIGA 1 (4 LINK) -->
-    <NuxtLink :to="getMainUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard" active-class="active">
       ⚙️ API Gateway
     </NuxtLink>
     <NuxtLink :to="getMailUrl('/admin/mail')" external class="nav-tab btn-dashboard" active-class="active">
@@ -168,205 +167,203 @@ onMounted(() => {
       📡 Autoresponder
     </NuxtLink>
 
-    <!-- RIGA 2 (4 LINK INCLUSO JOBS) -->
-    <NuxtLink to="/admin/crawler" external class="nav-tab btn-dashboard" active-class="active">
+    <!-- RIGA 2 (4 LINK CORRETTI CON getMainUrl) -->
+    <NuxtLink :to="getMainUrl('/admin/crawler')" external class="nav-tab btn-dashboard" active-class="active">
       🤖 Crawler Engine
     </NuxtLink>
-    <NuxtLink to="/admin/blog" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/blog')" external class="nav-tab btn-dashboard" active-class="active">
       📝 Gestione Blog
     </NuxtLink>
-    <NuxtLink to="/admin/shop" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/shop')" external class="nav-tab btn-dashboard" active-class="active">
       🛍️ Gestione Shop
     </NuxtLink>
-    <NuxtLink to="/admin/jobs" external class="nav-tab btn-dashboard" active-class="active">
+    <NuxtLink :to="getMainUrl('/admin/jobs')" external class="nav-tab btn-dashboard" active-class="active">
       💼 Gestione Jobs
     </NuxtLink>
   </nav>
 </div>
 
-    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
-    <div class="sentinel-monitor-banner">
-      <div class="sentinel-monitor-header">
-        <div class="sentinel-brand">
-          <span class="shield-pulse">🛡️</span>
-          <div>
-            <h2>
-              Pulse Sentinel AI 
-              <span class="badge-status gold">v2.4-GOLD</span>
-            </h2>
-            <p class="sentinel-sub">
-              Firewall Euristico, SAST/AST Engine & System Defense attivi nell'infrastruttura Kernel v2.4
-            </p>
+<!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
+<div class="sentinel-monitor-banner">
+  <div class="sentinel-monitor-header">
+    <div class="sentinel-brand">
+      <span class="shield-pulse">🛡️</span>
+      <div>
+        <h2>
+          Pulse Sentinel AI 
+          <span class="badge-status gold">v2.4-GOLD</span>
+        </h2>
+        <p class="sentinel-sub">
+          Firewall Euristico, SAST/AST Engine & System Defense attivi nell'infrastruttura Kernel v2.4
+        </p>
+      </div>
+    </div>
+
+    <button 
+      @click="toggleAutoDefend" 
+      :class="['btn-toggle-switch', sentinelData.autoDefendEnabled ? 'active' : 'inactive']"
+      title="Clicca per attivare/disattivare Auto-Defend AI"
+    >
+      <span>Auto-Defend AI</span>
+      <strong>{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
+    </button>
+  </div>
+
+  <div class="sentinel-monitor-grid">
+    <div class="monitor-cell">
+      <span class="cell-label">GLOBAL THREAT INDEX</span>
+      <div class="threat-meter-box">
+        <div class="threat-bar">
+          <div class="threat-fill" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
+        </div>
+        <span class="threat-val">{{ sentinelData.globalThreatIndex }}%</span>
+      </div>
+    </div>
+
+    <div class="monitor-cell">
+      <span class="cell-label">RICHIESTE MALEVOLE BLOCCATE (24H)</span>
+      <span class="cell-val purple">{{ sentinelData.blockedRequests24h || 1845 }}</span>
+    </div>
+
+    <div class="monitor-cell">
+      <span class="cell-label">GCP ARMOR ENGINE</span>
+      <span class="cell-val green">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }}</span>
+    </div>
+
+    <div class="monitor-cell">
+      <span class="cell-label">REGOLE ATTIVE</span>
+      <span class="cell-val blue">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICA SISTEMA INTERNA -->
+<Transition name="fade">
+  <div v-if="notificationMsg" class="sentinel-notification">
+    ⚡ {{ notificationMsg }}
+  </div>
+</Transition>
+
+<!-- 4. METRICHE TOP DASHBOARD -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="card-title">Neon DB Status <span class="badge green">CONNECTED</span></div>
+    <div class="card-value">18 ms</div>
+    <div class="card-sub">14/50 active connections</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="card-title">GCP Cloud Load <span class="badge green">STABLE</span></div>
+    <div class="card-value">24%</div>
+    <div class="card-sub">RAM: 1.4 GB / 4.0 GB</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="card-title">PM2 Process <span class="badge green">ONLINE</span></div>
+    <div class="card-value">Uptime</div>
+    <div class="card-sub">14 giorni, 6 ore</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="card-title">Utenti Attivi <span class="badge blue">LIVE</span></div>
+    <div class="card-value">42</div>
+    <div class="card-sub">Connessioni Socket simultanee</div>
+  </div>
+</div>
+
+<!-- 5. TAB DI NAVIGAZIONE INTERNA -->
+<div class="admin-tabs">
+  <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">
+    👥 Gestione Utenti ({{ users.length }})
+  </button>
+  <button :class="{ active: activeTab === 'moderation' }" @click="activeTab = 'moderation'">
+    🛡️ Coda Moderazione (3)
+  </button>
+  <button :class="{ active: activeTab === 'infrastructure' }" @click="activeTab = 'infrastructure'">
+    📊 Monitoraggio Infrastruttura
+  </button>
+  <button :class="{ active: activeTab === 'sentinel' }" @click="activeTab = 'sentinel'" class="tab-sentinel">
+    🤖 Log Minacce & Policy Sentinel AI
+  </button>
+</div>
+
+<!-- TAB 1: GESTIONE UTENTI -->
+<div v-if="activeTab === 'users'" class="tab-content">
+  <div class="search-bar">
+    <input v-model="searchQuery" type="text" placeholder="Cerca utente per username o email..." class="input-search" />
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>UTENTE</th>
+        <th>EMAIL</th>
+        <th>RUOLO</th>
+        <th>STATO</th>
+        <th>ISCRITTO IL</th>
+        <th>AZIONI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="user in filteredUsers" :key="user.id">
+        <td><strong>@{{ user.username }}</strong></td>
+        <td>{{ user.email }}</td>
+        <td><span class="role-badge">{{ user.role }}</span></td>
+        <td>
+          <span :class="['status-badge', user.status === 'ACTIVE' ? 'active' : 'suspended']">
+            {{ user.status }}
+          </span>
+        </td>
+        <td>{{ user.joined }}</td>
+        <td>
+          <button @click="toggleUserStatus(user)" :class="['btn-action', user.status === 'ACTIVE' ? 'danger' : 'success']">
+            {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- TAB 4: SENTINEL LOGS -->
+<div v-else-if="activeTab === 'sentinel'" class="tab-content sentinel-panel">
+  <div class="policy-warning-box">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-text">
+      <h4>Policy di Protezione GCP & Uso Etico</h4>
+      <p>
+        Il nostro sistema difensivo monitora attivamente i tentativi di abusare delle API, Prompt Injection sulla chat
+        Pulse Nexus, e attacchi DDoS. Ogni abuso viene registrato e penalizzato con il ban istantaneo dell'IP e dell'account.
+      </p>
+    </div>
+  </div>
+
+  <div v-if="sentinelData && sentinelData.recentThreats" class="threats-section">
+    <div class="section-header">
+      <h3>Registro Minacce Intercettate dall'IA</h3>
+      <button @click="triggerAction('purge_threats')" class="btn-purge">Pulisci Log</button>
+    </div>
+
+    <div class="threats-list">
+      <div v-for="threat in sentinelData.recentThreats" :key="threat.id" class="threat-item">
+        <div class="threat-left">
+          <span :class="['severity-badge', threat.severity.toLowerCase()]">{{ threat.severity }}</span>
+          <div class="threat-info">
+            <strong>{{ threat.type }}</strong>
+            <span>Destinazione: {{ threat.target }} • IP: <code>{{ threat.ip }}</code></span>
           </div>
         </div>
-
-        <!-- Bottone Interattivo di Toggle Auto-Defend -->
-        <button 
-          @click="toggleAutoDefend" 
-          :class="['btn-toggle-switch', sentinelData.autoDefendEnabled ? 'active' : 'inactive']"
-          title="Clicca per attivare/disattivare Auto-Defend AI"
-        >
-          <span>Auto-Defend AI</span>
-          <strong>{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
-        </button>
-      </div>
-
-      <!-- Grid dinamica con dati reattivi da sentinelData -->
-      <div class="sentinel-monitor-grid">
-        <div class="monitor-cell">
-          <span class="cell-label">GLOBAL THREAT INDEX</span>
-          <div class="threat-meter-box">
-            <div class="threat-bar">
-              <div class="threat-fill" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
-            </div>
-            <span class="threat-val">{{ sentinelData.globalThreatIndex }}%</span>
-          </div>
-        </div>
-
-        <div class="monitor-cell">
-          <span class="cell-label">RICHIESTE MALEVOLE BLOCCATE (24H)</span>
-          <span class="cell-val purple">{{ sentinelData.blockedRequests24h || 1845 }}</span>
-        </div>
-
-        <div class="monitor-cell">
-          <span class="cell-label">GCP ARMOR ENGINE</span>
-          <span class="cell-val green">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }}</span>
-        </div>
-
-        <div class="monitor-cell">
-          <span class="cell-label">REGOLE ATTIVE</span>
-          <span class="cell-val blue">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- NOTIFICA SISTEMA INTERNA -->
-    <Transition name="fade">
-      <div v-if="notificationMsg" class="sentinel-notification">
-        ⚡ {{ notificationMsg }}
-      </div>
-    </Transition>
-
-    <!-- 4. METRICHE TOP DASHBOARD -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="card-title">Neon DB Status <span class="badge green">CONNECTED</span></div>
-        <div class="card-value">18 ms</div>
-        <div class="card-sub">14/50 active connections</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="card-title">GCP Cloud Load <span class="badge green">STABLE</span></div>
-        <div class="card-value">24%</div>
-        <div class="card-sub">RAM: 1.4 GB / 4.0 GB</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="card-title">PM2 Process <span class="badge green">ONLINE</span></div>
-        <div class="card-value">Uptime</div>
-        <div class="card-sub">14 giorni, 6 ore</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="card-title">Utenti Attivi <span class="badge blue">LIVE</span></div>
-        <div class="card-value">42</div>
-        <div class="card-sub">Connessioni Socket simultanee</div>
-      </div>
-    </div>
-
-    <!-- 5. TAB DI NAVIGAZIONE INTERNA -->
-    <div class="admin-tabs">
-      <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">
-        👥 Gestione Utenti ({{ users.length }})
-      </button>
-      <button :class="{ active: activeTab === 'moderation' }" @click="activeTab = 'moderation'">
-        🛡️ Coda Moderazione (3)
-      </button>
-      <button :class="{ active: activeTab === 'infrastructure' }" @click="activeTab = 'infrastructure'">
-        📊 Monitoraggio Infrastruttura
-      </button>
-      <button :class="{ active: activeTab === 'sentinel' }" @click="activeTab = 'sentinel'" class="tab-sentinel">
-        🤖 Log Minacce & Policy Sentinel AI
-      </button>
-    </div>
-
-    <!-- TAB 1: GESTIONE UTENTI -->
-    <div v-if="activeTab === 'users'" class="tab-content">
-      <div class="search-bar">
-        <input v-model="searchQuery" type="text" placeholder="Cerca utente per username o email..." class="input-search" />
-      </div>
-
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>UTENTE</th>
-            <th>EMAIL</th>
-            <th>RUOLO</th>
-            <th>STATO</th>
-            <th>ISCRITTO IL</th>
-            <th>AZIONI</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in filteredUsers" :key="user.id">
-            <td><strong>@{{ user.username }}</strong></td>
-            <td>{{ user.email }}</td>
-            <td><span class="role-badge">{{ user.role }}</span></td>
-            <td>
-              <span :class="['status-badge', user.status === 'ACTIVE' ? 'active' : 'suspended']">
-                {{ user.status }}
-              </span>
-            </td>
-            <td>{{ user.joined }}</td>
-            <td>
-              <button @click="toggleUserStatus(user)" :class="['btn-action', user.status === 'ACTIVE' ? 'danger' : 'success']">
-                {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- TAB 4: SENTINEL LOGS -->
-    <div v-else-if="activeTab === 'sentinel'" class="tab-content sentinel-panel">
-      <div class="policy-warning-box">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-text">
-          <h4>Policy di Protezione GCP & Uso Etico</h4>
-          <p>
-            Il nostro sistema difensivo monitora attivamente i tentativi di abusare delle API, Prompt Injection sulla chat
-            Pulse Nexus, e attacchi DDoS. Ogni abuso viene registrato e penalizzato con il ban istantaneo dell'IP e dell'account.
-          </p>
-        </div>
-      </div>
-
-      <div v-if="sentinelData && sentinelData.recentThreats" class="threats-section">
-        <div class="section-header">
-          <h3>Registro Minacce Intercettate dall'IA</h3>
-          <button @click="triggerAction('purge_threats')" class="btn-purge">Pulisci Log</button>
-        </div>
-
-        <div class="threats-list">
-          <div v-for="threat in sentinelData.recentThreats" :key="threat.id" class="threat-item">
-            <div class="threat-left">
-              <span :class="['severity-badge', threat.severity.toLowerCase()]">{{ threat.severity }}</span>
-              <div class="threat-info">
-                <strong>{{ threat.type }}</strong>
-                <span>Destinazione: {{ threat.target }} • IP: <code>{{ threat.ip }}</code></span>
-              </div>
-            </div>
-            <div class="threat-right">
-              <span class="threat-time">{{ new Date(threat.timestamp).toLocaleTimeString() }}</span>
-              <button @click="triggerAction('ban_ip', { ip: threat.ip })" class="btn-ban">
-                🚫 Ban Definitivo IP
-              </button>
-            </div>
-          </div>
+        <div class="threat-right">
+          <span class="threat-time">{{ new Date(threat.timestamp).toLocaleTimeString() }}</span>
+          <button @click="triggerAction('ban_ip', { ip: threat.ip })" class="btn-ban">
+            🚫 Ban Definitivo IP
+          </button>
         </div>
       </div>
     </div>
   </div>
+</div>
+  </div>   
 </template>
 
 <style scoped>
