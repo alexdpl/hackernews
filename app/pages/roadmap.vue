@@ -4,7 +4,7 @@ import { ref, computed } from 'vue'
 
 useDkpSeo({
   title: 'Roadmap Ecosistema 2026 v2.4-GOLD - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: AI Repo Scanner con Rank Reputazione S-Tier, Agente Pulse Nexus v2.4, DKP CLI e Gamification XP.'
+  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: AI Repo Scanner con Rank Reputazione S-Tier, Agente Pulse Nexus v2.4, DKP CLI, CI/CD e Gamification XP.'
 })
 
 interface RoadmapMilestone {
@@ -54,17 +54,17 @@ const milestones = ref<RoadmapMilestone[]>([
   {
     id: 'q3-2026',
     quarter: 'Q3 2026',
-    phaseTitle: 'Classifica VIP Developers & Checkout Stripe',
+    phaseTitle: 'Automation CI/CD, E2E Testing & Stripe Checkout',
     version: 'v2.5-BETA',
     status: 'in-progress',
-    progress: 70,
-    description: 'Sblocco della classifica pubblica Sviluppatori basata su XP accumulati, automazione CI/CD via GitHub Actions e sistema di checkout Stripe per lo Shop.',
+    progress: 85,
+    description: 'Infrastruttura di Quality Assurance automatizzata con GitHub Actions e Playwright E2E, sblocco della leaderboard VIP e sistema di checkout Stripe per lo Shop.',
     features: [
+      'Pipeline CI/CD con GitHub Actions per build & test automatici (Completato)',
+      'Suite di test End-to-End (E2E) con Playwright & Vitest (Completato)',
+      'Workflow contributivo open-source con CONTRIBUTING.md (Completato)',
       'Leaderboard pubblica VIP Developers DKP basata su XP',
-      'Stripe & PayPal Checkout per acquisto istantaneo licenze',
-      'Validazione automatica sintassi via GitHub Actions',
-      'Suite di test end-to-end con Vitest / Playwright',
-      'Analytics avanzati sulle conversione e vendite Shop'
+      'Stripe & PayPal Checkout per acquisto istantaneo licenze'
     ]
   },
   {

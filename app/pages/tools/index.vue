@@ -2,7 +2,7 @@
 <script setup lang="ts">
 useDkpSeo({
   title: 'Panoramica DKP Tools v2.4-GOLD & Ecosistema Auth',
-  description: 'Guida ufficiale ai 5 DKP Tools v2.4, funzionalità CLI, AI Scanner ed uso del DKP Auth Core.'
+  description: 'Guida ufficiale ai DKP Tools v2.4: AI Repo Scanner con Rank S-Tier, CLI Toolkit, Neural Playground, Terminal Shell, Proof of Code e Auth Core.'
 })
 
 const toolsList = [
@@ -17,10 +17,20 @@ const toolsList = [
     route: '/login'
   },
   {
+    id: 'ai-repo-scanner',
+    name: 'AI Repo Scanner',
+    version: 'v2.4-GOLD',
+    badge: 'S-TIER RANK',
+    icon: '🚀',
+    description: 'Motore di audit avanzato per repository GitHub con analisi dello stack tecnologico, calcolo dello Score (0-100), Rank Tier (S/A/B) e reward +250 XP.',
+    purpose: 'Analizzare repository GitHub remote, generare roadmap di ottimizzazione del codice in tempo reale e certificare il Rank S-Tier Gold.',
+    route: '/tools/ai-repo-scanner'
+  },
+  {
     id: 'dkp-cli-toolkit',
     name: 'DKP CLI Toolkit',
     version: 'v2.4-GOLD',
-    badge: 'NEW RELEASE',
+    badge: 'CLI TOOLKIT',
     icon: '⚡',
     description: 'Strumento a riga di comando per gestire il deploy rapido, la migrazione dei DB Neon e la pulizia della cache di PM2 direttamente da terminale.',
     purpose: 'Velocizzare i processi DevOps e CI/CD, fornendo agli sviluppatori comandi diretti (dkp build, dkp db:push) senza usare script complessi.',
@@ -53,7 +63,7 @@ const toolsList = [
     badge: 'SECURITY AUDIT',
     icon: '🔍',
     description: 'Motore di audit automatico per la scansione delle vulnerabilità del codice sorgente, mem-leak e security flaw.',
-    purpose: 'Analizzare snippet e repository per rilevare falla di sicurezza prima del deploy in produzione.',
+    purpose: 'Analizzare snippet e repository per rilevare falle di sicurezza prima del deploy in produzione.',
     route: '/tools/ai-scanner'
   },
   {
@@ -85,7 +95,7 @@ const toolsList = [
         <div class="card-top">
           <div class="icon-box">{{ tool.icon }}</div>
           <div class="version-box">
-            <span :class="['tool-badge', tool.id === 'dkp-cli-toolkit' ? 'badge-new' : '']">{{ tool.badge }}</span>
+            <span :class="['tool-badge', tool.id === 'ai-repo-scanner' ? 'badge-gold' : '', tool.id === 'dkp-cli-toolkit' ? 'badge-new' : '']">{{ tool.badge }}</span>
             <span class="version-num">{{ tool.version }}</span>
           </div>
         </div>
@@ -218,6 +228,13 @@ const toolsList = [
   border-radius: 6px;
   letter-spacing: 0.05em;
   border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.tool-badge.badge-gold {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  border-color: rgba(0, 220, 130, 0.4);
+  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
 }
 
 .tool-badge.badge-new {
