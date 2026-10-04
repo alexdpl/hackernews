@@ -1,11 +1,28 @@
 <!-- app/pages/guidelines.vue -->
+<script setup lang="ts">
+useDkpSeo({
+  title: 'Linee Guida della Community - DevKernelPulse v2.4-Gold',
+  description: 'Linee guida, codice di condotta e regole di pubblicazione per la community di DevKernelPulse v2.4-Gold.'
+})
+</script>
+
 <template>
   <div class="guidelines-page-container">
     <div class="guidelines-card">
       
-      <!-- BADGE CATEGORIA -->
-      <div class="guidelines-badge">
-        COMMUNITY & CODE OF CONDUCT
+      <!-- BADGE CATEGORIA CON ICONA VIOLA COMMUNITY -->
+      <div class="guidelines-header-top">
+        <div class="icon-box-violet">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <div class="guidelines-badge">
+          COMMUNITY & CODE OF CONDUCT
+        </div>
       </div>
 
       <!-- TITOLO E METADATI -->
@@ -35,7 +52,7 @@
         </ul>
       </section>
 
-      <!-- SEZIONE 2: DISCUSSIONI COSTUTTIVE -->
+      <!-- SEZIONE 2: DISCUSSIONI COSTRUTTIVE -->
       <section class="guidelines-section">
         <h2>2. Discussioni Costruttive e Rigore Tecnico</h2>
         <p>
@@ -43,7 +60,7 @@
         </p>
         <ul class="styled-list">
           <li><strong>Discuti le idee, non le persone:</strong> Il dibattito acceso sulle scelte architetturali o sui linguaggi è benvenuto, gli attacchi personali (ad hominem) non sono tollerati.</li>
-          <li><strong>Aporta valore:</strong> Se esprimi un disaccordo, spiega il <em>perché</em> fornendo esempi di codice, documentazione o casi d'uso reali.</li>
+          <li><strong>Apporta valore:</strong> Se esprimi un disaccordo, spiega il <em>perché</em> fornendo esempi di codice, documentazione o casi d'uso reali.</li>
         </ul>
       </section>
 
@@ -78,15 +95,6 @@
   </div>
 </template>
 
-<script setup lang="ts">
-useHead({
-  title: 'Linee Guida della Community - DevKernelPulse v2.4-Gold',
-  meta: [
-    { name: 'description', content: 'Linee guida, codice di condotta e regole di pubblicazione per la community di DevKernelPulse v2.4-Gold.' }
-  ]
-})
-</script>
-
 <style scoped>
 .guidelines-page-container {
   max-width: 900px;
@@ -105,7 +113,27 @@ useHead({
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
-/* BADGE */
+/* HEADER TOP: ICONA E BADGE */
+.guidelines-header-top {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.icon-box-violet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.2);
+}
+
 .guidelines-badge {
   display: inline-block;
   background: rgba(0, 220, 130, 0.12);
@@ -116,7 +144,6 @@ useHead({
   letter-spacing: 0.05em;
   padding: 0.3rem 0.75rem;
   border-radius: 6px;
-  margin-bottom: 1.25rem;
   text-transform: uppercase;
 }
 
@@ -131,12 +158,14 @@ useHead({
 
 .highlight-text {
   color: #00dc82;
+  text-shadow: 0 0 20px rgba(0, 220, 130, 0.3);
 }
 
 .guidelines-subtitle {
   font-size: 0.85rem;
-  color: #64748b;
+  color: #94a3b8;
   margin: 0 0 1.5rem 0;
+  line-height: 1.5;
 }
 
 .guidelines-divider {
@@ -160,7 +189,7 @@ useHead({
 
 .guidelines-section h2 {
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #38bdf8;
   margin-bottom: 0.75rem;
 }

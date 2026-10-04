@@ -43,6 +43,9 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
           <li>
             <NuxtLink :to="getMainUrl('/tools')" external>🛠️ Panoramica DKP Tools</NuxtLink>
           </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/tools/ai-repo-scanner')" external>🤖 Analizza repository GitHub</NuxtLink>
+          </li>
           <li>
             <NuxtLink :to="getMainUrl('/tools/proof-of-code')" external>🛡️ Proof of Code (Vault)</NuxtLink>
           </li>
@@ -92,6 +95,9 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/about')" external>👥 Chi Siamo</NuxtLink>
+          </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/guidelines')" external>📃 Linee Guida</NuxtLink>
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/legal/privacy')" external>🛡️ Privacy Policy</NuxtLink>

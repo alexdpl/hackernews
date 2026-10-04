@@ -63,6 +63,7 @@ const newsCategories = [
 
 // DKP Tools v2.4
 const dkpTools = [
+  { name: 'AI Repository v2.4-Gold', description: 'Analizza repository GitHub', icon: '🤖', route: '/tools/ai-repo-scanner' },
   { name: 'Neural Playground v2.3', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
   { name: 'Terminal Web Shell v2.3', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
   { name: 'AI Code Scanner v2.3 Pro', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },

@@ -1,1 +1,62 @@
-User-agent: * Disallow: /
+User-agent: *
+
+# ==========================================================================
+# 🛑 ESCLUSIONI (DISALLOW) - Rotte Amministrative, Private e Dinamiche
+# ==========================================================================
+Disallow: /admin/
+Disallow: /user/
+Disallow: /user/*
+Disallow: /item/
+Disallow: /item/*
+Disallow: /blog/*
+Disallow: /jobs/*
+Disallow: /newest/*
+Disallow: /news/*
+Disallow: /*/feed/
+Disallow: /feed/
+
+# ==========================================================================
+# 🟢 INCLUSIONI (ALLOW) - Pagine Statiche e Rotte Principali
+# ==========================================================================
+Allow: /about
+Allow: /ask
+Allow: /contact
+Allow: /conctact
+Allow: /features
+Allow: /guidelines
+Allow: /jobs$
+Allow: /login
+Allow: /newest$
+Allow: /news$
+Allow: /roadmap
+Allow: /show
+Allow: /status
+Allow: /submit
+
+# Documentazione
+Allow: /docs/api
+Allow: /docs/ecosystem
+Allow: /docs/sdk
+
+# Legale
+Allow: /legal/cookies
+Allow: /legal/privacy
+Allow: /legal/terms
+
+# DKP Shop SaaS
+Allow: /shop/
+Allow: /shop/success
+
+# DKP Tools Suite
+Allow: /tools/
+Allow: /tools/ai-repo-scanner
+Allow: /tools/ai-scanner
+Allow: /tools/cli-toolkit
+Allow: /tools/neural-playground
+Allow: /tools/proof-of-code
+Allow: /tools/terminal
+
+# ==========================================================================
+# 🗺️ SITEMAP REFERENCE
+# ==========================================================================
+Sitemap: https://devkernelpulse.org/sitemap.xml
