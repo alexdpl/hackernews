@@ -1,408 +1,393 @@
-<!-- pages/roadmap.vue -->
+<!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-useHead({
-  title: 'Roadmap Ecosistema 2026 v2.4-GOLD — DevKernelPulse',
-  meta: [
-    { name: 'description', content: 'Roadmap ufficiale dello sviluppo DKP per il 2026: feature v2.4-GOLD, pietre miliari completate, tassonomia Blog, CLI Toolkit e rewards XP.' }
-  ]
+useDkpSeo({
+  title: 'Roadmap Ecosistema 2026 v2.4-GOLD - DevKernelPulse',
+  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: AI Repo Scanner con Rank Reputazione S-Tier, Agente Pulse Nexus v2.4, DKP CLI e Gamification XP.'
 })
 
-const activeQuarter = ref<'all' | 'q1' | 'q2' | 'q3' | 'q4'>('all')
-
-interface RoadmapItem {
+interface RoadmapMilestone {
   id: string
-  quarter: 'Q1' | 'Q2' | 'Q3' | 'Q4'
-  year: '2026'
-  title: string
+  quarter: string
+  phaseTitle: string
+  version: string
+  status: 'completed' | 'in-progress' | 'upcoming'
+  progress: number
   description: string
-  status: 'completed' | 'in-progress' | 'planned'
-  module: string
-  xpReward: string
-  badgeIcon?: string
+  features: string[]
 }
 
-const milestones: RoadmapItem[] = [
+const milestones = ref<RoadmapMilestone[]>([
   {
-    id: 'm1',
-    quarter: 'Q1',
-    year: '2026',
-    title: 'Pulse Nexus v2.4-GOLD & Micro-Frontend',
-    description: 'Riprogettazione completa dell\'interfaccia in Nuxt 3, Nitro Engine a bassissima latenza e architettura modulare.',
+    id: 'q1-2026',
+    quarter: 'Q1 2026',
+    phaseTitle: 'Architettura Core & Admin Control Center',
+    version: 'v2.4-GOLD',
     status: 'completed',
-    module: 'Core System',
-    xpReward: '+50 XP',
-    badgeIcon: '⚡'
+    progress: 100,
+    description: 'Consolidamento completo dell area riservata Admin su 8 moduli unificati con rotte relative, eliminazione dei redirect e gestione dei cookie di sessione.',
+    features: [
+      'Standardizzazione Navbar Admin Grid a 8 Moduli',
+      'Persistenza Sessione Admin & Cookie dkp_session',
+      'Crawler Engine Pro con pulizia automatica Neon DB',
+      'Modulo DKP Shop SaaS & Gestione Licenze .ZIP',
+      'Sitemap XML Dinamica con Sync Automatica'
+    ]
   },
   {
-    id: 'm2',
-    quarter: 'Q1',
-    year: '2026',
-    title: 'Code Vault & Notarizzazione SHA-256',
-    description: 'Integrazione nel Vault del supporto all\'esportazione notarizzata JSON-LD e verifica dell\'impronta software Proof-of-Code.',
+    id: 'q2-2026',
+    quarter: 'Q2 2026',
+    phaseTitle: 'AI Repo Scanner & Reputazione S-TIER GOLD',
+    version: 'v2.4-GOLD',
     status: 'completed',
-    module: 'Proof of Code',
-    xpReward: '+40 XP',
-    badgeIcon: '🛡️'
+    progress: 100,
+    description: 'Lancio ufficiale del motore AI Link & Repository Scanner con calcolo dello score (94/100), Rank Tier (S-Tier Gold), sistema di reward +250 XP e agente Pulse Nexus v2.4.',
+    features: [
+      'AI Repo Scanner per audit GitHub & Stack Detection',
+      'Sistema di Rank Reputazione DKP (S/A/B Tier)',
+      'Roadmap automatica di miglioramento del codice con reward XP',
+      'Integrazione Agente Pulse Nexus v2.4 context-aware',
+      'Rilascio DKP CLI Toolkit v2.4-GOLD e restyling Guidelines'
+    ]
   },
   {
-    id: 'm3',
-    quarter: 'Q2',
-    year: '2026',
-    title: 'AI Scanner v2.4-GOLD SAST Audit Engine',
-    description: 'Supporto esteso a 18+ linguaggi con rilevamento automatico secret-leak, SQL Injection, Buffer Overflow e antipattern.',
-    status: 'completed',
-    module: 'AI Code Scanner',
-    xpReward: '+30 XP',
-    badgeIcon: '🔍'
-  },
-  {
-    id: 'm4',
-    quarter: 'Q2',
-    year: '2026',
-    title: 'DKP CLI Toolkit v2.4-GOLD & SDK Multi-Language',
-    description: 'Interfaccia a riga di comando nativa e pacchetti SDK ufficiali su NPM per integrare scansioni, audit e Vault da terminale.',
-    status: 'completed',
-    module: 'Developer Tools',
-    xpReward: '+45 XP',
-    badgeIcon: '💻'
-  },
-  {
-    id: 'm5',
-    quarter: 'Q3',
-    year: '2026',
-    title: 'DKP Blog & Content Vault Taxonomy System',
-    description: 'Motore editoriale avanzato su database Neon Postgres & Drizzle ORM. Tassonomia a 2 livelli con icone Emoji e badge neon.',
-    status: 'completed',
-    module: 'Blog & Content Vault',
-    xpReward: '+50 XP',
-    badgeIcon: '📰'
-  },
-  {
-    id: 'm6',
-    quarter: 'Q3',
-    year: '2026',
-    title: 'Marketplace di Integrazioni & Webhook API',
-    description: 'Possibilità di collegare DKP a GitHub Actions, GitLab CI, Slack e Discord tramite pipeline ad eventi in tempo reale.',
-    status: 'completed',
-    module: 'API Ecosystem',
-    xpReward: '+35 XP',
-    badgeIcon: '🔌'
-  },
-  {
-    id: 'm7',
-    quarter: 'Q4',
-    year: '2026',
-    title: 'Decentralized Reputation Network & Enterprise SSO',
-    description: 'Sistema di governance Gamification su nodi distribuiti, autenticazione SAML/OIDC e licenze Enterprise Pro.',
+    id: 'q3-2026',
+    quarter: 'Q3 2026',
+    phaseTitle: 'Classifica VIP Developers & Checkout Stripe',
+    version: 'v2.5-BETA',
     status: 'in-progress',
-    module: 'Enterprise & Auth',
-    xpReward: '+100 XP',
-    badgeIcon: '🔑'
+    progress: 70,
+    description: 'Sblocco della classifica pubblica Sviluppatori basata su XP accumulati, automazione CI/CD via GitHub Actions e sistema di checkout Stripe per lo Shop.',
+    features: [
+      'Leaderboard pubblica VIP Developers DKP basata su XP',
+      'Stripe & PayPal Checkout per acquisto istantaneo licenze',
+      'Validazione automatica sintassi via GitHub Actions',
+      'Suite di test end-to-end con Vitest / Playwright',
+      'Analytics avanzati sulle conversione e vendite Shop'
+    ]
+  },
+  {
+    id: 'q4-2026',
+    quarter: 'Q4 2026',
+    phaseTitle: 'Ecosystem SDK & Multi-Tenant Cloud Federation',
+    version: 'v3.0-VISION',
+    status: 'upcoming',
+    progress: 15,
+    description: 'Rilascio dell SDK pubblico npm per consentire a sviluppatori terzi di integrare i microservizi DKP nelle proprie architetture SaaS.',
+    features: [
+      'Rilascio pacchetto npm @devkernelpulse/sdk',
+      'API Key Management con Rate Limiting Nitro Enterprise',
+      'Integrazione LLM Custom nel Neural Playground',
+      'Federazione Multi-Tenant per installazioni On-Premise'
+    ]
   }
-]
+])
+
+const activeFilter = ref<'all' | 'completed' | 'in-progress' | 'upcoming'>('all')
 
 const filteredMilestones = computed(() => {
-  if (activeQuarter.value === 'all') return milestones
-  return milestones.filter(m => m.quarter.toLowerCase() === activeQuarter.value)
+  if (activeFilter.value === 'all') return milestones.value
+  return milestones.value.filter(m => m.status === activeFilter.value)
 })
 
-const completedCount = computed(() => milestones.filter(m => m.status === 'completed').length)
-const totalXpClaimable = computed(() => {
-  return milestones.reduce((sum, m) => {
-    const xpVal = parseInt(m.xpReward.replace(/\D/g, '')) || 0
-    return sum + xpVal
-  }, 0)
+const overallCompletion = computed(() => {
+  const total = milestones.value.reduce((acc, m) => acc + m.progress, 0)
+  return Math.round(total / milestones.value.length)
 })
-
-function getStatusLabel(status: RoadmapItem['status']) {
-  switch (status) {
-    case 'completed': return '✅ Rilasciato v2.4-GOLD'
-    case 'in-progress': return '⚡ In Sviluppo'
-    case 'planned': return '🎯 Pianificato'
-  }
-}
 </script>
 
 <template>
-  <div class="roadmap-page">
-    <div class="roadmap-container">
-      
-      <!-- HERO -->
-      <header class="roadmap-hero">
-        <div class="breadcrumb">Ecosistema DKP / Vision 2026</div>
-        <h1>🚀 Roadmap Ecosistema <span class="highlight">v2.4-GOLD</span></h1>
-        <p class="subtitle">
-          Pianificazione strategica, evoluzione dei moduli IA, notarizzazione crittografica, tassonomia Blog e pietre miliari completate con rewards XP per la community.
-        </p>
+  <div class="roadmap-page-container">
+    
+    <!-- HERO HEADER -->
+    <header class="roadmap-hero">
+      <div class="hero-badge">
+        <span class="badge-status gold">🚀 DKP ECOSYSTEM ROADMAP 2026</span>
+      </div>
+      <h1>Piano di Sviluppo & <span class="highlight">Vision v2.4-GOLD</span></h1>
+      <p class="subtitle">
+        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA e rilasci dell ecosistema DevKernelPulse.
+      </p>
 
-        <!-- STATS KPI WIDGET -->
-        <div class="roadmap-stats-grid">
-          <div class="stat-card">
-            <span class="stat-value">{{ completedCount }} / {{ milestones.length }}</span>
-            <span class="stat-label">Pietre Miliari Rilasciate</span>
-          </div>
-          <div class="stat-card highlight">
-            <span class="stat-value">+{{ totalXpClaimable }} XP</span>
-            <span class="stat-label">Punti XP Ecosistema</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-value">{{ Math.round((completedCount / milestones.length) * 100) }}%</span>
-            <span class="stat-label">Completamento 2026</span>
-          </div>
+      <!-- PROGRESS OVERALL METRIC -->
+      <div class="overall-progress-card">
+        <div class="progress-info">
+          <span>Stato Completamento Ecosistema 2026:</span>
+          <strong class="progress-percent">{{ overallCompletion }}%</strong>
         </div>
-
-        <!-- FILTRI QUARTER -->
-        <div class="quarter-tabs">
-          <button @click="activeQuarter = 'all'" :class="{ active: activeQuarter === 'all' }">Tutti i Trimestri</button>
-          <button @click="activeQuarter = 'q1'" :class="{ active: activeQuarter === 'q1' }">Q1 2026</button>
-          <button @click="activeQuarter = 'q2'" :class="{ active: activeQuarter === 'q2' }">Q2 2026</button>
-          <button @click="activeQuarter = 'q3'" :class="{ active: activeQuarter === 'q3' }">Q3 2026 (v2.4-GOLD)</button>
-          <button @click="activeQuarter = 'q4'" :class="{ active: activeQuarter === 'q4' }">Q4 2026</button>
-        </div>
-      </header>
-
-      <!-- TIMELINE GRID -->
-      <div class="timeline-grid">
-        <div 
-          v-for="item in filteredMilestones" 
-          :key="item.id"
-          class="roadmap-card"
-          :class="item.status"
-        >
-          <div class="card-top">
-            <span class="quarter-badge">{{ item.quarter }} {{ item.year }}</span>
-            <span class="status-badge" :class="item.status">{{ getStatusLabel(item.status) }}</span>
-          </div>
-
-          <h3><span class="badge-icon" v-if="item.badgeIcon">{{ item.badgeIcon }}</span> {{ item.title }}</h3>
-          <p>{{ item.description }}</p>
-
-          <div class="card-footer">
-            <span class="module-tag">🧩 {{ item.module }}</span>
-            <span v-if="item.xpReward" class="xp-tag" :class="{ gold: item.status === 'completed' }">
-              {{ item.xpReward }}
-            </span>
-          </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" :style="{ width: overallCompletion + '%' }"></div>
         </div>
       </div>
+    </header>
 
+    <!-- CONTROLS & FILTRI -->
+    <div class="controls-bar">
+      <div class="filter-pills">
+        <button type="button" @click="activeFilter = 'all'" class="pill" :class="{ active: activeFilter === 'all' }">Tutte le Fasi</button>
+        <button type="button" @click="activeFilter = 'completed'" class="pill" :class="{ active: activeFilter === 'completed' }">🟢 Completati</button>
+        <button type="button" @click="activeFilter = 'in-progress'" class="pill" :class="{ active: activeFilter === 'in-progress' }">⚡ In Corso</button>
+        <button type="button" @click="activeFilter = 'upcoming'" class="pill" :class="{ active: activeFilter === 'upcoming' }">🔮 In Arrivo</button>
+      </div>
     </div>
+
+    <!-- TIMELINE MILESTONES -->
+    <div class="timeline-wrapper">
+      <div v-for="item in filteredMilestones" :key="item.id" class="timeline-item" :class="item.status">
+        
+        <!-- MARKER E LINEA -->
+        <div class="timeline-marker">
+          <span class="marker-dot"></span>
+        </div>
+
+        <!-- CONTENT CARD -->
+        <article class="milestone-card">
+          <div class="card-header">
+            <div class="quarter-box">
+              <span class="quarter-text">{{ item.quarter }}</span>
+              <span class="version-tag">{{ item.version }}</span>
+            </div>
+
+            <div class="status-badge" :class="item.status">
+              <template v-if="item.status === 'completed'">🟢 RAGGIUNTO (100%)</template>
+              <template v-else-if="item.status === 'in-progress'">⚡ IN CORSO ({{ item.progress }}%)</template>
+              <template v-else>🔮 IN ARRIVO</template>
+            </div>
+          </div>
+
+          <h2 class="milestone-title">{{ item.phaseTitle }}</h2>
+          <p class="milestone-desc">{{ item.description }}</p>
+
+          <div class="features-box">
+            <h4>📋 Deliverables & Moduli:</h4>
+            <ul class="features-list">
+              <li v-for="(feat, idx) in item.features" :key="idx">
+                <span class="check-icon">▹</span> {{ feat }}
+              </li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
-.roadmap-page {
-  background: #020420;
-  color: #cbd5e1;
-  min-height: 100vh;
-  padding: 3rem 1.5rem 5rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.roadmap-container {
+/* ==========================================================================
+   LAYOUT GENERALE
+   ========================================================================== */
+.roadmap-page-container {
   max-width: 1100px;
-  margin: 0 auto;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #f8fafc;
 }
 
-.breadcrumb {
-  font-size: 0.8rem;
-  color: #38bdf8;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+.roadmap-hero {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.hero-badge { margin-bottom: 0.85rem; }
+
+.badge-status.gold {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  border: 1px solid #00dc82;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 15px rgba(0, 220, 130, 0.2);
 }
 
 .roadmap-hero h1 {
-  font-size: 2.3rem;
-  color: #ffffff;
+  font-size: 2.4rem;
   font-weight: 900;
-  margin: 0 0 0.5rem;
-  letter-spacing: -0.02em;
+  margin: 0 0 0.8rem 0;
+  color: #ffffff;
 }
 
 .highlight {
   color: #00dc82;
+  text-shadow: 0 0 20px rgba(0, 220, 130, 0.3);
 }
 
 .subtitle {
-  font-size: 1.05rem;
   color: #94a3b8;
-  margin-bottom: 2rem;
+  max-width: 680px;
+  margin: 0 auto 2rem auto;
+  font-size: 1rem;
   line-height: 1.6;
 }
 
-/* STATS KPI GRID */
-.roadmap-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  padding: 1rem 1.25rem;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.stat-card.highlight {
-  border-color: rgba(0, 220, 130, 0.4);
-  background: rgba(0, 220, 130, 0.05);
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #ffffff;
-}
-
-.stat-card.highlight .stat-value {
-  color: #00dc82;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* QUARTER TABS */
-.quarter-tabs {
-  display: flex;
-  gap: 0.5rem;
-  background: #090d16;
-  padding: 0.35rem;
-  border-radius: 8px;
-  border: 1px solid #1e293b;
-  width: fit-content;
-  flex-wrap: wrap;
-}
-
-.quarter-tabs button {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 700;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.quarter-tabs button.active {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-}
-
-/* TIMELINE GRID */
-.timeline-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2.5rem;
-}
-
-.roadmap-card {
-  background: #090d16;
+/* OVERALL PROGRESS CARD */
+.overall-progress-card {
+  background: #020420;
   border: 1px solid #1e293b;
   border-radius: 12px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  padding: 1.25rem 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.roadmap-card:hover {
-  transform: translateY(-2px);
-}
-
-.roadmap-card.completed { border-left: 4px solid #00dc82; }
-.roadmap-card.in-progress { border-left: 4px solid #38bdf8; }
-.roadmap-card.planned { border-left: 4px solid #64748b; }
-
-.card-top {
+.progress-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  font-weight: 700;
 }
 
-.quarter-badge {
-  background: #020420;
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+.progress-percent { color: #00dc82; font-size: 1.2rem; font-weight: 900; }
+
+.progress-bar-track {
+  height: 8px;
+  background: #1e293b;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #00dc82);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.5);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+/* FILTRI */
+.controls-bar { margin-bottom: 2.5rem; display: flex; justify-content: center; }
+.filter-pills { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.pill {
+  background: #090d16;
   border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.5rem 1.1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pill:hover { border-color: #00dc82; color: #00dc82; }
+.pill.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.12); box-shadow: 0 0 12px rgba(0, 220, 130, 0.2); }
+
+/* TIMELINE STYLES */
+.timeline-wrapper {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline-wrapper::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: #1e293b;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -2rem;
+  top: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.marker-dot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #020420;
+  border: 3px solid #64748b;
+}
+
+.timeline-item.completed .marker-dot { border-color: #00dc82; background: #00dc82; box-shadow: 0 0 12px #00dc82; }
+.timeline-item.in-progress .marker-dot { border-color: #facc15; background: #facc15; box-shadow: 0 0 12px #facc15; }
+
+/* MILESTONE CARD */
+.milestone-card {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 1.75rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.milestone-card:hover { border-color: #38bdf8; transform: translateY(-2px); }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.quarter-box { display: flex; align-items: center; gap: 0.6rem; }
+.quarter-text { font-size: 1.1rem; font-weight: 900; color: #ffffff; }
+
+.version-tag {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
 }
 
 .status-badge {
   font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
-
-.status-badge.completed { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-badge.in-progress { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-.status-badge.planned { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
-
-.roadmap-card h3 {
-  color: #ffffff;
-  font-size: 1.15rem;
-  margin: 0 0 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.badge-icon {
-  font-size: 1.1rem;
-}
-
-.roadmap-card p {
-  color: #94a3b8;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  margin-bottom: 1.5rem;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #1e293b;
-  padding-top: 0.8rem;
-}
-
-.module-tag {
-  font-size: 0.78rem;
-  color: #cbd5e1;
-  font-weight: 600;
-}
-
-.xp-tag {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  font-size: 0.75rem;
   font-weight: 800;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
 }
 
-.xp-tag.gold {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
+.status-badge.completed { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
+.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
+.status-badge.upcoming { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+.milestone-title { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.6rem 0; color: #ffffff; }
+.milestone-desc { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.25rem; }
+
+.features-box {
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
 }
+
+.features-box h4 { margin: 0 0 0.6rem 0; color: #38bdf8; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.features-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+
+.features-list li { font-size: 0.88rem; color: #cbd5e1; display: flex; align-items: center; gap: 0.5rem; }
+
+.check-icon { color: #00dc82; font-weight: bold; }
 </style>
