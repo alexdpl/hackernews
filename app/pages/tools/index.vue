@@ -21,7 +21,7 @@ const toolsList = [
     name: 'AI Repo Scanner',
     version: 'v2.4-GOLD',
     badge: 'S-TIER RANK',
-    icon: '🚀',
+    icon: '🤖',
     description: 'Motore di audit avanzato per repository GitHub con analisi dello stack tecnologico, calcolo dello Score (0-100), Rank Tier (S/A/B) e reward +250 XP.',
     purpose: 'Analizzare repository GitHub remote, generare roadmap di ottimizzazione del codice in tempo reale e certificare il Rank S-Tier Gold.',
     route: '/tools/ai-repo-scanner'

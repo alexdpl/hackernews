@@ -1,652 +1,526 @@
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-// Integrazione Auth Core & Routing Nuxt
-const { currentUser, isAuthenticated } = useAuthCore()
 const route = useRoute()
 const router = useRouter()
+const { currentUser } = useAuthCore()
+const { getMainUrl } = useDomain()
 
-// Controllo Accesso / Protezione Rotta Client-Side
-onMounted(() => {
-  if (!isAuthenticated.value) {
-    router.push('/')
-  }
+// 1. GESTIONE TAB SNELLA
+const activeTab = computed({
+  get: () => (route.query.tab as string) || 'profile',
+  set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-// Gestione Schede Attive (Sincronizzate con URL Query String ?tab=...)
-type TabType = 'profile' | 'activity' | 'purchases' | 'gamification' | 'vault' | 'tokens'
-const activeTab = ref<TabType>((route.query.tab as TabType) || 'profile')
-
-watch(() => route.query.tab, (newTab) => {
-  if (newTab && typeof newTab === 'string') {
-    activeTab.value = newTab as TabType
-  }
-})
-
-function changeTab(tabName: TabType) {
-  activeTab.value = tabName
-  router.push({ query: { tab: tabName } })
-}
-
-// --- TAB 1: PROFILO DEVELOPER ---
-const profileForm = reactive({
-  avatarUrl: '',
-  bio: 'Sviluppatore Full-Stack e contributor dell\'ecosistema DevKernelPulse.',
+// 2. FORM PROFILO CON REDDIT
+const profileForm = ref({
+  avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
+  bio: currentUser.value?.bio || 'Lead Architect & Core Creator of DevKernelPulse',
   github: 'https://github.com/alexdpl',
   twitter: 'https://x.com/alexdpl',
-  linkedin: 'https://linkedin.com/in/alexdpl'
+  linkedin: 'https://linkedin.com/in/alexdpl',
+  reddit: 'https://reddit.com/user/alexdpl'
 })
+const profileSaved = ref(false)
 
-// Sincronizza il form appena l'utente autenticato è disponibile
-watch(currentUser, (newUser) => {
-  if (newUser) {
-    profileForm.avatarUrl = newUser.avatar || 'https://github.com/alexdpl.png'
-    if (newUser.bio) profileForm.bio = newUser.bio
-  }
-}, { immediate: true })
-
-const isSavingProfile = ref(false)
-const profileSavedSuccess = ref(false)
-
-function saveProfileSettings() {
-  isSavingProfile.value = true
-  setTimeout(() => {
-    isSavingProfile.value = false
-    profileSavedSuccess.value = true
-    setTimeout(() => profileSavedSuccess.value = false, 3000)
-  }, 600)
+function saveProfile() {
+  profileSaved.value = true
+  setTimeout(() => profileSaved.value = false, 3000)
 }
 
-// --- TAB 2: I MIEI CONTENUTI ---
-const activityFilter = ref<'all' | 'submissions' | 'comments' | 'show'>('all')
-
-const userSubmissions = ref([
-  { id: 1, type: 'submission', title: 'Nuovo Kernel Release v6.12 annunciato', date: 'Ieri', points: 15, commentsCount: 4 },
-  { id: 2, type: 'show', title: 'DKP AI Scanner: Analisi automatica smart contract', date: '3 giorni fa', points: 30, commentsCount: 12 },
-  { id: 3, type: 'comment', title: 'Commento su "Ottimizzazione memorie DDR5"', date: '5 giorni fa', content: 'Ottimo articolo, testato su piattaforma server.' }
+// 3. GESTIONE BLOG POST
+const articles = ref([
+  { id: 1, title: 'Architettura Micro-frontend con Nuxt 3 e Module Federation', status: 'published', date: '2026-09-12', views: 342 },
+  { id: 2, title: 'Guida Pratica a Proof of Code & Decentralized Identity', status: 'draft', date: '2026-10-01', views: 0 }
 ])
+const isEditingArticle = ref(false)
+const articleForm = ref({ id: 0, title: '', status: 'draft' })
 
-const filteredSubmissions = computed(() => {
-  if (activityFilter.value === 'all') return userSubmissions.value
-  return userSubmissions.value.filter(item => item.type === activityFilter.value)
-})
+function openNewArticleModal() {
+  articleForm.value = { id: Date.now(), title: '', status: 'draft' }
+  isEditingArticle.value = true
+}
 
-// --- TAB 3: LICENZE & ACQUISTI (NUOVA FUNZIONE) ---
-const licenses = ref([
-  { id: 1, product: 'DKP AI Scanner Pro', key: 'dkp_lic_99a882f1...active', expires: '31 Dic 2026', status: 'Attiva' }
-])
+function saveArticle() {
+  if (!articleForm.value.title.trim()) return
+  const index = articles.value.findIndex(a => a.id === articleForm.value.id)
+  if (index !== -1) {
+    articles.value[index].title = articleForm.value.title
+    articles.value[index].status = articleForm.value.status
+  } else {
+    articles.value.unshift({
+      id: articleForm.value.id,
+      title: articleForm.value.title,
+      status: articleForm.value.status,
+      date: new Date().toISOString().split('T')[0],
+      views: 0
+    })
+  }
+  isEditingArticle.value = false
+}
 
-// --- TAB 4: GAMIFICATION HUB (NUOVA FUNZIONE) ---
-const userStats = ref({ 
-  xp: 127, 
-  level: 'Developer VIP Member', 
-  nextLevelXp: 200, 
-  progress: 63 
-})
+function deleteArticle(id: number) {
+  articles.value = articles.value.filter(a => a.id !== id)
+}
 
-const xpHistory = ref([
-  { id: 1, action: 'Pubblicazione Kernel Release v6.12', date: 'Ieri', points: '+15 XP' },
-  { id: 2, action: 'Audit AI Code Scanner completato', date: '3 giorni fa', points: '+30 XP' }
-])
-
-// --- TAB 5: VAULT PERSONALE DKP TOOLS ---
-const vaultCategory = ref<'poc' | 'scanner' | 'snippets'>('poc')
-
-const pocCertificates = ref([
-  { id: 'poc-1', repo: 'kernel-exploit-mitigation', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', badge: 'Verified PoC', date: '20 Set 2026' }
-])
-
-const scannerAudits = ref([
-  { id: 'aud-1', target: 'nuxt-auth-endpoint.ts', score: 98, status: 'SECURE', date: '24 Set 2026' }
-])
-
-const savedSnippets = ref([
-  { id: 'snip-1', name: 'Drizzle ORM Advanced Join Custom', lang: 'TypeScript', date: '22 Set 2026' }
-])
-
-// --- TAB 6: API KEYS & DEVELOPER TOKENS ---
+// 4. DKP API CONSOLE (STILE BREVO / OPENAI)
 const apiKeys = ref([
-  { id: 'key-1', name: 'Local CLI Scanner', prefix: 'dkp_live_9f81...', created: '10 Set 2026', lastUsed: 'Oggi 08:30' }
+  { id: 'key_01', name: 'Server Produzione', key: 'dkp_live_9f8a...3b21', rawKey: 'dkp_live_9f8a7c2b1d0e3b21', created: '2026-08-10', lastUsed: 'Oggi 14:20' }
 ])
-
 const newKeyName = ref('')
 const generatedKeyModal = ref<string | null>(null)
+const copiedKey = ref(false)
 
-function generateNewApiKey() {
+function generateApiKey() {
   if (!newKeyName.value.trim()) return
-  const randomHash = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-  const fullToken = `dkp_live_${randomHash}`
-  
-  apiKeys.value.unshift({
-    id: `key-${Date.now()}`,
+  const rawKey = `dkp_live_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`
+  apiKeys.value.push({
+    id: `key_${Date.now()}`,
     name: newKeyName.value.trim(),
-    prefix: `${fullToken.substring(0, 12)}...`,
-    created: 'Adesso',
+    key: `${rawKey.substring(0, 12)}...${rawKey.slice(-4)}`,
+    rawKey: rawKey,
+    created: new Date().toISOString().split('T')[0],
     lastUsed: 'Mai'
   })
-
-  generatedKeyModal.value = fullToken
+  generatedKeyModal.value = rawKey
   newKeyName.value = ''
+}
+
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text)
+  copiedKey.value = true
+  setTimeout(() => copiedKey.value = false, 2000)
 }
 
 function revokeApiKey(id: string) {
   apiKeys.value = apiKeys.value.filter(k => k.id !== id)
 }
-
-// System Feedback Clipboard
-const copiedTarget = ref<string | null>(null)
-
-function copyToClipboard(text: string, identifier: string = 'global') {
-  navigator.clipboard.writeText(text)
-  copiedTarget.value = identifier
-  setTimeout(() => {
-    copiedTarget.value = null
-  }, 2000)
-}
 </script>
 
 <template>
-  <div class="dashboard-wrapper">
-    
-    <!-- HEADER PANNELLO UTENTE -->
-    <header class="dashboard-header">
-      <div class="user-summary">
-        <div class="avatar-box">
-          <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" alt="Avatar" />
-          <span v-else>{{ currentUser?.username?.charAt(0).toUpperCase() || 'D' }}</span>
+  <div class="dashboard-page">
+    <div class="dashboard-container">
+      
+      <!-- HEADER CYBER-GLASSMORPHIC CLONATO E ADATTATO DALL'ADMIN -->
+      <div class="user-header-card">
+        <div class="header-main-info">
+          <div class="user-avatar-wrap">
+            <img :src="profileForm.avatar" alt="Avatar Utente" class="user-avatar" />
+            <span class="online-indicator"></span>
+          </div>
+          <div class="user-details">
+            <h1 class="user-title">
+              Pannello Riservato <span class="username-highlight">@{{ currentUser?.username || 'alexdpl' }}</span>
+            </h1>
+            <div class="user-badges">
+              <span class="role-badge">🛡️ Developer VIP Member</span>
+              <span class="points-badge">⚡ 127 Punti DKP</span>
+            </div>
+          </div>
         </div>
-        <div class="user-meta">
-          <h1>Pannello Riservato <span class="username-gradient">@{{ currentUser?.username || 'alexdpl' }}</span></h1>
-          <p class="role-badge">🛡️ Developer VIP Member • <span class="reputation-text">127 Punti DKP</span></p>
-        </div>
+
+        <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="public-profile-btn">
+          🌐 Vedi Profilo Pubblico
+        </NuxtLink>
       </div>
 
-      <NuxtLink :to="`/user/${currentUser?.username || 'alexdpl'}`" class="public-profile-link">
-        🌐 Vedi Profilo Pubblico
-      </NuxtLink>
-    </header>
+      <!-- TAB MENU RESPONSIVE SENZA SCROLLBAR -->
+      <nav class="tabs-navigation">
+        <button class="tab-item" :class="{ active: activeTab === 'profile' }" @click="activeTab = 'profile'">
+          ⚙️ Profilo & Social
+        </button>
+        <button class="tab-item" :class="{ active: activeTab === 'content' }" @click="activeTab = 'content'">
+          📰 I Miei Contenuti
+        </button>
+        <button class="tab-item" :class="{ active: activeTab === 'vault' }" @click="activeTab = 'vault'">
+          🛡️ Proof of Code Vault
+        </button>
+        <button class="tab-item" :class="{ active: activeTab === 'api' }" @click="activeTab = 'api'">
+          🔑 DKP API Console
+        </button>
+        <button class="tab-item" :class="{ active: activeTab === 'gamification' }" @click="activeTab = 'gamification'">
+          🏆 Gamification & XP
+        </button>
+      </nav>
 
-    <!-- NAVIGAZIONE SCHEDE (TABS) -->
-    <nav class="dashboard-tabs">
-      <button 
-        type="button"
-        :class="['tab-btn', { active: activeTab === 'profile' }]" 
-        @click="changeTab('profile')"
-      >
-        👤 Profilo & Social
-      </button>
-      <button 
-        type="button"
-        :class="['tab-btn', { active: activeTab === 'activity' }]" 
-        @click="changeTab('activity')"
-      >
-        📰 I Miei Contenuti
-      </button>
-      <button 
-        type="button"
-        :class="['tab-btn', { active: activeTab === 'purchases' }]" 
-        @click="changeTab('purchases')"
-      >
-        🛍️ Licenze & Acquisti
-      </button>
-      <button 
-        type="button"
-        :class="['tab-btn', { active: activeTab === 'gamification' }]" 
-        @click="changeTab('gamification')"
-      >
-        🏆 Gamification Hub
-      </button>
-      <button 
-        type="button"
-        :class="['tab-btn', { active: activeTab === 'vault' }]" 
-        @click="changeTab('vault')"
-      >
-        🔒 DKP Vault
-      </button>
-      <button 
-        type="button"
-        :class="['tab-btn', { active: activeTab === 'tokens' }]" 
-        @click="changeTab('tokens')"
-      >
-        🔑 API Keys & Tokens
-      </button>
-    </nav>
+      <!-- PANNELLO 1: PROFILO & SOCIAL -->
+      <section v-if="activeTab === 'profile'" class="tab-panel">
+        <div class="panel-card">
+          <h2 class="section-title">Informazioni Developer</h2>
+          <p class="section-sub">Personalizza l'aspetto del tuo profilo pubblico e collega i tuoi canali social.</p>
 
-    <!-- CONTENUTO DELLE SCHEDE -->
-    <main class="dashboard-content">
-
-      <!-- TAB 1: PROFILO & SOCIAL -->
-      <section v-if="activeTab === 'profile'" class="tab-pane">
-        <div class="pane-header">
-          <h2>Informazioni Developer</h2>
-          <p>Personalizza l'aspetto del tuo profilo pubblico e collega i tuoi canali social.</p>
-        </div>
-
-        <form @submit.prevent="saveProfileSettings" class="settings-form">
-          <div class="form-group">
-            <label>URL Avatar Personalizzato</label>
-            <input v-model="profileForm.avatarUrl" type="url" placeholder="https://github.com/alexdpl.png" class="dkp-input" />
-          </div>
-
-          <div class="form-group">
-            <label>Biografia Developer</label>
-            <textarea v-model="profileForm.bio" rows="3" placeholder="Scrivi una breve introduzione..." class="dkp-input"></textarea>
-          </div>
-
-          <div class="social-grid">
-            <div class="form-group">
-              <label>Profilo GitHub</label>
-              <input v-model="profileForm.github" type="url" placeholder="https://github.com/username" class="dkp-input" />
+          <form @submit.prevent="saveProfile" class="form-layout">
+            <div class="form-group full-width">
+              <label>URL Avatar Personalizzato</label>
+              <input v-model="profileForm.avatar" type="url" class="dkp-input" />
             </div>
-            <div class="form-group">
-              <label>Profilo X / Twitter</label>
-              <input v-model="profileForm.twitter" type="url" placeholder="https://x.com/username" class="dkp-input" />
+
+            <div class="form-group full-width">
+              <label>Biografia Developer</label>
+              <textarea v-model="profileForm.bio" rows="3" class="dkp-input textarea"></textarea>
             </div>
-            <div class="form-group">
-              <label>Profilo LinkedIn</label>
-              <input v-model="profileForm.linkedin" type="url" placeholder="https://linkedin.com/in/username" class="dkp-input" />
-            </div>
-          </div>
 
-          <div class="form-actions">
-            <button type="submit" :disabled="isSavingProfile" class="save-btn">
-              {{ isSavingProfile ? 'Salvataggio...' : 'Salva Modifiche' }}
-            </button>
-            <span v-if="profileSavedSuccess" class="success-toast">✓ Profilo aggiornato con successo!</span>
-          </div>
-        </form>
-      </section>
-
-      <!-- TAB 2: I MIEI CONTENUTI -->
-      <section v-if="activeTab === 'activity'" class="tab-pane">
-        <div class="pane-header flex-between">
-          <div>
-            <h2>I Miei Contenuti Pubblicati</h2>
-            <p>Storico delle tue sottomissioni, showcase e discussioni aperte.</p>
-          </div>
-          <div class="filter-pills">
-            <button type="button" :class="['pill-btn', { active: activityFilter === 'all' }]" @click="activityFilter = 'all'">Tutti</button>
-            <button type="button" :class="['pill-btn', { active: activityFilter === 'submissions' }]" @click="activityFilter = 'submissions'">News</button>
-            <button type="button" :class="['pill-btn', { active: activityFilter === 'show' }]" @click="activityFilter = 'show'">Show</button>
-            <button type="button" :class="['pill-btn', { active: activityFilter === 'comments' }]" @click="activityFilter = 'comments'">Commenti</button>
-          </div>
-        </div>
-
-        <div class="activity-list">
-          <div v-for="item in filteredSubmissions" :key="item.id" class="activity-card">
-            <div class="activity-meta">
-              <span class="badge-type" :class="item.type">{{ item.type.toUpperCase() }}</span>
-              <span class="date-text">{{ item.date }}</span>
-            </div>
-            <h3 class="activity-title">{{ item.title }}</h3>
-            <p v-if="item.content" class="activity-subtext">"{{ item.content }}"</p>
-            <div class="activity-footer" v-if="item.points !== undefined">
-              <span>🔥 {{ item.points }} punti</span>
-              <span>💬 {{ item.commentsCount }} commenti</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB 3: LICENZE & ACQUISTI -->
-      <section v-if="activeTab === 'purchases'" class="tab-pane">
-        <div class="pane-header">
-          <h2>Le Mie Licenze SaaS</h2>
-          <p>Gestisci le chiavi di attivazione dei prodotti acquistati nel DKP Shop.</p>
-        </div>
-
-        <div class="keys-list">
-          <table class="keys-table" v-if="licenses.length > 0">
-            <thead>
-              <tr>
-                <th>PRODOTTO</th>
-                <th>LICENSE KEY</th>
-                <th>SCADENZA</th>
-                <th>STATO</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="lic in licenses" :key="lic.id">
-                <td><strong>{{ lic.product }}</strong></td>
-                <td><code class="license-key-text">{{ lic.key }}</code></td>
-                <td>{{ lic.expires }}</td>
-                <td><span class="status-badge-active">{{ lic.status }}</span></td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="empty-state">Nessuna licenza SaaS attiva trovata.</p>
-        </div>
-      </section>
-
-      <!-- TAB 4: GAMIFICATION HUB -->
-      <section v-if="activeTab === 'gamification'" class="tab-pane">
-        <div class="pane-header">
-          <h2>Gamification & Activity Hub</h2>
-          <p>Traccia i tuoi progressi XP e le ricompense sbloccate sulla piattaforma.</p>
-        </div>
-
-        <div class="gamification-grid">
-          <div class="level-card">
-            <div class="level-header">
-              <div>
-                <span class="level-title-label">Livello Attuale</span>
-                <div class="level-title-value">{{ userStats.level }}</div>
+            <div class="social-grid">
+              <div class="form-group">
+                <label>Profilo GitHub</label>
+                <input v-model="profileForm.github" type="url" class="dkp-input" />
               </div>
-              <div class="text-right">
-                <span class="level-title-label">Prossimo Rank tra</span>
-                <div class="xp-remaining-text">{{ userStats.nextLevelXp - userStats.xp }} XP</div>
+              <div class="form-group">
+                <label>Profilo X / Twitter</label>
+                <input v-model="profileForm.twitter" type="url" class="dkp-input" />
+              </div>
+              <div class="form-group">
+                <label>Profilo LinkedIn</label>
+                <input v-model="profileForm.linkedin" type="url" class="dkp-input" />
+              </div>
+              <!-- CAMPO REDDIT INTEGRATO -->
+              <div class="form-group">
+                <label>Profilo Reddit</label>
+                <input v-model="profileForm.reddit" type="url" placeholder="https://reddit.com/user/username" class="dkp-input" />
               </div>
             </div>
 
-            <div class="progress-container">
-              <div class="progress-bar" :style="{ width: `${userStats.progress}%` }"></div>
+            <div class="form-footer">
+              <button type="submit" class="dkp-btn-success">Salva Modifiche</button>
+              <span v-if="profileSaved" class="save-toast">✓ Profilo Aggiornato!</span>
             </div>
-            <div class="progress-labels">
-              <span>{{ userStats.xp }} XP</span>
-              <span>{{ userStats.nextLevelXp }} XP</span>
-            </div>
-          </div>
+          </form>
 
-          <div class="history-card">
-            <h3 class="history-title">Cronologia XP</h3>
-            <ul class="history-list">
-              <li v-for="log in xpHistory" :key="log.id" class="history-item">
-                <div>
-                  <div class="history-action">{{ log.action }}</div>
-                  <div class="history-date">{{ log.date }}</div>
-                </div>
-                <span class="history-points">{{ log.points }}</span>
-              </li>
-            </ul>
+          <!-- BADGE IN BASSO A DESTRA -->
+          <div class="nexus-badge-wrap">
+            <div class="pulse-nexus-badge">
+              <span class="dot"></span> ⚡ Pulse Nexus <span class="ver">v2.4</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- TAB 5: VAULT PERSONALE DKP TOOLS -->
-      <section v-if="activeTab === 'vault'" class="tab-pane">
-        <div class="pane-header">
-          <h2>Vault Personale DKP Tools</h2>
-          <p>Archivio sicuro delle tue certificazioni, audit di sicurezza e snippet salvati.</p>
-        </div>
-
-        <div class="vault-subtabs">
-          <button type="button" :class="['subtab-btn', { active: vaultCategory === 'poc' }]" @click="vaultCategory = 'poc'">
-            ⚡ Proof of Code Hashes ({{ pocCertificates.length }})
-          </button>
-          <button type="button" :class="['subtab-btn', { active: vaultCategory === 'scanner' }]" @click="vaultCategory = 'scanner'">
-            🛡️ AI Scanner Audits ({{ scannerAudits.length }})
-          </button>
-          <button type="button" :class="['subtab-btn', { active: vaultCategory === 'snippets' }]" @click="vaultCategory = 'snippets'">
-            💻 Snippet & Playground ({{ savedSnippets.length }})
-          </button>
-        </div>
-
-        <!-- Sotto-scheda PoC -->
-        <div v-if="vaultCategory === 'poc'" class="vault-grid">
-          <div v-for="poc in pocCertificates" :key="poc.id" class="vault-card">
-            <div class="vault-card-top">
-              <span class="poc-badge">{{ poc.badge }}</span>
-              <span class="vault-date">{{ poc.date }}</span>
+      <!-- PANNELLO 2: GESTIONE POST BLOG -->
+      <section v-if="activeTab === 'content'" class="tab-panel">
+        <div class="panel-card">
+          <div class="panel-header-action">
+            <div>
+              <h2 class="section-title">Gestione Post & Blog</h2>
+              <p class="section-sub">Crea, modifica e gestisci gli articoli pubblicati nell'ecosistema DevKernelPulse.</p>
             </div>
-            <h4>{{ poc.repo }}</h4>
-            <div class="hash-row">
-              <code>{{ poc.hash.substring(0, 18) }}...</code>
-              <button type="button" @click="copyToClipboard(poc.hash, poc.id)" class="copy-small-btn">
-                {{ copiedTarget === poc.id ? 'Copiato!' : 'Copia Hash' }}
-              </button>
-            </div>
+            <button @click="openNewArticleModal" class="dkp-btn-success">+ Nuovo Post</button>
           </div>
-        </div>
 
-        <!-- Sotto-scheda AI Scanner -->
-        <div v-if="vaultCategory === 'scanner'" class="vault-grid">
-          <div v-for="audit in scannerAudits" :key="audit.id" class="vault-card">
-            <div class="vault-card-top">
-              <span class="audit-status">{{ audit.status }} ({{ audit.score }}/100)</span>
-              <span class="vault-date">{{ audit.date }}</span>
-            </div>
-            <h4>{{ audit.target }}</h4>
-            <p class="audit-desc">Nessuna vulnerabilità critica rilevata nell'ultimo audit Nitro/Nuxt.</p>
+          <div class="table-container">
+            <table class="dkp-table">
+              <thead>
+                <tr>
+                  <th>Titolo Articolo</th>
+                  <th>Stato</th>
+                  <th>Data</th>
+                  <th>Letture</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="art in articles" :key="art.id">
+                  <td class="font-bold">{{ art.title }}</td>
+                  <td>
+                    <span :class="['status-pill', art.status]">
+                      {{ art.status === 'published' ? 'Pubblicato' : 'Bozza' }}
+                    </span>
+                  </td>
+                  <td>{{ art.date }}</td>
+                  <td>{{ art.views }}</td>
+                  <td class="actions-cell">
+                    <button @click="deleteArticle(art.id)" class="btn-danger-sm">Elimina</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
 
-        <!-- Sotto-scheda Snippets -->
-        <div v-if="vaultCategory === 'snippets'" class="vault-grid">
-          <div v-for="snip in savedSnippets" :key="snip.id" class="vault-card">
-            <div class="vault-card-top">
-              <span class="lang-tag">{{ snip.lang }}</span>
-              <span class="vault-date">{{ snip.date }}</span>
+          <!-- MODALE CREAZIONE/MODIFICA POST -->
+          <div v-if="isEditingArticle" class="dkp-modal-backdrop">
+            <div class="dkp-modal">
+              <h3>✏️ Editor Post Blog</h3>
+              <div class="form-group">
+                <label>Titolo Post</label>
+                <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Titolo dell'articolo..." />
+              </div>
+              <div class="form-group">
+                <label>Stato Pubblicazione</label>
+                <select v-model="articleForm.status" class="dkp-input">
+                  <option value="draft">Bozza</option>
+                  <option value="published">Pubblicato</option>
+                </select>
+              </div>
+              <div class="modal-actions">
+                <button @click="saveArticle" class="dkp-btn-success">Salva Articolo</button>
+                <button @click="isEditingArticle = false" class="btn-secondary">Annulla</button>
+              </div>
             </div>
-            <h4>{{ snip.name }}</h4>
-            <button type="button" class="open-snippet-btn">Apri in Playground →</button>
           </div>
         </div>
       </section>
 
-      <!-- TAB 6: API KEYS & DEVELOPER TOKENS -->
-      <section v-if="activeTab === 'tokens'" class="tab-pane">
-        <div class="pane-header">
-          <h2>API Keys & Developer Tokens</h2>
-          <p>Genera chiavi di autenticazione per integrare l'ecosistema DKP nei tuoi script CLI o progetti locali.</p>
-        </div>
+      <!-- PANNELLO 3: DKP API CONSOLE (STILE BREVO) -->
+      <section v-if="activeTab === 'api'" class="tab-panel">
+        <div class="panel-card">
+          <h2 class="section-title">🔑 DKP API Console & Keys Manager</h2>
+          <p class="section-sub">Genera e gestisci le chiavi API per integrare l'ecosistema DKP nelle tue applicazioni esterne.</p>
 
-        <div class="key-generator-box">
-          <h3>Genera Nuova Chiave API</h3>
-          <div class="gen-input-group">
-            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. Local CLI Scanner)" class="dkp-input" @keyup.enter="generateNewApiKey" />
-            <button type="button" @click="generateNewApiKey" class="gen-btn">Genera Key</button>
+          <div class="api-generate-box">
+            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. App Produzione)" class="dkp-input" />
+            <button @click="generateApiKey" class="dkp-btn-success">Genera Nuova API Key</button>
           </div>
-        </div>
 
-        <div v-if="generatedKeyModal" class="key-created-alert">
-          <div class="alert-content">
-            <h4>⚠️ Salva la tua chiave API adesso! Non verrà più mostrata.</h4>
-            <div class="full-token-box">
+          <!-- POPUP CHIAVE GENERATA -->
+          <div v-if="generatedKeyModal" class="generated-key-alert">
+            <p class="alert-title">⚠️ Copia la tua API Key ora. Per sicurezza non verrà mai più mostrata in chiaro:</p>
+            <div class="raw-key-box">
               <code>{{ generatedKeyModal }}</code>
-              <button type="button" @click="copyToClipboard(generatedKeyModal, 'modal-token')" class="copy-btn">
-                {{ copiedTarget === 'modal-token' ? 'Copiato!' : 'Copia Token' }}
+              <button @click="copyToClipboard(generatedKeyModal)" class="btn-copy">
+                {{ copiedKey ? 'Copiato!' : 'Copia' }}
               </button>
             </div>
-            <button type="button" @click="generatedKeyModal = null" class="close-alert-btn">Ho salvato la chiave</button>
+            <button @click="generatedKeyModal = null" class="btn-secondary-sm">Ho salvato la chiave</button>
           </div>
-        </div>
 
-        <div class="keys-list">
-          <h3>Chiavi API Attive</h3>
-          <table class="keys-table" v-if="apiKeys.length > 0">
-            <thead>
-              <tr>
-                <th>NOME TOKEN</th>
-                <th>PREFISSO CHIAVE</th>
-                <th>CREATO IL</th>
-                <th>ULTIMO USO</th>
-                <th>AZIONI</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="key in apiKeys" :key="key.id">
-                <td><strong>{{ key.name }}</strong></td>
-                <td><code>{{ key.prefix }}</code></td>
-                <td>{{ key.created }}</td>
-                <td>{{ key.lastUsed }}</td>
-                <td>
-                  <button type="button" @click="revokeApiKey(key.id)" class="revoke-btn">Revoca</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="empty-state">Nessuna chiave API attiva al momento.</p>
+          <!-- TABELLA KEYS -->
+          <div class="table-container">
+            <table class="dkp-table">
+              <thead>
+                <tr>
+                  <th>Nome Token</th>
+                  <th>Chiave API</th>
+                  <th>Creata Il</th>
+                  <th>Ultimo Uso</th>
+                  <th>Azione</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="key in apiKeys" :key="key.id">
+                  <td class="font-bold">{{ key.name }}</td>
+                  <td><code class="code-badge">{{ key.key }}</code></td>
+                  <td>{{ key.created }}</td>
+                  <td>{{ key.lastUsed }}</td>
+                  <td>
+                    <button @click="revokeApiKey(key.id)" class="btn-danger-sm">Revoca</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- SNIPPET DI ESEMPIO INTEGRATO -->
+          <div class="code-snippet-card">
+            <h3>⚡ Integrazione Rapida (cURL)</h3>
+            <pre class="code-block"><code>curl -X GET "https://api.devkernelpulse.com/v2/user" \
+  -H "Authorization: Bearer YOUR_DKP_API_KEY" \
+  -H "Content-Type: application/json"</code></pre>
+          </div>
         </div>
       </section>
 
-    </main>
+      <!-- PANNELLO 4: VAULT -->
+      <section v-if="activeTab === 'vault'" class="tab-panel">
+        <div class="panel-card">
+          <h2 class="section-title">🛡️ Proof of Code Vault</h2>
+          <p class="section-sub">Notarizzazione crittografica delle tue repository e attestazioni di codice sulla blockchain DKP.</p>
+        </div>
+      </section>
+
+      <!-- PANNELLO 5: GAMIFICATION -->
+      <section v-if="activeTab === 'gamification'" class="tab-panel">
+        <div class="panel-card">
+          <h2 class="section-title">🏆 Gamification & DKP XP</h2>
+          <p class="section-sub">Monitora le tue attività, traguardi e badge ottenuti nella piattaforma.</p>
+        </div>
+      </section>
+
+    </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard-wrapper {
-  max-width: 1100px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+.dashboard-page {
+  background: #020420;
+  min-height: 100vh;
+  padding: 2rem 1rem;
   color: #f8fafc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* HEADER */
-.dashboard-header {
+.dashboard-container {
+  max-width: 1100px;
+  margin: 0 auto;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* HEADER USER CARD CYBER-GLASS */
+.user-header-card {
   background: #090d16;
   border: 1px solid #1e293b;
   border-radius: 12px;
-  padding: 1.5rem 2rem;
-  margin-bottom: 2rem;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-.user-summary {
+.header-main-info {
   display: flex;
   align-items: center;
   gap: 1.25rem;
 }
 
-/* VINCOLI DIMENSIONALE RIGIDI AVATAR PER IMPEDIRE ESPANSIONE SITO */
-.avatar-box {
+.user-avatar-wrap {
+  position: relative;
   width: 64px;
   height: 64px;
-  min-width: 64px;
-  min-height: 64px;
-  max-width: 64px;
-  max-height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00dc82, #38bdf8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 800;
-  color: #020420;
-  overflow: hidden;
-  flex-shrink: 0;
 }
 
-.avatar-box img {
+.user-avatar {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
+  border: 2px solid #00dc82;
 }
 
-.user-meta h1 {
-  font-size: 1.5rem;
-  margin: 0 0 0.25rem 0;
+.online-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #00dc82;
+  border: 2px solid #090d16;
+  border-radius: 50%;
 }
 
-.username-gradient {
+.user-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0 0 0.4rem;
+}
+
+.username-highlight {
   color: #38bdf8;
 }
 
-.role-badge {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 0.85rem;
-}
-
-.reputation-text {
-  color: #00dc82;
-  font-weight: 700;
-}
-
-.public-profile-link {
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  background: rgba(0, 220, 130, 0.05);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: 700;
-  transition: all 0.2s;
-}
-
-.public-profile-link:hover {
-  background: #00dc82;
-  color: #020420;
-}
-
-/* SCHEDE (TABS BAR 2.4-GOLD) */
-.dashboard-tabs {
+.user-badges {
   display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.role-badge {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.points-badge {
+  background: rgba(0, 220, 130, 0.12);
+  color: #00dc82;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 220, 130, 0.3);
+}
+
+.public-profile-btn {
+  background: transparent;
+  border: 1px solid #00dc82;
+  color: #00dc82;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.public-profile-btn:hover {
+  background: rgba(0, 220, 130, 0.12);
+  transform: translateY(-1px);
+}
+
+/* TAB NAVIGATION SENZA SCROLLBAR */
+.tabs-navigation {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   border-bottom: 1px solid #1e293b;
-  margin-bottom: 2rem;
-  overflow-x: auto;
+  padding-bottom: 0.75rem;
 }
 
-.tab-btn {
-  background: transparent;
-  border: none;
-  outline: none;
+.tab-item {
+  background: #090d16;
+  border: 1px solid #1e293b;
   color: #94a3b8;
-  padding: 0.75rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex: 1 1 auto;
+  text-align: center;
 }
 
-.tab-btn:hover {
+.tab-item:hover {
+  border-color: #38bdf8;
   color: #ffffff;
 }
 
-.tab-btn.active {
+.tab-item.active {
+  background: rgba(0, 220, 130, 0.12);
+  border-color: #00dc82;
   color: #00dc82;
-  border-bottom-color: #00dc82;
 }
 
-/* SEZIONE CONTENUTI */
-.tab-pane {
+/* PANNELLO CARD */
+.panel-card {
   background: #090d16;
   border: 1px solid #1e293b;
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1.75rem;
+  position: relative;
 }
 
-.pane-header {
-  margin-bottom: 1.75rem;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 1rem;
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0 0 0.25rem;
 }
 
-.pane-header h2 {
-  font-size: 1.3rem;
-  margin: 0 0 0.3rem 0;
-}
-
-.pane-header p {
+.section-sub {
   color: #94a3b8;
-  margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  margin: 0 0 1.5rem;
 }
 
-.flex-between {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-/* FORM STYLES */
-.settings-form {
+/* FORMS */
+.form-layout {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
 }
 
 .form-group {
@@ -655,19 +529,24 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   gap: 0.4rem;
 }
 
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
 .form-group label {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: #cbd5e1;
-  font-weight: 600;
 }
 
 .dkp-input {
   background: #020420;
   border: 1px solid #1e293b;
   color: #ffffff;
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  transition: border-color 0.2s;
 }
 
 .dkp-input:focus {
@@ -675,414 +554,165 @@ function copyToClipboard(text: string, identifier: string = 'global') {
   border-color: #00dc82;
 }
 
-.social-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
+.dkp-input.textarea {
+  resize: vertical;
 }
 
-.form-actions {
+.form-footer {
   display: flex;
   align-items: center;
   gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.dkp-btn-success {
+  background: #00dc82;
+  color: #020420;
+  border: none;
+  font-weight: 800;
+  padding: 0.65rem 1.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.dkp-btn-success:hover {
+  background: #00bf71;
+}
+
+.save-toast {
+  color: #00dc82;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* NEXUS BADGE IN BASSO A DESTRA */
+.nexus-badge-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.pulse-nexus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #020420;
+  border: 1px solid #00dc82;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.pulse-nexus-badge .dot {
+  width: 8px;
+  height: 8px;
+  background: #00dc82;
+  border-radius: 50%;
+}
+
+.pulse-nexus-badge .ver {
+  background: #00dc82;
+  color: #020420;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+}
+
+/* TABELLE & API */
+.panel-header-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.table-container {
+  overflow-x: auto;
   margin-top: 1rem;
 }
 
-.save-btn {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 800;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.save-btn:hover { background: #00bf71; }
-
-.success-toast {
-  color: #00dc82;
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-/* FILTRI & ACTIVTY CARD */
-.filter-pills {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.pill-btn {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #94a3b8;
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.pill-btn.active {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 700;
-  border-color: #00dc82;
-}
-
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.activity-card {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  padding: 1.25rem;
-}
-
-.activity-meta {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.badge-type {
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-}
-
-.badge-type.submission { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
-.badge-type.show { background: rgba(0, 220, 130, 0.2); color: #00dc82; }
-.badge-type.comment { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
-
-.date-text { color: #64748b; font-size: 0.75rem; }
-
-.activity-title { margin: 0 0 0.4rem 0; font-size: 1rem; }
-.activity-subtext { color: #cbd5e1; font-style: italic; font-size: 0.85rem; margin: 0; }
-
-.activity-footer {
-  display: flex;
-  gap: 1rem;
-  color: #94a3b8;
-  font-size: 0.8rem;
-  margin-top: 0.75rem;
-}
-
-/* GAMIFICATION HUB */
-.gamification-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-  .gamification-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.level-card, .history-card {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.level-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.level-title-label {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.level-title-value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #00dc82;
-  margin-top: 0.25rem;
-}
-
-.xp-remaining-text {
-  font-family: monospace;
-  color: #ffffff;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
-}
-
-.progress-container {
-  height: 12px;
-  width: 100%;
-  background: #090d16;
-  border-radius: 9999px;
-  overflow: hidden;
-  border: 1px solid #1e293b;
-  margin-top: 1.25rem;
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #00bf71, #00dc82);
-  border-radius: 9999px;
-  transition: width 0.8s ease-in-out;
-}
-
-.progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: #64748b;
-  font-family: monospace;
-  margin-top: 0.5rem;
-}
-
-.history-title {
-  font-size: 1.1rem;
-  margin: 0 0 1rem 0;
-}
-
-.history-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #1e293b;
-}
-
-.history-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.history-action {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #cbd5e1;
-}
-
-.history-date {
-  font-size: 0.7rem;
-  color: #64748b;
-  margin-top: 0.2rem;
-}
-
-.history-points {
-  color: #00dc82;
-  font-family: monospace;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-/* VAULT SECTION */
-.vault-subtabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.subtab-btn {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.subtab-btn.active {
-  border-color: #00dc82;
-  color: #00dc82;
-  font-weight: 700;
-}
-
-.vault-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.vault-card {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  padding: 1.25rem;
-}
-
-.vault-card-top {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.poc-badge { color: #00dc82; font-weight: 700; font-size: 0.8rem; }
-.audit-status { color: #00dc82; font-weight: 800; font-size: 0.75rem; }
-.lang-tag { color: #38bdf8; font-weight: 700; font-size: 0.8rem; }
-.vault-date { color: #64748b; font-size: 0.75rem; }
-
-.vault-card h4 { margin: 0 0 0.75rem 0; font-size: 0.95rem; }
-
-.hash-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #090d16;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  border: 1px solid #1e293b;
-}
-
-.hash-row code { font-size: 0.75rem; color: #cbd5e1; font-family: monospace; }
-.copy-small-btn {
-  background: transparent;
-  border: none;
-  color: #38bdf8;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.audit-desc { color: #94a3b8; font-size: 0.8rem; margin: 0; }
-.open-snippet-btn {
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  color: #38bdf8;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 0.5rem;
-}
-
-/* API KEYS & LICENSES TABLES */
-.key-generator-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 1.25rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-}
-
-.key-generator-box h3 { font-size: 1rem; margin: 0 0 1rem 0; }
-
-.gen-input-group {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.gen-input-group input { flex: 1; min-width: 200px; }
-
-.gen-btn {
-  background: #38bdf8;
-  color: #020420;
-  font-weight: 800;
-  border: none;
-  padding: 0.7rem 1.25rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.key-created-alert {
-  background: rgba(234, 179, 8, 0.1);
-  border: 1px solid #eab308;
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin-bottom: 2rem;
-}
-
-.alert-content h4 { color: #eab308; margin: 0 0 0.75rem 0; font-size: 0.9rem; }
-
-.full-token-box {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #020420;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  gap: 0.5rem;
-}
-
-.full-token-box code { color: #00dc82; font-size: 0.85rem; font-weight: 700; word-break: break-all; font-family: monospace; }
-.copy-btn { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-
-.close-alert-btn {
-  background: transparent;
-  border: 1px solid #eab308;
-  color: #eab308;
-  padding: 0.35rem 0.85rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.keys-list h3 { font-size: 1rem; margin: 0 0 1rem 0; }
-
-.keys-table {
+.dkp-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: left;
   font-size: 0.85rem;
+  text-align: left;
 }
 
-.keys-table th {
+.dkp-table th {
+  background: #020420;
   color: #64748b;
-  border-bottom: 1px solid #1e293b;
   padding: 0.75rem;
-}
-
-.keys-table td {
   border-bottom: 1px solid #1e293b;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.dkp-table td {
   padding: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+  color: #cbd5e1;
 }
 
-.license-key-text {
-  color: #00dc82;
-  font-family: monospace;
-  font-size: 0.8rem;
-}
+.font-bold { font-weight: 700; }
 
-.status-badge-active {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  padding: 0.2rem 0.6rem;
+.status-pill {
+  padding: 0.15rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.revoke-btn {
-  background: rgba(239, 68, 68, 0.15);
+.status-pill.published { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.status-pill.draft { background: rgba(234, 179, 8, 0.15); color: #eab308; }
+
+.btn-danger-sm {
+  background: transparent;
   color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 0.25rem 0.6rem;
+  border: 1px solid #ef4444;
+  padding: 0.25rem 0.5rem;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 0.75rem;
 }
 
-.empty-state { color: #64748b; font-size: 0.85rem; font-style: italic; }
+.btn-danger-sm:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.api-generate-box {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 500px;
+  margin-bottom: 1rem;
+}
+
+.generated-key-alert {
+  background: #020420;
+  border: 1px solid #00dc82;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.alert-title { font-size: 0.85rem; font-weight: 700; color: #00dc82; margin: 0; }
+.raw-key-box { display: flex; align-items: center; gap: 0.5rem; background: #090d16; padding: 0.5rem; border-radius: 4px; }
+.raw-key-box code { color: #38bdf8; font-family: monospace; flex: 1; }
+.btn-copy { background: #38bdf8; color: #020420; border: none; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; }
+.btn-secondary-sm { background: #1e293b; color: #cbd5e1; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; align-self: flex-start; }
+.code-badge { background: #020420; color: #38bdf8; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; }
+.code-snippet-card { margin-top: 1.5rem; background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 1rem; }
+.code-snippet-card h3 { font-size: 0.9rem; margin: 0 0 0.5rem; color: #38bdf8; }
+.code-block { background: #090d16; padding: 0.75rem; border-radius: 6px; color: #a7f3d0; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 0; }
+
+/* MODALE */
+.dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+.dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 1rem; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.btn-secondary { background: #1e293b; color: #ffffff; border: none; padding: 0.55rem 1rem; border-radius: 6px; cursor: pointer; }
 </style>
