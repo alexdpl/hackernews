@@ -30,6 +30,9 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
           <li>
             <NuxtLink :to="getMainUrl('/jobs')" external>💼 DKP Jobs Hub Center</NuxtLink>
           </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/shop')" external>🛍️ DKP Shop & Licenze SaaS</NuxtLink>
+          </li>
           <li>
             <NuxtLink :to="getMainUrl('/roadmap')" external>🚀 Roadmap Ecosistema 2026</NuxtLink>
           </li>
@@ -69,7 +72,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
         <h4>🔌 DEVELOPERS & API</h4>
         <ul class="footer-links">
           <li>
-            <NuxtLink :to="getApiUrl('/api-console')" external class="highlight-link">⚡ DKP API Console</NuxtLink>
+            <NuxtLink :to="getApiUrl('/user/dashboard?tab=api')" external class="highlight-link">🔑 DKP API Console</NuxtLink>
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/docs/api')" external>📖 Documentazione API (OpenAPI)</NuxtLink>
@@ -90,9 +93,6 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
       <div class="footer-col">
         <h4>📜 RISORSE & LEGALE</h4>
         <ul class="footer-links">
-          <li>
-            <NuxtLink :to="getMainUrl('/shop')" external>🛍️ DKP Shop & Licenze SaaS</NuxtLink>
-          </li>
           <li>
             <NuxtLink :to="getMainUrl('/about')" external>👥 Chi Siamo</NuxtLink>
           </li>

@@ -8,6 +8,7 @@ useHead({
     { name: 'description', content: 'Console di controllo API, metriche di traffico, latenza Nitro v2.4 e gestione chiavi di accesso.' }
   ]
 })
+const { getMainUrl } = useDomain()
 
 // Simulazione stato Utente/Admin (sostituire con useUser() o useAuth() del progetto)
 const user = ref({
@@ -88,6 +89,16 @@ const apiKeys = ref([
           </template>
         </div>
       </header>
+
+  <div class="console-container">
+  <NuxtLink 
+    :to="getMainUrl('/user/dashboard?tab=api')" 
+    external 
+    class="dkp-nav-link-btn"
+  >
+    <span>🔑 DKP API Console & Keys Manager</span>
+  </NuxtLink>
+</div>
 
       <!-- METRICHE DI UTILIZZO & LATENZA -->
       <section class="metrics-section">
@@ -176,12 +187,39 @@ const apiKeys = ref([
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+
 .console-container {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
   max-width: 1240px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
+}
+
+.dkp-nav-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 220, 130, 0.08);
+  border: 1px solid #00dc82;
+  color: #00dc82;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0, 220, 130, 0.15);
+}
+
+.dkp-nav-link-btn:hover {
+  background: #00dc82;
+  color: #020420;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 220, 130, 0.3);
 }
 
 /* HEADER & WIDGET */

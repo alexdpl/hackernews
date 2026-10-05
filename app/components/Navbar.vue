@@ -162,7 +162,7 @@ async function handleLogout() {
                 class="menu-item"
                 @click="closeAllDropdowns"
               >
-                <span class="icon">⚡</span>
+                <span class="icon">🔑</span>
                 <div class="item-text">
                   <strong>DKP API Console</strong>
                   <small>Gestione Key, Metriche e Consumi API</small>
@@ -241,7 +241,11 @@ async function handleLogout() {
               </NuxtLink>
 
               <NuxtLink :to="getMainUrl('/user/dashboard?tab=api')" external class="menu-item api-console-item" @click="closeAllDropdowns">
-                <span>⚡</span> DKP API Console
+                <span>🔑</span> DKP API Console
+              </NuxtLink>
+			  
+			  <NuxtLink :to="getMainUrl('/api-console')" external class="menu-item api-console-item" @click="closeAllDropdowns">
+                <span>⚡</span>Consumo delle API
               </NuxtLink>
 
               <div class="dropdown-divider"></div>

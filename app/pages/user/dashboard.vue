@@ -264,14 +264,24 @@ function revokeApiKey(id: string) {
       <!-- PANNELLO 3: DKP API CONSOLE (STILE BREVO) -->
       <section v-if="activeTab === 'api'" class="tab-panel">
         <div class="panel-card">
-          <h2 class="section-title">🔑 DKP API Console & Keys Manager</h2>
+          <h2 class="section-title">🔑 DKP API Console & Keys Manager</h2>  
           <p class="section-sub">Genera e gestisci le chiavi API per integrare l'ecosistema DKP nelle tue applicazioni esterne.</p>
-
-          <div class="api-generate-box">
+          
+		  <!-- Da inserire nel pannello API di dashboard.vue -->
+<div class="api-action-header">
+  <NuxtLink 
+    :to="getMainUrl('/api-console')" 
+    external 
+    class="dkp-api-link-btn"
+  >
+    <span>⚡ Consumo delle API</span>
+  </NuxtLink>
+</div>
+		 
+		  <div class="api-generate-box">
             <input v-model="newKeyName" type="text" placeholder="Nome Token (es. App Produzione)" class="dkp-input" />
             <button @click="generateApiKey" class="dkp-btn-success">Genera Nuova API Key</button>
-          </div>
-
+		  </div>
           <!-- POPUP CHIAVE GENERATA -->
           <div v-if="generatedKeyModal" class="generated-key-alert">
             <p class="alert-title">⚠️ Copia la tua API Key ora. Per sicurezza non verrà mai più mostrata in chiaro:</p>
@@ -355,6 +365,35 @@ function revokeApiKey(id: string) {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.api-action-header {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.dkp-api-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  padding: 0.65rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.12);
+}
+
+.dkp-api-link-btn:hover {
+  background: #38bdf8;
+  color: #020420;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.3);
 }
 
 /* HEADER USER CARD CYBER-GLASS */
