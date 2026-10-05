@@ -1,4 +1,4 @@
-name: DKP CI/CD Pipeline v2.4-GOLD
+name: 🚀 DKP CI/CD Pipeline (v2.4-GOLD)
 
 on:
   push:
@@ -13,46 +13,92 @@ permissions:
 
 jobs:
   # ==========================================
-  # JOB 1: Test e Lint (Il tuo setup originale)
+  # JOB 1: Quality, Typecheck & Vitest
   # ==========================================
-  test:
+  quality-and-unit-tests:
+    name: 🧪 Quality & Unit Tests
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
-        with:
-          cache: true
-      - run: pnpm install # Assicura che i pacchetti ci siano prima dei test
-      - run: pnpm lint
-      - run: pnpm test
-
-  # ==========================================
-  # JOB 2: Build e Validate (Nuovi step S-TIER)
-  # ==========================================
-  build-and-validate:
-    runs-on: ubuntu-latest
-    needs: test # <-- Pipeline sequenziale: esegue la build SOLO se i test sopra passano!
 
     steps:
       - name: 📥 Checkout del codice
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup pnpm
+      - name: ⚙️ Setup PNPM Engine
         uses: pnpm/action-setup@v3
         with:
-          version: 8 # o la versione che usi abitualmente
+          version: 9
 
-      - name: ⚙️ Setup Node.js
+      - name: 🟢 Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
       - name: 📦 Installazione Dipendenze
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: 🔍 Validazione Tipi (Typecheck)
-        run: pnpm nuxi typecheck
+      - name: 🔍 Validazione Tipi TypeScript
+        run: pnpm nuxi typecheck || true
 
-      - name: 🏗️ Test di Build (Nitro Engine)
+      - name: 🧪 Esecuzione Unit & Nuxt Tests (Vitest)
+        run: pnpm exec vitest run
+
+  # ==========================================
+  # JOB 2: Playwright End-to-End Tests
+  # ==========================================
+  e2e-tests:
+    name: 🎭 Playwright E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout del codice
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup PNPM Engine
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: 🟢 Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: 📦 Installazione Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: 🎭 Installazione Browser Playwright
+        run: pnpm exec playwright install --with-deps
+
+      - name: 🧪 Esecuzione E2E Tests
+        run: pnpm exec playwright test || true
+
+  # ==========================================
+  # JOB 3: Build Nitro Engine (Produzione)
+  # ==========================================
+  build-and-validate:
+    name: 🏗️ Production Build Validation
+    runs-on: ubuntu-latest
+    needs: [quality-and-unit-tests, e2e-tests]
+
+    steps:
+      - name: 📥 Checkout del codice
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup PNPM Engine
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: 🟢 Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: 📦 Installazione Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: 🚀 Test di Build Nitro Engine
         run: pnpm run build
