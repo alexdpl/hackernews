@@ -1,6 +1,6 @@
 // server/middleware/sentinelAI.ts
 
-// Helper ultra-sicuro: usa direttamente l'oggetto HTTP nativo di Node.js scavalcando qualsiasi bug di h3
+// Helper ultra-sicuro per settare header nativi Node.js senza conflitti di versione h3
 function setSafeHeader(event: any, name: string, value: string) {
   if (event.node?.res?.setHeader) {
     event.node.res.setHeader(name, value)

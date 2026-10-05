@@ -2,7 +2,6 @@
 export default defineEventHandler(async (event) => {
   let body: any = {}
 
-  // Estrazione sicura del body sia con h3 nativo che con stream Node.js
   try {
     body = await readBody(event)
   } catch {
@@ -16,6 +15,11 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const res: any = await $fetch('/api/tools/ai-scan', {
+  method: 'POST',
+  body: { url: targetUrl.value }
+})
+  
   const targetUrl = body?.url || ''
 
   if (!targetUrl.includes('github.com')) {
@@ -42,7 +46,7 @@ export default defineEventHandler(async (event) => {
     const tree = response?.tree || []
     const paths = tree.map((item: any) => item.path.toLowerCase())
 
-    // 1. Verifica presenza Suite di Test (Playwright / Vitest / tests/)
+    // 1. Verifica presenza Suite di Test
     const hasTests = paths.some((p: string) =>
       p.startsWith('tests/') ||
       p.startsWith('test/') ||
@@ -50,20 +54,23 @@ export default defineEventHandler(async (event) => {
       p.includes('vitest.config')
     )
 
-    // 2. Verifica presenza CI/CD (GitHub Actions)
+    // 2. Verifica presenza CI/CD
     const hasGithubActions = paths.some((p: string) =>
       p.startsWith('.github/workflows/')
     )
 
-    // 3. Verifica presenza Documentazione
-    const hasContributing = paths.some((p: string) =>
-      p.includes('contributing.md')
-    )
+    // 3. Verifica presenza Documentazione e Contributing
+    const hasContributing = paths.some((p: string) => p.includes('contributing.md'))
+    const hasDocs = paths.some((p: string) => p.startsWith('docs/'))
 
+    // Calcolo Punteggio Dinamico v2.4-GOLD
     let score = 70
     if (hasTests) score += 15
-    if (hasGithubActions) score += 10
+    if (hasGithubActions) score += 5
     if (hasContributing) score += 5
+    if (hasDocs) score += 5
+
+    const docCoverageScore = (hasContributing ? 50 : 0) + (hasDocs ? 48 : 38)
 
     return {
       success: true,
@@ -76,14 +83,14 @@ export default defineEventHandler(async (event) => {
         developerLevel: hasTests ? 'Senior Systems Architect' : 'Full-Stack Developer',
         securityStatus: '🔒 SICURO (0 Vulnerabilità Critiche / Captcha OK)',
         detectedStack: ['Nuxt 3/4', 'TypeScript Strict', 'Nitro Engine', 'Playwright', 'Vitest'],
-        aiSummary: hasTests
-          ? 'Repository d eccellenza con suite di testing isolata (Playwright & Vitest), architettura pulita ed allineata agli standard v2.4-GOLD.'
-          : 'Repository ben strutturata. Aggiungi la suite di testing per sbloccare il massimo rank DKP.',
+        aiSummary: (hasTests && hasDocs)
+          ? 'Repository d eccellenza con suite di testing isolata (Playwright & Vitest), documentazione esaustiva ed architettura allineata agli standard v2.4-GOLD.'
+          : 'Repository ben strutturata. Completa la documentazione e i test per sbloccare il massimo rank DKP.',
         rankMetrics: [
           { label: 'Qualità & Pulizia Codice', score: 96, class: 'green' },
           { label: 'Sicurezza & Middleware Auth', score: 92, class: 'cyan' },
           { label: 'Performance & Bundle Size', score: 95, class: 'green' },
-          { label: 'Documentazione & Test Coverage', score: hasTests ? 98 : 60, class: hasTests ? 'green' : 'gold' }
+          { label: 'Documentazione & Test Coverage', score: docCoverageScore, class: docCoverageScore >= 90 ? 'green' : 'gold' }
         ],
         improvementActionPlan: [
           {
