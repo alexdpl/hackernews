@@ -8,7 +8,7 @@ useHead({
     { name: 'description', content: 'Console di controllo API, metriche di traffico, latenza Nitro v2.4 e gestione chiavi di accesso.' }
   ]
 })
-const { getMainUrl } = useDomain()
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 // Simulazione stato Utente/Admin (sostituire con useUser() o useAuth() del progetto)
 const user = ref({
@@ -92,7 +92,7 @@ const apiKeys = ref([
 
   <div class="console-container">
   <NuxtLink 
-    :to="getMainUrl('/user/dashboard?tab=api')" 
+    :to="getApiUrl('/user/dashboard?tab=api')" 
     external 
     class="dkp-nav-link-btn"
   >

@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const { currentUser } = useAuthCore()
-const { getMainUrl } = useDomain()
+const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 // 1. GESTIONE TAB SNELLA
 const activeTab = computed({
@@ -270,7 +270,7 @@ function revokeApiKey(id: string) {
 		  <!-- Da inserire nel pannello API di dashboard.vue -->
 <div class="api-action-header">
   <NuxtLink 
-    :to="getMainUrl('/api-console')" 
+    :to="getApiUrl('/api-console')" 
     external 
     class="dkp-api-link-btn"
   >

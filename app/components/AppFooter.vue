@@ -72,7 +72,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
         <h4>🔌 DEVELOPERS & API</h4>
         <ul class="footer-links">
           <li>
-            <NuxtLink :to="getApiUrl('/user/dashboard?tab=api')" external class="highlight-link">🔑 DKP API Console</NuxtLink>
+            <NuxtLink :to="getMainUrl('/user/dashboard?tab=api')" external class="highlight-link">🔑 DKP API Console</NuxtLink>
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/docs/api')" external>📖 Documentazione API (OpenAPI)</NuxtLink>
