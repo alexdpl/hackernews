@@ -1,16 +1,16 @@
 // server/middleware/sentinelAI.ts
-import {
-  defineEventHandler,
-  createError,
-  setResponseHeaders,
-  getMethod
-} from 'h3'
 
-// Helper ultra-sicuro per leggere gli header senza dipendere dai metodi h3 buggati su Node.js
+// Helper ultra-sicuro per leggere gli header senza conflitti di versione tra ambienti
 function getSafeHeader(event: any, name: string): string {
   const lowerName = name.toLowerCase()
 
-  // 1. Lettura diretta da Node.js IncomingMessage (Ambiente locale e PM2)
+  // 1. Utilizzo dell'helper auto-importato nativo di Nuxt/Nitro
+  try {
+    const h = getHeader(event, name)
+    if (h) return h
+  } catch {}
+
+  // 2. Lettura diretta da Node.js IncomingMessage (Ambiente locale e PM2)
   const nodeHeaders = event.node?.req?.headers
   if (nodeHeaders) {
     const val = nodeHeaders[lowerName]
@@ -18,7 +18,7 @@ function getSafeHeader(event: any, name: string): string {
     if (typeof val === 'string') return val
   }
 
-  // 2. Lettura da Web Fetch API (se eseguito su Workers/Edge)
+  // 3. Lettura da Web Fetch API (se eseguito su Workers/Edge)
   if (event.req?.headers?.get && typeof event.req.headers.get === 'function') {
     return event.req.headers.get(lowerName) || ''
   }
