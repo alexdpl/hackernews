@@ -28,12 +28,10 @@ async function runScan() {
     if (res && res.success) {
       scanResult.value = res.data
     } else {
-      // Dati Demo con Sistema di Ranking & Reputazione se l API e offline
-      generateMockScanResult()
+      errorMessage.value = res?.error || 'Errore durante l analisi del repository.'
     }
-  } catch (err) {
-    // Generazione analisi avanzata v2.4-GOLD locale in caso di assenza server backend
-    generateMockScanResult()
+  } catch (err: any) {
+    errorMessage.value = 'Errore di connessione con il server backend.'
   } finally {
     loading.value = false
   }

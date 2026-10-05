@@ -15,11 +15,6 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const res: any = await $fetch('/api/tools/ai-scan', {
-  method: 'POST',
-  body: { url: targetUrl.value }
-})
-  
   const targetUrl = body?.url || ''
 
   if (!targetUrl.includes('github.com')) {
@@ -34,19 +29,27 @@ export default defineEventHandler(async (event) => {
     .replace(/\/$/, '')
 
   try {
-    const response: any = await $fetch(
-      `https://api.github.com/repos/${repoPath}/git/trees/main?recursive=1`,
+    // 1. Rileva il branch predefinito (main, master, ecc.)
+    const repoInfo: any = await $fetch(
+      `https://api.github.com/repos/${repoPath}`,
       {
-        headers: {
-          'User-Agent': 'DKP-AI-Repo-Scanner'
-        }
+        headers: { 'User-Agent': 'DKP-AI-Repo-Scanner' }
+      }
+    )
+    const defaultBranch = repoInfo?.default_branch || 'main'
+
+    // 2. Recupera l'albero completo dei file
+    const response: any = await $fetch(
+      `https://api.github.com/repos/${repoPath}/git/trees/${defaultBranch}?recursive=1`,
+      {
+        headers: { 'User-Agent': 'DKP-AI-Repo-Scanner' }
       }
     )
 
     const tree = response?.tree || []
     const paths = tree.map((item: any) => item.path.toLowerCase())
 
-    // 1. Verifica presenza Suite di Test
+    // 3. Verifiche di presenza file
     const hasTests = paths.some((p: string) =>
       p.startsWith('tests/') ||
       p.startsWith('test/') ||
@@ -54,16 +57,14 @@ export default defineEventHandler(async (event) => {
       p.includes('vitest.config')
     )
 
-    // 2. Verifica presenza CI/CD
     const hasGithubActions = paths.some((p: string) =>
       p.startsWith('.github/workflows/')
     )
 
-    // 3. Verifica presenza Documentazione e Contributing
     const hasContributing = paths.some((p: string) => p.includes('contributing.md'))
     const hasDocs = paths.some((p: string) => p.startsWith('docs/'))
 
-    // Calcolo Punteggio Dinamico v2.4-GOLD
+    // 4. Calcolo Punteggio v2.4-GOLD
     let score = 70
     if (hasTests) score += 15
     if (hasGithubActions) score += 5
@@ -115,9 +116,12 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (err: any) {
+    console.error('❌ Errore ai-scan:', err)
     return {
       success: false,
-      error: 'Impossibile analizzare il repository GitHub. Verifica che sia pubblico.'
+      error: err?.status === 403 
+        ? 'Rate limit API GitHub raggiunto. Attendi un minuto e riprova.' 
+        : 'Impossibile analizzare il repository GitHub. Verifica che sia pubblico.'
     }
   }
 })
