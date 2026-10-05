@@ -92,7 +92,7 @@ const apiKeys = ref([
 
   <div class="console-container">
   <NuxtLink 
-    :to="getApiUrl('/user/dashboard?tab=api')" 
+    :to="getMainUrl('/user/dashboard?tab=api')" 
     external 
     class="dkp-nav-link-btn"
   >

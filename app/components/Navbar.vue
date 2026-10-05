@@ -157,7 +157,7 @@ async function handleLogout() {
           <Transition name="fade-slide">
             <div v-show="activeDropdown === 'api'" class="menu-dropdown tools-menu">
               <NuxtLink 
-                :to="getApiUrl('/user/dashboard?tab=api')" 
+                :to="getMainUrl('/user/dashboard?tab=api')" 
                 external
                 class="menu-item"
                 @click="closeAllDropdowns"
@@ -240,7 +240,7 @@ async function handleLogout() {
                 <span>🛡️</span> I Miei Certificati Vault
               </NuxtLink>
 
-              <NuxtLink :to="getApiUrl('/user/dashboard?tab=api')" external class="menu-item api-console-item" @click="closeAllDropdowns">
+              <NuxtLink :to="getMainUrl('/user/dashboard?tab=api')" external class="menu-item api-console-item" @click="closeAllDropdowns">
                 <span>🔑</span> DKP API Console
               </NuxtLink>
 			  
