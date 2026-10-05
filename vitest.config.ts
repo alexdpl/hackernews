@@ -8,14 +8,14 @@ export default defineConfig({
       {
         test: {
           name: 'unit',
-          include: ['test/unit/*.{test,spec}.ts'],
+          include: ['tests/unit/**/*.{test,spec}.ts'],
           environment: 'node',
         },
       },
       await defineVitestProject({
         test: {
           name: 'nuxt',
-          include: ['test/nuxt/*.{test,spec}.ts'],
+          include: ['tests/nuxt/**/*.{test,spec}.ts'],
           environment: 'nuxt',
           environmentOptions: {
             nuxt: {
@@ -24,15 +24,6 @@ export default defineConfig({
           },
         },
       }),
-      {
-        test: {
-          name: 'e2e',
-          include: ['test/e2e/*.{test,spec}.ts'],
-          environment: 'node',
-          testTimeout: 120_000,
-          hookTimeout: 300_000,
-        },
-      },
     ],
   },
 })
