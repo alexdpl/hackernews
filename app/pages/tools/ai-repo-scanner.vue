@@ -20,7 +20,7 @@ async function runScan() {
   errorMessage.value = ''
 
   try {
-    const res: any = await $fetch('/api/ai-scan', {
+    const res: any = await $fetch('/api/tools/ai-scan', {
       method: 'POST',
       body: { url: targetUrl.value }
     })
