@@ -161,9 +161,6 @@ importers:
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
-      h3:
-        specifier: ^2.0.1
-        version: 2.0.1(crossws@0.4.12(srvx@0.11.22))
       playwright:
         specifier: ^1.63.0
         version: 1.63.0
@@ -6950,6 +6947,7 @@ snapshots:
       srvx: 1.0.5
     optionalDependencies:
       crossws: 0.4.12(srvx@0.11.22)
+    optional: true
 
   hashery@1.5.1:
     dependencies:
@@ -8188,7 +8186,8 @@ snapshots:
 
   rou3@0.9.2: {}
 
-  rou3@1.0.0: {}
+  rou3@1.0.0:
+    optional: true
 
   run-applescript@7.1.0: {}
 
@@ -8294,7 +8293,8 @@ snapshots:
 
   srvx@0.11.22: {}
 
-  srvx@1.0.5: {}
+  srvx@1.0.5:
+    optional: true
 
   standard-as-callback@2.1.0: {}
 

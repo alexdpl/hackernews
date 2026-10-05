@@ -1,6 +1,21 @@
 // server/api/tools/ai-scan.ts
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
+  let body: any = {}
+
+  // Estrazione sicura del body sia con h3 nativo che con stream Node.js
+  try {
+    body = await readBody(event)
+  } catch {
+    if (event.node?.req) {
+      const buffers: any[] = []
+      for await (const chunk of event.node.req) {
+        buffers.push(chunk)
+      }
+      const raw = Buffer.concat(buffers).toString('utf-8')
+      try { body = JSON.parse(raw) } catch {}
+    }
+  }
+
   const targetUrl = body?.url || ''
 
   if (!targetUrl.includes('github.com')) {

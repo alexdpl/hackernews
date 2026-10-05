@@ -1,16 +1,24 @@
 // server/middleware/sentinelAI.ts
 
-// Helper ultra-sicuro per leggere gli header senza conflitti di versione tra ambienti
+// Helper ultra-sicuro: usa direttamente l'oggetto HTTP nativo di Node.js scavalcando qualsiasi bug di h3
+function setSafeHeader(event: any, name: string, value: string) {
+  if (event.node?.res?.setHeader) {
+    event.node.res.setHeader(name, value)
+  } else {
+    try {
+      setResponseHeader(event, name, value)
+    } catch {}
+  }
+}
+
 function getSafeHeader(event: any, name: string): string {
   const lowerName = name.toLowerCase()
 
-  // 1. Utilizzo dell'helper auto-importato nativo di Nuxt/Nitro
   try {
     const h = getHeader(event, name)
     if (h) return h
   } catch {}
 
-  // 2. Lettura diretta da Node.js IncomingMessage (Ambiente locale e PM2)
   const nodeHeaders = event.node?.req?.headers
   if (nodeHeaders) {
     const val = nodeHeaders[lowerName]
@@ -18,7 +26,6 @@ function getSafeHeader(event: any, name: string): string {
     if (typeof val === 'string') return val
   }
 
-  // 3. Lettura da Web Fetch API (se eseguito su Workers/Edge)
   if (event.req?.headers?.get && typeof event.req.headers.get === 'function') {
     return event.req.headers.get(lowerName) || ''
   }
@@ -29,18 +36,16 @@ function getSafeHeader(event: any, name: string): string {
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
 
-  // Recupero Host in totale sicurezza
   const host =
     getSafeHeader(event, 'x-forwarded-host') ||
     getSafeHeader(event, 'host') ||
     ''
 
-  // Rilevamento Sottodomini GCP / Localhost
   const isApiSubdomain = host.startsWith('api.')
   const isMailSubdomain = host.startsWith('mail.')
 
   // -------------------------------------------------------------
-  // 🌐 1. CONFIGURAZIONE CORS UNIVERSALE PER SUBDOMAINS GCP
+  // 🌐 1. CONFIGURAZIONE CORS UNIVERSALE
   // -------------------------------------------------------------
   const origin = getSafeHeader(event, 'origin')
   const allowedOrigins = [
@@ -51,15 +56,12 @@ export default defineEventHandler(async (event) => {
   ]
 
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.devkernelpulse.org'))) {
-    setResponseHeaders(event, {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Requested-With'
-    })
+    setSafeHeader(event, 'Access-Control-Allow-Origin', origin)
+    setSafeHeader(event, 'Access-Control-Allow-Credentials', 'true')
+    setSafeHeader(event, 'Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+    setSafeHeader(event, 'Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key, X-Requested-With')
   }
 
-  // Risposta istantanea per richieste Preflight CORS (OPTIONS)
   if (method === 'OPTIONS') {
     if (event.node?.res) {
       event.node.res.statusCode = 204
@@ -72,21 +74,17 @@ export default defineEventHandler(async (event) => {
 
   try {
     // -------------------------------------------------------------
-    // 🤖 2. ROUTING & API SENTINEL AI (api.devkernelpulse.org)
+    // 🤖 2. ROUTING & API SENTINEL AI
     // -------------------------------------------------------------
     if (isApiSubdomain) {
-      setResponseHeaders(event, {
-        'X-Sentinel-AI': 'API-Guard-Active',
-        'X-DKP-Version': 'v2.4-GOLD'
-      })
+      setSafeHeader(event, 'X-Sentinel-AI', 'API-Guard-Active')
+      setSafeHeader(event, 'X-DKP-Version', 'v2.4-GOLD')
 
-      // A. Visita da browser alla radice -> reindirizza a Console API
       if (path === '/' || path === '') {
         if (event.node?.req) event.node.req.url = '/api-console'
         return
       }
 
-      // B. Ignora asset statici, console e percorsi interni
       if (
         path.startsWith('/_nuxt') ||
         path.startsWith('/api/_') ||
@@ -96,23 +94,19 @@ export default defineEventHandler(async (event) => {
         return
       }
 
-      // C. Mappatura automatica URL: api.domain.com/v2/news -> /api/v2/news
       if (!path.startsWith('/api/')) {
         const rewrittenPath = `/api${path.startsWith('/') ? '' : '/'}${path}`
         if (event.node?.req) event.node.req.url = rewrittenPath
         path = rewrittenPath
       }
 
-      // D. Eccezione per rotte Admin o Public che non richiedono API Key esterna
       if (path.startsWith('/api/admin/') || path.startsWith('/api/public/')) {
         return
       }
 
-      // E. Estrazione della chiave API per le chiamate pubbliche sul sottodominio API
       const rawApiKey = getSafeHeader(event, 'x-api-key') || getSafeHeader(event, 'authorization')
       const apiKey = rawApiKey.replace(/^Bearer\s+/i, '').trim()
 
-      // F. Verifica presenza API Key
       if (!apiKey) {
         throw createError({
           statusCode: 401,
@@ -123,13 +117,11 @@ export default defineEventHandler(async (event) => {
     }
 
     // -------------------------------------------------------------
-    // 📧 3. ROUTING MAIL SUBDOMAIN (mail.devkernelpulse.org)
+    // 📧 3. ROUTING MAIL SUBDOMAIN
     // -------------------------------------------------------------
     if (isMailSubdomain) {
-      setResponseHeaders(event, {
-        'X-Nexus-Mail-Sentinel': 'Active-Delivery-Engine',
-        'X-DKP-Version': 'v2.4-GOLD'
-      })
+      setSafeHeader(event, 'X-Nexus-Mail-Sentinel', 'Active-Delivery-Engine')
+      setSafeHeader(event, 'X-DKP-Version', 'v2.4-GOLD')
 
       if (path === '/' || path === '') {
         if (event.node?.req) event.node.req.url = '/mail'
