@@ -1,6 +1,6 @@
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 useHead({
@@ -11,7 +11,7 @@ useHead({
 const route = useRoute()
 const router = useRouter()
 const { currentUser } = useAuthCore()
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+const { getMainUrl, getApiUrl } = useDomain()
 
 // Toast Notification System Locale
 const showToast = ref(false)
@@ -141,13 +141,11 @@ const articleForm = ref({
   status: 'draft'
 })
 
-// Sottocategorie dinamiche calcolate in base alla categoria selezionata
 const currentSubcategories = computed(() => {
   const cat = availableCategories.value.find(c => c.name === articleForm.value.category)
   return cat ? cat.subcategories : []
 })
 
-// Cambio automatico della prima sottocategoria quando cambia la categoria madre
 function onCategoryChange() {
   const subs = currentSubcategories.value
   articleForm.value.subCategory = subs.length > 0 ? subs[0] : ''
@@ -207,7 +205,7 @@ async function saveArticle() {
       body: payload
     })
   } catch (err) {
-    // Continuazione graziosa se salvato localmente
+    // Continuazione graziosa per ambiente locale
   }
 
   if (index !== -1) {
@@ -397,7 +395,7 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- PANNELLO 2: GESTIONE POST BLOG CON CATEGORIE DAL DB NEON -->
+      <!-- PANNELLO 2: GESTIONE POST BLOG -->
       <section v-if="activeTab === 'content'" class="tab-panel">
         <div class="panel-card">
           <div class="panel-header-action">
@@ -446,7 +444,7 @@ onMounted(() => {
             </table>
           </div>
 
-          <!-- MODALE EDITOR COMPLETO POST CON CATEGORIE REALTIME DAL DB NEON -->
+          <!-- MODALE EDITOR POST -->
           <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
             <div class="dkp-modal editor-modal">
               <h3>✏️ Editor Post Blog DKP</h3>
@@ -457,7 +455,6 @@ onMounted(() => {
               </div>
 
               <div class="grid-2-cols">
-                <!-- CATEGORIA DINAMICA DAL DB NEON -->
                 <div class="form-group">
                   <label>CATEGORIA *</label>
                   <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
@@ -468,7 +465,6 @@ onMounted(() => {
                   </select>
                 </div>
 
-                <!-- SOTTOCATEGORIA DINAMICA DAL DB NEON -->
                 <div class="form-group">
                   <label>SOTTOCATEGORIA</label>
                   <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
@@ -480,7 +476,6 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- INSERIMENTO TAGS -->
               <div class="form-group">
                 <label>TAGS DELL'ARTICOLO (PREMI INVIO PER INSERIRE)</label>
                 <div class="tags-input-row">
@@ -522,12 +517,13 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- PANNELLO 3: API CONSOLE -->
+      <!-- PANNELLO 3: API CONSOLE CON LINK EVISALTATO -->
       <section v-if="activeTab === 'api'" class="tab-panel">
         <div class="panel-card">
           <h2 class="section-title">🔑 DKP API Console &amp; Keys Manager</h2>  
           <p class="section-sub">Genera e gestisci le chiavi API per integrare l'ecosistema DKP nelle tue applicazioni esterne.</p>
           
+          <!-- LINK ESTERNO PLAYGROUND RIPRISTINATO & EVISALTATO -->
           <div class="api-action-header">
             <NuxtLink :to="getApiUrl('/api-console')" external class="dkp-api-link-btn">
               <span>⚡ Consumo delle API (Interactive Playground) ↗</span>
@@ -624,7 +620,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* TOAST NOTIFICATION */
+/* TOAST NOTIFICATION FLOATING */
 .dkp-toast-success {
   position: fixed;
   top: 1.5rem;
@@ -700,7 +696,33 @@ onMounted(() => {
 /* PANNELLO CARD */
 .panel-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; position: relative; }
 .section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
-.section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.5rem; }
+.section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
+
+/* BOTTONE LINK API PLAYGROUND RIPRISTINATO */
+.api-action-header { margin-bottom: 1.25rem; }
+.dkp-api-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.25s ease-in-out;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+.dkp-api-link-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+  transform: translateY(-2px);
+}
 
 /* GRID METRICHE 2x2 CROMATICA */
 .metrics-grid-2x2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
@@ -740,7 +762,15 @@ onMounted(() => {
 .dkp-btn-success { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.65rem 1.3rem; border-radius: 6px; cursor: pointer; }
 .save-toast { color: #00dc82; font-weight: 700; font-size: 0.85rem; }
 
-/* TABELLA & TAGS DALL'EDITOR */
+/* GENERATORE API KEY */
+.api-generate-box { display: flex; gap: 0.75rem; }
+.generated-key-alert { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.alert-title { color: #f59e0b; font-size: 0.82rem; font-weight: 700; margin: 0; }
+.raw-key-box { display: flex; align-items: center; justify-content: space-between; background: #020420; border: 1px solid #1e293b; padding: 0.5rem 0.8rem; border-radius: 6px; }
+.raw-key-box code { color: #00dc82; font-family: monospace; font-size: 0.9rem; }
+.btn-copy { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+
+/* TABELLA & TAGS */
 .panel-header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .table-container { overflow-x: auto; margin-top: 1rem; }
 .dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
@@ -753,6 +783,8 @@ onMounted(() => {
 .status-pill.published { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 .status-pill.draft { background: rgba(234, 179, 8, 0.15); color: #eab308; }
 .btn-danger-sm { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+.code-badge { background: #020420; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #1e293b; font-family: monospace; }
+.code-badge.clickable { cursor: pointer; }
 
 /* MODALE EDITOR ESTESO */
 .dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
@@ -772,8 +804,8 @@ onMounted(() => {
 .btn-secondary-sm { background: #1e293b; color: #38bdf8; border: none; font-weight: 700; padding: 0.35rem 0.6rem; border-radius: 6px; cursor: pointer; }
 
 /* BADGES FOOTER NEXUS */
-.nexus-badge-wrap { display: flex; justify-content: flex-end; margin-top: 1.5rem; }
-.pulse-nexus-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: #020420; border: 1px solid #00dc82; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; color: #ffffff; }
-.pulse-nexus-badge .dot { width: 8px; height: 8px; background: #00dc82; border-radius: 50%; }
-.pulse-nexus-badge .ver { background: #00dc82; color: #020420; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.68rem; }
+.nexus-badge-wrap { display: flex; justify-content: center; margin-top: 1.5rem; }
+.pulse-nexus-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: #020420; border: 1px solid #00dc82; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; color: #ffffff; }
+.pulse-nexus-badge .dot { width: 7px; height: 7px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 8px #00dc82; }
+.pulse-nexus-badge .ver { background: #00dc82; color: #020420; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.7rem; }
 </style>
