@@ -1178,6 +1178,58 @@ onMounted(() => {
 /* ==========================================================================
    MODALI E SELEOTTORE EMOJI COMPATTO SCORREVOLE
    ========================================================================== */
+   /* 1. Struttura Flex per la Modale */
+.modal-box {
+  max-height: 85vh; /* Impedisce alla finestra di uscire dallo schermo */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Evita lo scroll dell'intero contenitore */
+}
+
+/* 2. Scroll unicamente sul contenuto del Form */
+.modal-box .form-stack {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px; /* Spazio di cortesia per la scrollbar */
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Personalizzazione barra di scorrimento (opzionale per un look moderno) */
+.modal-box .form-stack::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-box .form-stack::-webkit-scrollbar-thumb {
+  background: rgba(0, 220, 130, 0.3);
+  border-radius: 4px;
+}
+.modal-box .form-stack::-webkit-scrollbar-thumb:hover {
+  background: #00dc82;
+}
+
+/* 3. Footer Fisso in basso */
+.modal-footer {
+  flex-shrink: 0; /* Impedisce al footer di restringersi o sparire */
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 12px;
+}
+
+/* 4. Scroll dedicato per il Box Tag (per evitare che una lista enorme spinga il resto) */
+.tags-pills-container {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+   
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1194,7 +1246,7 @@ onMounted(() => {
   border: 1px solid #1e293b;
   border-radius: 14px;
   padding: 1.5rem;
-  width: 100%;
+  width: 1000%;
   max-width: 520px;
   display: flex;
   flex-direction: column;
@@ -1202,7 +1254,7 @@ onMounted(() => {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
-.modal-box h3 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #ffffff; }
+.modal-box h3 { margin: 0; font-size: 1.2rem; font-weight: 900; color: #ffffff; }
 .modal-sub-info { font-size: 0.85rem; color: #94a3b8; margin: -0.5rem 0 0.5rem; }
 
 /* EMOJI PICKER CON SCROLLBAR COMPATTA (MAX 110PX) */
