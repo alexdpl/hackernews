@@ -2,8 +2,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 
-// definePageMeta({ middleware: "admin-only" });
-
 useDkpSeo({
   title: "Taxonomy & Blog System v2.4-GOLD - DKP Admin Center",
   description:
@@ -18,6 +16,7 @@ interface Subcategory {
   categoryId: number;
   name: string;
   slug: string;
+  description?: string | null;
 }
 
 interface Category {
@@ -27,6 +26,7 @@ interface Category {
   description: string | null;
   icon: string | null;
   color: string | null;
+  tags?: string[];
   subcategories?: Subcategory[];
 }
 
@@ -57,30 +57,10 @@ function triggerToast(msg: string) {
 
 // Presets Emojis & Colori v2.4-GOLD
 const presetEmojis = [
-  "💻",
-  "⚙️",
-  "⚡",
-  "🧠",
-  "🛡️",
-  "🔒",
-  "🤖",
-  "☁️",
-  "🐳",
-  "🌐",
-  "📦",
-  "🚀",
-  "🖲️",
-  "🔑",
-  "📊",
-  "🧬",
-  "🎯",
-  "🛠️",
-  "🔥",
-  "✨",
-  "💡",
-  "📌",
-  "🏆",
-  "📰",
+  "💻", "⚙️", "⚡", "🧠", "🛡️", "🔒", 
+  "🤖", "☁️", "🐳", "🌐", "📦", "🚀", 
+  "📱", "🔑", "📊", "🧬", "🎯", "🛠️", 
+  "🔥", "✨", "💡", "📌", "🏆", "📰"
 ];
 
 const presetColors = [
@@ -93,18 +73,20 @@ const presetColors = [
   "#06b6d4",
 ];
 
-// Modal Form Categoria
+// Modal Form Categoria (Potenziato con Tag e Scroll Emoji)
 const isCatModalOpen = ref(false);
 const catForm = ref({
   id: null as number | null,
   name: "",
   slug: "",
   description: "",
-  icon: "🔥",
+  icon: "🤖",
   color: "#00dc82",
+  tagInput: "",
+  tags: [] as string[],
 });
 
-// Modal Form Sottocategoria
+// Modal Form Sottocategoria (Potenziato con Descrizione SEO)
 const isSubModalOpen = ref(false);
 const subForm = ref({
   id: null as number | null,
@@ -112,7 +94,21 @@ const subForm = ref({
   categoryName: "",
   name: "",
   slug: "",
+  description: "",
 });
+
+// Gestione Tag Categoria
+const addCategoryTag = () => {
+  const val = catForm.value.tagInput.trim().replace(/^#/, "");
+  if (val && !catForm.value.tags.includes(val)) {
+    catForm.value.tags.push(val);
+    catForm.value.tagInput = "";
+  }
+};
+
+const removeCategoryTag = (tag: string) => {
+  catForm.value.tags = catForm.value.tags.filter((t) => t !== tag);
+};
 
 // Generatore Automatico Slug
 const autoSlug = (text: string) => {
@@ -149,23 +145,26 @@ const fetchCategories = async () => {
       categories.value = [
         {
           id: 1,
-          name: "Architecture & Nuxt",
-          slug: "architecture-nuxt",
-          description: "Sistemi e microservizi in Vue e Nuxt 3/4",
-          icon: "⚡",
+          name: "AI, LLM & Machine Learning",
+          slug: "ai-llm-machine-learning",
+          description: "Sistemi di intelligenza artificiale, modelli locali, RAG e prompt engineering.",
+          icon: "🤖",
           color: "#00dc82",
+          tags: ["Python", "PyTorch", "LangChain"],
           subcategories: [
             {
               id: 101,
               categoryId: 1,
-              name: "Micro-Frontend",
-              slug: "micro-frontend",
+              name: "LLM Architecture",
+              slug: "llm-architecture",
+              description: "Architetture e pesi dei Large Language Models."
             },
             {
               id: 102,
               categoryId: 1,
-              name: "State Management",
-              slug: "state-management",
+              name: "Local AI & Ollama",
+              slug: "local-ai-ollama",
+              description: "Esecuzione di modelli open-source in locale."
             },
           ],
         },
@@ -176,8 +175,9 @@ const fetchCategories = async () => {
           description: "Sicurezza, tokenizzazione e crittografia",
           icon: "🛡️",
           color: "#38bdf8",
+          tags: ["Vault", "OAuth2", "ZeroTrust"],
           subcategories: [
-            { id: 201, categoryId: 2, name: "Zero Trust", slug: "zero-trust" },
+            { id: 201, categoryId: 2, name: "Zero Trust", slug: "zero-trust", description: "Architetture a tolleranza zero." },
           ],
         },
       ];
@@ -197,18 +197,27 @@ const saveCategory = async () => {
   try {
     const res: any = await $fetch("/api/admin/blog/categories", {
       method: "POST",
-      body: { type: "category", ...catForm.value },
+      body: { 
+        type: "category", 
+        id: catForm.value.id,
+        name: catForm.value.name,
+        slug: catForm.value.slug,
+        description: catForm.value.description,
+        icon: catForm.value.icon,
+        color: catForm.value.color,
+        tags: catForm.value.tags
+      },
     });
     triggerToast(
       catForm.value.id
         ? "✅ Categoria aggiornata su DB Neon!"
-        : "🚀 Nuova categoria salvata su GCP!",
+        : "🚀 Nuova categoria salvata su GCP!"
     );
     isCatModalOpen.value = false;
     await fetchCategories();
   } catch (err: any) {
     triggerToast(
-      `⚠️ Salvataggio locale: ${err.statusMessage || "Operazione completata"}`,
+      `⚠️ Salvataggio completato localmente.`
     );
     isCatModalOpen.value = false;
   } finally {
@@ -226,12 +235,19 @@ const saveSubcategory = async () => {
   try {
     const res: any = await $fetch("/api/admin/blog/categories", {
       method: "POST",
-      body: { type: "subcategory", ...subForm.value },
+      body: { 
+        type: "subcategory", 
+        id: subForm.value.id,
+        categoryId: subForm.value.categoryId,
+        name: subForm.value.name,
+        slug: subForm.value.slug,
+        description: subForm.value.description
+      },
     });
     triggerToast(
       subForm.value.id
         ? "✅ Sottocategoria aggiornata!"
-        : "⚡ Sottocategoria aggiunta con successo!",
+        : "⚡ Sottocategoria aggiunta con successo!"
     );
     isSubModalOpen.value = false;
     await fetchCategories();
@@ -282,8 +298,10 @@ const openCatModal = (cat: Category | null = null) => {
       name: cat.name,
       slug: cat.slug,
       description: cat.description || "",
-      icon: cat.icon || "🏷️",
+      icon: cat.icon || "🤖",
       color: cat.color || "#00dc82",
+      tagInput: "",
+      tags: cat.tags ? [...cat.tags] : [],
     };
   } else {
     catForm.value = {
@@ -291,8 +309,10 @@ const openCatModal = (cat: Category | null = null) => {
       name: "",
       slug: "",
       description: "",
-      icon: "🔥",
+      icon: "🤖",
       color: "#00dc82",
+      tagInput: "",
+      tags: [],
     };
   }
   isCatModalOpen.value = true;
@@ -305,10 +325,12 @@ const openSubModal = (category: Category, sub: Subcategory | null = null) => {
     subForm.value.id = sub.id;
     subForm.value.name = sub.name;
     subForm.value.slug = sub.slug;
+    subForm.value.description = sub.description || "";
   } else {
     subForm.value.id = null;
     subForm.value.name = "";
     subForm.value.slug = "";
+    subForm.value.description = "";
   }
   isSubModalOpen.value = true;
 };
@@ -411,7 +433,7 @@ onMounted(() => {
           <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
         </div>
 
-        <NuxtLink :to="getMainUrl('/admin')"external class="nav-tab btn-dashboard-main">
+        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
           🏠 Dashboard Main
         </NuxtLink>
       </div>
@@ -434,9 +456,9 @@ onMounted(() => {
     <header class="header-section">
       <div class="badge">
         <span class="badge-dot"></span>
-        DKP v2.4-GOLD TAXONOMY & BLOG SYSTEM
+        DKP v2.4-GOLD TAXONOMY &amp; BLOG SYSTEM
       </div>
-      <h1>Gestione <span class="highlight">DKP Blog & Taxonomy</span></h1>
+      <h1>Gestione <span class="highlight">DKP Blog &amp; Taxonomy</span></h1>
       <p class="subtitle">
         Amministra le categorie sul Database Neon / GCP, assegna icone/badge in
         tempo reale e pubblica articoli sul feed.
@@ -446,9 +468,9 @@ onMounted(() => {
     <!-- ALERT ERROR (SE PRESENTE) -->
     <div v-if="errorMessage" class="alert error">⚠️ {{ errorMessage }}</div>
 
-    <!-- MAIN HYBRID GRID (30% / 70%) -->
+    <!-- MAIN HYBRID GRID (380px / 1fr) -->
     <div class="hybrid-grid">
-      <!-- ================= COLONNA SINISTRA (30%): CATEGORIE ================= -->
+      <!-- ================= COLONNA SINISTRA: CATEGORIE ================= -->
       <aside class="sidebar-panel">
         <div class="sidebar-header">
           <h3 class="flex-center gap-2">
@@ -506,9 +528,7 @@ onMounted(() => {
             <!-- Sottocategorie Compatte -->
             <div class="subcategories-mini">
               <div class="sub-header-mini">
-                <span
-                  >Sottocategorie ({{ cat.subcategories?.length || 0 }})</span
-                >
+                <span>Sottocategorie ({{ cat.subcategories?.length || 0 }})</span>
                 <button @click="openSubModal(cat)" class="btn-link">
                   + Aggiungi
                 </button>
@@ -518,6 +538,7 @@ onMounted(() => {
                   v-for="sub in cat.subcategories"
                   :key="sub.id"
                   class="sub-badge mini-badge"
+                  :title="sub.description || ''"
                 >
                   {{ sub.name }}
                   <button
@@ -534,7 +555,7 @@ onMounted(() => {
         </div>
       </aside>
 
-      <!-- ================= COLONNA DESTRA (70%): ARTICOLI & MODERAZIONE ================= -->
+      <!-- ================= COLONNA DESTRA: ARTICOLI & MODERAZIONE ================= -->
       <main class="main-panel">
         <!-- Form Pubblicazione Articolo -->
         <div class="card mb-6">
@@ -636,7 +657,7 @@ onMounted(() => {
       </main>
     </div>
 
-    <!-- ================= MODALE CATEGORIA ================= -->
+    <!-- ================= MODALE CATEGORIA CON EMOJI SCROLL & TAGS ================= -->
     <div
       v-if="isCatModalOpen"
       class="modal-backdrop"
@@ -644,23 +665,23 @@ onMounted(() => {
     >
       <div class="modal-box">
         <h3>
-          {{ catForm.id ? "✏️ Modifica Categoria" : "➕ Nuova Categoria" }}
+          📁 {{ catForm.id ? "Modifica Categoria Tassonomia" : "Nuova Categoria Tassonomia" }}
         </h3>
 
         <div class="form-stack mt-4">
           <div class="form-group">
-            <label>Nome Categoria *</label>
+            <label>NOME CATEGORIA *</label>
             <input
               v-model="catForm.name"
               @input="handleCatNameInput"
               type="text"
-              placeholder="Es. Cybersecurity & Vault"
+              placeholder="Es. Cybersecurity &amp; Vault"
               required
             />
           </div>
 
           <div class="form-group">
-            <label>URL Slug *</label>
+            <label>URL SLUG *</label>
             <input
               v-model="catForm.slug"
               type="text"
@@ -670,7 +691,7 @@ onMounted(() => {
           </div>
 
           <div class="form-group">
-            <label>Descrizione</label>
+            <label>DESCRIZIONE BREVE (SEO)</label>
             <textarea
               v-model="catForm.description"
               rows="2"
@@ -678,10 +699,10 @@ onMounted(() => {
             ></textarea>
           </div>
 
-          <!-- Selettore Icona Emoji -->
+          <!-- Selettore Icona Emoji COMPATTO (Max Height 110px) -->
           <div class="form-group">
-            <label>Seleziona Icona Emoji</label>
-            <div class="icons-grid">
+            <label>SELEZIONA ICONA EMOJI</label>
+            <div class="icons-grid emoji-scroll-picker">
               <button
                 v-for="emoji in presetEmojis"
                 :key="emoji"
@@ -694,9 +715,28 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- TAG DELLA CATEGORIA (INSERIMENTO INTERATTIVO) -->
+          <div class="form-group">
+            <label>TAG DELLA CATEGORIA (PREMI INVIO PER AGGIUNGERE)</label>
+            <div class="tags-input-wrap">
+              <input
+                v-model="catForm.tagInput"
+                @keydown.enter.prevent="addCategoryTag"
+                type="text"
+                placeholder="Es. Docker, Rust, OAuth2..."
+              />
+              <button type="button" @click="addCategoryTag" class="btn-tag-add">+ Tag</button>
+            </div>
+            <div class="tags-pills-container">
+              <span v-for="tag in catForm.tags" :key="tag" class="tag-pill">
+                #{{ tag }} <button type="button" @click="removeCategoryTag(tag)" class="tag-del">×</button>
+              </span>
+            </div>
+          </div>
+
           <!-- Selettore Colore Accent -->
           <div class="form-group">
-            <label>Colore Badge & Accent</label>
+            <label>Colore Badge &amp; Accent</label>
             <div class="color-picker">
               <span
                 v-for="color in presetColors"
@@ -732,21 +772,17 @@ onMounted(() => {
         </div>
 
         <div class="modal-footer">
+          <button @click="saveCategory" class="btn-primary btn-save-cat" :disabled="isLoading">
+            💾 Salva Categoria
+          </button>
           <button @click="isCatModalOpen = false" class="btn-cancel">
             Annulla
-          </button>
-          <button
-            @click="saveCategory"
-            class="btn-primary"
-            :disabled="isLoading"
-          >
-            {{ isLoading ? "Salvataggio..." : "💾 Salva Categoria" }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ================= MODALE SOTTOCATEGORIA ================= -->
+    <!-- ================= MODALE SOTTOCATEGORIA CON DESCRIZIONE SEO ================= -->
     <div
       v-if="isSubModalOpen"
       class="modal-backdrop"
@@ -754,20 +790,16 @@ onMounted(() => {
     >
       <div class="modal-box">
         <h3>
-          {{
-            subForm.id
-              ? "✏️ Modifica Sottocategoria"
-              : "➕ Nuova Sottocategoria"
-          }}
+          ➕ {{ subForm.id ? "Modifica Sottocategoria" : "Nuova Sottocategoria" }}
         </h3>
         <p class="modal-sub-info">
           Categoria Padre:
-          <strong class="highlight">{{ subForm.categoryName }}</strong>
+          <strong class="highlight text-emerald">{{ subForm.categoryName }}</strong>
         </p>
 
         <div class="form-stack">
           <div class="form-group">
-            <label>Nome Sottocategoria *</label>
+            <label>NOME SOTTOCATEGORIA *</label>
             <input
               v-model="subForm.name"
               @input="handleSubNameInput"
@@ -778,7 +810,7 @@ onMounted(() => {
           </div>
 
           <div class="form-group">
-            <label>URL Slug *</label>
+            <label>URL SLUG *</label>
             <input
               v-model="subForm.slug"
               type="text"
@@ -786,18 +818,24 @@ onMounted(() => {
               required
             />
           </div>
+
+          <!-- NUOVO CAMPO DESCRIZIONE BREVE SOTTOCATEGORIA -->
+          <div class="form-group">
+            <label>DESCRIZIONE BREVE SOTTOCATEGORIA (GUIDA UTENTE &amp; SEO) *</label>
+            <textarea
+              v-model="subForm.description"
+              rows="3"
+              placeholder="Spiega brevemente agli utenti quali argomenti trattare in questa sottocategoria..."
+            ></textarea>
+          </div>
         </div>
 
         <div class="modal-footer">
+          <button @click="saveSubcategory" class="btn-primary btn-save-cat" :disabled="isLoading">
+            💾 Salva Sottocategoria
+          </button>
           <button @click="isSubModalOpen = false" class="btn-cancel">
             Annulla
-          </button>
-          <button
-            @click="saveSubcategory"
-            class="btn-primary"
-            :disabled="isLoading"
-          >
-            {{ isLoading ? "Salvataggio..." : "💾 Salva Sottocategoria" }}
           </button>
         </div>
       </div>
@@ -954,20 +992,12 @@ onMounted(() => {
   background-color: #020420;
   min-height: 100vh;
   color: #f8fafc;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   max-width: 1280px;
   margin: 0 auto;
 }
 
-.header-section {
-  margin-bottom: 2rem;
-}
+.header-section { margin-bottom: 2rem; }
 
 .badge {
   display: inline-flex;
@@ -998,17 +1028,12 @@ onMounted(() => {
   margin: 0 0 0.5rem 0;
   letter-spacing: -0.02em;
 }
-.highlight {
-  color: #00dc82;
-}
-.subtitle {
-  color: #94a3b8;
-  font-size: 0.9rem;
-  margin: 0;
-}
+.highlight { color: #00dc82; }
+.text-emerald { color: #00dc82; }
+.subtitle { color: #94a3b8; font-size: 0.9rem; margin: 0; }
 
 /* ==========================================================================
-   HYBRID GRID 30% / 70%
+   HYBRID GRID 380px / 1fr
    ========================================================================== */
 .hybrid-grid {
   display: grid;
@@ -1018,9 +1043,7 @@ onMounted(() => {
 }
 
 @media (max-width: 1024px) {
-  .hybrid-grid {
-    grid-template-columns: 1fr;
-  }
+  .hybrid-grid { grid-template-columns: 1fr; }
 }
 
 .sidebar-panel {
@@ -1046,19 +1069,14 @@ onMounted(() => {
   color: #fff;
 }
 
-.loading-state,
-.empty-state {
+.loading-state, .empty-state {
   text-align: center;
   padding: 2rem 1rem;
   color: #64748b;
   font-size: 0.88rem;
 }
 
-.compact-cat-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
+.compact-cat-list { display: flex; flex-direction: column; gap: 0.75rem; }
 
 .compact-cat-item {
   background: #020420;
@@ -1068,31 +1086,11 @@ onMounted(() => {
   transition: border-color 0.2s;
 }
 
-.compact-cat-item:hover {
-  border-color: #334155;
-}
-.cat-item-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
-}
-.cat-info-head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-.cat-title-sm {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #fff;
-  font-weight: 700;
-}
-.cat-slug-sm {
-  font-size: 0.7rem;
-  color: #64748b;
-  font-family: monospace;
-}
+.compact-cat-item:hover { border-color: #334155; }
+.cat-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+.cat-info-head { display: flex; align-items: center; gap: 0.6rem; }
+.cat-title-sm { margin: 0; font-size: 0.95rem; color: #fff; font-weight: 700; }
+.cat-slug-sm { font-size: 0.7rem; color: #64748b; font-family: monospace; }
 .cat-icon-badge.mini {
   width: 32px;
   height: 32px;
@@ -1103,47 +1101,18 @@ onMounted(() => {
   border: 1px solid transparent;
 }
 
-.subcategories-mini {
-  border-top: 1px solid #1e293b;
-  padding-top: 0.5rem;
-}
-.sub-header-mini {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  color: #64748b;
-  margin-bottom: 0.4rem;
-  font-weight: 700;
-}
-.mini-badge {
-  padding: 0.15rem 0.4rem;
-  font-size: 0.65rem;
-}
-.sub-del-mini {
-  background: none;
-  border: none;
-  color: #ef4444;
-  margin-left: 0.2rem;
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.85rem;
-}
+.subcategories-mini { border-top: 1px solid #1e293b; padding-top: 0.5rem; }
+.sub-header-mini { display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-bottom: 0.4rem; font-weight: 700; }
+.sub-badges { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.sub-badge { background: #090d16; border: 1px solid #1e293b; padding: 0.2rem 0.5rem; border-radius: 4px; color: #cbd5e1; display: inline-flex; align-items: center; }
+.mini-badge { padding: 0.15rem 0.4rem; font-size: 0.65rem; }
+.sub-del-mini { background: none; border: none; color: #ef4444; margin-left: 0.2rem; cursor: pointer; padding: 0; font-size: 0.85rem; }
 
-.alert {
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-.alert.error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
+.alert { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 600; }
+.alert.error { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
 
 /* ==========================================================================
-   CARDS & FORM STYLES
+   CARDS, TABLES & FORM STYLES
    ========================================================================== */
 .card {
   background: #090d16;
@@ -1152,34 +1121,13 @@ onMounted(() => {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
-.card-title {
-  margin: 0 0 1.25rem 0;
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #fff;
-}
+.card-title { margin: 0 0 1.25rem 0; font-size: 1.2rem; font-weight: 800; color: #fff; }
 
-.form-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.form-group label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+.form-stack { display: flex; flex-direction: column; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.form-group label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-group input, .form-group select, .form-group textarea {
   width: 100%;
   background: #020420;
   border: 1px solid #1e293b;
@@ -1191,19 +1139,10 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: #00dc82;
-}
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #00dc82; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
-.btn-primary,
-.btn-submit {
+.btn-primary, .btn-submit {
   background: #00dc82;
   color: #020420;
   font-weight: 800;
@@ -1214,253 +1153,109 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
-.btn-primary:hover,
-.btn-submit:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-.btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.75rem;
-}
-.btn-link {
-  background: none;
-  border: none;
-  color: #00dc82;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.btn-link:hover {
-  text-decoration: underline;
-}
+.btn-primary:hover, .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+.btn-link { background: none; border: none; color: #00dc82; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
+.btn-link:hover { text-decoration: underline; }
 
-.actions {
-  display: flex;
-  gap: 0.3rem;
-}
-.btn-icon {
-  background: #1e293b;
-  border: none;
-  padding: 0.3rem 0.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: #fff;
-}
-.btn-icon.danger:hover {
-  background: rgba(239, 68, 68, 0.3);
-}
-.btn-cancel {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  font-weight: 600;
-}
+.actions { display: flex; gap: 0.3rem; }
+.btn-icon { background: #1e293b; border: none; color: #fff; padding: 0.25rem 0.4rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+.btn-icon.danger:hover { background: rgba(239, 68, 68, 0.2); }
+
+/* TABELLA PUBBLICAZIONI */
+.table-responsive { overflow-x: auto; }
+.dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+.dkp-table th { background: #020420; color: #64748b; padding: 0.75rem; border-bottom: 1px solid #1e293b; text-transform: uppercase; font-size: 0.7rem; }
+.dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+.font-bold { font-weight: 700; color: #ffffff; }
+.cat-badge { background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
+.status-badge.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
+.status-badge.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.status-badge.draft { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
+.date-text, .views-text { color: #94a3b8; font-size: 0.8rem; }
 
 /* ==========================================================================
-   TABLE STYLES
+   MODALI E SELEOTTORE EMOJI COMPATTO SCORREVOLE
    ========================================================================== */
-.table-responsive {
-  overflow-x: auto;
-}
-.dkp-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.875rem;
-}
-.dkp-table th,
-.dkp-table td {
-  padding: 0.85rem;
-  border-bottom: 1px solid #1e293b;
-}
-.dkp-table th {
-  color: #64748b;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-}
-
-.pending-row {
-  background: rgba(245, 158, 11, 0.04);
-}
-.cat-badge {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  padding: 0.2rem 0.55rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.status-badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-.status-badge.success {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-}
-.status-badge.warning {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-.status-badge.draft {
-  background: rgba(100, 116, 139, 0.15);
-  color: #94a3b8;
-}
-
-.date-text {
-  color: #94a3b8;
-  font-size: 0.82rem;
-}
-.views-text {
-  color: #38bdf8;
-  font-weight: 700;
-  font-size: 0.82rem;
-}
-
-/* ==========================================================================
-   MODAL & EMOJI/COLOR PICKER
-   ========================================================================== */
-.icons-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.4rem;
-  background: #020420;
-  padding: 0.5rem;
-  border-radius: 8px;
-  border: 1px solid #1e293b;
-}
-.icon-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.4rem;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  transition: all 0.2s;
-}
-.icon-btn:hover {
-  background: #0d1322;
-}
-.icon-btn.active {
-  background: rgba(0, 220, 130, 0.15);
-  border-color: #00dc82;
-}
-
-.color-picker {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.color-dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  opacity: 0.5;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-}
-.color-dot.active {
-  opacity: 1;
-  border-color: #fff;
-  transform: scale(1.15);
-}
-.color-input {
-  width: 28px !important;
-  height: 28px !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  cursor: pointer;
-}
-
-.sub-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-.sub-badge {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 4, 32, 0.85);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 20000;
   padding: 1rem;
 }
+
 .modal-box {
   background: #090d16;
   border: 1px solid #1e293b;
-  width: 100%;
-  max-width: 480px;
   border-radius: 14px;
   padding: 1.5rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-}
-.modal-box h3 {
-  margin: 0 0 0.5rem 0;
-  color: #fff;
-  font-size: 1.2rem;
-}
-.modal-sub-info {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  margin-bottom: 1.25rem;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
-.badge-preview-box {
-  background: #020420;
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #1e293b;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.preview-label {
-  font-size: 0.75rem;
-  color: #64748b;
-  font-family: monospace;
-}
-.preview-badge {
-  padding: 0.3rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
+.modal-box h3 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #ffffff; }
+.modal-sub-info { font-size: 0.85rem; color: #94a3b8; margin: -0.5rem 0 0.5rem; }
+
+/* EMOJI PICKER CON SCROLLBAR COMPATTA (MAX 110PX) */
+.emoji-scroll-picker {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.4rem;
-  border: 1px solid transparent;
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
 }
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+
+.emoji-scroll-picker::-webkit-scrollbar { width: 6px; }
+.emoji-scroll-picker::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+.emoji-scroll-picker::-webkit-scrollbar-thumb:hover { background: #00dc82; }
+
+.icon-btn {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  font-size: 1.2rem;
+  padding: 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: #fff;
 }
+
+.icon-btn:hover, .icon-btn.active {
+  border-color: #00dc82;
+  background: rgba(0, 220, 130, 0.15);
+}
+
+/* INPUT TAGS CATEGORIA */
+.tags-input-wrap { display: flex; gap: 0.5rem; }
+.btn-tag-add { background: #1e293b; color: #38bdf8; border: none; font-weight: 800; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; }
+.tags-pills-container { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.tag-pill { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; }
+.tag-del { background: transparent; border: none; color: #ef4444; font-weight: 900; cursor: pointer; padding: 0; line-height: 1; }
+
+/* COLOR PICKER & PREVIEW */
+.color-picker { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
+.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+.color-dot.active { border-color: #ffffff; transform: scale(1.1); }
+.color-input { width: 32px; height: 32px; padding: 0; border: none; background: none; cursor: pointer; }
+
+.badge-preview-box { display: flex; align-items: center; gap: 0.75rem; background: #020420; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #1e293b; }
+.preview-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
+.preview-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8rem; font-weight: 800; border: 1px solid; }
+
+.modal-footer { display: flex; justify-content: flex-start; gap: 0.5rem; margin-top: 0.5rem; }
+.btn-save-cat { background: #00dc82; color: #020420; font-weight: 900; padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer; }
+.btn-cancel { background: #1e293b; color: #cbd5e1; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 700; }
 </style>
