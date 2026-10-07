@@ -119,6 +119,35 @@ function selectCategory(catName: string | null) {
   selectedSubcategory.value = null
 }
 
+// Helper per gestire sia Categoria come Oggetto che come Stringa
+function getCategoryName(category: any): string {
+  if (!category) return 'Generale'
+  if (typeof category === 'object') return category.name || 'Generale'
+  return String(category)
+}
+
+function getCategoryIcon(category: any): string {
+  if (typeof category === 'object' && category?.icon) return category.icon
+  return '🏷️'
+}
+
+function getCategoryStyle(category: any) {
+  if (typeof category === 'object' && category?.color) {
+    return {
+      backgroundColor: `${category.color}20`,
+      color: category.color,
+      borderColor: `${category.color}40`
+    }
+  }
+  return {}
+}
+
+function getSubcategoryName(subCategory: any): string {
+  if (!subCategory) return ''
+  if (typeof subCategory === 'object') return subCategory.name || ''
+  return String(subCategory)
+}
+
 // Filtro Articoli
 const filteredPosts = computed(() => {
   return posts.value.filter((p: any) => {
@@ -227,11 +256,16 @@ const filteredPosts = computed(() => {
       <div v-else class="posts-grid">
         <article v-for="post in filteredPosts" :key="post.id" class="post-card">
           <div class="post-meta">
+            <!-- CAT & SUBCAT BADGE PULITI CON EMOJI E COLORI ACCENT -->
             <div class="cat-pill-group">
-              <span class="post-cat">{{ post.category }}</span>
-              <span v-if="post.subCategory" class="post-sub-cat">→ {{ post.subCategory }}</span>
+              <span class="post-cat" :style="getCategoryStyle(post.category)">
+                {{ getCategoryIcon(post.category) }} {{ getCategoryName(post.category) }}
+              </span>
+              <span v-if="post.subcategory || post.subCategory" class="post-sub-cat">
+                → {{ getSubcategoryName(post.subcategory || post.subCategory) }}
+              </span>
             </div>
-            <span class="post-date">📅 {{ post.date }}</span>
+            <span class="post-date">📅 {{ post.date || post.createdAt?.slice(0, 10) }}</span>
           </div>
 
           <h2 class="post-title">
@@ -243,14 +277,14 @@ const filteredPosts = computed(() => {
           <p class="post-excerpt">{{ post.excerpt }}</p>
 
           <!-- TAGS ROW -->
-          <div v-if="post.tags &amp;&amp; post.tags.length > 0" class="tags-row">
+          <div v-if="post.tags && post.tags.length > 0" class="tags-row">
             <span v-for="tag in post.tags" :key="tag" class="tag-badge">#{{ tag }}</span>
           </div>
 
           <div class="post-footer">
             <div class="author-views">
-              <span class="post-author">👤 {{ post.author || 'Alessandro De Paola' }}</span>
-              <span v-if="post.views" class="post-views">👁️ {{ post.views }}</span>
+              <span class="post-author">👤 {{ post.authorName || post.author || 'Alessandro De Paola' }}</span>
+              <span v-if="post.views !== undefined" class="post-views">👁️ {{ post.views }}</span>
             </div>
             <NuxtLink :to="`/blog/${post.slug || post.id}`" class="read-more-btn">
               Leggi Articolo ↗

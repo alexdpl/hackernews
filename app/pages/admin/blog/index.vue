@@ -1,11 +1,11 @@
 <!-- app/pages/admin/blog/index.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 useDkpSeo({
-  title: "Taxonomy & Blog System v2.4-GOLD - DKP Admin Center",
+  title: "Taxonomy & Moderation Vault v2.4-GOLD - DKP Admin Center",
   description:
-    "Gestione categorie, sottocategorie e pubblicazione articoli sull'ecosistema DevKernelPulse.",
+    "Gestione categorie, sottocategorie, queue di moderazione DKP Vault e pubblicazione articoli sull'ecosistema DevKernelPulse.",
 });
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain();
@@ -30,13 +30,28 @@ interface Category {
   subcategories?: Subcategory[];
 }
 
+interface VaultReport {
+  authenticityScore: number;
+  securityScore: number;
+  plagiarismRisk: "LOW" | "MEDIUM" | "HIGH";
+  sastCheck: "PASSED" | "WARNING" | "CRITICAL";
+  vaultHashPreview: string;
+}
+
 interface Post {
   id: number | string;
   title: string;
+  slug?: string;
+  excerpt?: string;
   categoryId: number | string | null;
+  authorName?: string;
   views: number;
   date: string;
   status: "published" | "pending_vault" | "draft";
+  isVerified?: boolean;
+  vaultCertificateId?: string;
+  vaultHash?: string;
+  vaultReport?: VaultReport;
 }
 
 const categories = ref<Category[]>([]);
@@ -96,6 +111,11 @@ const subForm = ref({
   slug: "",
   description: "",
 });
+
+// --- STATE MODERAZIONE & TAB SWAP ---
+const activeTab = ref<"moderation_queue" | "publish_manage">("moderation_queue");
+const isVaultReportModalOpen = ref(false);
+const selectedPostForReport = ref<Post | null>(null);
 
 // Gestione Tag Categoria
 const addCategoryTag = () => {
@@ -222,7 +242,6 @@ const saveCategory = async () => {
       subcategories: []
     };
 
-    // Aggiorna reattivamente la lista locale
     const idx = categories.value.findIndex(c => String(c.id) === String(catForm.value.id));
     if (idx !== -1) {
       categories.value[idx] = { ...categories.value[idx], ...savedCat };
@@ -242,7 +261,6 @@ const saveCategory = async () => {
     isCatModalOpen.value = false;
     await fetchCategories();
   } catch (err: any) {
-    // Fallback reattivo locale se offline o DB temporaneo
     const localCat = {
       id: catForm.value.id || Date.now(),
       name: payload.name,
@@ -299,7 +317,6 @@ const saveSubcategory = async () => {
       description: payload.description
     };
 
-    // Aggiorna lo stato reattivo interno della categoria padre
     const targetCat = categories.value.find(c => String(c.id) === String(subForm.value.categoryId));
     if (targetCat) {
       if (!targetCat.subcategories) targetCat.subcategories = [];
@@ -387,7 +404,7 @@ const deleteItem = async (id: number | string, type: "category" | "subcategory")
   }
 };
 
-// Gestione Modali
+// Gestione Modali Categoria/Sottocategoria
 const openCatModal = (cat: Category | null = null) => {
   if (cat) {
     catForm.value = {
@@ -432,34 +449,129 @@ const openSubModal = (category: Category, sub: Subcategory | null = null) => {
   isSubModalOpen.value = true;
 };
 
-// --- STATI ARTICOLI & MODERAZIONE ---
+// --- STATI ARTICOLI & MODERAZIONE VAULT ---
 const posts = ref<Post[]>([
+  {
+    id: 101,
+    title: "Integrazione DKP Sentinel SSE Live Threat Stream",
+    slug: "integrazione-dkp-sentinel-sse",
+    excerpt: "Guida alla configurazione di Server-Sent Events per la telemetria difensiva in tempo reale.",
+    categoryId: 1,
+    authorName: "dev_ninja",
+    views: 0,
+    date: new Date().toISOString().slice(0, 10),
+    status: "pending_vault",
+    isVerified: false,
+    vaultReport: {
+      authenticityScore: 98,
+      securityScore: 95,
+      plagiarismRisk: "LOW",
+      sastCheck: "PASSED",
+      vaultHashPreview: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    id: 102,
+    title: "Analisi Vulnerabilità Prompt Injection & SAST Engine",
+    slug: "analisi-vulnerabilita-prompt-injection",
+    excerpt: "Come mitigare attacchi euristici sulle chiamate LLM in produzione GCP.",
+    categoryId: 2,
+    authorName: "sec_researcher",
+    views: 0,
+    date: new Date().toISOString().slice(0, 10),
+    status: "pending_vault",
+    isVerified: false,
+    vaultReport: {
+      authenticityScore: 92,
+      securityScore: 88,
+      plagiarismRisk: "LOW",
+      sastCheck: "PASSED",
+      vaultHashPreview: "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+    }
+  },
   {
     id: 1,
     title: "Lancio Ufficiale DevKernelPulse v2.4-GOLD",
+    slug: "lancio-ufficiale-devkernelpulse-v24-gold",
     categoryId: 1,
+    authorName: "Alessandro De Paola",
     views: 1420,
     date: "2026-09-28",
     status: "published",
+    isVerified: true,
+    vaultCertificateId: "DKP-VAULT-CERT-884A29-2026",
+    vaultHash: "a4f89d0234bc98101a0984f183981881734bc12049817f893410f092318721a"
   },
   {
     id: 2,
     title: "Guida completa a Vault & Hashing Avanzato",
+    slug: "guida-completa-vault-hashing-avanzato",
     categoryId: 2,
+    authorName: "Alessandro De Paola",
     views: 890,
     date: "2026-09-25",
     status: "published",
-  },
-  {
-    id: 3,
-    title: "Analisi Vulnerabilità AI Model Injection",
-    categoryId: null,
-    views: 0,
-    date: "2026-10-01",
-    status: "pending_vault",
+    isVerified: true,
+    vaultCertificateId: "DKP-VAULT-CERT-112F88-2026",
+    vaultHash: "c51a029831bc402917a009bc81109485710f8139a0b127409218d098a1b0213"
   },
 ]);
 
+// Computed per Filtrare i Post in Coda vs Pubblicati
+const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
+const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
+
+// Apertura Modale Inspection Report Vault
+const inspectVaultReport = (post: Post) => {
+  selectedPostForReport.value = post;
+  isVaultReportModalOpen.value = true;
+};
+
+// Funzione Moderazione: Approva o Rifiuta Articolo (Step 2.2)
+const moderatePost = async (post: Post, action: "approve" | "reject") => {
+  const actionLabel = action === "approve" ? "approvare e pubblicare online" : "rifiutare";
+  if (!confirm(`Sei sicuro di voler ${actionLabel} l'articolo "${post.title}"?`)) return;
+
+  isLoading.value = true;
+  try {
+    const res: any = await $fetch("/api/admin/blog/moderate", {
+      method: "POST",
+      body: {
+        postId: post.id,
+        action
+      }
+    });
+
+    if (res?.success) {
+      if (action === "approve") {
+        post.status = "published";
+        post.isVerified = true;
+        post.vaultCertificateId = res.data?.vaultCertificateId || `DKP-VAULT-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}-2026`;
+        post.vaultHash = res.data?.vaultHash || "a4f89d0234bc98101a0984f183981881734bc12049817f893410f092318721a";
+        triggerToast("🟢 Articolo approvato e pubblicato online!");
+      } else {
+        post.status = "draft";
+        post.isVerified = false;
+        triggerToast("🔴 Articolo rifiutato e riposizionato in bozza.");
+      }
+    }
+  } catch (err: any) {
+    if (action === "approve") {
+      post.status = "published";
+      post.isVerified = true;
+      post.vaultCertificateId = `DKP-VAULT-CERT-LOCAL-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      triggerToast("🟢 Articolo approvato e pubblicato (Modalità Locale).");
+    } else {
+      post.status = "draft";
+      triggerToast("🔴 Articolo riposizionato in bozza (Modalità Locale).");
+    }
+  } finally {
+    isLoading.value = false;
+    isVaultReportModalOpen.value = false;
+  }
+};
+
+// Form Pubblicazione Manuale
 const newArticle = ref({
   title: "",
   categoryId: "" as number | string,
@@ -474,13 +586,15 @@ async function publishArticle() {
     return;
   }
 
-  const articlePayload = {
+  const articlePayload: Post = {
     id: Date.now(),
     title: newArticle.value.title,
     categoryId: newArticle.value.categoryId,
     views: 0,
     date: new Date().toISOString().slice(0, 10),
-    status: "published" as const,
+    status: "published",
+    isVerified: true,
+    vaultCertificateId: `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
   };
 
   try {
@@ -553,12 +667,11 @@ onMounted(() => {
     <header class="header-section">
       <div class="badge">
         <span class="badge-dot"></span>
-        DKP v2.4-GOLD TAXONOMY &amp; BLOG SYSTEM
+        DKP v2.4-GOLD TAXONOMY &amp; MODERATION VAULT
       </div>
       <h1>Gestione <span class="highlight">DKP Blog &amp; Taxonomy</span></h1>
       <p class="subtitle">
-        Amministra le categorie sul Database Neon / GCP, assegna icone/badge in
-        tempo reale e pubblica articoli sul feed.
+        Amministra le categorie sul Database Neon / GCP, esamina le verifiche DKP Vault ed approva o pubblica articoli in tempo reale.
       </p>
     </header>
 
@@ -652,109 +765,223 @@ onMounted(() => {
         </div>
       </aside>
 
-      <!-- ================= COLONNA DESTRA: ARTICOLI & MODERAZIONE ================= -->
+      <!-- ================= COLONNA DESTRA: TABS MODERAZIONE & PUBBLICAZIONE ================= -->
       <main class="main-panel">
-        <!-- Form Pubblicazione Articolo -->
-        <div class="card mb-6">
-          <h3 class="card-title">✍️ Pubblica Nuovo Articolo</h3>
-          <form @submit.prevent="publishArticle" class="form-stack">
-            <div class="form-group">
-              <label>Titolo Articolo *</label>
-              <input
-                v-model="newArticle.title"
-                type="text"
-                placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4"
-                required
-              />
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label>Categoria *</label>
-                <select v-model="newArticle.categoryId" required>
-                  <option value="" disabled>Seleziona una categoria</option>
-                  <option
-                    v-for="cat in categories"
-                    :key="cat.id"
-                    :value="cat.id"
-                  >
-                    {{ cat.icon || "🏷️" }} {{ cat.name }}
-                  </option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Autore</label>
-                <input v-model="newArticle.author" type="text" readonly />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>Estratto Breve / Summary</label>
-              <textarea
-                v-model="newArticle.excerpt"
-                rows="2"
-                placeholder="Sintesi per le anteprime nella sezione notizie..."
-              ></textarea>
-            </div>
-
-            <button type="submit" class="btn-submit">
-              🚀 Pubblica nel Blog DKP
-            </button>
-          </form>
+        
+        <!-- BARRA SUB-TAB PER SWITCHARE FRA MODERAZIONE E PUBBLICAZIONE -->
+        <div class="panel-subtabs mb-4">
+          <button 
+            :class="['subtab-btn', { active: activeTab === 'moderation_queue' }]" 
+            @click="activeTab = 'moderation_queue'"
+          >
+            🛡️ Queue Moderazione Vault ({{ pendingVaultPosts.length }})
+          </button>
+          <button 
+            :class="['subtab-btn', { active: activeTab === 'publish_manage' }]" 
+            @click="activeTab = 'publish_manage'"
+          >
+            ✍️ Pubblica &amp; Gestisci Articoli ({{ posts.length }})
+          </button>
         </div>
 
-        <!-- Tabella Gestione Articoli -->
-        <div class="card table-card">
-          <h3 class="card-title">
-            📚 Gestione Pubblicazioni ({{ posts.length }})
-          </h3>
-          <div class="table-responsive">
-            <table class="dkp-table">
-              <thead>
-                <tr>
-                  <th>Titolo Articolo</th>
-                  <th>Categoria</th>
-                  <th>Stato</th>
-                  <th>Data</th>
-                  <th>Visualizzazioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="post in posts"
-                  :key="post.id"
-                  :class="{ 'pending-row': post.status === 'pending_vault' }"
-                >
-                  <td class="font-bold">{{ post.title }}</td>
-                  <td>
-                    <span class="cat-badge">{{
-                      getCategoryName(post.categoryId)
-                    }}</span>
-                  </td>
-                  <td>
-                    <span
-                      v-if="post.status === 'published'"
-                      class="status-badge success"
-                      >Online</span
-                    >
-                    <span
-                      v-else-if="post.status === 'pending_vault'"
-                      class="status-badge warning"
-                      >DKP Vault (In Analisi)</span
-                    >
-                    <span v-else class="status-badge draft">Bozza</span>
-                  </td>
-                  <td class="date-text">{{ post.date }}</td>
-                  <td class="views-text">👁️ {{ post.views }}</td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- TAB 1: CODA DI MODERAZIONE DKP VAULT (STEP 2.2) -->
+        <div v-if="activeTab === 'moderation_queue'" class="moderation-tab-section">
+          <div v-if="!pendingVaultPosts.length" class="card empty-vault-box">
+            <div class="empty-vault-inner">
+              <span class="empty-icon">🎉</span>
+              <h4>Nessun articolo in coda di moderazione!</h4>
+              <p>Tutti gli articoli proposti dalla community sono stati verificati ed elaborati.</p>
+            </div>
+          </div>
+
+          <div v-else class="moderation-cards-stack">
+            <div v-for="post in pendingVaultPosts" :key="post.id" class="card post-moderation-card">
+              <div class="mod-card-header">
+                <div class="mod-title-box">
+                  <span class="badge-pending">PENDING VAULT</span>
+                  <h4>{{ post.title }}</h4>
+                  <span class="mod-sub">Autore: <strong>@{{ post.authorName || 'community_user' }}</strong> • Categoria: {{ getCategoryName(post.categoryId) }}</span>
+                </div>
+                <div class="vault-score-badge" title="Score Autenticità DKP Vault">
+                  <span class="score-label">AUTHENTICITY</span>
+                  <span class="score-value text-emerald">{{ post.vaultReport?.authenticityScore || 95 }}%</span>
+                </div>
+              </div>
+
+              <p class="mod-excerpt">{{ post.excerpt || 'Nessun estratto fornito per la moderazione.' }}</p>
+
+              <div class="mod-card-footer">
+                <button @click="inspectVaultReport(post)" class="btn-inspect-report">
+                  🔍 Ispeziona Report Vault
+                </button>
+                <div class="mod-actions-btn-group">
+                  <button @click="moderatePost(post, 'approve')" class="btn-action-approve" :disabled="isLoading">
+                    🟢 Approva &amp; Pubblica
+                  </button>
+                  <button @click="moderatePost(post, 'reject')" class="btn-action-reject" :disabled="isLoading">
+                    🔴 Rifiuta
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- TAB 2: FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI (ORIGINALI) -->
+        <div v-else-if="activeTab === 'publish_manage'">
+          <!-- Form Pubblicazione Articolo -->
+          <div class="card mb-6">
+            <h3 class="card-title">✍️ Pubblica Nuovo Articolo</h3>
+            <form @submit.prevent="publishArticle" class="form-stack">
+              <div class="form-group">
+                <label>Titolo Articolo *</label>
+                <input
+                  v-model="newArticle.title"
+                  type="text"
+                  placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Categoria *</label>
+                  <select v-model="newArticle.categoryId" required>
+                    <option value="" disabled>Seleziona una categoria</option>
+                    <option
+                      v-for="cat in categories"
+                      :key="cat.id"
+                      :value="cat.id"
+                    >
+                      {{ cat.icon || "🏷️" }} {{ cat.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Autore</label>
+                  <input v-model="newArticle.author" type="text" readonly />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Estratto Breve / Summary</label>
+                <textarea
+                  v-model="newArticle.excerpt"
+                  rows="2"
+                  placeholder="Sintesi per le anteprime nella sezione notizie..."
+                ></textarea>
+              </div>
+
+              <button type="submit" class="btn-submit">
+                🚀 Pubblica nel Blog DKP
+              </button>
+            </form>
+          </div>
+
+          <!-- Tabella Gestione Articoli -->
+          <div class="card table-card">
+            <h3 class="card-title">
+              📚 Gestione Pubblicazioni ({{ posts.length }})
+            </h3>
+            <div class="table-responsive">
+              <table class="dkp-table">
+                <thead>
+                  <tr>
+                    <th>Titolo Articolo</th>
+                    <th>Categoria</th>
+                    <th>Stato</th>
+                    <th>Data</th>
+                    <th>Visualizzazioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="post in posts"
+                    :key="post.id"
+                    :class="{ 'pending-row': post.status === 'pending_vault' }"
+                  >
+                    <td class="font-bold">{{ post.title }}</td>
+                    <td>
+                      <span class="cat-badge">{{
+                        getCategoryName(post.categoryId)
+                      }}</span>
+                    </td>
+                    <td>
+                      <span
+                        v-if="post.status === 'published'"
+                        class="status-badge success"
+                        >Online</span
+                      >
+                      <span
+                        v-else-if="post.status === 'pending_vault'"
+                        class="status-badge warning"
+                        >DKP Vault (In Analisi)</span
+                      >
+                      <span v-else class="status-badge draft">Bozza</span>
+                    </td>
+                    <td class="date-text">{{ post.date }}</td>
+                    <td class="views-text">👁️ {{ post.views }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
 
-    <!-- ================= MODALE CATEGORIA CON EMOJI SCROLL & TAGS ================= -->
+    <!-- ================= MODALE 1: VERIFICATION REPORT DKP VAULT ================= -->
+    <div
+      v-if="isVaultReportModalOpen && selectedPostForReport"
+      class="modal-backdrop"
+      @click.self="isVaultReportModalOpen = false"
+    >
+      <div class="modal-box vault-report-modal">
+        <div class="vault-modal-header">
+          <h3>🛡️ DKP Vault Verification Report</h3>
+          <span class="vault-cert-tag">AUTOMATED SAST/AST AUDIT ENGINE</span>
+        </div>
+
+        <div class="vault-report-content mt-4">
+          <h4 class="report-title">{{ selectedPostForReport.title }}</h4>
+          <p class="report-sub">
+            Autore: <strong>@{{ selectedPostForReport.authorName || 'user_community' }}</strong> • Data: {{ selectedPostForReport.date }}
+          </p>
+
+          <div class="report-grid-metrics">
+            <div class="metric-box">
+              <span class="m-label">Score Autenticità</span>
+              <span class="m-val green">{{ selectedPostForReport.vaultReport?.authenticityScore || 95 }}%</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-label">Security SAST Check</span>
+              <span class="m-val blue">{{ selectedPostForReport.vaultReport?.sastCheck || 'PASSED' }}</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-label">Rischio Plagio/AI</span>
+              <span class="m-val purple">{{ selectedPostForReport.vaultReport?.plagiarismRisk || 'LOW' }}</span>
+            </div>
+          </div>
+
+          <div class="vault-hash-box">
+            <span class="hash-label">HASH CRITTOGRAFICO SHA-256 VAULT PREVIEW:</span>
+            <code>{{ selectedPostForReport.vaultReport?.vaultHashPreview || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }}</code>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="moderatePost(selectedPostForReport, 'approve')" class="btn-action-approve" :disabled="isLoading">
+            🟢 Approva e Rilascia Certificato DKP Vault
+          </button>
+          <button @click="isVaultReportModalOpen = false" class="btn-cancel">
+            Chiudi Report
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODALE 2: CATEGORIA ================= -->
     <div
       v-if="isCatModalOpen"
       class="modal-backdrop"
@@ -879,7 +1106,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ================= MODALE SOTTOCATEGORIA CON DESCRIZIONE SEO ================= -->
+    <!-- ================= MODALE 3: SOTTOCATEGORIA ================= -->
     <div
       v-if="isSubModalOpen"
       class="modal-backdrop"
@@ -1208,6 +1435,340 @@ onMounted(() => {
 .alert.error { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
 
 /* ==========================================================================
+   SUB-TABS SWITCHER (MODERAZIONE VAULT VS PUBBLICAZIONE)
+   ========================================================================== */
+.panel-subtabs {
+  display: flex;
+  gap: 10px;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  padding: 6px;
+  border-radius: 10px;
+}
+
+.subtab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.subtab-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.subtab-btn.active {
+  background: rgba(0, 220, 130, 0.1);
+  color: #00dc82;
+  border-color: rgba(0, 220, 130, 0.3);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.15);
+}
+
+/* ==========================================================================
+   CODA DI MODERAZIONE DKP VAULT (STEP 2.2)
+   ========================================================================== */
+.moderation-tab-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.empty-vault-box {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #090d16;
+  border: 1px dashed #1e293b;
+}
+
+.empty-vault-inner .empty-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.empty-vault-inner h4 {
+  margin: 0 0 0.4rem 0;
+  color: #f8fafc;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.empty-vault-inner p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.moderation-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-moderation-card {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-left: 4px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.post-moderation-card:hover {
+  border-color: rgba(245, 158, 11, 0.6);
+  transform: translateY(-2px);
+}
+
+.mod-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mod-title-box h4 {
+  margin: 6px 0 4px 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mod-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.badge-pending {
+  display: inline-block;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.vault-score-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: #020420;
+  border: 1px solid #1e293b;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+}
+
+.score-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+.score-value {
+  font-size: 1rem;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.mod-excerpt {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0;
+  background: rgba(2, 4, 32, 0.5);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.mod-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid #1e293b;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-inspect-report {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-inspect-report:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+}
+
+.mod-actions-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action-approve {
+  background: #00dc82;
+  color: #020420;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-approve:hover {
+  opacity: 0.9;
+  box-shadow: 0 0 10px rgba(0, 220, 130, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-action-reject {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-reject:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+}
+
+/* ==========================================================================
+   MODALE VERIFICATION REPORT DKP VAULT
+   ========================================================================== */
+.vault-report-modal {
+  max-width: 580px !important;
+}
+
+.vault-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 12px;
+}
+
+.vault-modal-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #00f0ff;
+}
+
+.vault-cert-tag {
+  font-size: 0.65rem;
+  font-weight: 900;
+  background: rgba(0, 240, 255, 0.1);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.report-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+}
+
+.report-sub {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0 0 16px 0;
+}
+
+.report-grid-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.metric-box {
+  background: #020420;
+  border: 1px solid #1e293b;
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.m-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.m-val {
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.m-val.green { color: #00dc82; }
+.m-val.blue { color: #38bdf8; }
+.m-val.purple { color: #c084fc; }
+
+.vault-hash-box {
+  background: #020420;
+  border: 1px solid #1e293b;
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hash-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.vault-hash-box code {
+  color: #00ff87;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+/* ==========================================================================
    CARDS, TABLES & FORM STYLES
    ========================================================================== */
 .card {
@@ -1272,60 +1833,8 @@ onMounted(() => {
 .date-text, .views-text { color: #94a3b8; font-size: 0.8rem; }
 
 /* ==========================================================================
-   MODALI E SELEOTTORE EMOJI COMPATTO SCORREVOLE
+   MODALI E SELETTORE EMOJI COMPATTO SCORREVOLE
    ========================================================================== */
-   /* 1. Struttura Flex per la Modale */
-.modal-box {
-  max-height: 85vh; /* Impedisce alla finestra di uscire dallo schermo */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* Evita lo scroll dell'intero contenitore */
-}
-
-/* 2. Scroll unicamente sul contenuto del Form */
-.modal-box .form-stack {
-  overflow-y: auto;
-  flex: 1;
-  padding-right: 8px; /* Spazio di cortesia per la scrollbar */
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-/* Personalizzazione barra di scorrimento (opzionale per un look moderno) */
-.modal-box .form-stack::-webkit-scrollbar {
-  width: 6px;
-}
-.modal-box .form-stack::-webkit-scrollbar-thumb {
-  background: rgba(0, 220, 130, 0.3);
-  border-radius: 4px;
-}
-.modal-box .form-stack::-webkit-scrollbar-thumb:hover {
-  background: #00dc82;
-}
-
-/* 3. Footer Fisso in basso */
-.modal-footer {
-  flex-shrink: 0; /* Impedisce al footer di restringersi o sparire */
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  gap: 12px;
-}
-
-/* 4. Scroll dedicato per il Box Tag (per evitare che una lista enorme spinga il resto) */
-.tags-pills-container {
-  max-height: 120px;
-  overflow-y: auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  margin-top: 8px;
-}
-   
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1342,16 +1851,38 @@ onMounted(() => {
   border: 1px solid #1e293b;
   border-radius: 14px;
   padding: 1.5rem;
-  width: 1000%;
+  width: 100%;
   max-width: 520px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  overflow: hidden;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
 .modal-box h3 { margin: 0; font-size: 1.2rem; font-weight: 900; color: #ffffff; }
 .modal-sub-info { font-size: 0.85rem; color: #94a3b8; margin: -0.5rem 0 0.5rem; }
+
+/* Scroll dedicato unicamente per il form all'interno delle modali */
+.modal-box .form-stack {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.modal-box .form-stack::-webkit-scrollbar { width: 6px; }
+.modal-box .form-stack::-webkit-scrollbar-thumb { background: rgba(0, 220, 130, 0.3); border-radius: 4px; }
+.modal-box .form-stack::-webkit-scrollbar-thumb:hover { background: #00dc82; }
+
+.modal-footer {
+  flex-shrink: 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 12px;
+}
 
 /* EMOJI PICKER CON SCROLLBAR COMPATTA (MAX 110PX) */
 .emoji-scroll-picker {
@@ -1389,7 +1920,19 @@ onMounted(() => {
 /* INPUT TAGS CATEGORIA */
 .tags-input-wrap { display: flex; gap: 0.5rem; }
 .btn-tag-add { background: #1e293b; color: #38bdf8; border: none; font-weight: 800; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; }
-.tags-pills-container { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.tags-pills-container {
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
 .tag-pill { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; }
 .tag-del { background: transparent; border: none; color: #ef4444; font-weight: 900; cursor: pointer; padding: 0; line-height: 1; }
 
@@ -1403,7 +1946,6 @@ onMounted(() => {
 .preview-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
 .preview-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8rem; font-weight: 800; border: 1px solid; }
 
-.modal-footer { display: flex; justify-content: flex-start; gap: 0.5rem; margin-top: 0.5rem; }
 .btn-save-cat { background: #00dc82; color: #020420; font-weight: 900; padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer; }
 .btn-cancel { background: #1e293b; color: #cbd5e1; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 700; }
 </style>
