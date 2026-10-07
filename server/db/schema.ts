@@ -47,6 +47,7 @@ export const blogSubcategories = pgTable('blog_subcategories', {
     .notNull(),
   name: varchar('name', { length: 100 }).notNull(),
   slug: varchar('slug', { length: 120 }).notNull().unique(),
+  description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

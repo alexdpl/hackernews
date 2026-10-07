@@ -12,15 +12,15 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain();
 
 // --- STRUTTURA DATI TAXONOMY & DB ---
 interface Subcategory {
-  id: number;
-  categoryId: number;
+  id: number | string;
+  categoryId: number | string;
   name: string;
   slug: string;
   description?: string | null;
 }
 
 interface Category {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   description: string | null;
@@ -33,7 +33,7 @@ interface Category {
 interface Post {
   id: number | string;
   title: string;
-  categoryId: number | null;
+  categoryId: number | string | null;
   views: number;
   date: string;
   status: "published" | "pending_vault" | "draft";
@@ -76,7 +76,7 @@ const presetColors = [
 // Modal Form Categoria (Potenziato con Tag e Scroll Emoji)
 const isCatModalOpen = ref(false);
 const catForm = ref({
-  id: null as number | null,
+  id: null as number | string | null,
   name: "",
   slug: "",
   description: "",
@@ -89,8 +89,8 @@ const catForm = ref({
 // Modal Form Sottocategoria (Potenziato con Descrizione SEO)
 const isSubModalOpen = ref(false);
 const subForm = ref({
-  id: null as number | null,
-  categoryId: null as number | null,
+  id: null as number | string | null,
+  categoryId: null as number | string | null,
   categoryName: "",
   name: "",
   slug: "",
@@ -134,13 +134,12 @@ const fetchCategories = async () => {
   errorMessage.value = "";
   try {
     const res: any = await $fetch("/api/blog/categories");
-    if (res && res.success) {
-      categories.value = res.data || [];
+    if (res && res.success && Array.isArray(res.data)) {
+      categories.value = res.data;
     } else if (Array.isArray(res)) {
       categories.value = res;
     }
   } catch (err: any) {
-    // Demo fallback se le API serverless non sono popolate su DB locale
     if (!categories.value.length) {
       categories.value = [
         {
@@ -187,27 +186,54 @@ const fetchCategories = async () => {
   }
 };
 
-// Salva Categoria (Creazione o Modifica)
+// Salva Categoria (Creazione o Modifica con aggiornamento reattivo immediato)
 const saveCategory = async () => {
   if (!catForm.value.name || !catForm.value.slug) {
     triggerToast("❌ Compila tutti i campi obbligatori della categoria.");
     return;
   }
   isLoading.value = true;
+
+  const payload = {
+    type: "category",
+    id: catForm.value.id,
+    name: catForm.value.name.trim(),
+    slug: catForm.value.slug.trim(),
+    description: catForm.value.description.trim(),
+    icon: catForm.value.icon,
+    color: catForm.value.color,
+    tags: [...catForm.value.tags]
+  };
+
   try {
     const res: any = await $fetch("/api/admin/blog/categories", {
       method: "POST",
-      body: { 
-        type: "category", 
-        id: catForm.value.id,
-        name: catForm.value.name,
-        slug: catForm.value.slug,
-        description: catForm.value.description,
-        icon: catForm.value.icon,
-        color: catForm.value.color,
-        tags: catForm.value.tags
-      },
+      body: payload
     });
+
+    const savedCat = res?.data || {
+      id: catForm.value.id || Date.now(),
+      name: payload.name,
+      slug: payload.slug,
+      description: payload.description,
+      icon: payload.icon,
+      color: payload.color,
+      tags: payload.tags,
+      subcategories: []
+    };
+
+    // Aggiorna reattivamente la lista locale
+    const idx = categories.value.findIndex(c => String(c.id) === String(catForm.value.id));
+    if (idx !== -1) {
+      categories.value[idx] = { ...categories.value[idx], ...savedCat };
+    } else {
+      categories.value.unshift({
+        subcategories: [],
+        tags: [],
+        ...savedCat
+      });
+    }
+
     triggerToast(
       catForm.value.id
         ? "✅ Categoria aggiornata su DB Neon!"
@@ -216,34 +242,75 @@ const saveCategory = async () => {
     isCatModalOpen.value = false;
     await fetchCategories();
   } catch (err: any) {
-    triggerToast(
-      `⚠️ Salvataggio completato localmente.`
-    );
+    // Fallback reattivo locale se offline o DB temporaneo
+    const localCat = {
+      id: catForm.value.id || Date.now(),
+      name: payload.name,
+      slug: payload.slug,
+      description: payload.description,
+      icon: payload.icon,
+      color: payload.color,
+      tags: payload.tags,
+      subcategories: []
+    };
+
+    const idx = categories.value.findIndex(c => String(c.id) === String(catForm.value.id));
+    if (idx !== -1) {
+      categories.value[idx] = { ...categories.value[idx], ...localCat };
+    } else {
+      categories.value.unshift(localCat);
+    }
+
+    triggerToast("⚡ Categoria aggiornata nel pannello locale.");
     isCatModalOpen.value = false;
   } finally {
     isLoading.value = false;
   }
 };
 
-// Salva Sottocategoria (Creazione o Modifica)
+// Salva Sottocategoria (Creazione o Modifica con aggiornamento reattivo)
 const saveSubcategory = async () => {
   if (!subForm.value.name || !subForm.value.slug || !subForm.value.categoryId) {
     triggerToast("❌ Compila Nome e Slug della sottocategoria.");
     return;
   }
   isLoading.value = true;
+
+  const payload = {
+    type: "subcategory",
+    id: subForm.value.id,
+    categoryId: subForm.value.categoryId,
+    name: subForm.value.name.trim(),
+    slug: subForm.value.slug.trim(),
+    description: subForm.value.description.trim()
+  };
+
   try {
     const res: any = await $fetch("/api/admin/blog/categories", {
       method: "POST",
-      body: { 
-        type: "subcategory", 
-        id: subForm.value.id,
-        categoryId: subForm.value.categoryId,
-        name: subForm.value.name,
-        slug: subForm.value.slug,
-        description: subForm.value.description
-      },
+      body: payload
     });
+
+    const savedSub = res?.data || {
+      id: subForm.value.id || Date.now(),
+      categoryId: subForm.value.categoryId!,
+      name: payload.name,
+      slug: payload.slug,
+      description: payload.description
+    };
+
+    // Aggiorna lo stato reattivo interno della categoria padre
+    const targetCat = categories.value.find(c => String(c.id) === String(subForm.value.categoryId));
+    if (targetCat) {
+      if (!targetCat.subcategories) targetCat.subcategories = [];
+      const subIdx = targetCat.subcategories.findIndex(s => String(s.id) === String(subForm.value.id));
+      if (subIdx !== -1) {
+        targetCat.subcategories[subIdx] = { ...targetCat.subcategories[subIdx], ...savedSub };
+      } else {
+        targetCat.subcategories.push(savedSub);
+      }
+    }
+
     triggerToast(
       subForm.value.id
         ? "✅ Sottocategoria aggiornata!"
@@ -252,7 +319,26 @@ const saveSubcategory = async () => {
     isSubModalOpen.value = false;
     await fetchCategories();
   } catch (err: any) {
-    triggerToast("⚡ Sottocategoria aggiornata localmente.");
+    const localSub = {
+      id: subForm.value.id || Date.now(),
+      categoryId: subForm.value.categoryId!,
+      name: payload.name,
+      slug: payload.slug,
+      description: payload.description
+    };
+
+    const targetCat = categories.value.find(c => String(c.id) === String(subForm.value.categoryId));
+    if (targetCat) {
+      if (!targetCat.subcategories) targetCat.subcategories = [];
+      const subIdx = targetCat.subcategories.findIndex(s => String(s.id) === String(subForm.value.id));
+      if (subIdx !== -1) {
+        targetCat.subcategories[subIdx] = localSub;
+      } else {
+        targetCat.subcategories.push(localSub);
+      }
+    }
+
+    triggerToast("⚡ Sottocategoria salvata nel pannello locale.");
     isSubModalOpen.value = false;
   } finally {
     isLoading.value = false;
@@ -260,7 +346,7 @@ const saveSubcategory = async () => {
 };
 
 // Eliminazione Categoria / Sottocategoria
-const deleteItem = async (id: number, type: "category" | "subcategory") => {
+const deleteItem = async (id: number | string, type: "category" | "subcategory") => {
   const targetLabel =
     type === "category"
       ? "questa categoria e le sue sottocategorie"
@@ -272,15 +358,26 @@ const deleteItem = async (id: number, type: "category" | "subcategory") => {
     await $fetch(`/api/admin/blog/categories?id=${id}&type=${type}`, {
       method: "DELETE",
     });
+
+    if (type === "category") {
+      categories.value = categories.value.filter((c) => String(c.id) !== String(id));
+    } else {
+      categories.value.forEach((c) => {
+        if (c.subcategories) {
+          c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
+        }
+      });
+    }
+
     triggerToast("🗑️ Elemento rimosso con successo.");
     await fetchCategories();
   } catch (err: any) {
     if (type === "category") {
-      categories.value = categories.value.filter((c) => c.id !== id);
+      categories.value = categories.value.filter((c) => String(c.id) !== String(id));
     } else {
       categories.value.forEach((c) => {
         if (c.subcategories) {
-          c.subcategories = c.subcategories.filter((s) => s.id !== id);
+          c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
         }
       });
     }
@@ -365,7 +462,7 @@ const posts = ref<Post[]>([
 
 const newArticle = ref({
   title: "",
-  categoryId: "",
+  categoryId: "" as number | string,
   author: "Alessandro De Paola",
   excerpt: "",
   content: "",
@@ -380,7 +477,7 @@ async function publishArticle() {
   const articlePayload = {
     id: Date.now(),
     title: newArticle.value.title,
-    categoryId: Number(newArticle.value.categoryId),
+    categoryId: newArticle.value.categoryId,
     views: 0,
     date: new Date().toISOString().slice(0, 10),
     status: "published" as const,
@@ -392,7 +489,7 @@ async function publishArticle() {
       body: { ...newArticle.value, ...articlePayload },
     });
   } catch (err) {
-    // Continuazione graziosa per ambiente locale
+    // Continuazione per ambiente locale
   }
 
   posts.value.unshift(articlePayload);
@@ -403,9 +500,9 @@ async function publishArticle() {
   triggerToast("🚀 Articolo pubblicato con successo sul Blog DKP!");
 }
 
-const getCategoryName = (id: number | null) => {
+const getCategoryName = (id: number | string | null) => {
   if (!id) return "Non Assegnata";
-  const cat = categories.value.find((c) => c.id === id);
+  const cat = categories.value.find((c) => String(c.id) === String(id));
   return cat ? `${cat.icon || "🏷️"} ${cat.name}` : "Non Assegnata";
 };
 
@@ -699,7 +796,7 @@ onMounted(() => {
             ></textarea>
           </div>
 
-          <!-- Selettore Icona Emoji COMPATTO (Max Height 110px) -->
+          <!-- Selettore Icona Emoji COMPATTO -->
           <div class="form-group">
             <label>SELEZIONA ICONA EMOJI</label>
             <div class="icons-grid emoji-scroll-picker">
@@ -715,7 +812,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- TAG DELLA CATEGORIA (INSERIMENTO INTERATTIVO) -->
+          <!-- TAG DELLA CATEGORIA -->
           <div class="form-group">
             <label>TAG DELLA CATEGORIA (PREMI INVIO PER AGGIUNGERE)</label>
             <div class="tags-input-wrap">
@@ -819,7 +916,6 @@ onMounted(() => {
             />
           </div>
 
-          <!-- NUOVO CAMPO DESCRIZIONE BREVE SOTTOCATEGORIA -->
           <div class="form-group">
             <label>DESCRIZIONE BREVE SOTTOCATEGORIA (GUIDA UTENTE &amp; SEO) *</label>
             <textarea
