@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import DkpTagInput from '~/components/blog/DkpTagInput.vue'
+import DkpEditor from '~/components/blog/DkpEditor.vue'
 
 useHead({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.4-GOLD',
@@ -13,7 +15,7 @@ const router = useRouter()
 const { currentUser } = useAuthCore()
 const { getMainUrl, getApiUrl } = useDomain()
 
-// Toast Notification System Locale
+// TOAST SYSTEM
 const showToast = ref(false)
 const toastMessage = ref('')
 function triggerToast(msg: string) {
@@ -22,13 +24,13 @@ function triggerToast(msg: string) {
   setTimeout(() => showToast.value = false, 3500)
 }
 
-// 1. GESTIONE TAB
+// 1. TABS
 const activeTab = computed({
   get: () => (route.query.tab as string) || 'profile',
   set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-// 2. FORM PROFILO
+// 2. PROFILO
 const profileForm = ref({
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
   bio: currentUser.value?.bio || 'Lead Architect & Core Creator of DevKernelPulse',
@@ -45,7 +47,7 @@ function saveProfile() {
   setTimeout(() => profileSaved.value = false, 3000)
 }
 
-// 3. FETCH CATEGORIE & SOTTOCATEGORIE DAL DB NEON / GCP
+// 3. CATEGORIE DA NEON DB
 interface CategoryItem {
   id: string | number
   name: string
@@ -54,10 +56,8 @@ interface CategoryItem {
 }
 
 const availableCategories = ref<CategoryItem[]>([])
-const isCategoriesLoading = ref(false)
 
 async function fetchCategories() {
-  isCategoriesLoading.value = true
   try {
     const res: any = await $fetch('/api/blog/categories')
     const rawData = (res && res.success) ? res.data : (Array.isArray(res) ? res : [])
@@ -72,10 +72,8 @@ async function fetchCategories() {
     } else {
       populateCategoriesFallback()
     }
-  } catch (err) {
+  } catch {
     populateCategoriesFallback()
-  } finally {
-    isCategoriesLoading.value = false
   }
 }
 
@@ -102,33 +100,10 @@ function populateCategoriesFallback() {
   ]
 }
 
-// 4. GESTIONE ARTICOLI INTEGRATA
-const articles = ref([
-  { 
-    id: 1, 
-    title: 'Architettura Micro-frontend con Nuxt 3 e Module Federation', 
-    category: 'Cloud Native & DevOps',
-    subCategory: 'GCP Architecture',
-    summary: 'Analisi dettagliata per scalare applicazioni Nuxt ad alte prestazioni.',
-    tags: ['Nuxt3', 'Microfrontend', 'GCP'],
-    status: 'published', 
-    date: '2026-09-12', 
-    views: 342 
-  },
-  { 
-    id: 2, 
-    title: 'Guida Pratica a Proof of Code & Decentralized Identity', 
-    category: 'Cybersecurity & Vault',
-    subCategory: 'Vault & Hashing',
-    summary: 'Come notarizzare le proprie repository su registro crittografico.',
-    tags: ['Security', 'Vault', 'ProofOfCode'],
-    status: 'draft', 
-    date: '2026-10-01', 
-    views: 0 
-  }
-])
-
+// 4. ARTICOLI E MODALE UNIFICATA
+const articles = ref<any[]>([])
 const isEditingArticle = ref(false)
+const useAdvancedEditor = ref(false)
 
 const articleForm = ref({
   id: 0,
@@ -136,7 +111,7 @@ const articleForm = ref({
   category: '',
   subCategory: '',
   summary: '',
-  tagInput: '',
+  content: '',
   tags: [] as string[],
   status: 'draft'
 })
@@ -160,23 +135,17 @@ function openNewArticleModal() {
     category: defaultCat ? defaultCat.name : 'AI, LLM & Machine Learning',
     subCategory: defaultCat && defaultCat.subcategories.length > 0 ? defaultCat.subcategories[0] : '',
     summary: '',
-    tagInput: '',
+    content: '',
     tags: [],
     status: 'draft'
   }
+  useAdvancedEditor.value = false
   isEditingArticle.value = true
 }
 
-function addArticleTag() {
-  const val = articleForm.value.tagInput.trim().replace(/^#/, '')
-  if (val && !articleForm.value.tags.includes(val)) {
-    articleForm.value.tags.push(val)
-    articleForm.value.tagInput = ''
-  }
-}
-
-function removeArticleTag(tag: string) {
-  articleForm.value.tags = articleForm.value.tags.filter(t => t !== tag)
+function submitWithStatus(status: 'draft' | 'published') {
+  articleForm.value.status = status
+  saveArticle()
 }
 
 async function saveArticle() {
@@ -186,35 +155,36 @@ async function saveArticle() {
   }
 
   const index = articles.value.findIndex(a => a.id === articleForm.value.id)
-  
+  const isNew = index === -1
+
   const payload = {
-    id: articleForm.value.id,
+    id: isNew ? Date.now() : articleForm.value.id,
     title: articleForm.value.title,
     category: articleForm.value.category,
     subCategory: articleForm.value.subCategory,
     summary: articleForm.value.summary,
+    content: articleForm.value.content,
     tags: [...articleForm.value.tags],
     status: articleForm.value.status,
-    date: new Date().toISOString().split('T')[0],
-    views: index !== -1 ? articles.value[index].views : 0
+    date: new Date().toISOString().split('T')[0]
   }
 
   try {
-    await $fetch('/api/user/posts', {
+    await $fetch('/api/blog/posts', {
       method: 'POST',
       body: payload
     })
-  } catch (err) {
-    // Continuazione graziosa per ambiente locale
+  } catch (err: any) {
+    console.warn('Aggiornamento locale attivo:', err)
   }
 
-  if (index !== -1) {
+  if (!isNew) {
     articles.value[index] = payload
   } else {
     articles.value.unshift(payload)
   }
 
-  triggerToast('💾 Articolo salvato con successo!')
+  triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo pubblicato sul blog!' : '💾 Bozza salvata con successo!')
   isEditingArticle.value = false
 }
 
@@ -224,7 +194,7 @@ function deleteArticle(id: number) {
   triggerToast('🗑️ Articolo rimosso.')
 }
 
-// 5. DKP API CONSOLE & TELEMETRIA
+// 5. API TELEMETRIA
 const apiKeys = ref([
   { id: 'key_01', name: 'Server Produzione', key: 'dkp_live_9f8a...3b21', rawKey: 'dkp_live_9f8a7c2b1d0e3b21', created: '2026-08-10', lastUsed: 'Oggi 14:20' }
 ])
@@ -292,7 +262,6 @@ onMounted(() => {
 
 <template>
   <div class="dashboard-page">
-    <!-- TOAST NOTIFICATION FLOATING -->
     <Transition name="toast-fade">
       <div v-if="showToast" class="dkp-toast-success">
         <div class="toast-content">
@@ -303,7 +272,7 @@ onMounted(() => {
 
     <div class="dashboard-container">
       
-      <!-- HEADER USER CARD CYBER-GLASS -->
+      <!-- HEADER USER CARD -->
       <div class="user-header-card">
         <div class="header-main-info">
           <div class="user-avatar-wrap">
@@ -326,7 +295,7 @@ onMounted(() => {
         </NuxtLink>
       </div>
 
-      <!-- TAB MENU RESPONSIVE -->
+      <!-- TABS -->
       <nav class="tabs-navigation">
         <button class="tab-item" :class="{ active: activeTab === 'profile' }" @click="activeTab = 'profile'">
           ⚙️ Profilo &amp; Social
@@ -345,7 +314,7 @@ onMounted(() => {
         </button>
       </nav>
 
-      <!-- PANNELLO 1: PROFILO & SOCIAL -->
+      <!-- PANNELLO 1: PROFILO -->
       <section v-if="activeTab === 'profile'" class="tab-panel">
         <div class="panel-card">
           <h2 class="section-title">Informazioni Developer</h2>
@@ -419,6 +388,11 @@ onMounted(() => {
                 </tr>
               </thead>
               <tbody>
+                <tr v-if="articles.length === 0">
+                  <td colspan="6" class="text-center py-6 text-gray-500 italic">
+                    Nessun articolo creato. Clicca su "+ Nuovo Post" per iniziare.
+                  </td>
+                </tr>
                 <tr v-for="art in articles" :key="art.id">
                   <td class="font-bold">{{ art.title }}</td>
                   <td>
@@ -444,86 +418,85 @@ onMounted(() => {
             </table>
           </div>
 
-          <!-- MODALE EDITOR POST -->
-          <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
-            <div class="dkp-modal editor-modal">
-              <h3>✏️ Editor Post Blog DKP</h3>
+         <!-- MODALE EDITOR UNIFICATA CON HEADER & FOOTER FISSI -->
+<div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
+  <div class="dkp-modal editor-modal">
+    
+    <!-- HEADER MODALE UNIFICATO (VISIBILE IN ENTRAMBE LE MODALITÀ) -->
+    <div class="modal-header-row">
+      <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
+      
+      <button 
+        type="button"
+        @click="useAdvancedEditor = !useAdvancedEditor" 
+        class="btn-switch-editor"
+      >
+        {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato (Live Preview)' }}
+      </button>
+    </div>
 
-              <div class="form-group">
-                <label>TITOLO POST *</label>
-                <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
-              </div>
+    <!-- 1️⃣ FORM AVANZATO -->
+    <div v-if="useAdvancedEditor">
+      <DkpEditor v-model="articleForm" />
+    </div>
 
-              <div class="grid-2-cols">
-                <div class="form-group">
-                  <label>CATEGORIA *</label>
-                  <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
-                    <option value="" disabled>Seleziona una categoria</option>
-                    <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
-                      {{ cat.icon }} {{ cat.name }}
-                    </option>
-                  </select>
-                </div>
+    <!-- 2️⃣ FORM STANDARD -->
+    <div v-else class="form-layout">
+      <div class="form-group">
+        <label>TITOLO POST *</label>
+        <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
+      </div>
 
-                <div class="form-group">
-                  <label>SOTTOCATEGORIA</label>
-                  <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
-                    <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
-                    <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
-                      {{ sub }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label>TAGS DELL'ARTICOLO (PREMI INVIO PER INSERIRE)</label>
-                <div class="tags-input-row">
-                  <input
-                    v-model="articleForm.tagInput"
-                    @keydown.enter.prevent="addArticleTag"
-                    type="text"
-                    class="dkp-input"
-                    placeholder="Es. Nuxt, Security, Performance..."
-                  />
-                  <button type="button" @click="addArticleTag" class="btn-secondary-sm">+ Aggiungi</button>
-                </div>
-                <div class="tags-pills-wrap">
-                  <span v-for="tag in articleForm.tags" :key="tag" class="tag-pill-item">
-                    #{{ tag }} <button type="button" @click="removeArticleTag(tag)" class="tag-close">×</button>
-                  </span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
-                <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
-              </div>
-
-              <div class="form-group">
-                <label>STATO PUBBLICAZIONE</label>
-                <select v-model="articleForm.status" class="dkp-input">
-                  <option value="draft">Bozza</option>
-                  <option value="published">Pubblicato</option>
-                </select>
-              </div>
-
-              <div class="modal-actions">
-                <button @click="saveArticle" class="dkp-btn-success">💾 Salva Articolo</button>
-                <button @click="isEditingArticle = false" class="btn-secondary">Annulla</button>
-              </div>
-            </div>
-          </div>
+      <div class="grid-2-cols">
+        <div class="form-group">
+          <label>CATEGORIA *</label>
+          <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
+            <option value="" disabled>Seleziona una categoria</option>
+            <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
+              {{ cat.icon }} {{ cat.name }}
+            </option>
+          </select>
         </div>
-      </section>
 
-      <!-- PANNELLO 3: API CONSOLE CON LINK EVISALTATO -->
+        <div class="form-group">
+          <label>SOTTOCATEGORIA</label>
+          <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
+            <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
+            <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
+              {{ sub }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
+        <DkpTagInput v-model="articleForm.tags" />
+      </div>
+
+      <div class="form-group">
+        <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
+        <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
+      </div>
+    </div>
+
+    <!-- FOOTER AZIONI UNIFICATO (VISIBILE IN ENTRAMBI I FORM) -->
+    <div class="modal-actions-row">
+      <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
+      <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
+      <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 Pubblica Ora</button>
+    </div>
+</div>
+  </div>
+</div>
+</section>
+
+      <!-- PANNELLO 3: API CONSOLE -->
       <section v-if="activeTab === 'api'" class="tab-panel">
         <div class="panel-card">
           <h2 class="section-title">🔑 DKP API Console &amp; Keys Manager</h2>  
           <p class="section-sub">Genera e gestisci le chiavi API per integrare l'ecosistema DKP nelle tue applicazioni esterne.</p>
           
-          <!-- LINK ESTERNO PLAYGROUND RIPRISTINATO & EVISALTATO -->
           <div class="api-action-header">
             <NuxtLink :to="getApiUrl('/api-console')" external class="dkp-api-link-btn">
               <span>⚡ Consumo delle API (Interactive Playground) ↗</span>
@@ -620,7 +593,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* TOAST NOTIFICATION FLOATING */
+/* TOAST NOTIFICATION */
 .dkp-toast-success {
   position: fixed;
   top: 1.5rem;
@@ -664,7 +637,7 @@ onMounted(() => {
   gap: 1.5rem;
 }
 
-/* HEADER USER CARD CYBER-GLASS */
+/* HEADER USER CARD */
 .user-header-card {
   background: #090d16;
   border: 1px solid #1e293b;
@@ -698,7 +671,7 @@ onMounted(() => {
 .section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
 .section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
 
-/* BOTTONE LINK API PLAYGROUND RIPRISTINATO */
+/* API PLAYGROUND LINK */
 .api-action-header { margin-bottom: 1.25rem; }
 .dkp-api-link-btn {
   display: inline-flex;
@@ -724,7 +697,7 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
-/* GRID METRICHE 2x2 CROMATICA */
+/* GRID METRICHE */
 .metrics-grid-2x2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
 @media (max-width: 768px) { .metrics-grid-2x2 { grid-template-columns: 1fr; } }
 
@@ -756,13 +729,13 @@ onMounted(() => {
 .form-group.full-width { grid-column: 1 / -1; }
 .form-group label { font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
 
-.dkp-input { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.88rem; }
-.dkp-input:focus { outline: none; border-color: #00dc82; }
+.dkp-input { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.88rem; outline: none; }
+.dkp-input:focus { border-color: #00dc82; }
 .form-footer { display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem; }
 .dkp-btn-success { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.65rem 1.3rem; border-radius: 6px; cursor: pointer; }
 .save-toast { color: #00dc82; font-weight: 700; font-size: 0.85rem; }
 
-/* GENERATORE API KEY */
+/* API KEY GENERATOR */
 .api-generate-box { display: flex; gap: 0.75rem; }
 .generated-key-alert { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .alert-title { color: #f59e0b; font-size: 0.82rem; font-weight: 700; margin: 0; }
@@ -770,7 +743,7 @@ onMounted(() => {
 .raw-key-box code { color: #00dc82; font-family: monospace; font-size: 0.9rem; }
 .btn-copy { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
 
-/* TABELLA & TAGS */
+/* TABELLA */
 .panel-header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .table-container { overflow-x: auto; margin-top: 1rem; }
 .dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
@@ -786,22 +759,116 @@ onMounted(() => {
 .code-badge { background: #020420; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #1e293b; font-family: monospace; }
 .code-badge.clickable { cursor: pointer; }
 
-/* MODALE EDITOR ESTESO */
-.dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
-.dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 1rem; }
+/* MODALE EDITOR FISSA & STILI PULSANTI */
+.dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
+.dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 750px; display: flex; flex-direction: column; gap: 1rem; }
+
+.modal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.btn-switch-editor {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-switch-editor:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
 .grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 @media (max-width: 600px) { .grid-2-cols { grid-template-columns: 1fr; } }
 
-.tags-input-row { display: flex; gap: 0.5rem; }
-.tags-pills-wrap { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
-.tag-pill-item { background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; }
-.tag-close { background: transparent; border: none; color: #ef4444; font-weight: 900; cursor: pointer; padding: 0; }
 .mini-tag { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; margin-right: 0.2rem; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 0.2rem; }
 
-.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; }
-.btn-secondary { background: #1e293b; color: #ffffff; border: none; padding: 0.55rem 1rem; border-radius: 6px; cursor: pointer; }
-.btn-secondary-sm { background: #1e293b; color: #38bdf8; border: none; font-weight: 700; padding: 0.35rem 0.6rem; border-radius: 6px; cursor: pointer; }
+/* STILI PULSANTI FOOTER MODALE */
+.modal-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.65rem;
+  padding-top: 1rem;
+  border-top: 1px solid #1e293b;
+  margin-top: 1rem;
+}
+
+.btn-cancel {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.btn-draft {
+  background: #090d16;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-draft:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.btn-publish {
+  background: #00dc82;
+  color: #020420;
+  border: none;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 220, 130, 0.3);
+}
+
+.btn-publish:hover {
+  background: #00b368;
+  box-shadow: 0 0 20px rgba(0, 220, 130, 0.5);
+  transform: translateY(-1px);
+}
 
 /* BADGES FOOTER NEXUS */
 .nexus-badge-wrap { display: flex; justify-content: center; margin-top: 1.5rem; }

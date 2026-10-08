@@ -1,6 +1,7 @@
 <!-- app/pages/admin/blog/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 
 useDkpSeo({
   title: "Taxonomy & Moderation Vault v2.4-GOLD - DKP Admin Center",
@@ -10,7 +11,7 @@ useDkpSeo({
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain();
 
-// --- STRUTTURA DATI TAXONOMY & DB ---
+// --- INTERFACCE DATI ---
 interface Subcategory {
   id: number | string;
   categoryId: number | string;
@@ -45,6 +46,7 @@ interface Post {
   excerpt?: string;
   categoryId: number | string | null;
   authorName?: string;
+  tags?: string[]; // Aggiunto per supportare i tag
   views: number;
   date: string;
   status: "published" | "pending_vault" | "draft";
@@ -54,32 +56,11 @@ interface Post {
   vaultReport?: VaultReport;
 }
 
-const deletePost = async (id: number | string) => {
-  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo?')) {
-    return
-  }
-
-  try {
-    // 1. Invoca l'endpoint Nitro DELETE
-    await $fetch(`/api/posts/${id}`, {
-      method: 'DELETE'
-    })
-
-    // 2. Rimuovi l'articolo dallo stato reattivo della tabella SENZA ricaricare la pagina
-    posts.value = posts.value.filter(p => String(p.id) !== String(id))
-
-    alert('✅ Articolo eliminato con successo dal Database Neon!')
-  } catch (error: any) {
-    console.error('Errore cancellazione articolo:', error)
-    alert(`❌ Errore durante l'eliminazione: ${error.data?.statusMessage || error.message}`)
-  }
-}
-
+// --- STATI GLOBALI ---
+const activeTab = ref<"moderation_queue" | "publish_manage">("publish_manage");
 const categories = ref<Category[]>([]);
 const isLoading = ref(false);
 const errorMessage = ref("");
-
-// Toast Notification System
 const showToast = ref(false);
 const toastMessage = ref("");
 
@@ -91,7 +72,106 @@ function triggerToast(msg: string) {
   }, 3500);
 }
 
-// Presets Emojis & Colori v2.4-GOLD
+// --- STATO DEL FORM (Usato sia per CREAZIONE che per MODIFICA) ---
+const isEditing = ref(false);
+const newArticle = ref({
+  id: null as number | string | null,
+  title: '',
+  categoryId: '' as number | string,
+  author: 'Alessandro De Paola',
+  tags: [] as string[],
+  excerpt: '',
+  status: 'published' as "published" | "pending_vault" | "draft"
+});
+
+// --- LISTA POST UNIFICATA ---
+const posts = ref<Post[]>([]);
+
+// Computed per Filtrare i Post in Coda vs Pubblicati
+const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
+const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
+
+// 🟢 FUNZIONE UNIFICATA: SALVA O AGGIORNA POST (CREATE / UPDATE)
+async function publishArticle() {
+  if (!newArticle.value.title || !newArticle.value.categoryId) {
+    return triggerToast('❌ Compila Titolo e Categoria prima di pubblicare.');
+  }
+
+  if (isEditing.value && newArticle.value.id) {
+    // UPDATE
+    const index = posts.value.findIndex(p => String(p.id) === String(newArticle.value.id));
+    if (index !== -1) {
+      posts.value[index] = { 
+        ...posts.value[index], 
+        title: newArticle.value.title,
+        categoryId: newArticle.value.categoryId,
+        authorName: newArticle.value.author,
+        tags: [...newArticle.value.tags],
+        excerpt: newArticle.value.excerpt
+      };
+    }
+    triggerToast('✅ Articolo aggiornato con successo!');
+  } else {
+    // CREATE
+    const articlePayload: Post = {
+      id: Date.now(),
+      title: newArticle.value.title,
+      categoryId: newArticle.value.categoryId,
+      authorName: newArticle.value.author,
+      tags: [...newArticle.value.tags],
+      excerpt: newArticle.value.excerpt,
+      views: 0,
+      date: new Date().toISOString().slice(0, 10),
+      status: 'published',
+      isVerified: true,
+      vaultCertificateId: `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+    };
+    posts.value.unshift(articlePayload);
+    triggerToast('🚀 Nuovo articolo pubblicato sul Blog DKP!');
+  }
+
+  resetForm();
+}
+
+// 🟡 FUNZIONE: CARICA I DATI NEL FORM PER MODIFICA
+function editPost(post: Post) {
+  newArticle.value = {
+    id: post.id,
+    title: post.title,
+    categoryId: post.categoryId || '',
+    author: post.authorName || 'Alessandro De Paola',
+    tags: post.tags ? [...post.tags] : [],
+    excerpt: post.excerpt || '',
+    status: post.status
+  };
+  isEditing.value = true;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 🔴 FUNZIONE: ELIMINA IL POST (CON CONFERMA)
+function deletePost(id: number | string) {
+  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo?')) return;
+  
+  posts.value = posts.value.filter(p => String(p.id) !== String(id));
+  triggerToast('🗑️ Articolo eliminato.');
+  
+  if (String(newArticle.value.id) === String(id)) resetForm();
+}
+
+// ⚪ FUNZIONE: SVUOTA IL FORM E TORNA IN MODALITÀ "CREAZIONE"
+function resetForm() {
+  newArticle.value = { id: null, title: '', categoryId: '', author: 'Alessandro De Paola', tags: [], excerpt: '', status: 'published' };
+  isEditing.value = false;
+}
+
+// Funzione Helper Categorie
+function getCategoryName(id: number | string | null) {
+  if (!id) return "Non Assegnata";
+  const cat = categories.value.find((c) => String(c.id) === String(id));
+  return cat ? `${cat.icon || "🏷️"} ${cat.name}` : "Non Assegnata";
+}
+
+// --- TAXONOMY PRESETS & LOGICA ---
 const presetEmojis = [
   "💻", "⚙️", "⚡", "🧠", "🛡️", "🔒", 
   "🤖", "☁️", "🐳", "🌐", "📦", "🚀", 
@@ -100,16 +180,10 @@ const presetEmojis = [
 ];
 
 const presetColors = [
-  "#00dc82",
-  "#38bdf8",
-  "#8b5cf6",
-  "#f59e0b",
-  "#ef4444",
-  "#ec4899",
-  "#06b6d4",
+  "#00dc82", "#38bdf8", "#8b5cf6", "#f59e0b",
+  "#ef4444", "#ec4899", "#06b6d4",
 ];
 
-// Modal Form Categoria (Potenziato con Tag e Scroll Emoji)
 const isCatModalOpen = ref(false);
 const catForm = ref({
   id: null as number | string | null,
@@ -122,7 +196,6 @@ const catForm = ref({
   tags: [] as string[],
 });
 
-// Modal Form Sottocategoria (Potenziato con Descrizione SEO)
 const isSubModalOpen = ref(false);
 const subForm = ref({
   id: null as number | string | null,
@@ -133,12 +206,9 @@ const subForm = ref({
   description: "",
 });
 
-// --- STATE MODERAZIONE & TAB SWAP ---
-const activeTab = ref<"moderation_queue" | "publish_manage">("moderation_queue");
 const isVaultReportModalOpen = ref(false);
 const selectedPostForReport = ref<Post | null>(null);
 
-// Gestione Tag Categoria
 const addCategoryTag = () => {
   const val = catForm.value.tagInput.trim().replace(/^#/, "");
   if (val && !catForm.value.tags.includes(val)) {
@@ -151,7 +221,6 @@ const removeCategoryTag = (tag: string) => {
   catForm.value.tags = catForm.value.tags.filter((t) => t !== tag);
 };
 
-// Generatore Automatico Slug
 const autoSlug = (text: string) => {
   return text
     .toLowerCase()
@@ -169,65 +238,26 @@ const handleSubNameInput = () => {
   if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name);
 };
 
-// Fetch Categorie dal DB Neon / GCP
+// Fetch Categorie
 const fetchCategories = async () => {
   isLoading.value = true;
   errorMessage.value = "";
   try {
-    const res: any = await $fetch("/api/blog/categories");
-    if (res && res.success && Array.isArray(res.data)) {
-      categories.value = res.data;
-    } else if (Array.isArray(res)) {
-      categories.value = res;
+    const res: any = await $fetch("/api/admin/blog/categories");
+    if (res && res.success) {
+      categories.value = res.data || [];
+    } else {
+      categories.value = [];
     }
   } catch (err: any) {
-    if (!categories.value.length) {
-      categories.value = [
-        {
-          id: 1,
-          name: "AI, LLM & Machine Learning",
-          slug: "ai-llm-machine-learning",
-          description: "Sistemi di intelligenza artificiale, modelli locali, RAG e prompt engineering.",
-          icon: "🤖",
-          color: "#00dc82",
-          tags: ["Python", "PyTorch", "LangChain"],
-          subcategories: [
-            {
-              id: 101,
-              categoryId: 1,
-              name: "LLM Architecture",
-              slug: "llm-architecture",
-              description: "Architetture e pesi dei Large Language Models."
-            },
-            {
-              id: 102,
-              categoryId: 1,
-              name: "Local AI & Ollama",
-              slug: "local-ai-ollama",
-              description: "Esecuzione di modelli open-source in locale."
-            },
-          ],
-        },
-        {
-          id: 2,
-          name: "Cybersecurity & Vault",
-          slug: "cybersecurity-vault",
-          description: "Sicurezza, tokenizzazione e crittografia",
-          icon: "🛡️",
-          color: "#38bdf8",
-          tags: ["Vault", "OAuth2", "ZeroTrust"],
-          subcategories: [
-            { id: 201, categoryId: 2, name: "Zero Trust", slug: "zero-trust", description: "Architetture a tolleranza zero." },
-          ],
-        },
-      ];
-    }
+    // NESSUN FALLBACK QUI! Niente categorie finte!
+    console.error("Errore fetch Categorie", err);
+    triggerToast("Impossibile caricare le categorie dal database.");
   } finally {
     isLoading.value = false;
   }
 };
 
-// Salva Categoria (Creazione o Modifica con aggiornamento reattivo immediato)
 const saveCategory = async () => {
   if (!catForm.value.name || !catForm.value.slug) {
     triggerToast("❌ Compila tutti i campi obbligatori della categoria.");
@@ -267,18 +297,10 @@ const saveCategory = async () => {
     if (idx !== -1) {
       categories.value[idx] = { ...categories.value[idx], ...savedCat };
     } else {
-      categories.value.unshift({
-        subcategories: [],
-        tags: [],
-        ...savedCat
-      });
+      categories.value.unshift({ subcategories: [], tags: [], ...savedCat });
     }
 
-    triggerToast(
-      catForm.value.id
-        ? "✅ Categoria aggiornata su DB Neon!"
-        : "🚀 Nuova categoria salvata su GCP!"
-    );
+    triggerToast(catForm.value.id ? "✅ Categoria aggiornata su DB Neon!" : "🚀 Nuova categoria salvata su GCP!");
     isCatModalOpen.value = false;
     await fetchCategories();
   } catch (err: any) {
@@ -307,7 +329,6 @@ const saveCategory = async () => {
   }
 };
 
-// Salva Sottocategoria (Creazione o Modifica con aggiornamento reattivo)
 const saveSubcategory = async () => {
   if (!subForm.value.name || !subForm.value.slug || !subForm.value.categoryId) {
     triggerToast("❌ Compila Nome e Slug della sottocategoria.");
@@ -349,11 +370,7 @@ const saveSubcategory = async () => {
       }
     }
 
-    triggerToast(
-      subForm.value.id
-        ? "✅ Sottocategoria aggiornata!"
-        : "⚡ Sottocategoria aggiunta con successo!"
-    );
+    triggerToast(subForm.value.id ? "✅ Sottocategoria aggiornata!" : "⚡ Sottocategoria aggiunta con successo!");
     isSubModalOpen.value = false;
     await fetchCategories();
   } catch (err: any) {
@@ -383,30 +400,21 @@ const saveSubcategory = async () => {
   }
 };
 
-// Eliminazione Categoria / Sottocategoria
 const deleteItem = async (id: number | string, type: "category" | "subcategory") => {
-  const targetLabel =
-    type === "category"
-      ? "questa categoria e le sue sottocategorie"
-      : "questa sottocategoria";
+  const targetLabel = type === "category" ? "questa categoria e le sue sottocategorie" : "questa sottocategoria";
   if (!confirm(`Sei sicuro di voler eliminare ${targetLabel}?`)) return;
 
   isLoading.value = true;
   try {
-    await $fetch(`/api/admin/blog/categories?id=${id}&type=${type}`, {
-      method: "DELETE",
-    });
+    await $fetch(`/api/admin/blog/categories?id=${id}&type=${type}`, { method: "DELETE" });
 
     if (type === "category") {
       categories.value = categories.value.filter((c) => String(c.id) !== String(id));
     } else {
       categories.value.forEach((c) => {
-        if (c.subcategories) {
-          c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
-        }
+        if (c.subcategories) c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
       });
     }
-
     triggerToast("🗑️ Elemento rimosso con successo.");
     await fetchCategories();
   } catch (err: any) {
@@ -414,18 +422,15 @@ const deleteItem = async (id: number | string, type: "category" | "subcategory")
       categories.value = categories.value.filter((c) => String(c.id) !== String(id));
     } else {
       categories.value.forEach((c) => {
-        if (c.subcategories) {
-          c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
-        }
+        if (c.subcategories) c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
       });
     }
-    triggerToast("🗑️ Elemento rimosso dal pannello.");
+    triggerToast("🗑️ Elemento rimosso dal pannello locale.");
   } finally {
     isLoading.value = false;
   }
 };
 
-// Gestione Modali Categoria/Sottocategoria
 const openCatModal = (cat: Category | null = null) => {
   if (cat) {
     catForm.value = {
@@ -439,16 +444,7 @@ const openCatModal = (cat: Category | null = null) => {
       tags: cat.tags ? [...cat.tags] : [],
     };
   } else {
-    catForm.value = {
-      id: null,
-      name: "",
-      slug: "",
-      description: "",
-      icon: "🤖",
-      color: "#00dc82",
-      tagInput: "",
-      tags: [],
-    };
+    catForm.value = { id: null, name: "", slug: "", description: "", icon: "🤖", color: "#00dc82", tagInput: "", tags: [] };
   }
   isCatModalOpen.value = true;
 };
@@ -470,85 +466,11 @@ const openSubModal = (category: Category, sub: Subcategory | null = null) => {
   isSubModalOpen.value = true;
 };
 
-// --- STATI ARTICOLI & MODERAZIONE VAULT ---
-const posts = ref<Post[]>([
-  {
-    id: 101,
-    title: "Integrazione DKP Sentinel SSE Live Threat Stream",
-    slug: "integrazione-dkp-sentinel-sse",
-    excerpt: "Guida alla configurazione di Server-Sent Events per la telemetria difensiva in tempo reale.",
-    categoryId: 1,
-    authorName: "dev_ninja",
-    views: 0,
-    date: new Date().toISOString().slice(0, 10),
-    status: "pending_vault",
-    isVerified: false,
-    vaultReport: {
-      authenticityScore: 98,
-      securityScore: 95,
-      plagiarismRisk: "LOW",
-      sastCheck: "PASSED",
-      vaultHashPreview: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    }
-  },
-  {
-    id: 102,
-    title: "Analisi Vulnerabilità Prompt Injection & SAST Engine",
-    slug: "analisi-vulnerabilita-prompt-injection",
-    excerpt: "Come mitigare attacchi euristici sulle chiamate LLM in produzione GCP.",
-    categoryId: 2,
-    authorName: "sec_researcher",
-    views: 0,
-    date: new Date().toISOString().slice(0, 10),
-    status: "pending_vault",
-    isVerified: false,
-    vaultReport: {
-      authenticityScore: 92,
-      securityScore: 88,
-      plagiarismRisk: "LOW",
-      sastCheck: "PASSED",
-      vaultHashPreview: "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
-    }
-  },
-  {
-    id: 1,
-    title: "Lancio Ufficiale DevKernelPulse v2.4-GOLD",
-    slug: "lancio-ufficiale-devkernelpulse-v24-gold",
-    categoryId: 1,
-    authorName: "Alessandro De Paola",
-    views: 1420,
-    date: "2026-09-28",
-    status: "published",
-    isVerified: true,
-    vaultCertificateId: "DKP-VAULT-CERT-884A29-2026",
-    vaultHash: "a4f89d0234bc98101a0984f183981881734bc12049817f893410f092318721a"
-  },
-  {
-    id: 2,
-    title: "Guida completa a Vault & Hashing Avanzato",
-    slug: "guida-completa-vault-hashing-avanzato",
-    categoryId: 2,
-    authorName: "Alessandro De Paola",
-    views: 890,
-    date: "2026-09-25",
-    status: "published",
-    isVerified: true,
-    vaultCertificateId: "DKP-VAULT-CERT-112F88-2026",
-    vaultHash: "c51a029831bc402917a009bc81109485710f8139a0b127409218d098a1b0213"
-  },
-]);
-
-// Computed per Filtrare i Post in Coda vs Pubblicati
-const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
-const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
-
-// Apertura Modale Inspection Report Vault
 const inspectVaultReport = (post: Post) => {
   selectedPostForReport.value = post;
   isVaultReportModalOpen.value = true;
 };
 
-// Funzione Moderazione: Approva o Rifiuta Articolo (Step 2.2)
 const moderatePost = async (post: Post, action: "approve" | "reject") => {
   const actionLabel = action === "approve" ? "approvare e pubblicare online" : "rifiutare";
   if (!confirm(`Sei sicuro di voler ${actionLabel} l'articolo "${post.title}"?`)) return;
@@ -557,10 +479,7 @@ const moderatePost = async (post: Post, action: "approve" | "reject") => {
   try {
     const res: any = await $fetch("/api/admin/blog/moderate", {
       method: "POST",
-      body: {
-        postId: post.id,
-        action
-      }
+      body: { postId: post.id, action }
     });
 
     if (res?.success) {
@@ -590,55 +509,6 @@ const moderatePost = async (post: Post, action: "approve" | "reject") => {
     isLoading.value = false;
     isVaultReportModalOpen.value = false;
   }
-};
-
-// Form Pubblicazione Manuale
-const newArticle = ref({
-  title: "",
-  categoryId: "" as number | string,
-  author: "Alessandro De Paola",
-  excerpt: "",
-  content: "",
-});
-
-async function publishArticle() {
-  if (!newArticle.value.title || !newArticle.value.categoryId) {
-    triggerToast("❌ Compila Titolo e Categoria prima di pubblicare.");
-    return;
-  }
-
-  const articlePayload: Post = {
-    id: Date.now(),
-    title: newArticle.value.title,
-    categoryId: newArticle.value.categoryId,
-    views: 0,
-    date: new Date().toISOString().slice(0, 10),
-    status: "published",
-    isVerified: true,
-    vaultCertificateId: `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
-  };
-
-  try {
-    await $fetch("/api/admin/blog/posts", {
-      method: "POST",
-      body: { ...newArticle.value, ...articlePayload },
-    });
-  } catch (err) {
-    // Continuazione per ambiente locale
-  }
-
-  posts.value.unshift(articlePayload);
-  newArticle.value.title = "";
-  newArticle.value.excerpt = "";
-  newArticle.value.content = "";
-  newArticle.value.categoryId = "";
-  triggerToast("🚀 Articolo pubblicato con successo sul Blog DKP!");
-}
-
-const getCategoryName = (id: number | string | null) => {
-  if (!id) return "Non Assegnata";
-  const cat = categories.value.find((c) => String(c.id) === String(id));
-  return cat ? `${cat.icon || "🏷️"} ${cat.name}` : "Non Assegnata";
 };
 
 onMounted(() => {
@@ -851,15 +721,19 @@ onMounted(() => {
        <!-- TAB 2: FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI -->
         <div v-else-if="activeTab === 'publish_manage'">
           
-          <!-- Form Pubblicazione Articolo -->
+          <!-- Form Pubblicazione/Modifica Articolo -->
           <div class="card mb-6">
-            <h3 class="card-title">✍️ Pubblica Nuovo Articolo</h3>
+            <h3 class="card-title">
+              {{ isEditing ? '✏️ Modifica Articolo' : '✍️ Pubblica Nuovo Articolo' }}
+            </h3>
+            
             <form @submit.prevent="publishArticle" class="form-stack">
               <div class="form-group">
                 <label>Titolo Articolo *</label>
                 <input
                   v-model="newArticle.title"
                   type="text"
+                  class="dkp-input"
                   placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4"
                   required
                 />
@@ -868,7 +742,7 @@ onMounted(() => {
               <div class="form-row">
                 <div class="form-group">
                   <label>Categoria *</label>
-                  <select v-model="newArticle.categoryId" required>
+                  <select v-model="newArticle.categoryId" class="dkp-input" required>
                     <option value="" disabled>Seleziona una categoria</option>
                     <option
                       v-for="cat in categories"
@@ -881,22 +755,37 @@ onMounted(() => {
                 </div>
                 <div class="form-group">
                   <label>Autore</label>
-                  <input v-model="newArticle.author" type="text" readonly />
+                  <input v-model="newArticle.author" class="dkp-input" type="text" readonly />
                 </div>
               </div>
 
-              <div class="form-group">
+              <!-- ➕ COMPONENTE TAG AGGIUNTO QUI -->
+              <div class="form-group full-width mt-4">
+                <label style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">
+                  TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)
+                </label>
+                <DkpTagInput v-model="newArticle.tags" />
+              </div>
+
+              <div class="form-group mt-4">
                 <label>Estratto Breve / Summary</label>
                 <textarea
                   v-model="newArticle.excerpt"
+                  class="dkp-input"
                   rows="2"
                   placeholder="Sintesi per le anteprime nella sezione notizie..."
                 ></textarea>
               </div>
 
-              <button type="submit" class="btn-submit">
-                🚀 Pubblica nel Blog DKP
-              </button>
+              <!-- PULSANTI DINAMICI SALVATAGGIO / ANNULLA MODIFICA -->
+              <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button v-if="isEditing" type="button" @click="resetForm" class="btn-cancel" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                  ❌ Annulla Modifica
+                </button>
+                <button type="submit" class="btn-submit" style="flex: 1;">
+                  {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Pubblica nel Blog DKP' }}
+                </button>
+              </div>
             </form>
           </div>
 
@@ -944,6 +833,7 @@ onMounted(() => {
                     <td class="views-text">👁️ {{ post.views || 0 }}</td>
                     <td style="text-align: right;">
                       <div class="action-buttons">
+                        <!-- EVENTI CLICK AGGIUNTI AI BOTTONI -->
                         <button @click="editPost(post)" class="btn-icon btn-edit" type="button" title="Modifica Articolo">
                           ✏️
                         </button>

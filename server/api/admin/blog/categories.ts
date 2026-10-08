@@ -1,146 +1,100 @@
 // server/api/admin/blog/categories.ts
-import { defineEventHandler, getMethod, readBody, getQuery, createError } from 'h3'
+import { defineEventHandler, getMethod, readBody, createError } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { blogCategories, blogSubcategories } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
-  const db = getDb()
   const method = getMethod(event)
+  const db = await getDb()
 
-  // 📥 GET: Recupera tutte le categorie con le relative sottocategorie
-  if (method === 'GET') {
-    try {
-      if (db.query && db.query.blogCategories) {
-        const categories = await db.query.blogCategories.findMany({
-          with: { subcategories: true },
-          orderBy: (categories, { desc }) => [desc(categories.createdAt)]
-        })
-        return { success: true, data: categories }
-      }
-
-      const categories = await db.select().from(blogCategories)
-      const subcategories = await db.select().from(blogSubcategories)
-
-      const categoriesWithSubs = categories.map((cat) => ({
-        ...cat,
-        subcategories: subcategories.filter((sub) => sub.categoryId === cat.id)
-      }))
-
-      return { success: true, data: categoriesWithSubs }
-    } catch (error: any) {
-      console.error('Errore durante il recupero delle categorie:', error)
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Errore recupero categorie: ${error.message}`
+  try {
+    // 🟩 METODO GET (Recupero Categorie)
+    if (method === 'GET') {
+      const cats = await db.query.blogCategories.findMany({
+        with: { subcategories: true }
       })
-    }
-  }
-
-  // 📤 POST: Aggiunge o Aggiorna Categoria / Sottocategoria
-  if (method === 'POST') {
-    const body = (await readBody(event)) || {}
-    const { id, type, name, slug, description, icon, color, categoryId } = body
-
-    const cleanName = name?.trim()
-    const cleanSlug = slug?.trim()
-
-    if (!cleanName || !cleanSlug) {
-      throw createError({ statusCode: 400, statusMessage: 'Nome e Slug sono obbligatori.' })
+      return { success: true, data: cats }
     }
 
-    try {
-      if (type === 'subcategory') {
-        if (!categoryId) {
-          throw createError({ statusCode: 400, statusMessage: 'categoryId è obbligatorio per le sottocategorie.' })
+    // 🟦 METODO POST (Crea o Aggiorna Categoria/Sottocategoria)
+    if (method === 'POST') {
+      const body = await readBody(event)
+      if (!body) throw createError({ statusCode: 400, message: 'Body mancante' })
+
+      if (body.type === 'category') {
+        const payload = {
+          name: body.name,
+          slug: body.slug,
+          description: body.description || null,
+          icon: body.icon || '🏷️',
+          color: body.color || '#00dc82',
+          tags: body.tags || []
         }
-
-        if (id) {
-          const [updatedSub] = await db
-            .update(blogSubcategories)
-            .set({ categoryId: Number(categoryId), name: cleanName, slug: cleanSlug })
-            .where(eq(blogSubcategories.id, Number(id)))
-            .returning()
-
-          return { success: true, message: 'Sottocategoria aggiornata!', action: 'updated', data: updatedSub }
+        
+        if (body.id) {
+          // Update
+          await db.update(blogCategories).set(payload).where(eq(blogCategories.id, body.id))
+          return { success: true, message: 'Aggiornata!' }
         } else {
-          const [newSub] = await db
-            .insert(blogSubcategories)
-            .values({ categoryId: Number(categoryId), name: cleanName, slug: cleanSlug })
-            .returning()
-
-          return { success: true, message: 'Sottocategoria creata!', action: 'created', data: newSub }
+          // Create
+          const [newCat] = await db.insert(blogCategories).values(payload).returning()
+          return { success: true, data: newCat }
+        }
+      } 
+      
+      if (body.type === 'subcategory') {
+        const payload = {
+          categoryId: body.categoryId,
+          name: body.name,
+          slug: body.slug,
+          description: body.description || null
+        }
+        
+        if (body.id) {
+          await db.update(blogSubcategories).set(payload).where(eq(blogSubcategories.id, body.id))
+          return { success: true, message: 'Sottocategoria Aggiornata!' }
+        } else {
+          const [newSub] = await db.insert(blogSubcategories).values(payload).returning()
+          return { success: true, data: newSub }
         }
       }
-
-      const categoryPayload = {
-        name: cleanName,
-        slug: cleanSlug,
-        description: description ? description.trim() : null,
-        icon: icon || '🔒',
-        color: color || '#00dc82'
-      }
-
-      if (id) {
-        const [updatedCat] = await db
-          .update(blogCategories)
-          .set(categoryPayload)
-          .where(eq(blogCategories.id, Number(id)))
-          .returning()
-
-        return { success: true, message: 'Categoria aggiornata con successo!', action: 'updated', data: updatedCat }
-      } else {
-        const [newCat] = await db
-          .insert(blogCategories)
-          .values(categoryPayload)
-          .returning()
-
-        return { success: true, message: 'Categoria creata con successo!', action: 'created', data: newCat }
-      }
-
-    } catch (error: any) {
-      console.error('Errore durante il salvataggio:', error)
-
-      if (error.code === '23505' || error.message?.includes('unique constraint')) {
-        throw createError({
-          statusCode: 409,
-          statusMessage: 'Lo slug specificato è già presente nel database. Scegli uno slug univoco.',
-        })
-      }
-
-      throw createError({
-        statusCode: error.statusCode || 500,
-        statusMessage: error.statusMessage || `Errore salvataggio: ${error.message}`
-      })
-    }
-  }
-
-  // 🗑️ DELETE: Elimina una Categoria o Sottocategoria
-  if (method === 'DELETE') {
-    const query = getQuery(event)
-    const id = query.id ? Number(query.id) : NaN
-    const itemType = ((query.type || query.target) as string)?.trim()
-
-    if (!id || isNaN(id)) {
-      throw createError({ statusCode: 400, statusMessage: 'ID valido mancante.' })
     }
 
-    try {
-      if (itemType === 'subcategory') {
-        await db.delete(blogSubcategories).where(eq(blogSubcategories.id, id))
-        return { success: true, message: 'Sottocategoria eliminata con successo.' }
-      } else {
-        // Elimina sottocategorie collegate e poi la categoria padre
+    // 🟥 METODO DELETE (BLINDATO CONTRO LA CANCELLAZIONE TOTALE)
+    if (method === 'DELETE') {
+      const queryString = event.path.split('?')[1] || ''
+      const searchParams = new URLSearchParams(queryString)
+
+      const idParam = searchParams.get('id')
+      const type = searchParams.get('type')
+
+      // Mettiamo un parseInt esplicito
+      const id = parseInt(idParam || '', 10)
+
+      // GUARDIA DI FERRO: Se l'ID non è un numero valido o è 0, o il tipo non è corretto, BLOCCARE TUTTO.
+      if (!id || isNaN(id) || id <= 0 || !['category', 'subcategory'].includes(type || '')) {
+        throw createError({ statusCode: 400, message: 'CRITICO: Parametri DELETE non validi o ID mancante. Operazione annullata per sicurezza.' })
+      }
+
+      if (type === 'category') {
+        // La where con eq(..., id) ora è sicura al 100% perché id è un intero verificato
         await db.delete(blogSubcategories).where(eq(blogSubcategories.categoryId, id))
         await db.delete(blogCategories).where(eq(blogCategories.id, id))
-        return { success: true, message: 'Categoria eliminata con successo.' }
+      } else {
+        await db.delete(blogSubcategories).where(eq(blogSubcategories.id, id))
       }
-    } catch (error: any) {
-      console.error('Errore durante l\'eliminazione:', error)
-      throw createError({
-        statusCode: error.statusCode || 500,
-        statusMessage: error.statusMessage || `Errore eliminazione: ${error.message}`
-      })
+
+      return { success: true, message: `Elemento ${id} eliminato in sicurezza!` }
     }
+
+    // Se il metodo non è gestito (es. PUT, PATCH)
+    throw createError({ statusCode: 405, message: 'Method Not Allowed' })
+    
+  } catch (err: any) {
+    console.error('[API CATEGORIES ERROR]:', err)
+    
+    // Per il tuo sistema ibrido, restituiamo 200 con {success:false} per far continuare il Vue
+    return { success: false, message: err.message || 'Errore Server' }
   }
 })

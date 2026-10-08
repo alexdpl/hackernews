@@ -30,6 +30,7 @@ export const users = pgTable('users', {
 // -------------------------------------------------------------
 // 2. CATEGORIE & BLOG v2.4-GOLD
 // -------------------------------------------------------------
+
 export const blogCategories = pgTable('blog_categories', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -37,6 +38,7 @@ export const blogCategories = pgTable('blog_categories', {
   description: text('description'),
   icon: varchar('icon', { length: 50 }).default('i-heroicons-folder'),
   color: varchar('color', { length: 30 }).default('#10B981'),
+  tags: jsonb('tags').$type<string[]>().default([]), // 🔥 AGGIUNTO: Array di Tags in formato JSONB
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -60,6 +62,7 @@ export const blogPosts = pgTable('blog_posts', {
   categoryId: integer('category_id').references(() => blogCategories.id, { onDelete: 'set null' }),
   subcategoryId: integer('subcategory_id').references(() => blogSubcategories.id, { onDelete: 'set null' }),
   authorId: integer('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  tags: jsonb('tags').$type<string[]>().default([]), // 🔥 AGGIUNTO: Array di Tags per gli articoli
   status: varchar('status', { length: 20 }).default('pending_vault').notNull(),
   isVerified: boolean('is_verified').default(false).notNull(),
   vaultCertificateId: varchar('vault_certificate_id', { length: 100 }),
