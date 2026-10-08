@@ -3,23 +3,23 @@
 import { ref, computed } from 'vue'
 
 useDkpSeo({
-  title: 'DKP Official Newsroom & Technical Blog — v2.4-GOLD',
-  description: 'Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente dal team DevKernelPulse.'
+  title: 'DKP Technical Blog & Vault Articles NewsRoom - DevKernelPulse — v2.4-GOLD',
+  description: 'Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente scritti dalla community di DevKernelPulse.'
 })
 
-// --- 1. CARICAMENTO DATI DA NEON POSTGRESQL (100% REALI - NO MOCK) ---
-const { data: catResponse, pending: loadingCats } = await useFetch<any>('/api/blog/categories')
-const { data: postsResponse, pending: loadingPosts } = await useFetch<any>('/api/blog/posts')
+// --- 1. CARICAMENTO DATI DA NEON POSTGRESQL ---
+const { data: catResponse, pending: loadingCats } = await useFetch('/api/admin/blog/categories')
+const { data: postsResponse, pending: loadingPosts } = await useFetch('/api/blog/posts?public=true')
 
 // Categorie Reali dal DB
 const categories = computed(() => {
-  const raw = catResponse.value?.data || (Array.isArray(catResponse.value) ? catResponse.value : [])
+  const raw = (catResponse.value as any)?.data || (Array.isArray(catResponse.value) ? catResponse.value : [])
   return Array.isArray(raw) ? raw : []
 })
 
 // Articoli Reali dal DB
 const posts = computed(() => {
-  const raw = postsResponse.value?.data || (Array.isArray(postsResponse.value) ? postsResponse.value : [])
+  const raw = (postsResponse.value as any)?.data || (Array.isArray(postsResponse.value) ? postsResponse.value : [])
   return Array.isArray(raw) ? raw : []
 })
 
@@ -28,7 +28,7 @@ const selectedCategory = ref<string | null>(null)
 const selectedSubcategory = ref<string | null>(null)
 const searchQuery = ref('')
 
-// Helper per estrarre in sicurezza il nome della categoria (sia oggetto DB che stringa)
+// Helper per estrarre in sicurezza il nome della categoria
 function getCategoryName(category: any): string {
   if (!category) return 'Generale'
   if (typeof category === 'object') return category.name || category.title || 'Generale'
@@ -78,7 +78,6 @@ function selectCategory(catName: string | null) {
 // --- 3. FILTRO ARTICOLI COMPATIBILE CON NEON DB ---
 const filteredPosts = computed(() => {
   return posts.value.filter((p: any) => {
-    // Normalizza la categoria e sottocategoria tramite gli helper
     const catName = getCategoryName(p.category || p.categoryName)
     const subName = getSubcategoryName(p.subCategory || p.subcategory || p.subcategoryName)
 
@@ -144,11 +143,12 @@ const filteredPosts = computed(() => {
           v-for="cat in categories" 
           :key="cat.id" 
           @click="selectCategory(cat.name)"
+          :style="selectedCategory === cat.name ? getCategoryStyle(cat) : {}"
           :class="['cat-btn', { active: selectedCategory === cat.name }]"
           type="button"
         >
-          <span class="cat-emoji">{{ cat.icon || '🏷️' }}</span>
-          <span>{{ cat.name }}</span>
+          <span class="cat-emoji">{{ getCategoryIcon(cat) }}</span>
+          <span>{{ getCategoryName(cat) }}</span>
         </button>
       </nav>
 
@@ -187,13 +187,14 @@ const filteredPosts = computed(() => {
         <button @click="selectCategory(null); searchQuery = ''" class="btn-reset" type="button">Ripristina Filtri</button>
       </div>
 
-     <!-- GRIGLIA ARTICOLI v2.4-GOLD -->
-<div v-else class="blog-grid">
-  <article v-for="post in filteredPosts" :key="post.id" class="post-card">
-    <div class="card-header">
-      <span class="cat-badge">{{ getCategoryName(post.category) }}</span>
-      <span class="read-time">5 min</span>
-    </div>
+      <!-- GRIGLIA ARTICOLI v2.4-GOLD -->
+      <div v-else class="blog-grid">
+        <article v-for="post in filteredPosts" :key="post.id" class="post-card">
+          <div class="card-header">
+            <span class="cat-badge">{{ getCategoryName(post.category) }}</span>
+            <span v-if="post.isVerified" class="text-xs text-sky-400 font-bold" title="Verificato dal Vault DKP">🛡️ Verified</span>
+            <span class="read-time">5 min</span>
+          </div>
 
           <!-- Titolo Articolo -->
           <h2 class="post-title">
@@ -237,6 +238,17 @@ const filteredPosts = computed(() => {
 </template>
 
 <style scoped>
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
 /* CONTAINER GENERALE */
 .blog-container {
   min-height: 100vh;

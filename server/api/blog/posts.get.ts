@@ -2,7 +2,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/server/db/schema'
+import { blogPosts } from '~~/drizzle/schema'
 
 function getSafeQuery(event: any): Record<string, any> {
   try {

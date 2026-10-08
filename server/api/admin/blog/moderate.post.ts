@@ -2,7 +2,7 @@
 import { defineEventHandler, createError } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/server/db/schema'
+import { blogPosts, users } from '~~/server/db/schema' // 👈 Assicurati che 'users' sia importato dallo schema
 import crypto from 'node:crypto'
 
 // Parser nativo del body a prova di mismatch H3
@@ -36,10 +36,10 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const db = getDb()
+    const db = await getDb()
 
     if (action === 'approve') {
-      // Generazione Certificato di Verifica DKP Vault
+      // 1. Generazione Certificato di Verifica DKP Vault
       const vaultHash = crypto.createHash('sha256').update(`dkp-vault-${numericPostId}-${Date.now()}`).digest('hex')
       const vaultCertificateId = `DKP-VAULT-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}-2026`
 
@@ -55,9 +55,38 @@ export default defineEventHandler(async (event) => {
         .where(eq(blogPosts.id, numericPostId))
         .returning()
 
+      // 🏆 2. GAMIFICATION SYSTEM (Step 3.3): Assegnazione +150 DKP Rep Points e badge "Gold Author"
+      if (updatedPost && updatedPost.authorId) {
+        const [author] = await db.select().from(users).where(eq(users.id, updatedPost.authorId)).limit(1)
+
+        if (author) {
+          const currentPoints = (author.repPoints || 0) + 150
+          
+          // Gestione sicura dei badge utente (array o stringa JSON)
+          let currentBadges: string[] = []
+          if (Array.isArray(author.badges)) {
+            currentBadges = author.badges
+          } else if (typeof author.badges === 'string') {
+            try { currentBadges = JSON.parse(author.badges) } catch { currentBadges = [] }
+          }
+
+          if (!currentBadges.includes('Gold Author')) {
+            currentBadges.push('Gold Author')
+          }
+
+          await db.update(users)
+            .set({
+              reputation: newReputation,
+              xp: newXp,
+              badges: currentBadges
+            })
+            .where(eq(users.id, author.id))
+        }
+      }
+
       return {
         success: true,
-        message: 'Articolo approvato, verificato con DKP Vault Certificate e pubblicato online!',
+        message: 'Articolo approvato, verificato con DKP Vault, punti reputazione (+150 DKP) e badge Gold Author assegnati!',
         action: 'approved',
         data: updatedPost
       }

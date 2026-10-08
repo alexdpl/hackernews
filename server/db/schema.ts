@@ -23,6 +23,7 @@ export const users = pgTable('users', {
   reputation: integer('reputation').default(100).notNull(),
   xp: integer('xp').default(0).notNull(),
   level: integer('level').default(1).notNull(),
+  badges: jsonb('badges').$type<string[]>().default([]),
   githubHandle: varchar('github_handle', { length: 100 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
