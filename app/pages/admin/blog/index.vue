@@ -54,6 +54,27 @@ interface Post {
   vaultReport?: VaultReport;
 }
 
+const deletePost = async (id: number | string) => {
+  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo?')) {
+    return
+  }
+
+  try {
+    // 1. Invoca l'endpoint Nitro DELETE
+    await $fetch(`/api/posts/${id}`, {
+      method: 'DELETE'
+    })
+
+    // 2. Rimuovi l'articolo dallo stato reattivo della tabella SENZA ricaricare la pagina
+    posts.value = posts.value.filter(p => String(p.id) !== String(id))
+
+    alert('✅ Articolo eliminato con successo dal Database Neon!')
+  } catch (error: any) {
+    console.error('Errore cancellazione articolo:', error)
+    alert(`❌ Errore durante l'eliminazione: ${error.data?.statusMessage || error.message}`)
+  }
+}
+
 const categories = ref<Category[]>([]);
 const isLoading = ref(false);
 const errorMessage = ref("");
@@ -827,8 +848,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- TAB 2: FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI (ORIGINALI) -->
+       <!-- TAB 2: FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI -->
         <div v-else-if="activeTab === 'publish_manage'">
+          
           <!-- Form Pubblicazione Articolo -->
           <div class="card mb-6">
             <h3 class="card-title">✍️ Pubblica Nuovo Articolo</h3>
@@ -892,6 +914,7 @@ onMounted(() => {
                     <th>Stato</th>
                     <th>Data</th>
                     <th>Visualizzazioni</th>
+                    <th style="text-align: right;">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -902,34 +925,50 @@ onMounted(() => {
                   >
                     <td class="font-bold">{{ post.title }}</td>
                     <td>
-                      <span class="cat-badge">{{
-                        getCategoryName(post.categoryId)
-                      }}</span>
+                      <span class="cat-badge">
+                        {{ getCategoryName(post.category || post.categoryId) }}
+                      </span>
                     </td>
                     <td>
                       <span
                         v-if="post.status === 'published'"
                         class="status-badge success"
-                        >Online</span
-                      >
+                      >Online</span>
                       <span
                         v-else-if="post.status === 'pending_vault'"
                         class="status-badge warning"
-                        >DKP Vault (In Analisi)</span
-                      >
+                      >DKP Vault (In Analisi)</span>
                       <span v-else class="status-badge draft">Bozza</span>
                     </td>
-                    <td class="date-text">{{ post.date }}</td>
-                    <td class="views-text">👁️ {{ post.views }}</td>
+                    <td class="date-text">{{ post.date || (post.createdAt ? post.createdAt.slice(0, 10) : '') }}</td>
+                    <td class="views-text">👁️ {{ post.views || 0 }}</td>
+                    <td style="text-align: right;">
+                      <div class="action-buttons">
+                        <button @click="editPost(post)" class="btn-icon btn-edit" type="button" title="Modifica Articolo">
+                          ✏️
+                        </button>
+                        <button @click="deletePost(post.id)" class="btn-icon btn-delete" type="button" title="Elimina Articolo">
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr v-if="posts.length === 0">
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
+                      📂 Nessun articolo presente nel Database Neon. Usa il form per crearne uno nuovo.
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-        </div>
 
-      </main>
+        </div> <!-- 👈 CHIUSURA DIV TAB "publish_manage" -->
+
+      </main> <!-- 👈 CHIUSURA DEL MAIN-PANEL GENERALE -->
     </div>
+  </div>
 
     <!-- ================= MODALE 1: VERIFICATION REPORT DKP VAULT ================= -->
     <div
@@ -1163,7 +1202,7 @@ onMounted(() => {
         </div>
       </div>
     </div>
-  </div>
+  
 </template>
 
 <style scoped>
@@ -1831,6 +1870,32 @@ onMounted(() => {
 .status-badge.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .status-badge.draft { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
 .date-text, .views-text { color: #94a3b8; font-size: 0.8rem; }
+
+/* AZIONI TABELLA (MODIFICA & ELIMINA) */
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+}
+
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
 
 /* ==========================================================================
    MODALI E SELETTORE EMOJI COMPATTO SCORREVOLE

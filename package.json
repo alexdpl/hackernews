@@ -53,5 +53,12 @@
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "postinstall": "nuxi prepare",
+    "dkp:doctor": "tsx scripts/dkp-doctor.ts",
+    "dkp:fix": "tsx scripts/dkp-doctor.ts --fix"
   }
 }

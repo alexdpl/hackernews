@@ -7,99 +7,20 @@ useDkpSeo({
   description: 'Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente dal team DevKernelPulse.'
 })
 
-// --- 1. CARICAMENTO DATI (FETCH CATEGORIE E ARTICOLI) ---
+// --- 1. CARICAMENTO DATI DA NEON POSTGRESQL (100% REALI - NO MOCK) ---
 const { data: catResponse, pending: loadingCats } = await useFetch<any>('/api/blog/categories')
 const { data: postsResponse, pending: loadingPosts } = await useFetch<any>('/api/blog/posts')
 
-// Categorie Reali dal DB con Fallback Estetico
+// Categorie Reali dal DB
 const categories = computed(() => {
   const raw = catResponse.value?.data || (Array.isArray(catResponse.value) ? catResponse.value : [])
-  if (raw && raw.length > 0) return raw
-
-  return [
-    {
-      id: 1,
-      name: 'AI, LLM & Machine Learning',
-      slug: 'ai-llm-machine-learning',
-      icon: '🤖',
-      color: '#00dc82',
-      subcategories: [
-        { id: 101, name: 'LLM Architecture', slug: 'llm-architecture' },
-        { id: 102, name: 'Local AI & Ollama', slug: 'local-ai-ollama' },
-        { id: 103, name: 'AI Agents', slug: 'ai-agents' }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Cloud Native & DevOps',
-      slug: 'cloud-native-devops',
-      icon: '☁️',
-      color: '#38bdf8',
-      subcategories: [
-        { id: 201, name: 'Docker & Kubernetes', slug: 'docker-kubernetes' },
-        { id: 202, name: 'CI/CD Pipelines', slug: 'cicd-pipelines' }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Cybersecurity & Vault',
-      slug: 'cybersecurity-vault',
-      icon: '🛡️',
-      color: '#8b5cf6',
-      subcategories: [
-        { id: 301, name: 'Zero Trust', slug: 'zero-trust' },
-        { id: 302, name: 'Vault & Hashing', slug: 'vault-hashing' }
-      ]
-    }
-  ]
+  return Array.isArray(raw) ? raw : []
 })
 
-// Articoli Reali dal DB con Fallback Estetico
+// Articoli Reali dal DB
 const posts = computed(() => {
   const raw = postsResponse.value?.data || (Array.isArray(postsResponse.value) ? postsResponse.value : [])
-  if (raw && raw.length > 0) return raw
-
-  return [
-    {
-      id: 1,
-      title: 'Lancio Ufficiale DevKernelPulse v2.4-GOLD',
-      slug: 'lancio-ufficiale-dkp-v24',
-      category: 'Cloud Native & DevOps',
-      subCategory: 'CI/CD Pipelines',
-      author: 'Alessandro De Paola',
-      excerpt: 'Architettura rinnovata con Nuxt 4, Drizzle ORM e supporto nativo a Neon PostgreSQL per massimizzare le prestazioni.',
-      tags: ['Nuxt4', 'NeonPostgres', 'GCP', 'Release'],
-      date: '2026-09-28',
-      readTime: '5 min',
-      views: 1420
-    },
-    {
-      id: 2,
-      title: 'Guida Completa a Vault & Hashing Avanzato su GCP',
-      slug: 'guida-vault-hashing',
-      category: 'Cybersecurity & Vault',
-      subCategory: 'Vault & Hashing',
-      author: 'Alessandro De Paola',
-      excerpt: 'Metodologie di protezione del kernel e gestione avanzata delle chiavi crittografiche per ambienti cloud e serverless.',
-      tags: ['Security', 'Vault', 'Crypto', 'OAuth2'],
-      date: '2026-09-25',
-      readTime: '8 min',
-      views: 890
-    },
-    {
-      id: 3,
-      title: 'Esecuzione di LLM in Locale con Ollama & Nuxt 4 Modules',
-      slug: 'ollama-local-ai-nuxt4',
-      category: 'AI, LLM & Machine Learning',
-      subCategory: 'Local AI & Ollama',
-      author: 'Alessandro De Paola',
-      excerpt: 'Come integrare agenti IA e modelli trasformativi direttamente sulle tue macchine locali senza dipendenze cloud esterne.',
-      tags: ['Ollama', 'LocalAI', 'RAG', 'Python'],
-      date: '2026-10-02',
-      readTime: '6 min',
-      views: 650
-    }
-  ]
+  return Array.isArray(raw) ? raw : []
 })
 
 // --- 2. STATI DI FILTRAGGIO & RICERCA ---
@@ -107,23 +28,18 @@ const selectedCategory = ref<string | null>(null)
 const selectedSubcategory = ref<string | null>(null)
 const searchQuery = ref('')
 
-// Sottocategorie dinamiche della Categoria selezionata
-const activeSubcategories = computed(() => {
-  if (!selectedCategory.value) return []
-  const cat = categories.value.find((c: any) => c.name.toLowerCase() === selectedCategory.value?.toLowerCase())
-  return cat?.subcategories || []
-})
-
-function selectCategory(catName: string | null) {
-  selectedCategory.value = catName
-  selectedSubcategory.value = null
-}
-
-// Helper per gestire sia Categoria come Oggetto che come Stringa
+// Helper per estrarre in sicurezza il nome della categoria (sia oggetto DB che stringa)
 function getCategoryName(category: any): string {
   if (!category) return 'Generale'
-  if (typeof category === 'object') return category.name || 'Generale'
+  if (typeof category === 'object') return category.name || category.title || 'Generale'
   return String(category)
+}
+
+// Helper per estrarre in sicurezza la sottocategoria
+function getSubcategoryName(subCategory: any): string {
+  if (!subCategory) return ''
+  if (typeof subCategory === 'object') return subCategory.name || ''
+  return String(subCategory)
 }
 
 function getCategoryIcon(category: any): string {
@@ -142,23 +58,38 @@ function getCategoryStyle(category: any) {
   return {}
 }
 
-function getSubcategoryName(subCategory: any): string {
-  if (!subCategory) return ''
-  if (typeof subCategory === 'object') return subCategory.name || ''
-  return String(subCategory)
+// Sottocategorie dinamiche della Categoria selezionata
+const activeSubcategories = computed(() => {
+  if (!selectedCategory.value) return []
+
+  const cat = categories.value.find((c: any) => {
+    const cName = getCategoryName(c)
+    return cName.toLowerCase() === selectedCategory.value?.toLowerCase()
+  })
+
+  return cat?.subcategories || cat?.children || []
+})
+
+function selectCategory(catName: string | null) {
+  selectedCategory.value = catName
+  selectedSubcategory.value = null
 }
 
-// Filtro Articoli
+// --- 3. FILTRO ARTICOLI COMPATIBILE CON NEON DB ---
 const filteredPosts = computed(() => {
   return posts.value.filter((p: any) => {
-    const matchesCat = !selectedCategory.value || p.category?.toLowerCase() === selectedCategory.value.toLowerCase()
-    const matchesSub = !selectedSubcategory.value || p.subCategory?.toLowerCase() === selectedSubcategory.value.toLowerCase()
-    
+    // Normalizza la categoria e sottocategoria tramite gli helper
+    const catName = getCategoryName(p.category || p.categoryName)
+    const subName = getSubcategoryName(p.subCategory || p.subcategory || p.subcategoryName)
+
+    const matchesCat = !selectedCategory.value || catName.toLowerCase() === selectedCategory.value.toLowerCase()
+    const matchesSub = !selectedSubcategory.value || subName.toLowerCase() === selectedSubcategory.value.toLowerCase()
+
     const q = searchQuery.value.trim().toLowerCase()
-    const matchesSearch = !q || 
-      p.title.toLowerCase().includes(q) || 
-      p.excerpt.toLowerCase().includes(q) ||
-      (p.tags && p.tags.some((t: string) => t.toLowerCase().includes(q)))
+    const matchesSearch = !q ||
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.excerpt && p.excerpt.toLowerCase().includes(q)) ||
+      (Array.isArray(p.tags) && p.tags.some((t: string) => t.toLowerCase().includes(q)))
 
     return matchesCat && matchesSub && matchesSearch
   })
@@ -193,7 +124,7 @@ const filteredPosts = computed(() => {
             placeholder="Cerca notizie, guide o tag (es. #Nuxt4, #Security, #Ollama)..." 
             class="search-input"
           />
-          <button v-if="searchQuery" @click="searchQuery = ''" class="clear-search-btn">×</button>
+          <button v-if="searchQuery" @click="searchQuery = ''" class="clear-search-btn" type="button">×</button>
         </div>
       </div>
 
@@ -202,6 +133,7 @@ const filteredPosts = computed(() => {
         <button 
           @click="selectCategory(null)" 
           :class="['cat-btn', { active: selectedCategory === null }]"
+          type="button"
         >
           🔥 Tutti
         </button>
@@ -213,6 +145,7 @@ const filteredPosts = computed(() => {
           :key="cat.id" 
           @click="selectCategory(cat.name)"
           :class="['cat-btn', { active: selectedCategory === cat.name }]"
+          type="button"
         >
           <span class="cat-emoji">{{ cat.icon || '🏷️' }}</span>
           <span>{{ cat.name }}</span>
@@ -226,6 +159,7 @@ const filteredPosts = computed(() => {
           <button
             @click="selectedSubcategory = null"
             :class="['sub-btn', { active: selectedSubcategory === null }]"
+            type="button"
           >
             Tutte
           </button>
@@ -234,6 +168,7 @@ const filteredPosts = computed(() => {
             :key="sub.id || sub.name"
             @click="selectedSubcategory = sub.name"
             :class="['sub-btn', { active: selectedSubcategory === sub.name }]"
+            type="button"
           >
             {{ sub.name }}
           </button>
@@ -249,45 +184,42 @@ const filteredPosts = computed(() => {
         <div class="empty-icon">📂</div>
         <h3>Nessun articolo trovato</h3>
         <p>Non ci sono post disponibili per i filtri o la ricerca selezionata.</p>
-        <button @click="selectCategory(null); searchQuery = ''" class="btn-reset">Ripristina Filtri</button>
+        <button @click="selectCategory(null); searchQuery = ''" class="btn-reset" type="button">Ripristina Filtri</button>
       </div>
 
-      <!-- GRIGLIA ARTICOLI v2.4-GOLD -->
-      <div v-else class="posts-grid">
-        <article v-for="post in filteredPosts" :key="post.id" class="post-card">
-          <div class="post-meta">
-            <!-- CAT & SUBCAT BADGE PULITI CON EMOJI E COLORI ACCENT -->
-            <div class="cat-pill-group">
-              <span class="post-cat" :style="getCategoryStyle(post.category)">
-                {{ getCategoryIcon(post.category) }} {{ getCategoryName(post.category) }}
-              </span>
-              <span v-if="post.subcategory || post.subCategory" class="post-sub-cat">
-                → {{ getSubcategoryName(post.subcategory || post.subCategory) }}
-              </span>
-            </div>
-            <span class="post-date">📅 {{ post.date || post.createdAt?.slice(0, 10) }}</span>
-          </div>
+     <!-- GRIGLIA ARTICOLI v2.4-GOLD -->
+<div v-else class="blog-grid">
+  <article v-for="post in filteredPosts" :key="post.id" class="post-card">
+    <div class="card-header">
+      <span class="cat-badge">{{ getCategoryName(post.category) }}</span>
+      <span class="read-time">5 min</span>
+    </div>
 
+          <!-- Titolo Articolo -->
           <h2 class="post-title">
-            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="post-link">
+            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="title-link">
               {{ post.title }}
             </NuxtLink>
           </h2>
 
-          <p class="post-excerpt">{{ post.excerpt }}</p>
+          <!-- Estratto -->
+          <p class="post-excerpt">{{ post.excerpt || 'Nessuna anteprima disponibile.' }}</p>
 
           <!-- TAGS ROW -->
           <div v-if="post.tags && post.tags.length > 0" class="tags-row">
             <span v-for="tag in post.tags" :key="tag" class="tag-badge">#{{ tag }}</span>
           </div>
 
+          <!-- Footer Unificato (Autore, Data, Visualizzazioni e Bottone) -->
           <div class="post-footer">
-            <div class="author-views">
+            <div class="meta-info">
               <span class="post-author">👤 {{ post.authorName || post.author || 'Alessandro De Paola' }}</span>
+              <span class="post-date">📅 {{ post.date || (post.createdAt ? String(post.createdAt).slice(0, 10) : '') }}</span>
               <span v-if="post.views !== undefined" class="post-views">👁️ {{ post.views }}</span>
             </div>
+
             <NuxtLink :to="`/blog/${post.slug || post.id}`" class="read-more-btn">
-              Leggi Articolo ↗
+              Leggi articolo ↗
             </NuxtLink>
           </div>
         </article>
@@ -305,6 +237,7 @@ const filteredPosts = computed(() => {
 </template>
 
 <style scoped>
+/* CONTAINER GENERALE */
 .blog-container {
   min-height: 100vh;
   background-color: #020420;
@@ -373,7 +306,7 @@ const filteredPosts = computed(() => {
   margin: 0;
 }
 
-/* SEARCH BAR */
+/* BARRA DI RICERCA */
 .search-bar-wrapper {
   max-width: 650px;
   margin: 0 auto;
@@ -388,7 +321,7 @@ const filteredPosts = computed(() => {
   border: 1px solid #1e293b;
   border-radius: 12px;
   padding: 0.4rem 1rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .search-input-box:focus-within {
@@ -396,7 +329,10 @@ const filteredPosts = computed(() => {
   box-shadow: 0 0 15px rgba(0, 220, 130, 0.15);
 }
 
-.search-icon { font-size: 1.1rem; margin-right: 0.6rem; }
+.search-icon {
+  font-size: 1.1rem;
+  margin-right: 0.6rem;
+}
 
 .search-input {
   width: 100%;
@@ -415,9 +351,10 @@ const filteredPosts = computed(() => {
   font-size: 1.3rem;
   font-weight: 900;
   cursor: pointer;
+  padding: 0 0.2rem;
 }
 
-/* CATEGORIES BAR */
+/* BARRA CATEGORIE */
 .categories-bar {
   display: flex;
   justify-content: center;
@@ -453,10 +390,17 @@ const filteredPosts = computed(() => {
   box-shadow: 0 0 15px rgba(0, 220, 130, 0.15);
 }
 
-.cat-emoji { font-size: 1rem; }
-.loading-cats { font-size: 0.8rem; color: #64748b; font-family: monospace; }
+.cat-emoji {
+  font-size: 1rem;
+}
 
-/* SUBCATEGORIES BAR */
+.loading-cats {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* BARRA SOTTOCATEGORIE */
 .subcategories-bar {
   display: flex;
   flex-wrap: wrap;
@@ -471,15 +415,52 @@ const filteredPosts = computed(() => {
   margin: -0.5rem auto 0;
 }
 
-.sub-label { font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-right: 0.4rem; }
-.sub-btn { background: #020420; border: 1px solid #1e293b; color: #cbd5e1; padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
-.sub-btn:hover { border-color: #38bdf8; color: #38bdf8; }
-.sub-btn.active { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: #38bdf8; }
+.sub-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-right: 0.4rem;
+}
 
-/* POSTS GRID */
-.posts-grid {
-  display: flex;
-  flex-direction: column;
+.sub-btn {
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sub-btn:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.sub-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+/* TRANSAZIONE SOTTOCATEGORIE */
+.fade-sub-enter-active,
+.fade-sub-leave-active {
+  transition: all 0.25s ease;
+}
+.fade-sub-enter-from,
+.fade-sub-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* GRIGLIA ARTICOLI */
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
@@ -487,8 +468,11 @@ const filteredPosts = computed(() => {
   background: #090d16;
   border: 1px solid #1e293b;
   border-radius: 12px;
-  padding: 1.75rem;
+  padding: 1.5rem;
   color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   transition: all 0.25s ease-in-out;
 }
 
@@ -498,17 +482,15 @@ const filteredPosts = computed(() => {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 220, 130, 0.08);
 }
 
-.post-meta {
+/* CARD HEADER (Categoria + Tempo Lettura) */
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
   margin-bottom: 0.75rem;
 }
 
-.cat-pill-group { display: flex; align-items: center; gap: 0.4rem; }
-
-.post-cat {
+.cat-badge {
   color: #00dc82;
   font-weight: 800;
   background: rgba(0, 220, 130, 0.12);
@@ -518,18 +500,29 @@ const filteredPosts = computed(() => {
   font-size: 0.75rem;
 }
 
-.post-sub-cat { color: #38bdf8; font-size: 0.78rem; font-weight: 700; }
-.post-date { color: #64748b; font-size: 0.8rem; font-family: monospace; }
-
-.post-title {
-  font-size: 1.35rem;
-  font-weight: 800;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.4;
+.read-time {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-family: monospace;
 }
 
-.post-link { color: #ffffff; text-decoration: none; transition: color 0.2s; }
-.post-card:hover .post-link { color: #00dc82; }
+/* TITOLO & LINK */
+.post-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 0.75rem;
+}
+
+.title-link {
+  color: #ffffff;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.title-link:hover {
+  color: #38bdf8;
+}
 
 .post-excerpt {
   color: #94a3b8;
@@ -538,43 +531,148 @@ const filteredPosts = computed(() => {
   margin: 0 0 1rem 0;
 }
 
-.tags-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
-.tag-badge { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-family: monospace; }
+/* TAGS ROW */
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
 
+.tag-badge {
+  background: #020420;
+  color: #38bdf8;
+  border: 1px solid #1e293b;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+/* FOOTER UNIFICATO CARD */
 .post-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid #1e293b;
   padding-top: 1rem;
+  margin-top: auto;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.author-views { display: flex; align-items: center; gap: 1rem; }
-.post-author { color: #cbd5e1; font-size: 0.85rem; font-weight: 600; }
-.post-views { color: #64748b; font-size: 0.8rem; font-family: monospace; }
+.meta-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.post-author {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.post-date,
+.post-views {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
 
 .read-more-btn {
   color: #00dc82;
   text-decoration: none;
   font-weight: 800;
   font-size: 0.9rem;
-  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: all 0.2s ease;
 }
 
-.read-more-btn:hover { text-decoration: underline; opacity: 0.85; }
+.read-more-btn:hover {
+  color: #38bdf8;
+  transform: translateX(3px);
+}
 
-.loading-state, .no-posts {
+/* STATE SPINNER & NOT FOUND */
+.loading-state,
+.no-posts {
   text-align: center;
   color: #94a3b8;
   padding: 3rem 1rem;
 }
 
-.empty-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-.btn-reset { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer; margin-top: 1rem; }
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn-reset {
+  background: #00dc82;
+  color: #020420;
+  border: none;
+  font-weight: 800;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background 0.2s;
+}
+
+.btn-reset:hover {
+  background: #38bdf8;
+}
 
 /* FOOTER BADGE */
-.blog-footer-badge { display: flex; justify-content: center; margin-top: 1.5rem; }
-.pulse-nexus-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: #090d16; border: 1px solid #00dc82; padding: 0.4rem 0.9rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 800; color: #ffffff; }
-.pulse-nexus-badge .dot { width: 8px; height: 8px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 8px #00dc82; }
-.pulse-nexus-badge .ver { background: #00dc82; color: #020420; padding: 0.05rem 0.4rem; border-radius: 4px; font-size: 0.7rem; }
+.blog-footer-badge {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.pulse-nexus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #090d16;
+  border: 1px solid #00dc82;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.pulse-nexus-badge .dot {
+  width: 8px;
+  height: 8px;
+  background: #00dc82;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00dc82;
+}
+
+.pulse-nexus-badge .ver {
+  background: #00dc82;
+  color: #020420;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+  .blog-grid {
+    grid-template-columns: 1fr;
+  }
+  .post-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
 </style>

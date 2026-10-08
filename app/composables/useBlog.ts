@@ -76,56 +76,8 @@ export function useBlog() {
     }
   ])
 
-  const posts = useState<BlogPost[]>('blog_posts', () => [
-    {
-      id: '1',
-      title: 'Lancio Ufficiale DevKernelPulse v2.4-GOLD',
-      slug: 'lancio-ufficiale-dkp-v24',
-      category: 'Cloud Native & DevOps',
-      subCategory: 'CI/CD Pipelines',
-      excerpt: 'Architettura rinnovata con Nuxt 4, Drizzle ORM e supporto nativo a Neon PostgreSQL per massimizzare le prestazioni.',
-      content: 'Oggi segna una svolta epocale nello sviluppo software: rilasciamo ufficialmente il kernel di DKP v2.4-GOLD con Drizzle ORM e Neon PostgreSQL su Google Cloud Platform.',
-      author: 'Alessandro De Paola',
-      date: '2026-09-28',
-      readTime: '5 min',
-      views: 1420,
-      likes: 84,
-      tags: ['Nuxt4', 'NeonPostgres', 'GCP', 'Release'],
-      status: 'published'
-    },
-    {
-      id: '2',
-      title: 'Guida Completa a Vault & Hashing Avanzato su GCP',
-      slug: 'guida-vault-hashing',
-      category: 'Cybersecurity & Vault',
-      subCategory: 'Vault & Hashing',
-      excerpt: 'Metodologie di protezione del kernel e gestione avanzata delle chiavi crittografiche per ambienti cloud e serverless.',
-      content: 'La protezione dei dati riservati necessita di chiavi ad alto valore entropico e verifica della firma digitale Proof of Code.',
-      author: 'Alessandro De Paola',
-      date: '2026-09-25',
-      readTime: '8 min',
-      views: 890,
-      likes: 56,
-      tags: ['Security', 'Vault', 'Crypto', 'OAuth2'],
-      status: 'published'
-    },
-    {
-      id: '3',
-      title: 'Esecuzione di LLM in Locale con Ollama & Nuxt 4 Modules',
-      slug: 'ollama-local-ai-nuxt4',
-      category: 'AI, LLM & Machine Learning',
-      subCategory: 'Local AI & Ollama',
-      excerpt: 'Come integrare agenti IA e modelli trasformativi direttamente sulle tue macchine locali senza dipendenze cloud esterne.',
-      content: 'Integrazione di agenti intelligenti e modelli di linguaggio locali direttamente tramite API REST e WebSocket in Nuxt 4.',
-      author: 'Alessandro De Paola',
-      date: '2026-10-02',
-      readTime: '6 min',
-      views: 650,
-      likes: 39,
-      tags: ['Ollama', 'LocalAI', 'RAG', 'Python'],
-      status: 'published'
-    }
-  ])
+  const posts = useState<BlogPost[]>('blog_posts', () => [ ]
+  )
 
   const isLoading = useState<boolean>('blog_loading', () => false)
 

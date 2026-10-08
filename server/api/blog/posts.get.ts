@@ -1,10 +1,9 @@
 // server/api/blog/posts.get.ts
-import { defineEventHandler, getQuery, createError } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { blogPosts } from '~~/server/db/schema'
 
-// Utility per estrarre i Query Parameters in sicurezza senza crash SSR su URL relativi
 function getSafeQuery(event: any): Record<string, any> {
   try {
     return getQuery(event) || {}
@@ -29,10 +28,9 @@ export default defineEventHandler(async (event) => {
     const db = getDb()
     let postsList: any[] = []
 
-    // 1. Recupera gli articoli pubblicati dal DB Neon
     if (db.query && db.query.blogPosts) {
       postsList = await db.query.blogPosts.findMany({
-        where: eq(blogPosts.status, 'published'),
+        where: query.public === 'true' ? eq(blogPosts.status, 'published') : undefined,
         orderBy: [desc(blogPosts.createdAt)],
         with: {
           category: true,
@@ -50,71 +48,64 @@ export default defineEventHandler(async (event) => {
       postsList = await db
         .select()
         .from(blogPosts)
-        .where(eq(blogPosts.status, 'published'))
         .orderBy(desc(blogPosts.createdAt))
     }
 
-    // 2. Se il DB è in prima inizializzazione o privo di righe, usa i fallback
-    if (!postsList || postsList.length === 0) {
-      postsList = defaultFallbackPosts
-    }
-
-    // 3. Filtro Categoria e Sottocategoria
     let filteredPosts = [...postsList]
 
+    // Filtro Categoria
     if (categorySlug) {
       filteredPosts = filteredPosts.filter(
-        (p) => p.category?.slug === categorySlug || String(p.categoryId) === categorySlug
+        (p) => p.category?.slug === categorySlug || String(p.categoryId) === categorySlug || p.category?.name?.toLowerCase() === categorySlug.toLowerCase()
       )
     }
 
+    // Filtro Sottocategoria
     if (subcategorySlug) {
       filteredPosts = filteredPosts.filter(
-        (p) => p.subcategory?.slug === subcategorySlug || String(p.subcategoryId) === subcategorySlug
+        (p) => p.subcategory?.slug === subcategorySlug || String(p.subcategoryId) === subcategorySlug || p.subcategory?.name?.toLowerCase() === subcategorySlug.toLowerCase()
       )
     }
 
-    return {
-      success: true,
-      data: filteredPosts,
-      total: filteredPosts.length,
-    }
-  } catch (error: any) {
-    console.error('Errore durante il recupero dei post del blog:', error)
+    // NORMALIZZAZIONE DATI PER IL FRONTEND
+    const normalizedPosts = filteredPosts.map((p) => {
+      const catName = p.category?.name || 'Generale'
+      const subName = p.subcategory?.name || ''
+      const authorName = p.author?.username || 'Alessandro De Paola'
+
+      // Tag sempre garantiti come Array di stringhe
+      let tagsArray: string[] = []
+      if (Array.isArray(p.tags)) {
+        tagsArray = p.tags
+      } else if (typeof p.tags === 'string') {
+        try { tagsArray = JSON.parse(p.tags) } catch { tagsArray = [] }
+      }
+
+      return {
+        ...p,
+        category: catName,              // Evita il JSON grezzo nel badge <span class="cat-badge">
+        categoryName: catName,          // Per retrocompatibilità
+        categoryObject: p.category,    // Mantiene l'oggetto se servono icona o colore
+        subCategory: subName,          // Stringa pulita per la sottocategoria
+        subcategoryName: subName,
+        subcategoryObject: p.subcategory,
+        authorName: authorName,
+        tags: tagsArray
+      }
+    })
 
     return {
       success: true,
-      data: defaultFallbackPosts,
-      total: defaultFallbackPosts.length,
-      warning: 'Fallback attivo: ' + error.message,
+      data: normalizedPosts,
+      total: normalizedPosts.length,
+    }
+  } catch (error: any) {
+    console.error('Errore durante il recupero dei post dal DB Neon:', error)
+    return {
+      success: false,
+      data: [],
+      total: 0,
+      error: error.message,
     }
   }
 })
-
-// Dataset dimostrativo di Fallback locale
-const defaultFallbackPosts = [
-  {
-    id: 1,
-    title: "Lancio Ufficiale DevKernelPulse v2.4-GOLD",
-    slug: "lancio-ufficiale-devkernelpulse-v24-gold",
-    excerpt: "Panoramica dell'architettura DKP e dei moduli difensivi.",
-    status: "published",
-    isVerified: true,
-    vaultCertificateId: "DKP-VAULT-CERT-884A29-2026",
-    views: 1420,
-    createdAt: new Date().toISOString(),
-    category: { id: 1, name: "AI, LLM & Machine Learning", slug: "ai-llm-machine-learning", icon: "🤖", color: "#00dc82" },
-  },
-  {
-    id: 2,
-    title: "Guida Completa a Vault & Hashing Avanzato su GCP",
-    slug: "guida-completa-vault-hashing-avanzato",
-    excerpt: "Metodologie di protezione del kernel e gestione avanzata delle chiavi crittografiche per ambienti cloud e serverless.",
-    status: "published",
-    isVerified: true,
-    vaultCertificateId: "DKP-VAULT-CERT-112F88-2026",
-    views: 890,
-    createdAt: new Date().toISOString(),
-    category: { id: 2, name: "Cybersecurity & Vault", slug: "cybersecurity-vault", icon: "🛡️", color: "#38bdf8" },
-  }
-]

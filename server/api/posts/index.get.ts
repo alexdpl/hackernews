@@ -1,47 +1,33 @@
-// server/api/posts.get.ts
-import { neon } from '@neondatabase/serverless'
+// server/api/posts/index.get.ts
+import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { eq, desc } from 'drizzle-orm'
+import { getdb } from '~~/server/utils/db'
+import { blogPosts, blogCategories } from '~~/server/db/schema'
 
-export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const dbUrl = config.databaseUrl || process.env.DATABASE_URL
-
-  if (!dbUrl) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'DATABASE_URL non configurata nel file .env'
-    })
-  }
-
-  const sql = neon(dbUrl)
-
+export default defineEventHandler(async () => {
   try {
-    // Query SQL diretta blindata con JOIN sicuro
-    const rawPosts = await sql`
-      SELECT 
-        p.id,
-        p.title,
-        p.url,
-        p.content,
-        p.points,
-        p.created_at,
-        p.user_id,
-        COALESCE(u.username, 'alexdpl') as author,
-        COALESCE(u.role, 'admin') as author_role
-      FROM posts p
-      LEFT JOIN users u ON p.user_id = u.id
-      ORDER BY p.created_at DESC
-      LIMIT 100;
-    `
+    const posts = await db
+      .select({
+        id: blogPosts.id,
+        title: blogPosts.title,
+        slug: blogPosts.slug,
+        excerpt: blogPosts.excerpt,
+        status: blogPosts.status,
+        views: blogPosts.views,
+        likes: blogPosts.likes,
+        createdAt: blogPosts.createdAt,
+        categoryId: blogPosts.categoryId,
+        category: blogCategories.name
+      })
+      .from(blogPosts)
+      .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
+      .orderBy(desc(blogPosts.createdAt))
 
-    return {
-      success: true,
-      data: rawPosts
-    }
+    return posts
   } catch (error: any) {
-    console.error('Errore Fetch News Feed:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: `Errore caricamento feed notizie: ${error.message || error}`
+      statusMessage: `Errore caricamento lista articoli: ${error.message}`
     })
   }
 })
