@@ -1,10 +1,11 @@
 <!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+const currentYear = new Date().getFullYear()
 
 useDkpSeo({
-  title: 'Roadmap Ecosistema 2026 v2.4-GOLD - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: AI Repo Scanner con Rank Reputazione S-Tier, Agente Pulse Nexus v2.4, DKP CLI, CI/CD e Gamification XP.'
+  title: 'Roadmap Ecosistema 2026 v2.5-BETA - DevKernelPulse',
+  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: Firewall Live SSE, Code Vault Blog Engine, API Key Management, AI Repo Scanner e Gamification XP.'
 })
 
 interface RoadmapMilestone {
@@ -54,17 +55,17 @@ const milestones = ref<RoadmapMilestone[]>([
   {
     id: 'q3-2026',
     quarter: 'Q3 2026',
-    phaseTitle: 'Automation CI/CD, E2E Testing & Stripe Checkout',
+    phaseTitle: 'Firewall Live SSE, Code Vault Blog & Enterprise Security',
     version: 'v2.5-BETA',
     status: 'in-progress',
-    progress: 85,
-    description: 'Infrastruttura di Quality Assurance automatizzata con GitHub Actions e Playwright E2E, sblocco della leaderboard VIP e sistema di checkout Stripe per lo Shop.',
+    progress: 92,
+    description: 'Rilascio delle tecnologie di sicurezza in tempo reale con Firewall Live SSE, potenziamento del Blog Engine con Code Vault & Zen Mode, e gestione avanzata API Key.',
     features: [
-      'Pipeline CI/CD con GitHub Actions per build & test automatici (Completato)',
-      'Suite di test End-to-End (E2E) con Playwright & Vitest (Completato)',
-      'Workflow contributivo open-source con CONTRIBUTING.md (Completato)',
-      'Leaderboard pubblica VIP Developers DKP basata su XP',
-      'Stripe & PayPal Checkout per acquisto istantaneo licenze'
+      'Firewall di Sicurezza con streaming Live SSE (Server-Sent Events) (Completato)',
+      'Blog Engine Pro con Code Vault, Tabelle Markdown & Zen Mode Fullscreen (Completato)',
+      'API Key Management con Rate Limiting Nitro Enterprise (Completato)',
+      'Pipeline CI/CD con GitHub Actions e test E2E Playwright (Completato)',
+      'Stripe & PayPal Checkout per acquisto istantaneo licenze Shop (In Corso)'
     ]
   },
   {
@@ -77,9 +78,9 @@ const milestones = ref<RoadmapMilestone[]>([
     description: 'Rilascio dell SDK pubblico npm per consentire a sviluppatori terzi di integrare i microservizi DKP nelle proprie architetture SaaS.',
     features: [
       'Rilascio pacchetto npm @devkernelpulse/sdk',
-      'API Key Management con Rate Limiting Nitro Enterprise',
       'Integrazione LLM Custom nel Neural Playground',
-      'Federazione Multi-Tenant per installazioni On-Premise'
+      'Federazione Multi-Tenant per installazioni On-Premise',
+      'Leaderboard pubblica VIP Developers DKP basata su XP'
     ]
   }
 ])
@@ -105,7 +106,7 @@ const overallCompletion = computed(() => {
       <div class="hero-badge">
         <span class="badge-status gold">🚀 DKP ECOSYSTEM ROADMAP 2026</span>
       </div>
-      <h1>Piano di Sviluppo & <span class="highlight">Vision v2.4-GOLD</span></h1>
+      <h1>Piano di Sviluppo & <span class="highlight">Vision v2.5-BETA</span></h1>
       <p class="subtitle">
         Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA e rilasci dell ecosistema DevKernelPulse.
       </p>
@@ -370,7 +371,7 @@ const overallCompletion = computed(() => {
 }
 
 .status-badge.completed { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
+.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: finup; color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
 .status-badge.upcoming { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
 
 .milestone-title { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.6rem 0; color: #ffffff; }

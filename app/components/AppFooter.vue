@@ -25,7 +25,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
             <NuxtLink :to="getMainUrl('/news')" external>☁️ Tech News Feed</NuxtLink>
           </li>
           <li>
-            <NuxtLink :to="getMainUrl('/blog')" external>📰 DKP Blog & Release Notes</NuxtLink>
+            <NuxtLink :to="getMainUrl('/blog')" external>📰 DKP Blog & Release Notes <span class="new-tag">v2.5</span></NuxtLink>
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/jobs')" external>💼 DKP Jobs Hub Center</NuxtLink>
@@ -53,7 +53,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
             <NuxtLink :to="getMainUrl('/tools/proof-of-code')" external>🛡️ Proof of Code (Vault)</NuxtLink>
           </li>
           <li>
-            <NuxtLink :to="getMainUrl('/tools/ai-scanner')" external>🔍 AI Code Scanner v2.3</NuxtLink>
+            <NuxtLink :to="getMainUrl('/tools/ai-scanner')" external>🔍 AI Code Scanner</NuxtLink>
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/tools/terminal')" external>💻 Terminal Web Shell</NuxtLink>
@@ -62,7 +62,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
             <NuxtLink :to="getMainUrl('/tools/neural-playground')" external>🧠 Neural Playground</NuxtLink>
           </li>
           <li>
-            <NuxtLink :to="getMainUrl('/tools/cli-toolkit')" external>⚡ DKP CLI Toolkit <span class="new-tag">v2.4-GOLD</span></NuxtLink>
+            <NuxtLink :to="getMainUrl('/tools/cli-toolkit')" external>⚡ DKP CLI Toolkit</NuxtLink>
           </li>
         </ul>
       </div>
@@ -75,9 +75,12 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
             <NuxtLink :to="getMainUrl('/user/dashboard?tab=api')" external class="highlight-link">🔑 DKP API Console</NuxtLink>
           </li>
           <li>
-            <NuxtLink :to="getMainUrl('/docs/api')" external>📖 Documentazione API (OpenAPI)</NuxtLink>
+            <NuxtLink :to="getMainUrl('/docs/api')" external>📖 Documentazione DKP API</NuxtLink>
           </li>
           <li>
+            <NuxtLink :to="getMainUrl('/docs/cli-automation')" external>🧬  DKP CLI & Local Automation</NuxtLink>
+          </li>
+		  <li>
             <NuxtLink :to="getMainUrl('/docs/sdk')" external>⚙️ SDK & Guida Integrazione</NuxtLink>
           </li>
           <li>
