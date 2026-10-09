@@ -1,18 +1,8 @@
 <!-- app/components/blog/DkpEditor.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
-// Aggiungi questo in alto insieme agli altri watch
-import { nextTick } from 'vue';
 
-watch(parsedContent, async () => {
-  // Aspetta che il DOM si aggiorni
-  await nextTick();
-  // Se Prism è stato caricato dal CDN, digli di ri-processare la pagina
-  if (window.Prism) {
-    window.Prism.highlightAll();
-  }
-});
 const props = defineProps<{
   modelValue?: {
     title: string
@@ -303,6 +293,16 @@ const parsedContent = computed(() => {
 
   return parsedHtml
 })
+
+// === ORA SI CHE FUNZIONA! ===
+// Il watch viene dichiarato DOPO che parsedContent esiste!
+watch(parsedContent, async () => {
+  await nextTick();
+  // Se Prism è stato caricato dal CDN
+  if (typeof window !== 'undefined' && window.Prism) {
+    window.Prism.highlightAll();
+  }
+});
 </script>
 
 <template>
@@ -403,8 +403,8 @@ const parsedContent = computed(() => {
           <div class="tool-divider"></div>
           
           <div class="tool-group">
-            <button type="button" @click="insertFormatting('bullet')" class="tool-icon-btn symbol-btn" title="Elenco Puntato">•</button>
-            <button type="button" @click="insertFormatting('number')" class="tool-icon-btn symbol-btn" title="Elenco Numerato">1.</button>
+            <button type="button" @click="insertList('bullet')" class="tool-icon-btn symbol-btn" title="Elenco Puntato">•</button>
+            <button type="button" @click="insertList('number')" class="tool-icon-btn symbol-btn" title="Elenco Numerato">1.</button>
             <button type="button" @click="insertFormatting('> ')" class="tool-icon-btn symbol-btn" title="Citazione">”</button>
             <button type="button" @click="insertFormatting('\n---\n')" class="tool-icon-btn symbol-btn" title="Linea Orizzontale">—</button>
           </div>
@@ -424,7 +424,7 @@ const parsedContent = computed(() => {
             <button type="button" @click="insertFormatting('\n```\n', '\n```\n')" class="tool-icon-btn code-font" title="Blocco Codice">{ }</button>
           <!-- TASTO ZEN MODE -->
             <button type="button" @click="toggleZenMode" :class="['tool-icon-btn text-emerald-400', { 'text-emerald-400': isZenMode }]" :title="isZenMode ? 'Esci da Zen Mode' : 'Zen Mode (Fullscreen)'"> {{ isZenMode ? '↙️' : '🗖' }}</button>
-		  </div>
+          </div>
         </div>
       </div>
 
@@ -435,7 +435,7 @@ const parsedContent = computed(() => {
           v-model="content" 
           class="markdown-textarea"
           placeholder="Inizia a scrivere il tuo articolo professionale qui..."
-		  @keydown.enter="handleEnter"
+          @keydown.enter="handleEnter"
         ></textarea>
       </div>
 
