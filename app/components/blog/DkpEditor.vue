@@ -26,13 +26,11 @@ const content = ref(props.modelValue?.content || '')
 const activeTab = ref<'write' | 'preview'>('write')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
-// --- NUOVO: Stato Zen Mode ---
+// --- Stato Zen Mode ---
 const isZenMode = ref(false)
 
 function toggleZenMode() {
   isZenMode.value = !isZenMode.value
-  
-  // Blocca lo scroll del body quando si è in Zen Mode (opzionale ma consigliato per evitare scorrimenti doppi)
   if (isZenMode.value) {
     document.body.style.overflow = 'hidden'
   } else {
@@ -40,13 +38,11 @@ function toggleZenMode() {
   }
 }
 
-// Assicuriamoci di sbloccare il body se il componente viene distrutto
 onUnmounted(() => {
   document.body.style.overflow = ''
 })
-// ------------------------------
 
-// Sincronizzazione Reattiva con il Padre
+// Sincronizzazione
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     title.value = newVal.title || ''
@@ -112,7 +108,6 @@ function insertFormatting(prefix: string, suffix: string = '') {
   }, 0)
 }
 
-// NUOVA FUNZIONE: Formattazione intelligente per le liste (singole o multiple)
 function insertList(type: 'bullet' | 'number') {
   const textarea = textareaRef.value
   if (!textarea) return
@@ -126,15 +121,12 @@ function insertList(type: 'bullet' | 'number') {
 
   let newText = ''
   if (selectedText) {
-    // Se l'utente ha selezionato più righe, le formattiamo tutte insieme!
     const lines = selectedText.split('\n')
     newText = lines.map((line, index) => {
-      // Pulisce la riga se era già una lista, così non facciamo doppioni (es. "- - Ciao")
       const cleanLine = line.replace(/^(\s*)(\d+\.|-)\s+/, '$1')
       return type === 'number' ? `${index + 1}. ${cleanLine}` : `- ${cleanLine}`
     }).join('\n')
   } else {
-    // Nessun testo selezionato: prepariamo la lista
     newText = type === 'number' ? '1. ' : '- '
   }
 
@@ -147,7 +139,6 @@ function insertList(type: 'bullet' | 'number') {
   }, 0)
 }
 
-// NUOVA FUNZIONE: Autocompilazione liste quando si preme INVIO
 function handleEnter(e: KeyboardEvent) {
   const textarea = textareaRef.value
   if (!textarea) return
@@ -155,19 +146,17 @@ function handleEnter(e: KeyboardEvent) {
   const start = textarea.selectionStart
   const textBeforeCursor = content.value.substring(0, start)
   const lines = textBeforeCursor.split('\n')
-  const lastLine = lines[lines.length - 1] // Prendiamo l'ultima riga scritta
+  const lastLine = lines[lines.length - 1] 
   
-  // Controlliamo con regex se l'ultima riga è una lista numerata o puntata
   const numberMatch = lastLine.match(/^(\s*)(\d+)\.\s+(.*)$/)
   const bulletMatch = lastLine.match(/^(\s*)-\s+(.*)$/)
   
   if (numberMatch || bulletMatch) {
-    e.preventDefault() // Blocca l'invio standard
+    e.preventDefault() 
     
     const spaces = numberMatch ? numberMatch[1] : bulletMatch![1]
     const textContent = numberMatch ? numberMatch[3] : bulletMatch![2]
     
-    // Se l'utente ha premuto Invio su una riga vuota, USCIAMO DALLA LISTA
     if (!textContent.trim()) {
        const beforeWithoutLastLine = content.value.substring(0, start - lastLine.length)
        const after = content.value.substring(textarea.selectionEnd)
@@ -179,11 +168,10 @@ function handleEnter(e: KeyboardEvent) {
        return
     }
     
-    // Altrimenti, CONTINUIAMO LA LISTA in automatico
     let prefix = ''
     if (numberMatch) {
       const currentNum = parseInt(numberMatch[2], 10)
-      prefix = `\n${spaces}${currentNum + 1}. ` // Incrementa il numero (es. da 1. a 2.)
+      prefix = `\n${spaces}${currentNum + 1}. ` 
     } else {
       prefix = `\n${spaces}- `
     }
@@ -202,17 +190,34 @@ function handleEnter(e: KeyboardEvent) {
 const parsedContent = computed(() => {
   if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...</p>'
   
-  // 1. Escape base
-  let html = content.value
+  let rawContent = content.value;
+  const codeBlocks: string[] = [];
+  
+  // 1. ISOLIAMO I BLOCCHI DI CODICE
+  rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
+    const index = codeBlocks.length;
+    const cleanLang = lang ? lang.trim().toLowerCase() : '';
+    const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
+    const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn">📋</button></div>` : '';
+    
+    // Escape dei soli tag HTML dentro il codice per Prism
+    const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    
+    codeBlocks.push(`<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${escapedCode}</code></pre></div>`);
+    
+    return `__DKP_CODE_BLOCK_${index}__`;
+  });
+
+  // 2. Escape globale
+  let html = rawContent
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
 
-  // 2. Ripristiniamo l'html custom
   html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, "<div class='dkp-custom-html'>")
   html = html.replace(/&lt;\/div&gt;/g, "</div>")
 
-  // 3. Parser Tabelle
+  // 3. Tabelle
   html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
     const cells = p1.split('|').map(c => c.trim())
     if (cells.every(c => /^:?-+:?$/.test(c))) return '' 
@@ -224,15 +229,7 @@ const parsedContent = computed(() => {
     return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
   })
 
-  // 4. Parser Blocchi Codice Avanzato (Rileva il linguaggio)
-  // Cerca: ```linguaggio (opzionale) \n codice \n ```
-  html = html.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
-    const languageClass = lang ? `language-${lang.toLowerCase()}` : 'language-none';
-    const languageLabel = lang ? `<div class="dkp-code-header"><span>${lang}</span><button class="dkp-copy-btn">📋</button></div>` : '';
-    return `<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${code}</code></pre></div>`;
-  });
-
-  // 5. Inline Code (Parola nel quadrato) e Formattazione Base
+  // 4. Inline
   html = html
     .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
@@ -240,7 +237,7 @@ const parsedContent = computed(() => {
     .replace(/~~(.*?)~~/g, '<del>$1</del>') 
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1</a>') 
 
-  // 6. Parser Titoli e Blockquote
+  // 5. Titoli
   html = html
     .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
     .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1</h2>')
@@ -248,25 +245,29 @@ const parsedContent = computed(() => {
     .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
     .replace(/^---$/gm, '<hr class="dkp-hr" />')
 
-  // 7. Parser Liste (Livello 1 e Livello 2)
-  // Prima processiamo il livello 2 (spazio + punto)
-  html = html.replace(/^[ \t]+- (.*?)\r?$/gm, '<li class="dkp-li-nested">$1</li>')
-  html = html.replace(/^[ \t]+[0-9]+\. (.*?)\r?$/gm, '<li class="dkp-li-nested dkp-li-num">$1</li>')
+  // 6. LISTE (Regex semplificate e funzionanti)
+  // Processa le liste annidate (che iniziano con 2+ spazi o tab)
+  html = html.replace(/^( {2,}|\t+)- (.*?)\r?$/gm, '<li class="dkp-li-nested">$2</li>')
+  html = html.replace(/^( {2,}|\t+)[0-9]+\. (.*?)\r?$/gm, '<li class="dkp-li-nested dkp-li-num">$2</li>')
   
-  // Poi il livello 1
-  html = html.replace(/^- (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
+  // Processa le liste principali (che NON iniziano con spazio)
+  html = html.replace(/^-(?!\S) (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
   html = html.replace(/^[0-9]+\. (.*?)\r?$/gm, '<ol><li class="dkp-li-main">$1</li></ol>')
   
-  // Uniamo liste contigue per evitare ul/ul multipli (anche se ci sono nested in mezzo)
+  // Rimuovi ul/ol contigui 
   html = html.replace(/<\/ul>\s*(<li class="dkp-li-nested[^>]*>.*?<\/li>\s*)*<ul>/g, (match) => {
-      // Togliamo i tag di chiusura/apertura ul e lasciamo gli li interni
       return match.replace(/<\/ul>\s*/, '').replace(/<ul>/, '');
   });
   html = html.replace(/<\/ol>\s*(<li class="dkp-li-nested[^>]*>.*?<\/li>\s*)*<ol>/g, (match) => {
       return match.replace(/<\/ol>\s*/, '').replace(/<ol>/, '');
   });
 
-  // 8. Gestione Finale degli "A Capo"
+  // 7. Reinseriamo il codice
+  codeBlocks.forEach((block, index) => {
+    html = html.replace(`__DKP_CODE_BLOCK_${index}__`, block);
+  });
+
+  // 8. Gestione Finale "A Capo"
   let lines = html.split(/\r?\n/);
   let parsedHtml = '';
   let inCodeBlock = false;
@@ -278,7 +279,7 @@ const parsedContent = computed(() => {
      if (line.includes('</div>') && inCodeBlock && !line.includes('<div class="dkp-code-header">')) inCodeBlock = false;
 
      if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li)/.test(line.trim())) {
-        parsedHtml += line + '\n'; // Manteniamo i \n originali nei blocchi di codice
+        parsedHtml += line + '\n'; 
      } else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line.trim())) {
          parsedHtml += line + '\n';
      } else {
@@ -294,27 +295,30 @@ const parsedContent = computed(() => {
   return parsedHtml
 })
 
-// === SUPER-TRIGGER PER PRISM ===
-// Guarda sia i cambiamenti del testo, sia i cambi di Tab!
+// === PRISMJS TRICK INFALLIBILE ===
+// Usiamo un piccolo intervallo per assicurarci che Prism catturi le nuove classi DOM
+let prismTimer: any = null;
+const applyPrism = () => {
+  if (typeof window !== 'undefined' && (window as any).Prism) {
+    clearTimeout(prismTimer);
+    prismTimer = setTimeout(() => {
+      (window as any).Prism.highlightAll();
+    }, 50); // Attesa di 50ms post-render
+  }
+};
+
 watch([parsedContent, activeTab], async () => {
   await nextTick();
-  if (typeof window !== 'undefined' && window.Prism) {
-    window.Prism.highlightAll();
-  }
+  applyPrism();
 });
 
-// Assicuriamoci che parta anche appena il componente viene caricato
-onMounted(async () => {
-  await nextTick();
-  if (typeof window !== 'undefined' && window.Prism) {
-    window.Prism.highlightAll();
-  }
+onMounted(() => {
+  applyPrism();
 });
 </script>
 
 <template>
   <div class="dkp-editor-wrapper">
-    <!-- Form Campi Primari -->
     <div class="editor-fields-grid">
       <div class="field-group full-width">
         <label class="field-label">TITOLO DELL'ARTICOLO *</label>
@@ -366,13 +370,8 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Area Markdown & Preview (Con classe condizionale per Zen Mode) -->
     <div :class="['editor-body-box', { 'zen-mode-active': isZenMode }]">
-      
-      <!-- Toolbar Estesa -->
       <div class="toolbar-bar">
-        
-        <!-- Controlli Tab -->
         <div class="tab-switch-group">
           <button 
             type="button"
@@ -390,9 +389,7 @@ onMounted(async () => {
           </button>
         </div>
 
-        <!-- Bottoni Formattazione -->
         <div v-show="activeTab === 'write'" class="formatting-tools">
-          
           <div class="tool-group">
             <button type="button" @click="insertFormatting('# ')" class="tool-icon-btn" title="Titolo 1">H1</button>
             <button type="button" @click="insertFormatting('## ')" class="tool-icon-btn" title="Titolo 2">H2</button>
@@ -429,13 +426,11 @@ onMounted(async () => {
           <div class="tool-group">
             <button type="button" @click="insertFormatting('`', '`')" class="tool-icon-btn code-font" title="Codice Inline">`</button>
             <button type="button" @click="insertFormatting('\n```\n', '\n```\n')" class="tool-icon-btn code-font" title="Blocco Codice">{ }</button>
-          <!-- TASTO ZEN MODE -->
             <button type="button" @click="toggleZenMode" :class="['tool-icon-btn text-emerald-400', { 'text-emerald-400': isZenMode }]" :title="isZenMode ? 'Esci da Zen Mode' : 'Zen Mode (Fullscreen)'"> {{ isZenMode ? '↙️' : '🗖' }}</button>
           </div>
         </div>
       </div>
 
-      <!-- Textarea Markdown (Altezza riportata a valori normali) -->
       <div v-show="activeTab === 'write'" class="textarea-container">
         <textarea 
           ref="textareaRef"
@@ -446,7 +441,6 @@ onMounted(async () => {
         ></textarea>
       </div>
 
-      <!-- Area Live Preview (Altezza riportata a valori normali) -->
       <div v-show="activeTab === 'preview'" class="preview-container">
         <div class="dkp-preview-content" v-html="parsedContent"></div>
       </div>
@@ -456,11 +450,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-
-/* --- INLINE CODE (Parola nel quadrato) --- */
 :deep(.dkp-inline-code) { 
-  background-color: rgba(30, 41, 59, 0.8); /* Colore scuro stile terminale */
-  color: #e2e8f0; /* Testo chiaro */
+  background-color: rgba(30, 41, 59, 0.8); 
+  color: #e2e8f0; 
   padding: 0.2rem 0.4rem; 
   border-radius: 6px; 
   font-family: 'Fira Code', Consolas, monospace; 
@@ -468,7 +460,6 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* --- LISTE E NIDIFICAZIONI --- */
 :deep(.dkp-preview-content ul), :deep(.dkp-preview-content ol) { 
   padding-left: 1.5rem; 
   margin: 0.8rem 0; 
@@ -477,13 +468,12 @@ onMounted(async () => {
 :deep(.dkp-preview-content ul) { list-style-type: none; }
 :deep(.dkp-preview-content ol) { list-style-type: decimal; }
 
-/* Lista Principale (Cerchio vuoto o normale) */
 :deep(.dkp-li-main) { 
   margin-bottom: 0.4rem; 
   position: relative;
 }
 :deep(ul > .dkp-li-main::before) {
-  content: '○'; /* Cerchio vuoto stile DKP */
+  content: '○';
   color: #38bdf8;
   position: absolute;
   left: -1.2rem;
@@ -491,24 +481,22 @@ onMounted(async () => {
   font-weight: bold;
 }
 
-/* Lista Nidificata (Spazio + Punto) */
 :deep(.dkp-li-nested) { 
-  margin-left: 1.5rem; /* Rientro per la nidificazione */
+  margin-left: 1.5rem; 
   margin-bottom: 0.3rem; 
-  color: #94a3b8; /* Colore leggermente più tenue */
+  color: #94a3b8; 
   position: relative;
 }
 :deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) {
-  content: '▪'; /* Quadratino o trattino per il sub-elenco */
+  content: '▪'; 
   color: #00dc82;
   position: absolute;
   left: -1.2rem;
   top: 0;
 }
 
-/* --- BLOCCHI DI CODICE PRO (Con Header) --- */
 :deep(.dkp-code-wrapper) {
-  background: #0d1117; /* Sfondo scuro github-style */
+  background: #0d1117; 
   border: 1px solid #1e293b;
   border-radius: 8px;
   overflow: hidden;
@@ -549,24 +537,17 @@ onMounted(async () => {
 }
 :deep(.dkp-code-block code) {
   font-family: 'Fira Code', 'Courier New', Courier, monospace; 
-  color: #c9d1d9; /* Testo default chiaro */
+  color: #c9d1d9; 
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-/* Basic Syntax Highlighting Fallback (Se non usi librerie esterne) */
-:deep(.dkp-code-block code span.keyword) { color: #ff7b72; }
-:deep(.dkp-code-block code span.string) { color: #a5d6ff; }
-:deep(.dkp-code-block code span.function) { color: #d2a8ff; }
-:deep(.dkp-code-block code span.comment) { color: #8b949e; font-style: italic; }
-
-/* WRAPPER PRINCIPALE CON SCROLL (Abbassato il max-height per far vedere i bottoni inferiori) */
 .dkp-editor-wrapper { 
   display: flex; 
   flex-direction: column; 
   gap: 1rem; 
   width: 100%; 
-  max-height: 67vh; /* Ridotto per mostrare chiaramente pulsanti e badge sotto */
+  max-height: 67vh; 
   overflow-y: auto; 
   padding-right: 10px; 
   box-sizing: border-box;
@@ -581,9 +562,6 @@ onMounted(async () => {
 .dkp-input-element { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.88rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
 .dkp-input-element:focus { border-color: #00dc82; }
 
-/* 
-  BLOCCO EDITOR (Stato Normale)
-*/
 .editor-body-box { 
   border: 1px solid #1e293b; 
   border-radius: 8px; 
@@ -591,26 +569,21 @@ onMounted(async () => {
   background: #020420;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease; /* Transizione morbida per l'apertura Zen Mode */
+  transition: all 0.3s ease; 
 }
 
-/* 
-  🚀 ZEN MODE ATTIVA (Fullscreen)
-  Sovrascrive lo stile del box per farlo diventare a tutto schermo
-*/
 .zen-mode-active {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999; /* Sopra tutto il resto (navbar, modali, badge) */
+  z-index: 9999; 
   border-radius: 0;
   border: none;
-  background: #050814; /* Sfondo un po' più scuro e "focus" */
+  background: #050814; 
 }
 
-/* TOOLBAR */
 .toolbar-bar { 
   display: flex; 
   flex-direction: column; 
@@ -651,7 +624,6 @@ onMounted(async () => {
 .tab-toggle-btn:hover { color: #cbd5e1; }
 .tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
 
-/* GRUPPI DI STRUMENTI */
 .formatting-tools { 
   display: flex; 
   flex-wrap: wrap; 
@@ -671,7 +643,6 @@ onMounted(async () => {
 
 .tool-divider { width: 1px; height: 16px; background: #334155; margin: 0 0.15rem; }
 
-/* PULSANTI PRO */
 .tool-icon-btn { 
   background: transparent; 
   border: 1px solid transparent; 
@@ -689,7 +660,7 @@ onMounted(async () => {
 }
 .tool-icon-btn:hover { background: #1e293b; color: #e2e8f0; }
 .tool-icon-btn:active { background: rgba(0, 220, 130, 0.2); color: #00dc82; transform: scale(0.95); }
-.tool-icon-btn.text-emerald-400 { color: #00dc82; } /* Per evidenziare quando è attivo */
+.tool-icon-btn.text-emerald-400 { color: #00dc82; } 
 
 .tool-icon-btn.font-bold { font-weight: 900; }
 .tool-icon-btn.italic { font-style: italic; font-family: serif;}
@@ -697,31 +668,21 @@ onMounted(async () => {
 .tool-icon-btn.code-font { font-family: monospace; font-weight: bold; }
 .tool-icon-btn.symbol-btn { font-size: 0.85rem; font-weight: 800; }
 
-/* 
-  CONTENITORI TESTO/PREVIEW 
-  Stato Normale: 250px per non nascondere i bottoni
-*/
 .textarea-container, .preview-container {
   height: 250px; 
   overflow-y: auto; 
   box-sizing: border-box;
 }
 
-/* 
-  CONTENITORI TESTO/PREVIEW (Zen Mode Attiva)
-  Prendono tutta l'altezza rimanente (100vh - toolbar)
-*/
 .zen-mode-active .textarea-container, 
 .zen-mode-active .preview-container {
-  height: calc(100vh - 45px); /* Calcola l'altezza togliendo lo spazio della toolbar (circa 45px) */
+  height: calc(100vh - 45px); 
 }
-/* Allarghiamo il testo al centro in Zen Mode per renderlo più leggibile e simile a un foglio */
 .zen-mode-active .markdown-textarea,
 .zen-mode-active .dkp-preview-content {
   max-width: 800px;
   margin: 0 auto;
 }
-
 
 .preview-container { padding: 1.25rem; background: #050814; }
 .markdown-textarea { 
@@ -732,20 +693,13 @@ onMounted(async () => {
 
 .preview-empty { color: #64748b; font-style: italic; }
 
-/* STILI PREVIEW MARKDOWN */
 :deep(.dkp-h1) { font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-top: 1.2rem; margin-bottom: 0.6rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.3rem;}
 :deep(.dkp-h2) { font-size: 1.4rem; font-weight: 800; color: #ffffff; margin-top: 1rem; margin-bottom: 0.5rem; }
 :deep(.dkp-h3) { font-size: 1.1rem; font-weight: 700; color: #00dc82; margin-top: 0.8rem; margin-bottom: 0.4rem; }
 :deep(.dkp-quote) { border-left: 3px solid #00dc82; padding-left: 0.8rem; color: #94a3b8; font-style: italic; margin: 0.8rem 0; background: rgba(0, 220, 130, 0.05); padding-top: 0.2rem; padding-bottom: 0.2rem;}
-:deep(.dkp-inline-code) { background: #1e293b; color: #38bdf8; padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.82rem; }
-:deep(.dkp-code-block) { background: #020420; border: 1px solid #1e293b; padding: 0.8rem; border-radius: 6px; font-family: monospace; color: #e2e8f0; overflow-x: auto; margin: 0.8rem 0; }
 :deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px;}
 :deep(.dkp-link:hover) { color: #00dc82;}
 :deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.5rem 0; }
-
-:deep(.dkp-preview-content ul) { padding-left: 1.5rem; margin: 0.8rem 0; list-style-type: disc; color: #cbd5e1;}
-:deep(.dkp-preview-content ol) { padding-left: 1.5rem; margin: 0.8rem 0; color: #cbd5e1;}
-:deep(.dkp-preview-content li) { margin-bottom: 0.3rem; }
 
 :deep(.dkp-table-wrapper) { overflow-x: auto; margin: 1rem 0; border-radius: 8px; border: 1px solid #1e293b; }
 :deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.85rem;}
