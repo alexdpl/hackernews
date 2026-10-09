@@ -115,49 +115,88 @@ function insertFormatting(prefix: string, suffix: string = '') {
 const parsedContent = computed(() => {
   if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...</p>'
   
+  // 1. Sfuggiamo i caratteri pericolosi, MA evitiamo di distruggere il nostro codice HTML custom
   let html = content.value
-    .replace(/```([\s\S]*?)```/g, '<pre class="dkp-code-block"><code>$1</code></pre>')
-    .replace(/`([^`]+)`/g, '<code class="dkp-inline-code">$1</code>')
-    .replace(/^# (.*$)/gim, '<h1 class="dkp-h1">$1</h1>')
-    .replace(/^## (.*$)/gim, '<h2 class="dkp-h2">$1</h2>')
-    .replace(/^### (.*$)/gim, '<h3 class="dkp-h3">$1</h3>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/~~(.*?)~~/g, '<del>$1</del>') 
-    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1</a>')
-    .replace(/^> (.*$)/gim, '<blockquote class="dkp-quote">$1</blockquote>')
-    .replace(/^---$/gim, '<hr class="dkp-hr" />') 
-    
-    // --- 1. PARSER TABELLE BLINDATO ---
-    // Trasforma le righe Markdown in tag <tr>
-    .replace(/^\|(.+)\|$/gm, (match, p1) => {
-      const cells = p1.split('|').map(c => c.trim())
-      if (cells.every(c => /^:?-+:?$/.test(c))) return '' // Rimuove riga separatrice
-      const rowHtml = cells.map(c => `<td>${c}</td>`).join('')
-      return `<tr>${rowHtml}</tr>`
-    })
-    // Raggruppa i <tr> in una tabella, DISTRUGGENDO tutti i \n intrappolati all'interno
-    .replace(/(<tr>.*?<\/tr>[\s\n\r]*)+/g, (match) => {
-      const cleanRows = match.replace(/[\n\r]+/g, '') 
-      return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
-    })
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
 
-  // --- 2. GESTIONE <br /> GLOBALE ---
-  // Convertiamo i restanti \n in <br /> per il normale testo del paragrafo
-  html = html.replace(/\n/g, '<br />')
+  // 2. Ripristiniamo l'html custom inserito dall'utente
+  html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, "<div class='dkp-custom-html'>")
+  html = html.replace(/&lt;\/div&gt;/g, "</div>")
 
-  // --- 3. PULIZIA DEGLI SPAZI INDESIDERATI SUI BLOCCHI ---
-  // Rimuoviamo i <br /> che si sono generati per sbaglio prima o dopo elementi 
-  // che hanno già i loro margini nativi (Tabelle, Titoli, Blocchi di codice)
+  // 3. Parser Tabelle (Prima del testo normale, così proteggiamo i \n interni)
+  html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
+    const cells = p1.split('|').map(c => c.trim())
+    if (cells.every(c => /^:?-+:?$/.test(c))) return '' // Rimuove riga separatrice
+    const rowHtml = cells.map(c => `<td>${c}</td>`).join('')
+    return `<tr>${rowHtml}</tr>`
+  })
+  html = html.replace(/(<tr>.*?<\/tr>[\s\n\r]*)+/g, (match) => {
+    const cleanRows = match.replace(/[\n\r]+/g, '') 
+    return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
+  })
+
+  // 4. Parser Blocchi Codice (Prima di toccare \n)
+  html = html.replace(/```([\s\S]*?)```/g, '<pre class="dkp-code-block"><code>$1</code></pre>')
+
+  // 5. Parser Elementi Lineari Base
   html = html
-    .replace(/(<br \/>\s*)+<div class="dkp-table-wrapper">/g, '<div class="dkp-table-wrapper">') // Pulisce sopra la tabella
-    .replace(/<\/div>\s*(<br \/>)+/g, '</div><br />') // Mantiene un solo stacco sotto la tabella
-    .replace(/(<br \/>\s*)+<h/g, '<h') // Pulisce sopra i titoli
-    .replace(/<\/h[1-6]>\s*(<br \/>)+/g, '</h$1><br />') // Stacco sotto i titoli
-    .replace(/(<br \/>\s*)+<pre/g, '<pre') // Pulisce sopra il codice
-    .replace(/<\/pre>\s*(<br \/>)+/g, '</pre><br />') // Stacco sotto il codice
+    .replace(/`([^`]+)`/g, '<code class="dkp-inline-code">$1</code>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Grassetto
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Corsivo
+    .replace(/~~(.*?)~~/g, '<del>$1</del>') // Barrato
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1</a>') // Link
 
-  return html
+  // 6. BLOCCO CRITICO: Parser Titoli e Blockquote
+  // Usiamo \r?$ per definire esplicitamente la fine della riga ed EVITARE che il tag si "manghi" la riga sotto
+  html = html
+    .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
+    .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1</h2>')
+    .replace(/^### (.*?)\r?$/gm, '<h3 class="dkp-h3">$1</h3>')
+    .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
+    .replace(/^---$/gm, '<hr class="dkp-hr" />')
+
+  // 7. Liste (Puntate e Numerate) - Versione semplificata per evitare errori su a capo
+  html = html.replace(/^- (.*?)\r?$/gm, '<ul><li>$1</li></ul>')
+  html = html.replace(/^1\. (.*?)\r?$/gm, '<ol><li>$1</li></ol>')
+  // Uniamo liste contigue per evitare ul/ul multipli
+  html = html.replace(/<\/ul>\s*<ul>/g, '')
+  html = html.replace(/<\/ol>\s*<ol>/g, '')
+
+  // 8. Gestione Finale degli "A Capo"
+  // Adesso che i titoli, code block e tabelle sono formattati in HTML (e NON hanno più i simboli markdown)
+  // Trasformiamo i doppi a capo in un vero stacco <br><br> o creiamo un sistema a paragrafi.
+  // Qui optiamo per la conversione di \n singoli in <br/> SOLO FUORI DAI TAG A BLOCCO.
+  
+  // Dividiamo tutto per righe e processiamo
+  let lines = html.split(/\r?\n/);
+  let parsedHtml = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+     let line = lines[i];
+     
+     // Se la riga è già un blocco HTML, la aggiungiamo così com'è (h1, h2, pre, div, table, ul, ol, blockquote)
+     if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr)/.test(line)) {
+        parsedHtml += line;
+     } 
+     // Se è un chiudi tag o riga vuota, semplicemente la aggiungiamo
+     else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line)) {
+         parsedHtml += line;
+     }
+     // Altrimenti è testo normale, ci mettiamo un <br /> alla fine (se non è l'ultima riga)
+     else {
+        parsedHtml += line + (i < lines.length - 1 ? '<br />' : '');
+     }
+  }
+
+  // 9. Pulizia superflua finale (Stacchi extra sotto i titoli)
+  parsedHtml = parsedHtml
+      .replace(/(<\/h[1-6]>)<br \/>/g, '$1') // Rimuove BR appiccicato sotto un titolo
+      .replace(/(<\/pre>)<br \/>/g, '$1')
+      .replace(/(<\/div>)<br \/>/g, '$1');
+
+  return parsedHtml
 })
 </script>
 
