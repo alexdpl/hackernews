@@ -294,11 +294,18 @@ const parsedContent = computed(() => {
   return parsedHtml
 })
 
-// === ORA SI CHE FUNZIONA! ===
-// Il watch viene dichiarato DOPO che parsedContent esiste!
-watch(parsedContent, async () => {
+// === SUPER-TRIGGER PER PRISM ===
+// Guarda sia i cambiamenti del testo, sia i cambi di Tab!
+watch([parsedContent, activeTab], async () => {
   await nextTick();
-  // Se Prism è stato caricato dal CDN
+  if (typeof window !== 'undefined' && window.Prism) {
+    window.Prism.highlightAll();
+  }
+});
+
+// Assicuriamoci che parta anche appena il componente viene caricato
+onMounted(async () => {
+  await nextTick();
   if (typeof window !== 'undefined' && window.Prism) {
     window.Prism.highlightAll();
   }
