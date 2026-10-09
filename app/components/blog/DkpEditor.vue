@@ -2,7 +2,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
+// Aggiungi questo in alto insieme agli altri watch
+import { nextTick } from 'vue';
 
+watch(parsedContent, async () => {
+  // Aspetta che il DOM si aggiorni
+  await nextTick();
+  // Se Prism è stato caricato dal CDN, digli di ri-processare la pagina
+  if (window.Prism) {
+    window.Prism.highlightAll();
+  }
+});
 const props = defineProps<{
   modelValue?: {
     title: string
@@ -112,23 +122,110 @@ function insertFormatting(prefix: string, suffix: string = '') {
   }, 0)
 }
 
+// NUOVA FUNZIONE: Formattazione intelligente per le liste (singole o multiple)
+function insertList(type: 'bullet' | 'number') {
+  const textarea = textareaRef.value
+  if (!textarea) return
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selectedText = content.value.substring(start, end)
+  
+  const before = content.value.substring(0, start)
+  const after = content.value.substring(end)
+
+  let newText = ''
+  if (selectedText) {
+    // Se l'utente ha selezionato più righe, le formattiamo tutte insieme!
+    const lines = selectedText.split('\n')
+    newText = lines.map((line, index) => {
+      // Pulisce la riga se era già una lista, così non facciamo doppioni (es. "- - Ciao")
+      const cleanLine = line.replace(/^(\s*)(\d+\.|-)\s+/, '$1')
+      return type === 'number' ? `${index + 1}. ${cleanLine}` : `- ${cleanLine}`
+    }).join('\n')
+  } else {
+    // Nessun testo selezionato: prepariamo la lista
+    newText = type === 'number' ? '1. ' : '- '
+  }
+
+  content.value = `${before}${newText}${after}`
+  syncToParent()
+
+  setTimeout(() => {
+    textarea.focus()
+    textarea.setSelectionRange(start, start + newText.length)
+  }, 0)
+}
+
+// NUOVA FUNZIONE: Autocompilazione liste quando si preme INVIO
+function handleEnter(e: KeyboardEvent) {
+  const textarea = textareaRef.value
+  if (!textarea) return
+  
+  const start = textarea.selectionStart
+  const textBeforeCursor = content.value.substring(0, start)
+  const lines = textBeforeCursor.split('\n')
+  const lastLine = lines[lines.length - 1] // Prendiamo l'ultima riga scritta
+  
+  // Controlliamo con regex se l'ultima riga è una lista numerata o puntata
+  const numberMatch = lastLine.match(/^(\s*)(\d+)\.\s+(.*)$/)
+  const bulletMatch = lastLine.match(/^(\s*)-\s+(.*)$/)
+  
+  if (numberMatch || bulletMatch) {
+    e.preventDefault() // Blocca l'invio standard
+    
+    const spaces = numberMatch ? numberMatch[1] : bulletMatch![1]
+    const textContent = numberMatch ? numberMatch[3] : bulletMatch![2]
+    
+    // Se l'utente ha premuto Invio su una riga vuota, USCIAMO DALLA LISTA
+    if (!textContent.trim()) {
+       const beforeWithoutLastLine = content.value.substring(0, start - lastLine.length)
+       const after = content.value.substring(textarea.selectionEnd)
+       content.value = beforeWithoutLastLine + '\n' + after
+       syncToParent()
+       setTimeout(() => {
+         textarea.selectionStart = textarea.selectionEnd = start - lastLine.length + 1
+       }, 0)
+       return
+    }
+    
+    // Altrimenti, CONTINUIAMO LA LISTA in automatico
+    let prefix = ''
+    if (numberMatch) {
+      const currentNum = parseInt(numberMatch[2], 10)
+      prefix = `\n${spaces}${currentNum + 1}. ` // Incrementa il numero (es. da 1. a 2.)
+    } else {
+      prefix = `\n${spaces}- `
+    }
+    
+    const before = content.value.substring(0, start)
+    const after = content.value.substring(textarea.selectionEnd)
+    content.value = `${before}${prefix}${after}`
+    syncToParent()
+    
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + prefix.length
+    }, 0)
+  }
+}
+
 const parsedContent = computed(() => {
   if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...</p>'
   
-  // 1. Sfuggiamo i caratteri pericolosi, MA evitiamo di distruggere il nostro codice HTML custom
+  // 1. Escape base
   let html = content.value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
 
-  // 2. Ripristiniamo l'html custom inserito dall'utente
+  // 2. Ripristiniamo l'html custom
   html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, "<div class='dkp-custom-html'>")
   html = html.replace(/&lt;\/div&gt;/g, "</div>")
 
-  // 3. Parser Tabelle (Prima del testo normale, così proteggiamo i \n interni)
+  // 3. Parser Tabelle
   html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
     const cells = p1.split('|').map(c => c.trim())
-    if (cells.every(c => /^:?-+:?$/.test(c))) return '' // Rimuove riga separatrice
+    if (cells.every(c => /^:?-+:?$/.test(c))) return '' 
     const rowHtml = cells.map(c => `<td>${c}</td>`).join('')
     return `<tr>${rowHtml}</tr>`
   })
@@ -137,19 +234,23 @@ const parsedContent = computed(() => {
     return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
   })
 
-  // 4. Parser Blocchi Codice (Prima di toccare \n)
-  html = html.replace(/```([\s\S]*?)```/g, '<pre class="dkp-code-block"><code>$1</code></pre>')
+  // 4. Parser Blocchi Codice Avanzato (Rileva il linguaggio)
+  // Cerca: ```linguaggio (opzionale) \n codice \n ```
+  html = html.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
+    const languageClass = lang ? `language-${lang.toLowerCase()}` : 'language-none';
+    const languageLabel = lang ? `<div class="dkp-code-header"><span>${lang}</span><button class="dkp-copy-btn">📋</button></div>` : '';
+    return `<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${code}</code></pre></div>`;
+  });
 
-  // 5. Parser Elementi Lineari Base
+  // 5. Inline Code (Parola nel quadrato) e Formattazione Base
   html = html
-    .replace(/`([^`]+)`/g, '<code class="dkp-inline-code">$1</code>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Grassetto
-    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Corsivo
-    .replace(/~~(.*?)~~/g, '<del>$1</del>') // Barrato
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1</a>') // Link
+    .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') 
+    .replace(/~~(.*?)~~/g, '<del>$1</del>') 
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1</a>') 
 
-  // 6. BLOCCO CRITICO: Parser Titoli e Blockquote
-  // Usiamo \r?$ per definire esplicitamente la fine della riga ed EVITARE che il tag si "manghi" la riga sotto
+  // 6. Parser Titoli e Blockquote
   html = html
     .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
     .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1</h2>')
@@ -157,42 +258,46 @@ const parsedContent = computed(() => {
     .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
     .replace(/^---$/gm, '<hr class="dkp-hr" />')
 
-  // 7. Liste (Puntate e Numerate) - Versione semplificata per evitare errori su a capo
-  html = html.replace(/^- (.*?)\r?$/gm, '<ul><li>$1</li></ul>')
-  html = html.replace(/^1\. (.*?)\r?$/gm, '<ol><li>$1</li></ol>')
-  // Uniamo liste contigue per evitare ul/ul multipli
-  html = html.replace(/<\/ul>\s*<ul>/g, '')
-  html = html.replace(/<\/ol>\s*<ol>/g, '')
+  // 7. Parser Liste (Livello 1 e Livello 2)
+  // Prima processiamo il livello 2 (spazio + punto)
+  html = html.replace(/^[ \t]+- (.*?)\r?$/gm, '<li class="dkp-li-nested">$1</li>')
+  html = html.replace(/^[ \t]+[0-9]+\. (.*?)\r?$/gm, '<li class="dkp-li-nested dkp-li-num">$1</li>')
+  
+  // Poi il livello 1
+  html = html.replace(/^- (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
+  html = html.replace(/^[0-9]+\. (.*?)\r?$/gm, '<ol><li class="dkp-li-main">$1</li></ol>')
+  
+  // Uniamo liste contigue per evitare ul/ul multipli (anche se ci sono nested in mezzo)
+  html = html.replace(/<\/ul>\s*(<li class="dkp-li-nested[^>]*>.*?<\/li>\s*)*<ul>/g, (match) => {
+      // Togliamo i tag di chiusura/apertura ul e lasciamo gli li interni
+      return match.replace(/<\/ul>\s*/, '').replace(/<ul>/, '');
+  });
+  html = html.replace(/<\/ol>\s*(<li class="dkp-li-nested[^>]*>.*?<\/li>\s*)*<ol>/g, (match) => {
+      return match.replace(/<\/ol>\s*/, '').replace(/<ol>/, '');
+  });
 
   // 8. Gestione Finale degli "A Capo"
-  // Adesso che i titoli, code block e tabelle sono formattati in HTML (e NON hanno più i simboli markdown)
-  // Trasformiamo i doppi a capo in un vero stacco <br><br> o creiamo un sistema a paragrafi.
-  // Qui optiamo per la conversione di \n singoli in <br/> SOLO FUORI DAI TAG A BLOCCO.
-  
-  // Dividiamo tutto per righe e processiamo
   let lines = html.split(/\r?\n/);
   let parsedHtml = '';
+  let inCodeBlock = false;
   
   for (let i = 0; i < lines.length; i++) {
      let line = lines[i];
      
-     // Se la riga è già un blocco HTML, la aggiungiamo così com'è (h1, h2, pre, div, table, ul, ol, blockquote)
-     if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr)/.test(line)) {
-        parsedHtml += line;
-     } 
-     // Se è un chiudi tag o riga vuota, semplicemente la aggiungiamo
-     else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line)) {
-         parsedHtml += line;
-     }
-     // Altrimenti è testo normale, ci mettiamo un <br /> alla fine (se non è l'ultima riga)
-     else {
+     if (line.includes('<div class="dkp-code-wrapper">')) inCodeBlock = true;
+     if (line.includes('</div>') && inCodeBlock && !line.includes('<div class="dkp-code-header">')) inCodeBlock = false;
+
+     if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li)/.test(line.trim())) {
+        parsedHtml += line + '\n'; // Manteniamo i \n originali nei blocchi di codice
+     } else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line.trim())) {
+         parsedHtml += line + '\n';
+     } else {
         parsedHtml += line + (i < lines.length - 1 ? '<br />' : '');
      }
   }
 
-  // 9. Pulizia superflua finale (Stacchi extra sotto i titoli)
   parsedHtml = parsedHtml
-      .replace(/(<\/h[1-6]>)<br \/>/g, '$1') // Rimuove BR appiccicato sotto un titolo
+      .replace(/(<\/h[1-6]>)<br \/>/g, '$1') 
       .replace(/(<\/pre>)<br \/>/g, '$1')
       .replace(/(<\/div>)<br \/>/g, '$1');
 
@@ -298,8 +403,8 @@ const parsedContent = computed(() => {
           <div class="tool-divider"></div>
           
           <div class="tool-group">
-            <button type="button" @click="insertFormatting('- ')" class="tool-icon-btn symbol-btn" title="Elenco Puntato">•</button>
-            <button type="button" @click="insertFormatting('1. ')" class="tool-icon-btn symbol-btn" title="Elenco Numerato">1.</button>
+            <button type="button" @click="insertFormatting('bullet')" class="tool-icon-btn symbol-btn" title="Elenco Puntato">•</button>
+            <button type="button" @click="insertFormatting('number')" class="tool-icon-btn symbol-btn" title="Elenco Numerato">1.</button>
             <button type="button" @click="insertFormatting('> ')" class="tool-icon-btn symbol-btn" title="Citazione">”</button>
             <button type="button" @click="insertFormatting('\n---\n')" class="tool-icon-btn symbol-btn" title="Linea Orizzontale">—</button>
           </div>
@@ -330,6 +435,7 @@ const parsedContent = computed(() => {
           v-model="content" 
           class="markdown-textarea"
           placeholder="Inizia a scrivere il tuo articolo professionale qui..."
+		  @keydown.enter="handleEnter"
         ></textarea>
       </div>
 
@@ -343,6 +449,110 @@ const parsedContent = computed(() => {
 </template>
 
 <style scoped>
+
+/* --- INLINE CODE (Parola nel quadrato) --- */
+:deep(.dkp-inline-code) { 
+  background-color: rgba(30, 41, 59, 0.8); /* Colore scuro stile terminale */
+  color: #e2e8f0; /* Testo chiaro */
+  padding: 0.2rem 0.4rem; 
+  border-radius: 6px; 
+  font-family: 'Fira Code', Consolas, monospace; 
+  font-size: 0.85rem; 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- LISTE E NIDIFICAZIONI --- */
+:deep(.dkp-preview-content ul), :deep(.dkp-preview-content ol) { 
+  padding-left: 1.5rem; 
+  margin: 0.8rem 0; 
+  color: #cbd5e1;
+}
+:deep(.dkp-preview-content ul) { list-style-type: none; }
+:deep(.dkp-preview-content ol) { list-style-type: decimal; }
+
+/* Lista Principale (Cerchio vuoto o normale) */
+:deep(.dkp-li-main) { 
+  margin-bottom: 0.4rem; 
+  position: relative;
+}
+:deep(ul > .dkp-li-main::before) {
+  content: '○'; /* Cerchio vuoto stile DKP */
+  color: #38bdf8;
+  position: absolute;
+  left: -1.2rem;
+  top: 0;
+  font-weight: bold;
+}
+
+/* Lista Nidificata (Spazio + Punto) */
+:deep(.dkp-li-nested) { 
+  margin-left: 1.5rem; /* Rientro per la nidificazione */
+  margin-bottom: 0.3rem; 
+  color: #94a3b8; /* Colore leggermente più tenue */
+  position: relative;
+}
+:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) {
+  content: '▪'; /* Quadratino o trattino per il sub-elenco */
+  color: #00dc82;
+  position: absolute;
+  left: -1.2rem;
+  top: 0;
+}
+
+/* --- BLOCCHI DI CODICE PRO (Con Header) --- */
+:deep(.dkp-code-wrapper) {
+  background: #0d1117; /* Sfondo scuro github-style */
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.2rem 0;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+:deep(.dkp-code-header) {
+  background: #161b22;
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1e293b;
+  font-family: sans-serif;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #8b949e;
+  text-transform: capitalize;
+}
+
+:deep(.dkp-copy-btn) {
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+:deep(.dkp-copy-btn:hover) {
+  color: #00dc82;
+}
+
+:deep(.dkp-code-block) { 
+  padding: 1rem; 
+  margin: 0;
+  overflow-x: auto; 
+}
+:deep(.dkp-code-block code) {
+  font-family: 'Fira Code', 'Courier New', Courier, monospace; 
+  color: #c9d1d9; /* Testo default chiaro */
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Basic Syntax Highlighting Fallback (Se non usi librerie esterne) */
+:deep(.dkp-code-block code span.keyword) { color: #ff7b72; }
+:deep(.dkp-code-block code span.string) { color: #a5d6ff; }
+:deep(.dkp-code-block code span.function) { color: #d2a8ff; }
+:deep(.dkp-code-block code span.comment) { color: #8b949e; font-style: italic; }
+
 /* WRAPPER PRINCIPALE CON SCROLL (Abbassato il max-height per far vedere i bottoni inferiori) */
 .dkp-editor-wrapper { 
   display: flex; 

@@ -53,5 +53,41 @@ export default defineNuxtConfig({
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
       mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'
     }
-  }
-})
+  },
+  
+  app: {
+    head: {
+      link: [
+        // Il tema scuro (puoi anche cercare "prism-okaidia.min.css" o "prism-twilight.min.css" se preferisci altre varianti scure)
+        { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css' }
+      ],
+      script: [
+        // 1. CORE DI PRISM (Obbligatorio, include già HTML, CSS, JS base)
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js', defer: true },
+        
+        // 2. LINGUAGGI DI SISTEMA E BACKEND
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-ruby.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js', defer: true },
+
+        // 3. FRONTEND AVANZATO & NODE
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js', defer: true },
+
+        // 4. DEVOPS, DATA & SCRIPTING
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js', defer: true },
+        { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js', defer: true }
+      ]
+    }
+	}
+  })
