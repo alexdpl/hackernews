@@ -50,9 +50,15 @@ onMounted(() => {
     <article v-else class="glass-panel p-8 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl">
       <NuxtLink to="/blog" class="text-emerald-400 hover:text-emerald-300 text-sm font-bold mb-6 inline-block">← Torna al Blog</NuxtLink>
       
-      <div class="mb-4">
+<div class="mb-4 flex items-center gap-3">
          <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
            {{ post.categoryName || post.category || 'Generale' }}
+         </span>
+         
+         <!-- 🛡️ Badge DKP Verified -->
+         <span v-if="post.isVerified" class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider" title="Scansionato e Notarizzato dal Vault DKP">
+           <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+           DKP Verified
          </span>
       </div>
 
@@ -78,10 +84,42 @@ onMounted(() => {
         </span>
       </div>
 
+<!-- 🛡️ DKP VAULT CERTIFICATE SECTION -->
+      <div v-if="post.isVerified && post.vaultCertificateId" class="mt-16 bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
+        <!-- Effetto Glow di background -->
+        <div class="absolute -right-16 -top-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex items-center gap-3 mb-4">
+          <div class="bg-emerald-500/20 p-2 rounded-lg border border-emerald-500/30">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+          </div>
+          <div>
+            <h3 class="text-emerald-400 font-bold text-lg tracking-wide uppercase">Vault Notarization Certificate</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Proof of Code & Security Scan by Pulse Sentinel AI</p>
+          </div>
+        </div>
+
+        <div class="bg-[#090d16] border border-slate-800 rounded-lg p-4 font-mono text-[11px] sm:text-xs text-slate-300 relative z-10">
+          <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
+            <span class="text-slate-500 font-semibold">CERTIFICATE_ID:</span>
+            <span class="text-emerald-400 font-bold select-all">{{ post.vaultCertificateId }}</span>
+          </div>
+          <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
+            <span class="text-slate-500 font-semibold">TIMESTAMP:</span>
+            <span class="text-slate-300">{{ new Date(post.updatedAt || post.createdAt).toISOString() }}</span>
+          </div>
+          <div class="flex flex-col gap-2">
+            <span class="text-slate-500 font-semibold">SHA-256 SECURE CHECKSUM:</span>
+            <span class="text-sky-400 select-all break-all bg-[#020420] p-2 rounded border border-slate-800">{{ post.vaultHash }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 🚀 Barra Social integrata -->
       <div class="border-t border-slate-800 pt-8 mt-8">
         <SocialShare :title="post.title" />
       </div>
+      
     </article>
   </div>
 </template>
