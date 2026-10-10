@@ -33,6 +33,16 @@
       >
         <span>📘</span> Facebook
       </button>
+      
+      <!-- Reddit -->
+      <button 
+        @click="shareTo('reddit')" 
+        class="share-btn reddit" 
+        title="Condividi su Reddit"
+        type="button"
+      >
+        <span>👾</span> Reddit
+      </button>
 
       <!-- WhatsApp -->
       <button 
@@ -52,6 +62,16 @@
         type="button"
       >
         <span>✈️</span> Telegram
+      </button>
+      
+      <!-- Email -->
+      <button 
+        @click="shareTo('email')" 
+        class="share-btn email" 
+        title="Invia via Email"
+        type="button"
+      >
+        <span>✉️</span> Email
       </button>
 
       <!-- Copy Link con Feedback Visivo -->
@@ -104,16 +124,29 @@ const shareTo = (platform: string) => {
     case 'facebook':
       shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`
       break
+    case 'reddit':
+      shareUrl = `https://reddit.com/submit?url=${url}&title=${text}`
+      break
     case 'whatsapp':
       shareUrl = `https://api.whatsapp.com/send?text=${text}%20-%20${url}`
       break
     case 'telegram':
       shareUrl = `https://t.me/share/url?url=${url}&text=${text}`
       break
+    case 'email':
+      // eslint-disable-next-line
+      const body = encodeURIComponent(`Ciao,\n\nHo trovato questo articolo molto interessante sul DevKernelPulse Blog e volevo condividerlo con te:\n\n${props.title}\n${currentUrl.value}\n\nBuona lettura!`)
+      shareUrl = `mailto:?subject=${text}&body=${body}`
+      break
   }
 
   if (shareUrl) {
-    window.open(shareUrl, '_blank', 'width=600,height=400')
+    // Per le mail usiamo target _self per aprire il client di posta locale
+    if (platform === 'email') {
+      window.location.href = shareUrl
+    } else {
+      window.open(shareUrl, '_blank', 'width=600,height=500')
+    }
   }
 }
 
@@ -183,8 +216,10 @@ const copyLink = async () => {
 .share-btn.twitter:hover { border-color: #38bdf8; color: #38bdf8; }
 .share-btn.linkedin:hover { border-color: #0a66c2; color: #38bdf8; }
 .share-btn.facebook:hover { border-color: #1877f2; color: #60a5fa; }
+.share-btn.reddit:hover { border-color: #ff4500; color: #ff5722; }
 .share-btn.whatsapp:hover { border-color: #25d366; color: #4ade80; }
 .share-btn.telegram:hover { border-color: #229ed9; color: #38bdf8; }
+.share-btn.email:hover { border-color: #f43f5e; color: #fb7185; }
 
 .share-btn.copy.copied {
   background: rgba(0, 220, 130, 0.2);
