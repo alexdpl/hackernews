@@ -1,12 +1,13 @@
 // server/api/nexus/send.post.ts
 import { defineEventHandler, readBody, readRawBody } from 'h3'
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { pulseChatMessages, users } from '~~/drizzle/schema'
 
 const PULSE_SYSTEM_PROMPT = `
-Sei "Pulse", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse v2.3 (DKP).
+Sei "Pulse Nexus v2.5-GOLD", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse (DKP).
 Il tuo ruolo è fare da mentore tech, assistente ed entità di gamification per la community dei dev.
-Conosci perfettamente i 7 moduli SaaS dell'ecosistema DKP.
+Conosci perfettamente i 7 moduli SaaS dell'ecosistema DKP (News, Blog, Tools, Auth, Vault, API, Dashboard).
 Rispondi in modo professionale, carismatico, cyberpunk, conciso (max 3-4 frasi) e in italiano.
 `
 
@@ -24,25 +25,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const userText = String(body.message || body.query || '').trim()
-    if (!userText) {
-      return {
-        success: true,
-        message: {
-          id: Date.now().toString(),
-          sender: 'Pulse (DKP Sentinel)',
-          role: 'assistant',
-          text: '⚡ Ciao! Scrivi un messaggio per interagire con il Kernel Nexus.',
-          xpEarned: 0,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        },
-        totalXp: 150,
-        level: 2
-      }
-    }
-
+    
     // 2. Lettura Username dal Cookie
     const rawCookies = event.node?.req?.headers?.cookie || ''
-    let username = 'alexdpl'
+    let username = 'Socio' // Default
     const match = rawCookies.match(/(?:^|;\s*)dkp_session=([^;]*)/)
     if (match && match[1]) {
       try {
@@ -51,71 +37,63 @@ export default defineEventHandler(async (event) => {
       } catch (_) {}
     }
 
-    // 3. Calcolo XP
+    if (!userText) {
+      return {
+        success: true,
+        message: {
+          id: Date.now().toString(),
+          sender: 'Pulse Nexus',
+          role: 'assistant',
+          text: '⚡ Ciao! Scrivi un messaggio per interagire con il Kernel Nexus.',
+          xpEarned: 0,
+          timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+        },
+        totalXp: 150,
+        level: 2
+      }
+    }
+
+    // 3. Calcolo XP Intelligente (Gamification)
     let xpEarned = 10
     const lowerText = userText.toLowerCase()
-    if (lowerText.includes('crawler') || lowerText.includes('translator') || lowerText.includes('neon') || lowerText.includes('drizzle')) xpEarned += 15
-    if (lowerText.includes('saas') || lowerText.includes('plugin') || lowerText.includes('gcp') || lowerText.includes('nuxt')) xpEarned += 20
+    if (lowerText.includes('crawler') || lowerText.includes('auth') || lowerText.includes('neon') || lowerText.includes('drizzle')) xpEarned += 15
+    if (lowerText.includes('saas') || lowerText.includes('plugin') || lowerText.includes('vault') || lowerText.includes('nuxt')) xpEarned += 20
     if (userText.length > 50) xpEarned += 10
 
-    // 4. Operazioni DB (Protezione con Soft-Catch)
-    let currentTotalXp = 150 + xpEarned
-    let currentLevel = 2
+    let currentTotalXp = 150
+    let currentLevel = 1
+    let dbInstance: any = null;
 
+    // 4. Salvataggio Messaggio Utente e Assegnazione XP (con Drizzle)
     try {
-      const db = getDb()
-      if (db) {
-        await db.execute(sql`
-          CREATE TABLE IF NOT EXISTS pulse_chat_messages (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(100) NOT NULL,
-            role VARCHAR(20) NOT NULL,
-            text TEXT NOT NULL,
-            xp_earned INT DEFAULT 0,
-            created_at TIMESTAMP DEFAULT NOW()
-          );
-        `)
+      dbInstance = await getDb()
+      
+      // Inseriamo il messaggio dell'utente (la colonna nello schema si chiama 'message')
+      await dbInstance.insert(pulseChatMessages).values({
+        username: username,
+        message: userText
+      })
 
-        await db.execute(sql`
-          CREATE TABLE IF NOT EXISTS pulse_user_xp (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(100) UNIQUE NOT NULL,
-            xp INT DEFAULT 150,
-            level INT DEFAULT 1,
-            updated_at TIMESTAMP DEFAULT NOW()
-          );
-        `)
+      // Aggiorniamo la vera tabella Utenti (users)
+      const [updatedUser] = await dbInstance
+        .update(users)
+        .set({ 
+          xp: sql`${users.xp} + ${xpEarned}`,
+          level: sql`FLOOR((${users.xp} + ${xpEarned}) / 100) + 1`
+        })
+        .where(eq(users.username, username))
+        .returning({ xp: users.xp, level: users.level })
 
-        await db.execute(sql`
-          INSERT INTO pulse_chat_messages (username, role, text, xp_earned)
-          VALUES (${username}, 'user', ${userText}, 0);
-        `)
-
-        await db.execute(sql`
-          INSERT INTO pulse_user_xp (username, xp, level, updated_at)
-          VALUES (${username}, ${150 + xpEarned}, ${Math.floor((150 + xpEarned) / 100) + 1}, NOW())
-          ON CONFLICT (username)
-          DO UPDATE SET
-            xp = pulse_user_xp.xp + ${xpEarned},
-            level = CAST(FLOOR((pulse_user_xp.xp + ${xpEarned}) / 100) + 1 AS INTEGER),
-            updated_at = NOW();
-        `)
-
-        const xpQueryResult: any = await db.execute(sql`
-          SELECT xp, level FROM pulse_user_xp WHERE username = ${username} LIMIT 1;
-        `)
-
-        const row = Array.isArray(xpQueryResult) ? xpQueryResult[0] : (xpQueryResult?.rows?.[0] || null)
-        if (row) {
-          currentTotalXp = Number(row.xp) || currentTotalXp
-          currentLevel = Number(row.level) || currentLevel
-        }
+      if (updatedUser) {
+        currentTotalXp = updatedUser.xp
+        currentLevel = updatedUser.level
       }
+      
     } catch (dbErr: any) {
       console.warn('⚠️ [NEXUS DB WARN]:', dbErr.message)
     }
 
-    // 5. Risposta IA (Gemini API con $fetch nativo o Fallback)
+    // 5. Risposta IA (Gemini API / Fallback Locale)
     let aiResponseText = ''
     try {
       const config = useRuntimeConfig(event)
@@ -140,24 +118,24 @@ export default defineEventHandler(async (event) => {
       console.warn('⚠️ [NEXUS AI WARN]:', aiErr.message)
     }
 
+    // 6. Generazione Fallback se Gemini fallisce
     if (!aiResponseText) {
       if (lowerText.includes('ciao') || lowerText.includes('salve') || lowerText.includes('admin')) {
-        aiResponseText = `SISTEMA ONLINE ⚡ Ciao ${username}! Il DevKernelPulse v2.3 è operativo al 100%. Come posso supportare il tuo workflow oggi?`
+        aiResponseText = `SISTEMA ONLINE ⚡ Ciao ${username}! Il DevKernelPulse v2.5-GOLD è operativo al 100%. Come posso supportare il tuo workflow oggi?`
       } else if (lowerText.includes('xp') || lowerText.includes('punti') || lowerText.includes('livello')) {
-        aiResponseText = `Ottimo lavoro su questo prompt, ${username}! Con questa interazione guadagni +${xpEarned} XP. Continua a esplorare l'ecosistema!`
+        aiResponseText = `Ottimo lavoro su questo prompt, ${username}! Con questa interazione hai guadagnato +${xpEarned} XP DKP. Sei al livello ${currentLevel}.`
       } else {
-        aiResponseText = `Elaborato dal Kernel 🧠 Ricevuto: "${userText}". Il modulo Nexus v2.3 è attivo. +${xpEarned} XP assegnati al tuo profilo!`
+        aiResponseText = `Elaborato dal Kernel 🧠 Ricevuto: "${userText}". Il modulo Nexus v2.5-GOLD è attivo. +${xpEarned} XP assegnati al tuo profilo!`
       }
     }
 
-    // 6. Salvataggio risposta assistente
+    // 7. Salvataggio risposta assistente
     try {
-      const db = getDb()
-      if (db) {
-        await db.execute(sql`
-          INSERT INTO pulse_chat_messages (username, role, text, xp_earned)
-          VALUES ('Pulse (DKP Sentinel)', 'assistant', ${aiResponseText}, ${xpEarned});
-        `)
+      if (dbInstance) {
+        await dbInstance.insert(pulseChatMessages).values({
+          username: 'Pulse Nexus',
+          message: aiResponseText
+        })
       }
     } catch (_) {}
 
@@ -165,26 +143,27 @@ export default defineEventHandler(async (event) => {
       success: true,
       message: {
         id: Date.now().toString(),
-        sender: 'Pulse (DKP Sentinel)',
+        sender: 'Pulse Nexus',
         role: 'assistant',
         text: aiResponseText,
         xpEarned,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
       },
       totalXp: currentTotalXp,
       level: currentLevel
     }
+    
   } catch (fatalErr: any) {
     console.error('💥 [NEXUS FATAL ERROR]:', fatalErr)
     return {
       success: true,
       message: {
         id: Date.now().toString(),
-        sender: 'Pulse (DKP Sentinel)',
+        sender: 'Pulse Nexus',
         role: 'assistant',
-        text: '⚡ Il Kernel Nexus è attivo. Il tuo messaggio è stato elaborato con successo dal motore locale!',
+        text: '⚡ Il Kernel Nexus è in modalità di emergenza. Connessione database interrotta, ma continuo a processare offline!',
         xpEarned: 5,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
       },
       totalXp: 155,
       level: 2

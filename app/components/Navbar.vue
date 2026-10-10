@@ -261,6 +261,9 @@ async function handleLogout() {
                   <NuxtLink :to="getMainUrl('/admin')" external class="menu-item admin-control-item" @click="closeAllDropdowns">
                     <span>🔒</span> Control Center Admin
                   </NuxtLink>
+				  <NuxtLink to="getMainUrl('/admin/diagnostic')" external class="menu-item admin-control-item" @click="closeAllDropdowns">
+                    <span>🩺</span> DKP Doctor
+                  </NuxtLink>
                 </div>
               </template>
 
