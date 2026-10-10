@@ -1,14 +1,14 @@
-<!-- app/components/PulseNexusChat.vue -->
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from 'vue'
 
-// 🔥 INTEGRAZIONE AUTH REALE: Prendiamo l'utente dal tuo AuthCore
-const { user } = useAuthCore()
+// Se per qualche motivo il composable è in ritardo, impostiamo un fallback vuoto
+const auth = useAuthCore() || {}
+const user = auth.user
 
-// Proprietà calcolate per rendere reattiva l'interfaccia
-const isLogged = computed(() => !!user.value)
-const userName = computed(() => user.value?.username || 'Ospite')
-const userXp = computed(() => user.value?.xp || 0)
+// 🔥 FIX: Aggiunto il punto interrogativo prima di .value su user
+const isLogged = computed(() => !!user?.value)
+const userName = computed(() => user?.value?.username || 'Ospite')
+const userXp = computed(() => user?.value?.xp || 0)
 
 const isOpen = ref(false)
 const inputQuery = ref('')
@@ -25,7 +25,6 @@ interface Message {
 
 const messages = ref<Message[]>([])
 
-// Messaggio di benvenuto dinamico all'avvio
 onMounted(() => {
   messages.value.push({
     id: Date.now(),
@@ -49,7 +48,6 @@ const handleSend = async () => {
   const userText = inputQuery.value.trim()
   const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 
-  // 1. Aggiungi messaggio utente in UI
   messages.value.push({
     id: Date.now(),
     text: userText,
@@ -61,19 +59,16 @@ const handleSend = async () => {
   isTyping.value = true
   scrollToBottom()
 
-  // 2. 🔥 VERA CHIAMATA API ALL'INTELLIGENZA ARTIFICIALE
-  // 2. 🔥 VERA CHIAMATA API ALL'INTELLIGENZA ARTIFICIALE
   try {
-    // Chiamiamo il VERO endpoint /api/nexus/send che abbiamo appena aggiornato!
     const res: any = await $fetch('/api/nexus/send', {
       method: 'POST',
       body: { 
         message: userText,
-        userId: user.value?.id 
+        // 🔥 FIX: Protezione aggiunta anche qui!
+        userId: user?.value?.id 
       }
     })
 
-    // Leggiamo la risposta dalla struttura corretta restituita da send.post.ts
     const aiResponse = res?.message?.text || "Non riesco a connettermi al Kernel neurale in questo momento. Riprova più tardi."
     
     messages.value.push({
@@ -83,7 +78,6 @@ const handleSend = async () => {
       time: res?.message?.timestamp || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
     })
 
-    // 3. Sistema di Gamification: Mostra popup XP se il server ha assegnato punti
     if (isLogged.value && res?.message?.xpEarned > 0) {
       messages.value.push({
         id: Date.now() + 1,
@@ -95,7 +89,6 @@ const handleSend = async () => {
     }
 
   } catch (error) {
-    // Fallback in caso di errore Server
     messages.value.push({
       id: Date.now(),
       text: "⚠️ Errore di connessione al DKP Nexus. Riprova tra poco.",
@@ -107,6 +100,7 @@ const handleSend = async () => {
     isTyping.value = false
     scrollToBottom()
   }
+}
 
 const clearChat = () => {
   messages.value = []
@@ -126,7 +120,7 @@ const clearChat = () => {
     <Transition name="nexus-pop">
       <div v-if="isOpen" class="nexus-chat-card glass-panel">
         
-        <!-- HEADER CHAT (Cyberpunk Style) -->
+        <!-- HEADER CHAT -->
         <div class="nexus-header">
           <div class="nexus-title-box">
             <span class="nexus-status-dot"></span>
@@ -136,7 +130,6 @@ const clearChat = () => {
             </div>
           </div>
           <div class="nexus-actions">
-            <!-- 🔥 Mostra i veri XP dell'utente se loggato -->
             <span v-if="isLogged" class="xp-badge mr-2" title="I tuoi XP">⚡ {{ userXp }} XP</span>
             <button type="button" @click="clearChat" class="btn-action" title="Reset Conversazione">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -209,8 +202,6 @@ const clearChat = () => {
 </template>
 
 <style scoped>
-/* Lascia qui tutti i CSS che ti avevo inviato nel blocco precedente! Sono identici e perfetti. */
-/* WRAPPER FIXATO IN BASSO A DESTRA */
 .nexus-widget-wrapper {
   position: fixed;
   bottom: 2rem;
@@ -219,7 +210,6 @@ const clearChat = () => {
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
-/* FLOATING LAUNCHER BUTTON v2.5 */
 .nexus-launcher-btn {
   display: flex;
   align-items: center;
@@ -267,7 +257,6 @@ const clearChat = () => {
   border: 1px solid rgba(0, 220, 130, 0.3);
 }
 
-/* CHAT POPUP WINDOW (Glassmorphism) */
 .glass-panel {
   background: rgba(9, 13, 22, 0.7);
   backdrop-filter: blur(16px);
@@ -291,7 +280,6 @@ const clearChat = () => {
   transform-origin: bottom right;
 }
 
-/* HEADER */
 .nexus-header {
   padding: 1rem 1.2rem;
   background: rgba(2, 4, 32, 0.85);
@@ -324,7 +312,6 @@ const clearChat = () => {
 .btn-action:hover { background: rgba(255, 255, 255, 0.05); color: #00dc82; }
 .btn-close:hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
 
-/* MESSAGES BODY */
 .nexus-body {
   flex: 1;
   padding: 1.2rem;
@@ -354,7 +341,6 @@ const clearChat = () => {
 .user .msg-sender-tag { color: #020420; }
 .msg-time { font-size: 0.6rem; opacity: 0.5; text-align: right; margin-top: 0.4rem; font-family: monospace; }
 
-/* FOOTER INPUT */
 .nexus-footer { padding: 1rem; background: rgba(2, 4, 32, 0.95); border-top: 1px solid rgba(30, 41, 59, 0.8); display: flex; gap: 0.5rem; align-items: center;}
 .nexus-input { 
   flex: 1; 
@@ -387,7 +373,6 @@ const clearChat = () => {
 .nexus-send-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 15px rgba(0, 220, 130, 0.4); }
 .nexus-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; background: #334155;}
 
-/* ANIMAZIONI APERTURA POPUP */
 .nexus-pop-enter-active,
 .nexus-pop-leave-active {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);

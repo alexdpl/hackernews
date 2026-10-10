@@ -1,7 +1,9 @@
 // server/utils/db.ts
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
-import * as schema from '../db/schema' // Import relativo garantito per Nuxt 4
+
+// 🔥 ECCO IL FIX: Ora punta alla cartella corretta del tuo schema!
+import * as schema from '~~/drizzle/schema' 
 
 // Manteniamo le istanze globali nel modulo per evitare la duplicazione dei socket ad ogni HMR
 let sqlInstance: any = null
@@ -14,11 +16,17 @@ export function getDb() {
     return dbInstance
   }
 
-  // Lettura sicura tramite le runtimeConfig tipizzate di Nuxt 4 (con fallback a process.env)
-  const config = useRuntimeConfig()
+  // Lettura sicura protetta da try/catch per evitare il crash dell'Errore 500 fuori dal contesto Nuxt
+  let config: any = {}
+  try {
+    config = useRuntimeConfig()
+  } catch (_) {
+    // Contesto Nuxt non attivo (es. script di test o chiamate esterne)
+  }
+
   const connectionString = (config?.databaseUrl || process.env.DATABASE_URL) as string
 
-  // 2. TRACCIAMENTO VARIABILE: Verifica immediata della lettura del file .env o delle var di Vercel
+  // 2. TRACCIAMENTO VARIABILE: Verifica immediata della lettura del file .env o delle var di ambiente
   console.log('=== [DB DEBUG] Verifica runtimeConfig / env ===')
   if (!connectionString) {
     console.error('❌ ERRORE: La stringa di connessione è VUOTA o UNDEFINED!')
@@ -32,7 +40,6 @@ export function getDb() {
     console.log('=== [DB DEBUG] Inizializzazione client Neon e Drizzle ===')
 
     sqlInstance = neon(connectionString)
-    // Passiamo esplicitamente l'oggetto di configurazione con lo schema importato
     dbInstance = drizzle(sqlInstance, { schema })
 
     console.log('✅ Client DB e istanza Drizzle ORM inizializzati con successo.')

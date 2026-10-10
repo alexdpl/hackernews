@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { users, jobs, posts, comments, vaultCerts, pulseStories, pulseUpvotes, votes, pulseMailMessages, pulseMailLogs, pulseComments, dkpCrawlerLicenses, dkpCrawlerLogs, orders, licenses, blogCategories, blogSubcategories, blogPosts, xpTransactions } from "./schema";
+import { users, jobs, posts, comments, vaultCerts, pulseStories, pulseUpvotes, votes, pulseMailMessages, pulseMailLogs, pulseComments, dkpCrawlerLicenses, dkpCrawlerLogs, orders, licenses, xpTransactions, blogCategories, blogPosts, blogSubcategories } from "./schema";
 
 export const jobsRelations = relations(jobs, ({one}) => ({
 	user: one(users, {
@@ -14,8 +14,8 @@ export const usersRelations = relations(users, ({many}) => ({
 	posts: many(posts),
 	vaultCerts: many(vaultCerts),
 	dkpCrawlerLicenses: many(dkpCrawlerLicenses),
-	blogPosts: many(blogPosts),
 	xpTransactions: many(xpTransactions),
+	blogPosts: many(blogPosts),
 }));
 
 export const commentsRelations = relations(comments, ({one}) => ({
@@ -108,17 +108,11 @@ export const ordersRelations = relations(orders, ({many}) => ({
 	licenses: many(licenses),
 }));
 
-export const blogSubcategoriesRelations = relations(blogSubcategories, ({one, many}) => ({
-	blogCategory: one(blogCategories, {
-		fields: [blogSubcategories.categoryId],
-		references: [blogCategories.id]
+export const xpTransactionsRelations = relations(xpTransactions, ({one}) => ({
+	user: one(users, {
+		fields: [xpTransactions.userId],
+		references: [users.id]
 	}),
-	blogPosts: many(blogPosts),
-}));
-
-export const blogCategoriesRelations = relations(blogCategories, ({many}) => ({
-	blogSubcategories: many(blogSubcategories),
-	blogPosts: many(blogPosts),
 }));
 
 export const blogPostsRelations = relations(blogPosts, ({one}) => ({
@@ -136,9 +130,15 @@ export const blogPostsRelations = relations(blogPosts, ({one}) => ({
 	}),
 }));
 
-export const xpTransactionsRelations = relations(xpTransactions, ({one}) => ({
-	user: one(users, {
-		fields: [xpTransactions.userId],
-		references: [users.id]
+export const blogCategoriesRelations = relations(blogCategories, ({many}) => ({
+	blogPosts: many(blogPosts),
+	blogSubcategories: many(blogSubcategories),
+}));
+
+export const blogSubcategoriesRelations = relations(blogSubcategories, ({one, many}) => ({
+	blogPosts: many(blogPosts),
+	blogCategory: one(blogCategories, {
+		fields: [blogSubcategories.categoryId],
+		references: [blogCategories.id]
 	}),
 }));

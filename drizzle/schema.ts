@@ -1,4 +1,4 @@
-import { pgTable, unique, varchar, text, timestamp, serial, integer, foreignKey, index, jsonb, boolean, numeric, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, unique, varchar, text, timestamp, serial, integer, jsonb, foreignKey, index, boolean, numeric, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const licenseStatus = pgEnum("license_status", ['active', 'suspended', 'revoked', 'expired'])
@@ -19,6 +19,7 @@ export const users = pgTable("users", {
 	githubHandle: varchar("github_handle", { length: 100 }),
 	xp: integer().default(0),
 	level: integer().default(1),
+	badges: jsonb().default([]),
 }, (table) => [
 	unique("users_username_unique").on(table.username),
 	unique("users_email_unique").on(table.email),
@@ -205,6 +206,8 @@ export const pulseChatMessages = pgTable("pulse_chat_messages", {
 	text: text().notNull(),
 	xpEarned: integer("xp_earned").default(0),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	userId: integer("user_id"),
+	message: text(),
 });
 
 export const pulseUserXp = pgTable("pulse_user_xp", {
@@ -303,31 +306,18 @@ export const licenses = pgTable("licenses", {
 	unique("licenses_license_key_key").on(table.licenseKey),
 ]);
 
-export const blogCategories = pgTable("blog_categories", {
+export const xpTransactions = pgTable("xp_transactions", {
 	id: serial().primaryKey().notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	slug: varchar({ length: 120 }).notNull(),
-	description: text(),
-	icon: varchar({ length: 50 }).default('i-heroicons-folder'),
-	color: varchar({ length: 30 }).default('#10B981'),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	unique("blog_categories_slug_key").on(table.slug),
-]);
-
-export const blogSubcategories = pgTable("blog_subcategories", {
-	id: serial().primaryKey().notNull(),
-	categoryId: integer("category_id").notNull(),
-	name: varchar({ length: 100 }).notNull(),
-	slug: varchar({ length: 120 }).notNull(),
+	userId: integer("user_id").notNull(),
+	action: text().notNull(),
+	points: integer().notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.categoryId],
-			foreignColumns: [blogCategories.id],
-			name: "blog_subcategories_category_id_fkey"
-		}).onDelete("cascade"),
-	unique("blog_subcategories_slug_key").on(table.slug),
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "xp_transactions_user_id_fkey"
+		}),
 ]);
 
 export const blogPosts = pgTable("blog_posts", {
@@ -347,6 +337,7 @@ export const blogPosts = pgTable("blog_posts", {
 	likes: integer().default(0).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	tags: jsonb().default([]),
 }, (table) => [
 	foreignKey({
 			columns: [table.categoryId],
@@ -366,16 +357,41 @@ export const blogPosts = pgTable("blog_posts", {
 	unique("blog_posts_slug_key").on(table.slug),
 ]);
 
-export const xpTransactions = pgTable("xp_transactions", {
+export const pulseAutoresponderRules = pgTable("pulse_autoresponder_rules", {
 	id: serial().primaryKey().notNull(),
-	userId: integer("user_id").notNull(),
-	action: text().notNull(),
-	points: integer().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	triggerAddress: varchar("trigger_address", { length: 255 }).notNull(),
+	subjectTemplate: text("subject_template").notNull(),
+	bodyTemplate: text("body_template").notNull(),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+});
+
+export const blogSubcategories = pgTable("blog_subcategories", {
+	id: serial().primaryKey().notNull(),
+	categoryId: integer("category_id").notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	slug: varchar({ length: 120 }).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	description: text(),
 }, (table) => [
 	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "xp_transactions_user_id_fkey"
-		}),
+			columns: [table.categoryId],
+			foreignColumns: [blogCategories.id],
+			name: "blog_subcategories_category_id_fkey"
+		}).onDelete("cascade"),
+	unique("blog_subcategories_slug_key").on(table.slug),
+]);
+
+export const blogCategories = pgTable("blog_categories", {
+	id: serial().primaryKey().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	slug: varchar({ length: 120 }).notNull(),
+	description: text(),
+	icon: varchar({ length: 50 }).default('i-heroicons-folder'),
+	color: varchar({ length: 30 }).default('#10B981'),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	tags: jsonb().default([]),
+}, (table) => [
+	unique("blog_categories_slug_key").on(table.slug),
 ]);

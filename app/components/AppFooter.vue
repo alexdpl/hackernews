@@ -1,6 +1,13 @@
 <!-- components/TheFooter.vue -->
 <script setup lang="ts">
-const currentYear = new Date().getFullYear()
+import { ref, onMounted } from 'vue'
+
+const currentYear = ref('2026')
+
+onMounted(() => {
+  currentYear.value = new Date().getFullYear()
+})
+
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 </script>
 

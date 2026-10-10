@@ -89,5 +89,6 @@ export default defineNuxtConfig({
         { src: 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js', defer: true }
       ]
     }
-	}
+	},
+	
   })
