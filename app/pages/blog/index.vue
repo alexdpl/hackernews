@@ -93,18 +93,40 @@ const filteredPosts = computed(() => {
   <div class="blog-container">
     <div class="blog-content-wrapper">
       
-      <!-- HERO SECTION NEWSROOM -->
-      <header class="blog-hero">
-        <div class="badge-tag">
-          <span class="badge-dot"></span>
-          DKP Official Newsroom
+      <!-- HERO SECTION NEWSROOM PREMIUM -->
+      <header class="blog-hero relative">
+        <!-- 🟢 Sentinel AI Live Status -->
+        <div class="flex justify-center mb-6">
+          <div class="flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span class="text-[0.7rem] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+              Pulse Sentinel AI Content Filter Active
+            </span>
+          </div>
         </div>
-        <h1 class="hero-title">
+
+        <div class="badge-tag mx-auto">
+          <span class="badge-dot"></span>
+          DKP Editorial Hub v2.5-BETA
+        </div>
+        
+        <h1 class="hero-title mt-4">
           DKP Native <span class="highlight">Blog</span>
         </h1>
-        <p class="hero-subtitle">
-          Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente dagli sviluppatori.
+        
+        <p class="hero-subtitle mt-2 max-w-2xl mx-auto">
+          Approfondimenti di sistema, architetture cloud, annunci strategici e guide notarizzate direttamente dalla community.
         </p>
+
+        <!-- CTA Sottoponi Articolo -->
+        <div class="mt-8 flex justify-center gap-4">
+          <NuxtLink to="/admin/blog" class="bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold px-6 py-2.5 rounded-lg transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transform hover:-translate-y-1">
+            ✍️ Sottoponi un Articolo
+          </NuxtLink>
+        </div>
       </header>
 
       <!-- BARRA DI RICERCA LIVE -->

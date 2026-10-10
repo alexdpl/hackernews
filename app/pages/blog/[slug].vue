@@ -35,7 +35,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="blog-post-container max-w-4xl mx-auto px-4 py-12">
+  <div class="blog-post-container max-w-6xl mx-auto px-4 py-12">
     <div v-if="pending" class="text-center py-20 text-emerald-400">
       <span class="text-3xl animate-pulse inline-block mb-4">⚡</span>
       <p>Caricamento Vault in corso...</p>
@@ -47,83 +47,121 @@ onMounted(() => {
       <NuxtLink to="/blog" class="mt-6 inline-block text-emerald-400 hover:underline">← Torna alla NewsRoom</NuxtLink>
     </div>
     
-    <article v-else class="glass-panel p-8 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl">
-      <NuxtLink to="/blog" class="text-emerald-400 hover:text-emerald-300 text-sm font-bold mb-6 inline-block">← Torna al Blog</NuxtLink>
+    <!-- LAYOUT A GRIGLIA: Sidebar (Social) + Contenuto Centrale -->
+    <div v-else class="flex flex-col lg:flex-row gap-8 relative">
       
-<div class="mb-4 flex items-center gap-3">
-         <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
-           {{ post.categoryName || post.category || 'Generale' }}
-         </span>
-         
-         <!-- 🛡️ Badge DKP Verified -->
-         <span v-if="post.isVerified" class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider" title="Scansionato e Notarizzato dal Vault DKP">
-           <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-           DKP Verified
-         </span>
-      </div>
+      <!-- 📱 SOCIAL STICKY SIDEBAR (Desktop) -->
+      <aside class="hidden lg:block w-16 flex-shrink-0">
+        <div class="sticky top-32 flex flex-col items-center gap-4">
+           <!-- Qui renderizziamo i pulsanti social in verticale -->
+           <SocialShare :title="post.title" :vertical="true" />
+        </div>
+      </aside>
 
-      <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">{{ post.title }}</h1>
-      
-      <div class="flex items-center gap-4 text-sm text-slate-400 mb-10 pb-6 border-b border-slate-800">
-        <span>👤 {{ post.authorName || 'DevKernelPulse Team' }}</span>
-        <span>📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
-        <span>👁️ {{ post.views || 0 }} visualizzazioni</span>
-      </div>
-
-      <p v-if="post.excerpt" class="text-sky-400 font-semibold text-lg leading-relaxed mb-8 border-l-4 border-sky-400 pl-4">
-        {{ post.excerpt }}
-      </p>
-
-      <!-- 🚀 Render Html Parsato (Aggiunta classe dkp-preview-content) -->
-      <div class="prose prose-invert max-w-none text-slate-200 mb-12 dkp-preview-content" v-html="post.content"></div>
-
-      <!-- Tags dell'articolo -->
-      <div v-if="post.tags && post.tags.length > 0" class="flex flex-wrap gap-2 mb-10">
-        <span v-for="tag in post.tags" :key="tag" class="bg-[#020420] text-sky-400 border border-slate-700 px-2 py-1 rounded text-xs font-mono">
-          #{{ tag }}
-        </span>
-      </div>
-
-<!-- 🛡️ DKP VAULT CERTIFICATE SECTION -->
-      <div v-if="post.isVerified && post.vaultCertificateId" class="mt-16 bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)]">
-        <!-- Effetto Glow di background -->
-        <div class="absolute -right-16 -top-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-emerald-500/20 p-2 rounded-lg border border-emerald-500/30">
-            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-          </div>
-          <div>
-            <h3 class="text-emerald-400 font-bold text-lg tracking-wide uppercase">Vault Notarization Certificate</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Proof of Code & Security Scan by Pulse Sentinel AI</p>
+      <!-- 📝 CONTENUTO ARTICOLO -->
+      <article class="flex-1 glass-panel p-6 sm:p-10 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl relative overflow-hidden">
+        
+        <!-- Breadcrumb & Badge -->
+        <div class="flex justify-between items-start mb-8 relative z-10">
+          <NuxtLink to="/blog" class="text-emerald-400 hover:text-emerald-300 text-sm font-bold flex items-center gap-2 transition-colors">
+            <span>←</span> Torna all'Hub
+          </NuxtLink>
+          <div class="flex items-center gap-3">
+             <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+               {{ post.categoryName || post.category || 'Generale' }}
+             </span>
+             <span v-if="post.isVerified" class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+               DKP Verified
+             </span>
           </div>
         </div>
 
-        <div class="bg-[#090d16] border border-slate-800 rounded-lg p-4 font-mono text-[11px] sm:text-xs text-slate-300 relative z-10">
-          <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
-            <span class="text-slate-500 font-semibold">CERTIFICATE_ID:</span>
-            <span class="text-emerald-400 font-bold select-all">{{ post.vaultCertificateId }}</span>
+        <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-8 leading-tight relative z-10">{{ post.title }}</h1>
+        
+        <!-- 🧑‍💻 BLOCCO AUTORE PREMIUM -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border border-slate-800 mb-10 relative z-10">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+              {{ (post.authorName || 'D')[0].toUpperCase() }}
+            </div>
+            <div>
+              <div class="text-slate-200 font-bold flex items-center gap-2">
+                {{ post.authorName || 'DevKernelPulse Team' }}
+                <span class="text-[0.65rem] bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded uppercase tracking-wider">Gold Author</span>
+              </div>
+              <div class="text-xs text-slate-400 flex items-center gap-3 mt-1">
+                <span>📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
+                <span>👁️ {{ post.views || 0 }} visualizzazioni</span>
+                <span class="text-sky-400 font-mono">⚡ 1500 DKP Rep</span>
+              </div>
+            </div>
           </div>
-          <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
-            <span class="text-slate-500 font-semibold">TIMESTAMP:</span>
-            <span class="text-slate-300">{{ new Date(post.updatedAt || post.createdAt).toISOString() }}</span>
+          <button class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg transition-colors border border-slate-700">
+            Vedi Profilo ↗
+          </button>
+        </div>
+
+        <!-- Estratto -->
+        <p v-if="post.excerpt" class="text-sky-400 font-semibold text-lg leading-relaxed mb-8 border-l-4 border-sky-400 pl-4 relative z-10">
+          {{ post.excerpt }}
+        </p>
+
+        <!-- 🚀 Render Html Parsato -->
+        <div class="prose prose-invert max-w-none text-slate-200 mb-12 dkp-preview-content relative z-10" v-html="post.content"></div>
+
+        <!-- Tags dell'articolo -->
+        <div v-if="post.tags && post.tags.length > 0" class="flex flex-wrap gap-2 mb-10 relative z-10">
+          <span v-for="tag in post.tags" :key="tag" class="bg-[#020420] text-sky-400 border border-slate-700 px-2 py-1 rounded text-xs font-mono transition-colors hover:border-sky-500 cursor-pointer">
+            #{{ tag }}
+          </span>
+        </div>
+
+        <!-- 🛡️ DKP VAULT CERTIFICATE SECTION -->
+        <div v-if="post.isVerified && post.vaultCertificateId" class="mt-12 bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)] z-10">
+          <div class="absolute -right-16 -top-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="bg-emerald-500/20 p-2 rounded-lg border border-emerald-500/30">
+                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+              </div>
+              <div>
+                <h3 class="text-emerald-400 font-bold text-lg tracking-wide uppercase">Vault Notarization Certificate</h3>
+                <p class="text-xs text-slate-400 mt-0.5">Proof of Code & Security Scan by Pulse Sentinel AI</p>
+              </div>
+            </div>
+            <!-- Pulsante Verifica Interattiva -->
+            <button class="hidden sm:flex items-center gap-2 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-3 py-1.5 rounded transition-colors">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              Verifica Integrità
+            </button>
           </div>
-          <div class="flex flex-col gap-2">
-            <span class="text-slate-500 font-semibold">SHA-256 SECURE CHECKSUM:</span>
-            <span class="text-sky-400 select-all break-all bg-[#020420] p-2 rounded border border-slate-800">{{ post.vaultHash }}</span>
+
+          <div class="bg-[#090d16] border border-slate-800 rounded-lg p-4 font-mono text-[11px] sm:text-xs text-slate-300 relative z-10">
+            <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
+              <span class="text-slate-500 font-semibold">CERTIFICATE_ID:</span>
+              <span class="text-emerald-400 font-bold select-all">{{ post.vaultCertificateId }}</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
+              <span class="text-slate-500 font-semibold">TIMESTAMP:</span>
+              <span class="text-slate-300">{{ new Date(post.updatedAt || post.createdAt).toISOString() }}</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <span class="text-slate-500 font-semibold">SHA-256 SECURE CHECKSUM:</span>
+              <span class="text-sky-400 select-all break-all bg-[#020420] p-2 rounded border border-slate-800">{{ post.vaultHash }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 🚀 Barra Social integrata -->
-      <div class="border-t border-slate-800 pt-8 mt-8">
-        <SocialShare :title="post.title" />
-      </div>
-      
-    </article>
+        <!-- 📱 Barra Social Mobile (nascosta su desktop) -->
+        <div class="lg:hidden border-t border-slate-800 pt-8 mt-8 relative z-10">
+          <SocialShare :title="post.title" />
+        </div>
+      </article>
+    </div>
   </div>
 </template>
-
 <style scoped>
 .glass-panel {
   backdrop-filter: blur(12px);
