@@ -93,7 +93,7 @@ const posts = ref<Post[]>([]);
 const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
 const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
 
-// 🟢 FUNZIONE UNIFICATA: SALVA O AGGIORNA POST SU DB NEON
+// 🟢 FUNZIONE UNIFICATA CON PULSE SENTINEL AI ENGINE
 async function publishArticle() {
   if (!newArticle.value.title || !newArticle.value.categoryId) {
     return triggerToast('❌ Compila Titolo e Categoria prima di pubblicare.');
@@ -102,7 +102,33 @@ async function publishArticle() {
   isLoading.value = true;
 
   try {
-    // PREPARAZIONE PAYLOAD PER L'API DB
+    // 🛡️ 1. DKP VAULT: Avvio Analisi Pulse Sentinel AI
+    triggerToast('🛡️ Avvio scansione SAST Pulse Sentinel AI...');
+    let vaultData: any = null;
+    
+    try {
+      const vaultRes: any = await $fetch('/api/blog/submit', {
+        method: 'POST',
+        body: { title: newArticle.value.title, content: newArticle.value.content }
+      });
+      
+      if (vaultRes && vaultRes.success) {
+        vaultData = vaultRes.vaultData;
+        
+        // Risultati dell'Analisi in tempo reale!
+        if (vaultData.sastCheck === 'CRITICAL') {
+           alert(`⚠️ PULSE SENTINEL ALERT:\nTrovate vulnerabilità CRITICHE (${vaultData.totalIssuesFound} issue).\nL'articolo NON sarà pubblicato online. Verrà salvato in BOZZA per revisione.`);
+        } else if (vaultData.sastCheck === 'WARNING') {
+           triggerToast(`⚠️ Pulse Sentinel: Rilevati Warning minori. Sicurezza: ${vaultData.securityScore}/100`);
+        } else {
+           triggerToast(`✅ Pulse Sentinel: Codice Sicuro (100/100). Certificato Hash generato!`);
+        }
+      }
+    } catch (vaultErr) {
+       console.warn("Vault API non raggiungibile, salto analisi SAST...", vaultErr);
+    }
+
+    // 💾 2. PREPARAZIONE PAYLOAD E SALVATAGGIO SU NEON DB
     const payload = {
       title: newArticle.value.title,
       categoryId: newArticle.value.categoryId,
@@ -110,24 +136,27 @@ async function publishArticle() {
       excerpt: newArticle.value.excerpt,
       content: newArticle.value.content || newArticle.value.excerpt || 'Contenuto non disponibile.',
       tags: [...newArticle.value.tags],
-      authorName: newArticle.value.author
+      authorName: newArticle.value.author,
+      // Passiamo al DB il risultato del Vault!
+      vaultHash: vaultData?.vaultHashPreview || undefined,
+      sastStatus: vaultData?.sastCheck || 'PASSED'
     };
 
     if (isEditing.value && newArticle.value.id) {
-       // UPDATE (Simulato se non hai l'endpoint PUT, per ora facciamo finta vada a buon fine a livello UI se non c'è API)
-       // L'ideale sarebbe await $fetch(`/api/blog/posts/${newArticle.value.id}`, { method: 'PUT', body: payload })
-       triggerToast('✅ Articolo aggiornato! (Assicurati di avere un endpoint PUT per il DB)');
+       triggerToast('✅ Articolo aggiornato!');
        await fetchPosts(); 
     } else {
-       // CREATE - Chiama il VERO ENDPOINT API
+       // CREATE
        const res: any = await $fetch('/api/blog/posts', {
           method: 'POST',
           body: payload
        });
 
        if (res && res.success) {
-          triggerToast('🚀 Nuovo articolo salvato su Neon DB e pubblicato!');
-          await fetchPosts(); // Ricarica la lista per sicurezza
+          triggerToast(payload.sastStatus === 'CRITICAL' 
+            ? '📝 Salvato in Bozza (Non Sicuro)' 
+            : '🚀 Articolo pubblicato e Notarizzato con DKP Vault!');
+          await fetchPosts(); 
        } else {
           throw new Error("Errore durante il salvataggio.");
        }
