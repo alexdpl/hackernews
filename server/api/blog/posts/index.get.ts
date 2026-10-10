@@ -1,8 +1,9 @@
-// server/api/blog/posts.get.ts
+// server/api/blog/index.get.ts
 import { defineEventHandler, getQuery } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/drizzle/schema'
+// 🔥 FIX: Importiamo blogPosts e users dal tuo schema corretto
+import { blogPosts, blogCategories, blogSubcategories, users } from '~~/drizzle/schema' // Assicurati che il path sia corretto (es. ~~/drizzle/schema se usi quella cartella)
 
 function getSafeQuery(event: any): Record<string, any> {
   try {
@@ -28,6 +29,7 @@ export default defineEventHandler(async (event) => {
     const db = getDb()
     let postsList: any[] = []
 
+    // 🔥 FIX: Approccio Drizzle Relational Queries (se supportato)
     if (db.query && db.query.blogPosts) {
       postsList = await db.query.blogPosts.findMany({
         where: query.public === 'true' ? eq(blogPosts.status, 'published') : undefined,
@@ -44,11 +46,34 @@ export default defineEventHandler(async (event) => {
           },
         },
       })
-    } else if (blogPosts) {
-      postsList = await db
-        .select()
+    } else {
+      // 🔥 FIX: Fallback manuale robusto se db.query non è impostato nel client DB
+      // Eseguiamo una query leftJoin per recuperare manualmente i dati relazionali
+      const rawPosts = await db
+        .select({
+          post: blogPosts,
+          category: blogCategories,
+          subcategory: blogSubcategories,
+          author: users,
+        })
         .from(blogPosts)
+        .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
+        .leftJoin(blogSubcategories, eq(blogPosts.subcategoryId, blogSubcategories.id))
+        .leftJoin(users, eq(blogPosts.authorId, users.id))
         .orderBy(desc(blogPosts.createdAt))
+
+      // Rimodelliamo i dati per mimare l'output di db.query.findMany()
+      postsList = rawPosts.map(row => ({
+        ...row.post,
+        category: row.category,
+        subcategory: row.subcategory,
+        author: row.author ? { id: row.author.id, username: row.author.username, avatarUrl: row.author.avatarUrl } : null
+      }))
+      
+      // Filtro status per il fallback
+      if (query.public === 'true') {
+        postsList = postsList.filter(p => p.status === 'published')
+      }
     }
 
     let filteredPosts = [...postsList]

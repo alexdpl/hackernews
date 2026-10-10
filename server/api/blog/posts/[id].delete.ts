@@ -2,7 +2,8 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/server/db/schema'
+// 🔥 FIX: Import corretto dallo schema
+import { blogPosts } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')

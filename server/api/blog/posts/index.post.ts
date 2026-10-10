@@ -1,40 +1,26 @@
-// server/api/admin/blog/posts.post.ts
-import { defineEventHandler, createError } from 'h3'
+// server/api/blog/posts/index.post.ts
+import { defineEventHandler, createError, readBody } from 'h3'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts, users } from '~~/server/db/schema'
-import { eq } from 'drizzle-orm'
+// 🔥 FIX: Import corretto dello schema Drizzle
+import { blogPosts, users } from '~~/drizzle/schema'
 import crypto from 'node:crypto'
-
-// Parser nativo del body
-async function getRequestBody(event: any): Promise<any> {
-  const req = event.node?.req || event.req
-  if (req?.body && typeof req.body === 'object') return req.body
-
-  return new Promise((resolve) => {
-    if (!req) return resolve({})
-    let rawData = ''
-    req.on('data', (chunk: any) => { rawData += chunk })
-    req.on('end', () => {
-      try { resolve(rawData ? JSON.parse(rawData) : {}) } 
-      catch { resolve({}) }
-    })
-    req.on('error', () => resolve({}))
-  })
-}
 
 function slugify(text: string): string {
   return text
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/[\s\W_]+-/g, '-')
+    .replace(/[\s\W_]+/g, '-') // Migliorata regex per evitare trattini multipli
     .replace(/[^a-z0-9-]+/g, '')
     .replace(/^-+|-+$/g, '')
 }
 
 export default defineEventHandler(async (event) => {
-  const body = (await getRequestBody(event)) || {}
-  const { title, categoryId, subcategoryId, excerpt, content, authorName } = body
+  // 🔥 FIX: Uso nativo di H3 readBody per parsing sicuro
+  const body = await readBody(event) || {}
+  
+  // Aggiunti i 'tags' all'estrazione dal body
+  const { title, categoryId, subcategoryId, excerpt, content, tags } = body
 
   const cleanTitle = title?.trim()
   if (!cleanTitle || !categoryId) {
@@ -47,6 +33,15 @@ export default defineEventHandler(async (event) => {
   const generatedSlug = slugify(cleanTitle)
   const numericCategoryId = Number(categoryId)
   const numericSubcategoryId = subcategoryId ? Number(subcategoryId) : null
+  
+  // Normalizzazione dei tags per JSONB
+  let cleanTags: string[] = []
+  if (Array.isArray(tags)) {
+    cleanTags = tags
+  } else if (typeof tags === 'string') {
+    // Se per caso arriva come stringa separata da virgole
+    cleanTags = tags.split(',').map(t => t.trim()).filter(Boolean)
+  }
 
   try {
     const db = getDb()
@@ -73,6 +68,7 @@ export default defineEventHandler(async (event) => {
         categoryId: numericCategoryId,
         subcategoryId: numericSubcategoryId,
         authorId,
+        tags: cleanTags, // 🔥 FIX: Salvataggio dei tags nel db
         status: 'published',
         isVerified: true,
         vaultCertificateId,

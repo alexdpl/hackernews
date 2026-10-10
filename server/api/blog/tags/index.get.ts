@@ -1,13 +1,23 @@
-// server/api/blog/tags.get.ts
+// server/api/blog/tags/index.get.ts
 import { defineEventHandler } from 'h3'
 import { getDb } from '~~/server/utils/db'
+// 🔥 FIX: Import dello schema blogPosts corretto
+import { blogPosts } from '~~/drizzle/schema'
 
 export default defineEventHandler(async () => {
   try {
     const db = getDb()
-    const posts = await db.query.blogPosts.findMany({
-      columns: { tags: true }
-    })
+    
+    // Tenta Drizzle Relational Queries prima
+    let posts = []
+    if (db.query && db.query.blogPosts) {
+      posts = await db.query.blogPosts.findMany({
+        columns: { tags: true }
+      })
+    } else {
+      // Fallback SQL
+      posts = await db.select({ tags: blogPosts.tags }).from(blogPosts)
+    }
 
     const allTags = new Set<string>()
     posts.forEach((p: any) => {
@@ -27,6 +37,7 @@ export default defineEventHandler(async () => {
       data: Array.from(allTags)
     }
   } catch (error: any) {
+    console.error('Errore estrazione tags:', error)
     return { success: false, data: [] }
   }
 })
