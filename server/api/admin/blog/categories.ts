@@ -2,6 +2,7 @@
 import { defineEventHandler, getMethod, readBody, createError } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+// 🔥 FIX: Import corretto dallo schema Drizzle
 import { blogCategories, blogSubcategories } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
@@ -11,9 +12,21 @@ export default defineEventHandler(async (event) => {
   try {
     // 🟩 METODO GET (Recupero Categorie)
     if (method === 'GET') {
-      const cats = await db.query.blogCategories.findMany({
-        with: { subcategories: true }
-      })
+      let cats = [];
+      // Se db.query è disponibile, usa Relational Queries
+      if (db.query && db.query.blogCategories) {
+        cats = await db.query.blogCategories.findMany({
+          with: { subcategories: true }
+        });
+      } else {
+        // Fallback SQL se Relational non è attivo
+        const rawCats = await db.select().from(blogCategories);
+        const rawSubs = await db.select().from(blogSubcategories);
+        cats = rawCats.map(c => ({
+          ...c,
+          subcategories: rawSubs.filter(s => s.categoryId === c.id)
+        }));
+      }
       return { success: true, data: cats }
     }
 
@@ -69,16 +82,13 @@ export default defineEventHandler(async (event) => {
       const idParam = searchParams.get('id')
       const type = searchParams.get('type')
 
-      // Mettiamo un parseInt esplicito
       const id = parseInt(idParam || '', 10)
 
-      // GUARDIA DI FERRO: Se l'ID non è un numero valido o è 0, o il tipo non è corretto, BLOCCARE TUTTO.
       if (!id || isNaN(id) || id <= 0 || !['category', 'subcategory'].includes(type || '')) {
-        throw createError({ statusCode: 400, message: 'CRITICO: Parametri DELETE non validi o ID mancante. Operazione annullata per sicurezza.' })
+        throw createError({ statusCode: 400, message: 'CRITICO: Parametri DELETE non validi o ID mancante. Operazione annullata.' })
       }
 
       if (type === 'category') {
-        // La where con eq(..., id) ora è sicura al 100% perché id è un intero verificato
         await db.delete(blogSubcategories).where(eq(blogSubcategories.categoryId, id))
         await db.delete(blogCategories).where(eq(blogCategories.id, id))
       } else {
@@ -88,13 +98,10 @@ export default defineEventHandler(async (event) => {
       return { success: true, message: `Elemento ${id} eliminato in sicurezza!` }
     }
 
-    // Se il metodo non è gestito (es. PUT, PATCH)
     throw createError({ statusCode: 405, message: 'Method Not Allowed' })
     
   } catch (err: any) {
     console.error('[API CATEGORIES ERROR]:', err)
-    
-    // Per il tuo sistema ibrido, restituiamo 200 con {success:false} per far continuare il Vue
     return { success: false, message: err.message || 'Errore Server' }
   }
 })

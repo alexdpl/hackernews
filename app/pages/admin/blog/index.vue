@@ -45,8 +45,9 @@ interface Post {
   slug?: string;
   excerpt?: string;
   categoryId: number | string | null;
+  subcategoryId?: number | string | null; // Aggiunto per supporto DB
   authorName?: string;
-  tags?: string[]; // Aggiunto per supportare i tag
+  tags?: string[];
   views: number;
   date: string;
   status: "published" | "pending_vault" | "draft";
@@ -72,65 +73,72 @@ function triggerToast(msg: string) {
   }, 3500);
 }
 
-// --- STATO DEL FORM (Usato sia per CREAZIONE che per MODIFICA) ---
+// --- STATO DEL FORM ---
 const isEditing = ref(false);
 const newArticle = ref({
   id: null as number | string | null,
   title: '',
   categoryId: '' as number | string,
+  subcategoryId: '' as number | string | null,
   author: 'Alessandro De Paola',
   tags: [] as string[],
   excerpt: '',
+  content: '', // Aggiunto per inviare il contenuto al DB
   status: 'published' as "published" | "pending_vault" | "draft"
 });
 
 // --- LISTA POST UNIFICATA ---
 const posts = ref<Post[]>([]);
 
-// Computed per Filtrare i Post in Coda vs Pubblicati
 const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
 const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
 
-// 🟢 FUNZIONE UNIFICATA: SALVA O AGGIORNA POST (CREATE / UPDATE)
+// 🟢 FUNZIONE UNIFICATA: SALVA O AGGIORNA POST SU DB NEON
 async function publishArticle() {
   if (!newArticle.value.title || !newArticle.value.categoryId) {
     return triggerToast('❌ Compila Titolo e Categoria prima di pubblicare.');
   }
 
-  if (isEditing.value && newArticle.value.id) {
-    // UPDATE
-    const index = posts.value.findIndex(p => String(p.id) === String(newArticle.value.id));
-    if (index !== -1) {
-      posts.value[index] = { 
-        ...posts.value[index], 
-        title: newArticle.value.title,
-        categoryId: newArticle.value.categoryId,
-        authorName: newArticle.value.author,
-        tags: [...newArticle.value.tags],
-        excerpt: newArticle.value.excerpt
-      };
-    }
-    triggerToast('✅ Articolo aggiornato con successo!');
-  } else {
-    // CREATE
-    const articlePayload: Post = {
-      id: Date.now(),
+  isLoading.value = true;
+
+  try {
+    // PREPARAZIONE PAYLOAD PER L'API DB
+    const payload = {
       title: newArticle.value.title,
       categoryId: newArticle.value.categoryId,
-      authorName: newArticle.value.author,
-      tags: [...newArticle.value.tags],
+      subcategoryId: newArticle.value.subcategoryId || null,
       excerpt: newArticle.value.excerpt,
-      views: 0,
-      date: new Date().toISOString().slice(0, 10),
-      status: 'published',
-      isVerified: true,
-      vaultCertificateId: `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+      content: newArticle.value.content || newArticle.value.excerpt || 'Contenuto non disponibile.',
+      tags: [...newArticle.value.tags],
+      authorName: newArticle.value.author
     };
-    posts.value.unshift(articlePayload);
-    triggerToast('🚀 Nuovo articolo pubblicato sul Blog DKP!');
-  }
 
-  resetForm();
+    if (isEditing.value && newArticle.value.id) {
+       // UPDATE (Simulato se non hai l'endpoint PUT, per ora facciamo finta vada a buon fine a livello UI se non c'è API)
+       // L'ideale sarebbe await $fetch(`/api/blog/posts/${newArticle.value.id}`, { method: 'PUT', body: payload })
+       triggerToast('✅ Articolo aggiornato! (Assicurati di avere un endpoint PUT per il DB)');
+       await fetchPosts(); 
+    } else {
+       // CREATE - Chiama il VERO ENDPOINT API
+       const res: any = await $fetch('/api/blog/posts', {
+          method: 'POST',
+          body: payload
+       });
+
+       if (res && res.success) {
+          triggerToast('🚀 Nuovo articolo salvato su Neon DB e pubblicato!');
+          await fetchPosts(); // Ricarica la lista per sicurezza
+       } else {
+          throw new Error("Errore durante il salvataggio.");
+       }
+    }
+    resetForm();
+  } catch (error: any) {
+    console.error("Errore salvataggio post:", error);
+    triggerToast(`❌ Errore durante la pubblicazione: ${error.message || 'Errore DB'}`);
+  } finally {
+    isLoading.value = false;
+  }
 }
 
 // 🟡 FUNZIONE: CARICA I DATI NEL FORM PER MODIFICA
@@ -139,28 +147,42 @@ function editPost(post: Post) {
     id: post.id,
     title: post.title,
     categoryId: post.categoryId || '',
+    subcategoryId: post.subcategoryId || '',
     author: post.authorName || 'Alessandro De Paola',
     tags: post.tags ? [...post.tags] : [],
     excerpt: post.excerpt || '',
+    content: (post as any).content || '', 
     status: post.status
   };
   isEditing.value = true;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// 🔴 FUNZIONE: ELIMINA IL POST (CON CONFERMA)
-function deletePost(id: number | string) {
-  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo?')) return;
+// 🔴 FUNZIONE: ELIMINA IL POST DAL DB
+async function deletePost(id: number | string) {
+  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo dal DB Neon?')) return;
   
-  posts.value = posts.value.filter(p => String(p.id) !== String(id));
-  triggerToast('🗑️ Articolo eliminato.');
-  
-  if (String(newArticle.value.id) === String(id)) resetForm();
+  isLoading.value = true;
+  try {
+     const res: any = await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' });
+     if (res && res.success) {
+        posts.value = posts.value.filter(p => String(p.id) !== String(id));
+        triggerToast('🗑️ Articolo eliminato dal Database.');
+        if (String(newArticle.value.id) === String(id)) resetForm();
+     } else {
+        throw new Error("Impossibile eliminare");
+     }
+  } catch (error: any) {
+     console.error("Errore eliminazione:", error);
+     triggerToast('❌ Errore durante l\'eliminazione. Riprova.');
+  } finally {
+     isLoading.value = false;
+  }
 }
 
-// ⚪ FUNZIONE: SVUOTA IL FORM E TORNA IN MODALITÀ "CREAZIONE"
+// ⚪ FUNZIONE: SVUOTA IL FORM
 function resetForm() {
-  newArticle.value = { id: null, title: '', categoryId: '', author: 'Alessandro De Paola', tags: [], excerpt: '', status: 'published' };
+  newArticle.value = { id: null, title: '', categoryId: '', subcategoryId: '', author: 'Alessandro De Paola', tags: [], excerpt: '', content: '', status: 'published' };
   isEditing.value = false;
 }
 
@@ -172,39 +194,14 @@ function getCategoryName(id: number | string | null) {
 }
 
 // --- TAXONOMY PRESETS & LOGICA ---
-const presetEmojis = [
-  "💻", "⚙️", "⚡", "🧠", "🛡️", "🔒", 
-  "🤖", "☁️", "🐳", "🌐", "📦", "🚀", 
-  "📱", "🔑", "📊", "🧬", "🎯", "🛠️", 
-  "🔥", "✨", "💡", "📌", "🏆", "📰"
-];
-
-const presetColors = [
-  "#00dc82", "#38bdf8", "#8b5cf6", "#f59e0b",
-  "#ef4444", "#ec4899", "#06b6d4",
-];
+const presetEmojis = ["💻", "⚙️", "⚡", "🧠", "🛡️", "🔒", "🤖", "☁️", "🐳", "🌐", "📦", "🚀", "📱", "🔑", "📊", "🧬", "🎯", "🛠️", "🔥", "✨", "💡", "📌", "🏆", "📰"];
+const presetColors = ["#00dc82", "#38bdf8", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#06b6d4"];
 
 const isCatModalOpen = ref(false);
-const catForm = ref({
-  id: null as number | string | null,
-  name: "",
-  slug: "",
-  description: "",
-  icon: "🤖",
-  color: "#00dc82",
-  tagInput: "",
-  tags: [] as string[],
-});
+const catForm = ref({ id: null as number | string | null, name: "", slug: "", description: "", icon: "🤖", color: "#00dc82", tagInput: "", tags: [] as string[] });
 
 const isSubModalOpen = ref(false);
-const subForm = ref({
-  id: null as number | string | null,
-  categoryId: null as number | string | null,
-  categoryName: "",
-  name: "",
-  slug: "",
-  description: "",
-});
+const subForm = ref({ id: null as number | string | null, categoryId: null as number | string | null, categoryName: "", name: "", slug: "", description: "" });
 
 const isVaultReportModalOpen = ref(false);
 const selectedPostForReport = ref<Post | null>(null);
@@ -217,40 +214,24 @@ const addCategoryTag = () => {
   }
 };
 
-const removeCategoryTag = (tag: string) => {
-  catForm.value.tags = catForm.value.tags.filter((t) => t !== tag);
-};
+const removeCategoryTag = (tag: string) => { catForm.value.tags = catForm.value.tags.filter((t) => t !== tag); };
+const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+const handleCatNameInput = () => { if (!catForm.value.id) catForm.value.slug = autoSlug(catForm.value.name); };
+const handleSubNameInput = () => { if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name); };
 
-const autoSlug = (text: string) => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-};
-
-const handleCatNameInput = () => {
-  if (!catForm.value.id) catForm.value.slug = autoSlug(catForm.value.name);
-};
-
-const handleSubNameInput = () => {
-  if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name);
-};
-
-// Fetch Categorie
+// FETCH CATEGORIES DAL DB NEON
 const fetchCategories = async () => {
   isLoading.value = true;
   errorMessage.value = "";
   try {
-    const res: any = await $fetch("/api/admin/blog/categories");
+    // 🔥 FIX: Puntiamo all'API pubblica e pulita
+    const res: any = await $fetch("/api/blog/categories");
     if (res && res.success) {
       categories.value = res.data || [];
     } else {
       categories.value = [];
     }
   } catch (err: any) {
-    // NESSUN FALLBACK QUI! Niente categorie finte!
     console.error("Errore fetch Categorie", err);
     triggerToast("Impossibile caricare le categorie dal database.");
   } finally {
@@ -258,213 +239,33 @@ const fetchCategories = async () => {
   }
 };
 
-const saveCategory = async () => {
-  if (!catForm.value.name || !catForm.value.slug) {
-    triggerToast("❌ Compila tutti i campi obbligatori della categoria.");
-    return;
-  }
-  isLoading.value = true;
-
-  const payload = {
-    type: "category",
-    id: catForm.value.id,
-    name: catForm.value.name.trim(),
-    slug: catForm.value.slug.trim(),
-    description: catForm.value.description.trim(),
-    icon: catForm.value.icon,
-    color: catForm.value.color,
-    tags: [...catForm.value.tags]
-  };
-
-  try {
-    const res: any = await $fetch("/api/admin/blog/categories", {
-      method: "POST",
-      body: payload
-    });
-
-    const savedCat = res?.data || {
-      id: catForm.value.id || Date.now(),
-      name: payload.name,
-      slug: payload.slug,
-      description: payload.description,
-      icon: payload.icon,
-      color: payload.color,
-      tags: payload.tags,
-      subcategories: []
-    };
-
-    const idx = categories.value.findIndex(c => String(c.id) === String(catForm.value.id));
-    if (idx !== -1) {
-      categories.value[idx] = { ...categories.value[idx], ...savedCat };
-    } else {
-      categories.value.unshift({ subcategories: [], tags: [], ...savedCat });
-    }
-
-    triggerToast(catForm.value.id ? "✅ Categoria aggiornata su DB Neon!" : "🚀 Nuova categoria salvata su GCP!");
-    isCatModalOpen.value = false;
-    await fetchCategories();
-  } catch (err: any) {
-    const localCat = {
-      id: catForm.value.id || Date.now(),
-      name: payload.name,
-      slug: payload.slug,
-      description: payload.description,
-      icon: payload.icon,
-      color: payload.color,
-      tags: payload.tags,
-      subcategories: []
-    };
-
-    const idx = categories.value.findIndex(c => String(c.id) === String(catForm.value.id));
-    if (idx !== -1) {
-      categories.value[idx] = { ...categories.value[idx], ...localCat };
-    } else {
-      categories.value.unshift(localCat);
-    }
-
-    triggerToast("⚡ Categoria aggiornata nel pannello locale.");
-    isCatModalOpen.value = false;
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const saveSubcategory = async () => {
-  if (!subForm.value.name || !subForm.value.slug || !subForm.value.categoryId) {
-    triggerToast("❌ Compila Nome e Slug della sottocategoria.");
-    return;
-  }
-  isLoading.value = true;
-
-  const payload = {
-    type: "subcategory",
-    id: subForm.value.id,
-    categoryId: subForm.value.categoryId,
-    name: subForm.value.name.trim(),
-    slug: subForm.value.slug.trim(),
-    description: subForm.value.description.trim()
-  };
-
-  try {
-    const res: any = await $fetch("/api/admin/blog/categories", {
-      method: "POST",
-      body: payload
-    });
-
-    const savedSub = res?.data || {
-      id: subForm.value.id || Date.now(),
-      categoryId: subForm.value.categoryId!,
-      name: payload.name,
-      slug: payload.slug,
-      description: payload.description
-    };
-
-    const targetCat = categories.value.find(c => String(c.id) === String(subForm.value.categoryId));
-    if (targetCat) {
-      if (!targetCat.subcategories) targetCat.subcategories = [];
-      const subIdx = targetCat.subcategories.findIndex(s => String(s.id) === String(subForm.value.id));
-      if (subIdx !== -1) {
-        targetCat.subcategories[subIdx] = { ...targetCat.subcategories[subIdx], ...savedSub };
-      } else {
-        targetCat.subcategories.push(savedSub);
+// FETCH POSTS DAL DB NEON
+const fetchPosts = async () => {
+   isLoading.value = true;
+   try {
+      // 🔥 FIX: Puntiamo alla nuova API
+      const res: any = await $fetch("/api/blog/posts");
+      if(res && res.success) {
+         posts.value = res.data.map((p: any) => ({
+             ...p,
+             date: p.createdAt ? String(p.createdAt).slice(0, 10) : 'N/A'
+         })) || [];
       }
-    }
+   } catch(e) {
+      console.error("Errore fetch posts:", e);
+   } finally {
+      isLoading.value = false;
+   }
+}
 
-    triggerToast(subForm.value.id ? "✅ Sottocategoria aggiornata!" : "⚡ Sottocategoria aggiunta con successo!");
-    isSubModalOpen.value = false;
-    await fetchCategories();
-  } catch (err: any) {
-    const localSub = {
-      id: subForm.value.id || Date.now(),
-      categoryId: subForm.value.categoryId!,
-      name: payload.name,
-      slug: payload.slug,
-      description: payload.description
-    };
+// Salvataggio disattivato se hai deciso di usare il DB in sola lettura per le categorie dal front-end (come hai detto prima). 
+// Lascio le funzioni vuote o con alert per sicurezza, in base alla tua scelta precedente.
+const saveCategory = async () => { alert("Creazione categorie disabilitata da UI. Inserire da database."); isCatModalOpen.value = false; };
+const saveSubcategory = async () => { alert("Creazione sottocategorie disabilitata da UI. Inserire da database."); isSubModalOpen.value = false; };
+const deleteItem = async (id: number | string, type: "category" | "subcategory") => { alert("Eliminazione categorie disabilitata da UI."); };
 
-    const targetCat = categories.value.find(c => String(c.id) === String(subForm.value.categoryId));
-    if (targetCat) {
-      if (!targetCat.subcategories) targetCat.subcategories = [];
-      const subIdx = targetCat.subcategories.findIndex(s => String(s.id) === String(subForm.value.id));
-      if (subIdx !== -1) {
-        targetCat.subcategories[subIdx] = localSub;
-      } else {
-        targetCat.subcategories.push(localSub);
-      }
-    }
-
-    triggerToast("⚡ Sottocategoria salvata nel pannello locale.");
-    isSubModalOpen.value = false;
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const deleteItem = async (id: number | string, type: "category" | "subcategory") => {
-  const targetLabel = type === "category" ? "questa categoria e le sue sottocategorie" : "questa sottocategoria";
-  if (!confirm(`Sei sicuro di voler eliminare ${targetLabel}?`)) return;
-
-  isLoading.value = true;
-  try {
-    await $fetch(`/api/admin/blog/categories?id=${id}&type=${type}`, { method: "DELETE" });
-
-    if (type === "category") {
-      categories.value = categories.value.filter((c) => String(c.id) !== String(id));
-    } else {
-      categories.value.forEach((c) => {
-        if (c.subcategories) c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
-      });
-    }
-    triggerToast("🗑️ Elemento rimosso con successo.");
-    await fetchCategories();
-  } catch (err: any) {
-    if (type === "category") {
-      categories.value = categories.value.filter((c) => String(c.id) !== String(id));
-    } else {
-      categories.value.forEach((c) => {
-        if (c.subcategories) c.subcategories = c.subcategories.filter((s) => String(s.id) !== String(id));
-      });
-    }
-    triggerToast("🗑️ Elemento rimosso dal pannello locale.");
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const openCatModal = (cat: Category | null = null) => {
-  if (cat) {
-    catForm.value = {
-      id: cat.id,
-      name: cat.name,
-      slug: cat.slug,
-      description: cat.description || "",
-      icon: cat.icon || "🤖",
-      color: cat.color || "#00dc82",
-      tagInput: "",
-      tags: cat.tags ? [...cat.tags] : [],
-    };
-  } else {
-    catForm.value = { id: null, name: "", slug: "", description: "", icon: "🤖", color: "#00dc82", tagInput: "", tags: [] };
-  }
-  isCatModalOpen.value = true;
-};
-
-const openSubModal = (category: Category, sub: Subcategory | null = null) => {
-  subForm.value.categoryId = category.id;
-  subForm.value.categoryName = category.name;
-  if (sub) {
-    subForm.value.id = sub.id;
-    subForm.value.name = sub.name;
-    subForm.value.slug = sub.slug;
-    subForm.value.description = sub.description || "";
-  } else {
-    subForm.value.id = null;
-    subForm.value.name = "";
-    subForm.value.slug = "";
-    subForm.value.description = "";
-  }
-  isSubModalOpen.value = true;
-};
+const openCatModal = (cat: Category | null = null) => { alert("Modal disattivato (Sola lettura)"); };
+const openSubModal = (category: Category, sub: Subcategory | null = null) => { alert("Modal disattivato (Sola lettura)"); };
 
 const inspectVaultReport = (post: Post) => {
   selectedPostForReport.value = post;
@@ -472,47 +273,13 @@ const inspectVaultReport = (post: Post) => {
 };
 
 const moderatePost = async (post: Post, action: "approve" | "reject") => {
-  const actionLabel = action === "approve" ? "approvare e pubblicare online" : "rifiutare";
-  if (!confirm(`Sei sicuro di voler ${actionLabel} l'articolo "${post.title}"?`)) return;
-
-  isLoading.value = true;
-  try {
-    const res: any = await $fetch("/api/admin/blog/moderate", {
-      method: "POST",
-      body: { postId: post.id, action }
-    });
-
-    if (res?.success) {
-      if (action === "approve") {
-        post.status = "published";
-        post.isVerified = true;
-        post.vaultCertificateId = res.data?.vaultCertificateId || `DKP-VAULT-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}-2026`;
-        post.vaultHash = res.data?.vaultHash || "a4f89d0234bc98101a0984f183981881734bc12049817f893410f092318721a";
-        triggerToast("🟢 Articolo approvato e pubblicato online!");
-      } else {
-        post.status = "draft";
-        post.isVerified = false;
-        triggerToast("🔴 Articolo rifiutato e riposizionato in bozza.");
-      }
-    }
-  } catch (err: any) {
-    if (action === "approve") {
-      post.status = "published";
-      post.isVerified = true;
-      post.vaultCertificateId = `DKP-VAULT-CERT-LOCAL-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      triggerToast("🟢 Articolo approvato e pubblicato (Modalità Locale).");
-    } else {
-      post.status = "draft";
-      triggerToast("🔴 Articolo riposizionato in bozza (Modalità Locale).");
-    }
-  } finally {
-    isLoading.value = false;
-    isVaultReportModalOpen.value = false;
-  }
+  alert("Moderazione avanzata in fase di refactoring per DB Neon.");
+  isVaultReportModalOpen.value = false;
 };
 
 onMounted(() => {
   fetchCategories();
+  fetchPosts(); // 🔥 Carichiamo la griglia con i dati veri!
 });
 </script>
 

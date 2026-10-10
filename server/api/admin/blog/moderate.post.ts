@@ -2,7 +2,8 @@
 import { defineEventHandler, createError } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts, users } from '~~/server/db/schema' // 👈 Assicurati che 'users' sia importato dallo schema
+// 🔥 FIX: Import aggiornati dalla root di Drizzle
+import { blogPosts, users } from '~~/drizzle/schema' 
 import crypto from 'node:crypto'
 
 // Parser nativo del body a prova di mismatch H3
@@ -55,14 +56,13 @@ export default defineEventHandler(async (event) => {
         .where(eq(blogPosts.id, numericPostId))
         .returning()
 
-      // 🏆 2. GAMIFICATION SYSTEM (Step 3.3): Assegnazione +150 DKP Rep Points e badge "Gold Author"
+      // 🏆 2. GAMIFICATION SYSTEM: Assegnazione +150 DKP Rep Points e badge "Gold Author"
       if (updatedPost && updatedPost.authorId) {
         const [author] = await db.select().from(users).where(eq(users.id, updatedPost.authorId)).limit(1)
 
         if (author) {
           const currentPoints = (author.repPoints || 0) + 150
           
-          // Gestione sicura dei badge utente (array o stringa JSON)
           let currentBadges: string[] = []
           if (Array.isArray(author.badges)) {
             currentBadges = author.badges
@@ -74,12 +74,13 @@ export default defineEventHandler(async (event) => {
             currentBadges.push('Gold Author')
           }
 
+          // Nota: nel tuo file originale avevi newReputation e newXp non definiti, uso currentPoints per la logica. 
+          // Se nel tuo schema si chiamano xp e reputation, adattali di conseguenza.
           await db.update(users)
             .set({
-              reputation: newReputation,
-              xp: newXp,
+              repPoints: currentPoints,
               badges: currentBadges
-            })
+            } as any)
             .where(eq(users.id, author.id))
         }
       }
