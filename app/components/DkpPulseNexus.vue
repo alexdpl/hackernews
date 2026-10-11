@@ -1,14 +1,25 @@
+<!-- app/components/DkpPulseNexus.vue -->
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick, computed, watch } from 'vue'
 
-// Se per qualche motivo il composable è in ritardo, impostiamo un fallback vuoto
 const auth = useAuthCore() || {}
-const user = auth.user
 
-// 🔥 FIX: Aggiunto il punto interrogativo prima di .value su user
-const isLogged = computed(() => !!user?.value)
-const userName = computed(() => user?.value?.username || 'Ospite')
-const userXp = computed(() => user?.value?.xp || 0)
+// 🧠 1. Estrazione utente ultra-reattiva
+const currentUser = computed(() => auth.user?.value || auth.user)
+
+const isLogged = computed(() => !!(currentUser.value?.id || currentUser.value?.username || currentUser.value?.email))
+
+// 🧠 2. Riconoscimento Username esatto (es. @alexdpl)
+const userName = computed(() => currentUser.value?.username || 'Ospite')
+
+// 🧠 3. Riconoscimento del Grado/Ruolo
+const userRole = computed(() => {
+  if (!isLogged.value) return 'GUEST'
+  const role = currentUser.value?.role?.toLowerCase()
+  return role === 'admin' ? 'ADMIN' : 'USER'
+})
+
+const userXp = computed(() => currentUser.value?.xp || 0)
 
 const isOpen = ref(false)
 const inputQuery = ref('')
@@ -25,15 +36,32 @@ interface Message {
 
 const messages = ref<Message[]>([])
 
-onMounted(() => {
-  messages.value.push({
+// 🧠 4. Generazione Saluto Dinamico basato sul Ruolo
+const initWelcomeMessage = () => {
+  let welcomeText = `Benvenuto su DKP Pulse Nexus v2.5-GOLD! Effettua il login per accedere al Kernel.`
+
+  if (isLogged.value) {
+    if (userRole.value === 'ADMIN') {
+      welcomeText = `Bentornato, Amministratore ${userName.value}. Kernel Nexus v2.5-GOLD pronto ai tuoi comandi diretti.`
+    } else {
+      welcomeText = `Benvenuto nel Kernel, ${userName.value}! Connessione riservata stabilita. Come posso assisterti oggi?`
+    }
+  }
+
+  messages.value = [{
     id: Date.now(),
-    text: `Benvenuto su DKP Pulse Nexus v2.5-GOLD, ${userName.value}! Come posso assisterti oggi?`,
+    text: welcomeText,
     sender: 'nexus',
     time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
     isSystem: true
-  })
-})
+  }]
+}
+
+// Intercetta quando i dati di useAuthCore() sono finalmente pronti e idratati
+watch(isLogged, (newVal) => {
+  initWelcomeMessage()
+}, { immediate: true })
+
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -43,7 +71,7 @@ const scrollToBottom = async () => {
 }
 
 const handleSend = async () => {
-  if (!inputQuery.value.trim() || isTyping.value) return
+  if (!inputQuery.value.trim() || isTyping.value || !isLogged.value) return
 
   const userText = inputQuery.value.trim()
   const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
@@ -64,8 +92,10 @@ const handleSend = async () => {
       method: 'POST',
       body: { 
         message: userText,
-        // 🔥 FIX: Protezione aggiunta anche qui!
-        userId: user?.value?.id 
+        userId: currentUser.value?.id,
+        // Passiamo ruolo e username anche al backend se necessario!
+        username: userName.value,
+        role: userRole.value
       }
     })
 
@@ -103,14 +133,7 @@ const handleSend = async () => {
 }
 
 const clearChat = () => {
-  messages.value = []
-  messages.value.push({
-    id: Date.now(),
-    text: `Chat riavviata. Sono di nuovo pronto, ${userName.value}!`,
-    sender: 'nexus',
-    time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-    isSystem: true
-  })
+  initWelcomeMessage()
 }
 </script>
 
@@ -140,6 +163,11 @@ const clearChat = () => {
 
         <!-- FEED MESSAGGI -->
         <div class="nexus-body" ref="chatBody">
+          
+          <div v-if="!isLogged" class="msg-wrapper system-msg mx-auto my-4">
+            <div class="msg-bubble">🔒 Effettua il login per interagire.</div>
+          </div>
+
           <div 
             v-for="msg in messages" 
             :key="msg.id" 
@@ -149,7 +177,16 @@ const clearChat = () => {
             <div class="msg-bubble shadow-lg">
               <div class="msg-sender-tag flex items-center justify-between">
                 <span>{{ msg.sender === 'user' ? userName : '⚡ Pulse Nexus' }}</span>
-                <span v-if="msg.sender === 'user'" class="text-[0.55rem] text-emerald-950 bg-emerald-500/50 px-1 rounded">USR</span>
+                
+                <!-- 👑 BADGE DINAMICO: Colore speciale se sei ADMIN -->
+                <span 
+                  v-if="msg.sender === 'user'" 
+                  class="text-[0.55rem] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                  :class="userRole === 'ADMIN' ? 'text-amber-950 bg-amber-400' : 'text-emerald-950 bg-emerald-500/50'"
+                >
+                  {{ userRole }}
+                </span>
+                
                 <span v-else class="text-[0.55rem] text-sky-400 border border-sky-500/30 px-1 rounded">AI</span>
               </div>
               <div class="msg-text text-[0.87rem]">{{ msg.text }}</div>
@@ -172,7 +209,7 @@ const clearChat = () => {
           <input 
             v-model="inputQuery" 
             type="text" 
-            :placeholder="isLogged ? 'Fai una domanda (Costa 2 XP)...' : 'Fai il login per interagire con Nexus...'" 
+            :placeholder="isLogged ? `Comunica col Kernel... (2 XP)` : 'Fai il login per interagire con Nexus...'" 
             :disabled="isTyping || !isLogged"
             class="nexus-input relative z-10"
           />
@@ -202,189 +239,49 @@ const clearChat = () => {
 </template>
 
 <style scoped>
-.nexus-widget-wrapper {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  z-index: 9999;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-}
-
-.nexus-launcher-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: rgba(9, 13, 22, 0.85);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 220, 130, 0.5);
-  color: #fff;
-  padding: 0.8rem 1.4rem;
-  border-radius: 50px;
-  cursor: pointer;
-  position: relative;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 220, 130, 0.15);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.nexus-launcher-btn:hover {
-  transform: translateY(-4px) scale(1.02);
-  border-color: #00dc82;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 220, 130, 0.3);
-}
-
-.nexus-launcher-btn.is-active {
-  background: rgba(2, 4, 32, 0.95);
-  border-color: #00dc82;
-  transform: scale(0.95);
-}
-
-.launcher-pulse-dot {
-  width: 8px;
-  height: 8px;
-  background: #00dc82;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #00dc82;
-  animation: pulse-glow 2s infinite;
-}
-
+.nexus-widget-wrapper { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+.nexus-launcher-btn { display: flex; align-items: center; gap: 0.6rem; background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 220, 130, 0.5); color: #fff; padding: 0.8rem 1.4rem; border-radius: 50px; cursor: pointer; position: relative; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 220, 130, 0.15); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.nexus-launcher-btn:hover { transform: translateY(-4px) scale(1.02); border-color: #00dc82; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 220, 130, 0.3); }
+.nexus-launcher-btn.is-active { background: rgba(2, 4, 32, 0.95); border-color: #00dc82; transform: scale(0.95); }
+.launcher-pulse-dot { width: 8px; height: 8px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 10px #00dc82; animation: pulse-glow 2s infinite; }
 .launcher-text { font-weight: 800; font-size: 0.9rem; color: #f8fafc; letter-spacing: 0.5px; }
-.launcher-badge {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  font-size: 0.65rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-}
-
-.glass-panel {
-  background: rgba(9, 13, 22, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-.nexus-chat-card {
-  position: absolute;
-  bottom: 5rem;
-  right: 0;
-  width: 380px;
-  max-width: calc(100vw - 3rem);
-  height: 550px;
-  max-height: calc(100vh - 7rem);
-  border: 1px solid rgba(30, 41, 59, 0.9);
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 220, 130, 0.1);
-  overflow: hidden;
-  transform-origin: bottom right;
-}
-
-.nexus-header {
-  padding: 1rem 1.2rem;
-  background: rgba(2, 4, 32, 0.85);
-  border-bottom: 1px solid rgba(30, 41, 59, 0.8);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
+.launcher-badge { background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid rgba(0, 220, 130, 0.3); }
+.glass-panel { background: rgba(9, 13, 22, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.nexus-chat-card { position: absolute; bottom: 5rem; right: 0; width: 380px; max-width: calc(100vw - 3rem); height: 550px; max-height: calc(100vh - 7rem); border: 1px solid rgba(30, 41, 59, 0.9); border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 220, 130, 0.1); overflow: hidden; transform-origin: bottom right; }
+.nexus-header { padding: 1rem 1.2rem; background: rgba(2, 4, 32, 0.85); border-bottom: 1px solid rgba(30, 41, 59, 0.8); display: flex; justify-content: space-between; align-items: center; }
 .nexus-title-box { display: flex; align-items: center; gap: 0.7rem; }
 .nexus-status-dot { width: 10px; height: 10px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 10px #00dc82; }
 .nexus-title { margin: 0; font-size: 1rem; color: #fff; font-weight: 800; }
 .badge-v { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.2rem;}
 .nexus-subtitle { margin: 0; font-size: 0.75rem; font-family: monospace; }
-
 .nexus-actions { display: flex; align-items: center; gap: 0.4rem; }
 .xp-badge { font-size: 0.7rem; font-weight: 800; color: #00dc82; font-family: monospace; border-right: 1px solid #1e293b; padding-right: 0.5rem;}
-.btn-action {
-  background: transparent;
-  color: #64748b;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
+.btn-action { background: transparent; color: #64748b; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .btn-action:hover { background: rgba(255, 255, 255, 0.05); color: #00dc82; }
 .btn-close:hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
-
-.nexus-body {
-  flex: 1;
-  padding: 1.2rem;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background: rgba(2, 4, 32, 0.4);
-}
-
+.nexus-body { flex: 1; padding: 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: rgba(2, 4, 32, 0.4); }
 .nexus-body::-webkit-scrollbar { width: 6px; }
 .nexus-body::-webkit-scrollbar-track { background: transparent; }
 .nexus-body::-webkit-scrollbar-thumb { background: rgba(30, 41, 59, 0.8); border-radius: 3px; }
-
 .msg-wrapper { display: flex; flex-direction: column; max-width: 88%; }
 .msg-wrapper.user { align-self: flex-end; }
 .msg-wrapper.nexus { align-self: flex-start; }
-
 .msg-bubble { padding: 0.75rem 1rem; border-radius: 12px; line-height: 1.5; word-break: break-word; }
 .user .msg-bubble { background: linear-gradient(135deg, #00dc82 0%, #00a863 100%); color: #020420; font-weight: 500; border-bottom-right-radius: 2px; }
 .nexus .msg-bubble { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); color: #e2e8f0; border-bottom-left-radius: 2px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-
 .msg-wrapper.system-msg .msg-bubble { background: rgba(0, 220, 130, 0.1); border: 1px dashed rgba(0, 220, 130, 0.4); color: #00dc82; font-family: monospace; font-size: 0.75rem; text-align: center; border-radius: 8px;}
 .msg-wrapper.system-msg .msg-sender-tag { display: none; }
-
 .msg-sender-tag { font-size: 0.65rem; opacity: 0.8; margin-bottom: 0.3rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;}
 .user .msg-sender-tag { color: #020420; }
 .msg-time { font-size: 0.6rem; opacity: 0.5; text-align: right; margin-top: 0.4rem; font-family: monospace; }
-
 .nexus-footer { padding: 1rem; background: rgba(2, 4, 32, 0.95); border-top: 1px solid rgba(30, 41, 59, 0.8); display: flex; gap: 0.5rem; align-items: center;}
-.nexus-input { 
-  flex: 1; 
-  background: rgba(15, 23, 42, 0.8); 
-  border: 1px solid rgba(56, 189, 248, 0.3); 
-  color: #fff; 
-  padding: 0.75rem 1rem; 
-  border-radius: 10px; 
-  font-size: 0.9rem; 
-  outline: none; 
-  transition: all 0.3s;
-}
+.nexus-input { flex: 1; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); color: #fff; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.9rem; outline: none; transition: all 0.3s; }
 .nexus-input:focus { border-color: #00dc82; box-shadow: 0 0 10px rgba(0, 220, 130, 0.2); background: rgba(15, 23, 42, 0.95);}
 .nexus-input::placeholder { color: #475569; }
-
-.nexus-send-btn { 
-  background: #00dc82; 
-  color: #020420; 
-  border: none; 
-  width: 42px;
-  height: 42px;
-  border-radius: 10px; 
-  cursor: pointer; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s; 
-  box-shadow: 0 4px 10px rgba(0, 220, 130, 0.3);
-}
+.nexus-send-btn { background: #00dc82; color: #020420; border: none; width: 42px; height: 42px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0, 220, 130, 0.3); }
 .nexus-send-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 15px rgba(0, 220, 130, 0.4); }
 .nexus-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; background: #334155;}
-
-.nexus-pop-enter-active,
-.nexus-pop-leave-active {
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.nexus-pop-enter-from,
-.nexus-pop-leave-to {
-  opacity: 0;
-  transform: translateY(30px) scale(0.9) rotate(2deg);
-}
-
-@keyframes pulse-glow {
-  0%, 100% { transform: scale(1); opacity: 1;}
-  50% { transform: scale(1.3); opacity: 0.6; box-shadow: 0 0 15px #00dc82;}
-}
+.nexus-pop-enter-active, .nexus-pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.nexus-pop-enter-from, .nexus-pop-leave-to { opacity: 0; transform: translateY(30px) scale(0.9) rotate(2deg); }
+@keyframes pulse-glow { 0%, 100% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.3); opacity: 0.6; box-shadow: 0 0 15px #00dc82;} }
 </style>

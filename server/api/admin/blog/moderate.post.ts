@@ -1,30 +1,12 @@
 // server/api/admin/blog/moderate.post.ts
-import { defineEventHandler, createError } from 'h3'
+import { defineEventHandler, createError, readBody } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-// 🔥 FIX: Import aggiornati dalla root di Drizzle
 import { blogPosts, users } from '~~/drizzle/schema' 
 import crypto from 'node:crypto'
 
-// Parser nativo del body a prova di mismatch H3
-async function getRequestBody(event: any): Promise<any> {
-  const req = event.node?.req || event.req
-  if (req?.body && typeof req.body === 'object') return req.body
-
-  return new Promise((resolve) => {
-    if (!req) return resolve({})
-    let rawData = ''
-    req.on('data', (chunk: any) => { rawData += chunk })
-    req.on('end', () => {
-      try { resolve(rawData ? JSON.parse(rawData) : {}) } 
-      catch { resolve({}) }
-    })
-    req.on('error', () => resolve({}))
-  })
-}
-
 export default defineEventHandler(async (event) => {
-  const body = (await getRequestBody(event)) || {}
+  const body = (await readBody(event)) || {}
   const { postId, action, rejectReason } = body
 
   if (!postId || !action) {
@@ -44,6 +26,8 @@ export default defineEventHandler(async (event) => {
       const vaultHash = crypto.createHash('sha256').update(`dkp-vault-${numericPostId}-${Date.now()}`).digest('hex')
       const vaultCertificateId = `DKP-VAULT-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}-2026`
 
+      const nowIso = new Date().toISOString()
+
       const [updatedPost] = await db
         .update(blogPosts)
         .set({
@@ -51,17 +35,18 @@ export default defineEventHandler(async (event) => {
           isVerified: true,
           vaultCertificateId,
           vaultHash,
-          updatedAt: new Date()
+          updatedAt: nowIso
         })
         .where(eq(blogPosts.id, numericPostId))
         .returning()
 
-      // 🏆 2. GAMIFICATION SYSTEM: Assegnazione +150 DKP Rep Points e badge "Gold Author"
+      // 🏆 2. GAMIFICATION SYSTEM: Assegnazione XP, Reputazione e badge "Gold Author"
       if (updatedPost && updatedPost.authorId) {
         const [author] = await db.select().from(users).where(eq(users.id, updatedPost.authorId)).limit(1)
 
         if (author) {
-          const currentPoints = (author.repPoints || 0) + 150
+          const newReputation = (author.reputation || 100) + 150
+          const newXp = (author.xp || 0) + 150
           
           let currentBadges: string[] = []
           if (Array.isArray(author.badges)) {
@@ -74,30 +59,32 @@ export default defineEventHandler(async (event) => {
             currentBadges.push('Gold Author')
           }
 
-          // Nota: nel tuo file originale avevi newReputation e newXp non definiti, uso currentPoints per la logica. 
-          // Se nel tuo schema si chiamano xp e reputation, adattali di conseguenza.
+          // Aggiornamento allineato allo schema utenti (reputation, xp, badges)
           await db.update(users)
             .set({
-              repPoints: currentPoints,
+              reputation: newReputation,
+              xp: newXp,
               badges: currentBadges
-            } as any)
+            })
             .where(eq(users.id, author.id))
         }
       }
 
       return {
         success: true,
-        message: 'Articolo approvato, verificato con DKP Vault, punti reputazione (+150 DKP) e badge Gold Author assegnati!',
+        message: 'Articolo approvato, verificato con DKP Vault, reputazione (+150) e badge Gold Author assegnati!',
         action: 'approved',
         data: updatedPost
       }
     } else if (action === 'reject') {
+      const nowIso = new Date().toISOString()
+      
       const [updatedPost] = await db
         .update(blogPosts)
         .set({
           status: 'draft',
           isVerified: false,
-          updatedAt: new Date()
+          updatedAt: nowIso
         })
         .where(eq(blogPosts.id, numericPostId))
         .returning()

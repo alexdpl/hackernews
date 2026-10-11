@@ -4,7 +4,7 @@ import { ref, computed, onMounted } from "vue";
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 
 useDkpSeo({
-  title: "Taxonomy & Moderation Vault v2.4-GOLD - DKP Admin Center",
+  title: "Taxonomy & Moderation Vault v2.5-GOLD - DKP Admin Center",
   description:
     "Gestione categorie, sottocategorie, queue di moderazione DKP Vault e pubblicazione articoli sull'ecosistema DevKernelPulse.",
 });
@@ -45,7 +45,7 @@ interface Post {
   slug?: string;
   excerpt?: string;
   categoryId: number | string | null;
-  subcategoryId?: number | string | null; // Aggiunto per supporto DB
+  subcategoryId?: number | string | null;
   authorName?: string;
   tags?: string[];
   views: number;
@@ -73,7 +73,7 @@ function triggerToast(msg: string) {
   }, 3500);
 }
 
-// --- STATO DEL FORM ---
+// --- STATO DEL FORM (Pubblicazione) ---
 const isEditing = ref(false);
 const newArticle = ref({
   id: null as number | string | null,
@@ -83,17 +83,16 @@ const newArticle = ref({
   author: 'Alessandro De Paola',
   tags: [] as string[],
   excerpt: '',
-  content: '', // Aggiunto per inviare il contenuto al DB
+  content: '', 
   status: 'published' as "published" | "pending_vault" | "draft"
 });
 
 // --- LISTA POST UNIFICATA ---
 const posts = ref<Post[]>([]);
-
 const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
 const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
 
-// 🟢 FUNZIONE UNIFICATA CON PULSE SENTINEL AI ENGINE
+// 🟢 FUNZIONE: PUBBLICAZIONE ARTICOLO
 async function publishArticle() {
   if (!newArticle.value.title || !newArticle.value.categoryId) {
     return triggerToast('❌ Compila Titolo e Categoria prima di pubblicare.');
@@ -102,7 +101,6 @@ async function publishArticle() {
   isLoading.value = true;
 
   try {
-    // 🛡️ 1. DKP VAULT: Avvio Analisi Pulse Sentinel AI
     triggerToast('🛡️ Avvio scansione SAST Pulse Sentinel AI...');
     let vaultData: any = null;
     
@@ -115,7 +113,6 @@ async function publishArticle() {
       if (vaultRes && vaultRes.success) {
         vaultData = vaultRes.vaultData;
         
-        // Risultati dell'Analisi in tempo reale!
         if (vaultData.sastCheck === 'CRITICAL') {
            alert(`⚠️ PULSE SENTINEL ALERT:\nTrovate vulnerabilità CRITICHE (${vaultData.totalIssuesFound} issue).\nL'articolo NON sarà pubblicato online. Verrà salvato in BOZZA per revisione.`);
         } else if (vaultData.sastCheck === 'WARNING') {
@@ -128,7 +125,6 @@ async function publishArticle() {
        console.warn("Vault API non raggiungibile, salto analisi SAST...", vaultErr);
     }
 
-    // 💾 2. PREPARAZIONE PAYLOAD E SALVATAGGIO SU NEON DB
     const payload = {
       title: newArticle.value.title,
       categoryId: newArticle.value.categoryId,
@@ -137,7 +133,6 @@ async function publishArticle() {
       content: newArticle.value.content || newArticle.value.excerpt || 'Contenuto non disponibile.',
       tags: [...newArticle.value.tags],
       authorName: newArticle.value.author,
-      // Passiamo al DB il risultato del Vault!
       vaultHash: vaultData?.vaultHashPreview || undefined,
       sastStatus: vaultData?.sastCheck || 'PASSED'
     };
@@ -146,7 +141,6 @@ async function publishArticle() {
        triggerToast('✅ Articolo aggiornato!');
        await fetchPosts(); 
     } else {
-       // CREATE
        const res: any = await $fetch('/api/blog/posts', {
           method: 'POST',
           body: payload
@@ -170,7 +164,6 @@ async function publishArticle() {
   }
 }
 
-// 🟡 FUNZIONE: CARICA I DATI NEL FORM PER MODIFICA
 function editPost(post: Post) {
   newArticle.value = {
     id: post.id,
@@ -187,7 +180,6 @@ function editPost(post: Post) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// 🔴 FUNZIONE: ELIMINA IL POST DAL DB
 async function deletePost(id: number | string) {
   if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo dal DB Neon?')) return;
   
@@ -209,13 +201,11 @@ async function deletePost(id: number | string) {
   }
 }
 
-// ⚪ FUNZIONE: SVUOTA IL FORM
 function resetForm() {
   newArticle.value = { id: null, title: '', categoryId: '', subcategoryId: '', author: 'Alessandro De Paola', tags: [], excerpt: '', content: '', status: 'published' };
   isEditing.value = false;
 }
 
-// Funzione Helper Categorie
 function getCategoryName(id: number | string | null) {
   if (!id) return "Non Assegnata";
   const cat = categories.value.find((c) => String(c.id) === String(id));
@@ -248,12 +238,13 @@ const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g
 const handleCatNameInput = () => { if (!catForm.value.id) catForm.value.slug = autoSlug(catForm.value.name); };
 const handleSubNameInput = () => { if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name); };
 
-// FETCH CATEGORIES DAL DB NEON
+
+// --- 🔗 INTERAZIONE REALE CON API CATEGORIE NEON DB ---
+
 const fetchCategories = async () => {
   isLoading.value = true;
   errorMessage.value = "";
   try {
-    // 🔥 FIX: Puntiamo all'API pubblica e pulita
     const res: any = await $fetch("/api/blog/categories");
     if (res && res.success) {
       categories.value = res.data || [];
@@ -268,11 +259,9 @@ const fetchCategories = async () => {
   }
 };
 
-// FETCH POSTS DAL DB NEON
 const fetchPosts = async () => {
    isLoading.value = true;
    try {
-      // 🔥 FIX: Puntiamo alla nuova API
       const res: any = await $fetch("/api/blog/posts");
       if(res && res.success) {
          posts.value = res.data.map((p: any) => ({
@@ -287,14 +276,109 @@ const fetchPosts = async () => {
    }
 }
 
-// Salvataggio disattivato se hai deciso di usare il DB in sola lettura per le categorie dal front-end (come hai detto prima). 
-// Lascio le funzioni vuote o con alert per sicurezza, in base alla tua scelta precedente.
-const saveCategory = async () => { alert("Creazione categorie disabilitata da UI. Inserire da database."); isCatModalOpen.value = false; };
-const saveSubcategory = async () => { alert("Creazione sottocategorie disabilitata da UI. Inserire da database."); isSubModalOpen.value = false; };
-const deleteItem = async (id: number | string, type: "category" | "subcategory") => { alert("Eliminazione categorie disabilitata da UI."); };
+// 🔓 MODAL SBLOCCATI
+const openCatModal = (cat: Category | null = null) => {
+  if (cat) {
+    catForm.value = { ...cat, tags: cat.tags ? [...cat.tags] : [], tagInput: "" };
+  } else {
+    catForm.value = { id: null, name: "", slug: "", description: "", icon: "🤖", color: "#00dc82", tags: [], tagInput: "" };
+  }
+  isCatModalOpen.value = true;
+};
 
-const openCatModal = (cat: Category | null = null) => { alert("Modal disattivato (Sola lettura)"); };
-const openSubModal = (category: Category, sub: Subcategory | null = null) => { alert("Modal disattivato (Sola lettura)"); };
+const openSubModal = (category: Category, sub: Subcategory | null = null) => {
+  if (sub) {
+    subForm.value = { ...sub, categoryName: category.name };
+  } else {
+    subForm.value = { id: null, categoryId: category.id, categoryName: category.name, name: "", slug: "", description: "" };
+  }
+  isSubModalOpen.value = true;
+};
+
+// 💾 SALVATAGGIO REALE CATEGORIA
+const saveCategory = async () => {
+  if (!catForm.value.name || !catForm.value.slug) return triggerToast('Nome e Slug obbligatori');
+  isLoading.value = true;
+  try {
+    const payload = {
+      name: catForm.value.name,
+      slug: catForm.value.slug,
+      description: catForm.value.description,
+      icon: catForm.value.icon,
+      color: catForm.value.color,
+      tags: catForm.value.tags
+    };
+
+    const method = catForm.value.id ? 'PUT' : 'POST';
+    const url = catForm.value.id ? `/api/blog/categories/${catForm.value.id}` : '/api/blog/categories';
+
+    const res: any = await $fetch(url, { method, body: payload });
+    if (res?.success) {
+      triggerToast(catForm.value.id ? 'Categoria Aggiornata' : 'Categoria Creata');
+      await fetchCategories();
+      isCatModalOpen.value = false;
+    } else {
+      triggerToast('Errore durante il salvataggio categoria');
+    }
+  } catch (e) {
+    console.error(e);
+    triggerToast('Errore API categoria');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 💾 SALVATAGGIO REALE SOTTOCATEGORIA
+const saveSubcategory = async () => {
+  if (!subForm.value.name || !subForm.value.slug) return triggerToast('Nome e Slug obbligatori');
+  isLoading.value = true;
+  try {
+    const payload = {
+      categoryId: subForm.value.categoryId,
+      name: subForm.value.name,
+      slug: subForm.value.slug,
+      description: subForm.value.description
+    };
+
+    const method = subForm.value.id ? 'PUT' : 'POST';
+    const url = subForm.value.id ? `/api/blog/subcategories/${subForm.value.id}` : '/api/blog/subcategories';
+
+    const res: any = await $fetch(url, { method, body: payload });
+    if (res?.success) {
+      triggerToast(subForm.value.id ? 'Sottocategoria Aggiornata' : 'Sottocategoria Creata');
+      await fetchCategories(); // Ricarica le cat per prendere le sottocategorie
+      isSubModalOpen.value = false;
+    } else {
+      triggerToast('Errore durante il salvataggio sottocategoria');
+    }
+  } catch (e) {
+    console.error(e);
+    triggerToast('Errore API sottocategoria');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 🗑️ ELIMINAZIONE REALE CATEGORIA/SOTTOCATEGORIA
+const deleteItem = async (id: number | string, type: "category" | "subcategory") => {
+  if (!confirm(`Sei sicuro di voler eliminare questa ${type}?`)) return;
+  isLoading.value = true;
+  try {
+    const url = type === 'category' ? `/api/blog/categories/${id}` : `/api/blog/subcategories/${id}`;
+    const res: any = await $fetch(url, { method: 'DELETE' });
+    if (res?.success) {
+      triggerToast(`${type === 'category' ? 'Categoria' : 'Sottocategoria'} eliminata`);
+      await fetchCategories();
+    } else {
+      triggerToast('Errore eliminazione');
+    }
+  } catch (e) {
+    console.error(e);
+    triggerToast('Errore API eliminazione');
+  } finally {
+    isLoading.value = false;
+  }
+};
 
 const inspectVaultReport = (post: Post) => {
   selectedPostForReport.value = post;
@@ -308,10 +392,9 @@ const moderatePost = async (post: Post, action: "approve" | "reject") => {
 
 onMounted(() => {
   fetchCategories();
-  fetchPosts(); // 🔥 Carichiamo la griglia con i dati veri!
+  fetchPosts(); 
 });
 </script>
-
 <template>
   <div class="admin-page-container">
     <!-- TOAST NOTIFICATION FLOATING -->

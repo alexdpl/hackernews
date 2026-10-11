@@ -1,11 +1,12 @@
 // server/api/me.ts
+import { defineEventHandler } from 'h3'
+
 export default defineEventHandler((event) => {
-  // 🛡️ Leggiamo i cookie in modo sicuro nativo
+  // 🛡️ Leggiamo i cookie in modo nativo
   const rawCookies = event.node?.req?.headers?.cookie || ''
   let sessionCookie: string | null = null
   
   if (rawCookies) {
-    // Estrazione pulita del cookie
     const match = rawCookies.match(/(?:^|;\s*)dkp_session=([^;]*)/)
     if (match && match[1]) {
       try {
@@ -25,7 +26,7 @@ export default defineEventHandler((event) => {
     }
   }
 
-  // Se c'è sessione, parsiamo i dati dell'utente
+  // Parsiamo i dati in modo sicuro
   try {
     const user = typeof sessionCookie === 'string' && sessionCookie.startsWith('{') 
       ? JSON.parse(sessionCookie) 

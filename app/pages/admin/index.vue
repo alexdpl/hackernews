@@ -43,7 +43,8 @@ const sentinelData = ref<any>({
       target: 'Pulse Nexus Chat',
       ip: '185.220.101.5',
       severity: 'CRITICAL',
-      timestamp: new Date().toISOString()
+      // 🔥 FIX HYDRATION MISMATCH: Data statica invece di new Date() in SSR
+      timestamp: '2026-10-11T09:00:00.000Z'
     }
   ]
 })

@@ -1,4 +1,6 @@
 // server/api/auth/[provider].get.ts
+import { defineEventHandler, getRouterParam, setCookie, sendRedirect } from 'h3'
+
 export default defineEventHandler(async (event) => {
   const provider = getRouterParam(event, 'provider') || 'github'
 
@@ -11,8 +13,8 @@ export default defineEventHandler(async (event) => {
       avatar: 'https://github.com/alexdpl.png',
       bio: 'Lead Architect & Core Creator of DevKernelPulse',
       reputation: 9999,
-      authenticated: true,
-      loggedAt: new Date().toISOString()
+      xp: 9999,
+      authenticated: true
     },
     google: {
       id: 102,
@@ -22,8 +24,8 @@ export default defineEventHandler(async (event) => {
       avatar: undefined,
       bio: 'Google Verified Developer',
       reputation: 350,
-      authenticated: true,
-      loggedAt: new Date().toISOString()
+      xp: 350,
+      authenticated: true
     },
     gitlab: {
       id: 103,
@@ -33,8 +35,8 @@ export default defineEventHandler(async (event) => {
       avatar: undefined,
       bio: 'GitLab Verified Developer',
       reputation: 280,
-      authenticated: true,
-      loggedAt: new Date().toISOString()
+      xp: 280,
+      authenticated: true
     },
     linkedin: {
       id: 104,
@@ -44,8 +46,8 @@ export default defineEventHandler(async (event) => {
       avatar: undefined,
       bio: 'LinkedIn Professional Developer',
       reputation: 500,
-      authenticated: true,
-      loggedAt: new Date().toISOString()
+      xp: 500,
+      authenticated: true
     }
   }
 
@@ -54,18 +56,18 @@ export default defineEventHandler(async (event) => {
     username: `dev_${provider}`,
     email: `dev@${provider}.com`,
     role: 'user',
-    authenticated: true,
-    loggedAt: new Date().toISOString()
+    xp: 150,
+    authenticated: true
   }
 
-  // Cookie DKP Session con httpOnly: false per permettere l'idratazione lato client
-  setCookie(event, 'dkp_session', JSON.stringify(user), {
+  // Setta il cookie codificato in JSON in modo sicuro
+  setCookie(event, 'dkp_session', encodeURIComponent(JSON.stringify(user)), {
     httpOnly: false,
     path: '/',
-    maxAge: 60 * 60 * 24 * 7
+    maxAge: 60 * 60 * 24 * 7 // 1 settimana
   })
 
-  // Reindirizzamento diretto alla destinazione corretta
+  // Reindirizzamento logico: Admin va alla dashboard Admin, User alla sua area.
   const targetUrl = (user.role === 'admin' || user.username === 'alexdpl') ? '/admin' : '/user/dashboard'
   return sendRedirect(event, targetUrl)
 })

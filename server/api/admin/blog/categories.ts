@@ -1,41 +1,31 @@
 // server/api/admin/blog/categories.ts
-import { defineEventHandler, getMethod, readBody, createError } from 'h3'
+import { defineEventHandler, getMethod, readBody, createError, getQuery } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-// 🔥 FIX: Import corretto dallo schema Drizzle
 import { blogCategories, blogSubcategories } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
-  const db = await getDb()
-
   try {
-    // 🟩 METODO GET (Recupero Categorie)
+    const db = await getDb()
+
+    // 🟩 GET: SQL puro, nessuna relazione Drizzle, zero rischi di crash
     if (method === 'GET') {
-      let cats = [];
-      // Se db.query è disponibile, usa Relational Queries
-      if (db.query && db.query.blogCategories) {
-        cats = await db.query.blogCategories.findMany({
-          with: { subcategories: true }
-        });
-      } else {
-        // Fallback SQL se Relational non è attivo
-        const rawCats = await db.select().from(blogCategories);
-        const rawSubs = await db.select().from(blogSubcategories);
-        cats = rawCats.map(c => ({
-          ...c,
-          subcategories: rawSubs.filter(s => s.categoryId === c.id)
-        }));
-      }
+      const rawCats = await db.select().from(blogCategories)
+      const rawSubs = await db.select().from(blogSubcategories)
+      
+      const cats = rawCats.map(c => ({
+        ...c,
+        subcategories: rawSubs.filter(s => s.categoryId === c.id)
+      }))
+
       return { success: true, data: cats }
     }
 
-    // 🟦 METODO POST (Crea o Aggiorna Categoria/Sottocategoria)
+    // 🟦 POST: Inserimento / Aggiornamento
     if (method === 'POST') {
-      const body = await readBody(event)
-      if (!body) throw createError({ statusCode: 400, message: 'Body mancante' })
-
-      if (body.type === 'category') {
+      const body = await readBody(event) || {}
+      if (body.type === 'category' || !body.categoryId) {
         const payload = {
           name: body.name,
           slug: body.slug,
@@ -44,29 +34,23 @@ export default defineEventHandler(async (event) => {
           color: body.color || '#00dc82',
           tags: body.tags || []
         }
-        
         if (body.id) {
-          // Update
           await db.update(blogCategories).set(payload).where(eq(blogCategories.id, body.id))
           return { success: true, message: 'Aggiornata!' }
         } else {
-          // Create
           const [newCat] = await db.insert(blogCategories).values(payload).returning()
           return { success: true, data: newCat }
         }
-      } 
-      
-      if (body.type === 'subcategory') {
+      } else {
         const payload = {
-          categoryId: body.categoryId,
+          categoryId: Number(body.categoryId),
           name: body.name,
           slug: body.slug,
           description: body.description || null
         }
-        
         if (body.id) {
           await db.update(blogSubcategories).set(payload).where(eq(blogSubcategories.id, body.id))
-          return { success: true, message: 'Sottocategoria Aggiornata!' }
+          return { success: true, message: 'Sottocategoria aggiornata!' }
         } else {
           const [newSub] = await db.insert(blogSubcategories).values(payload).returning()
           return { success: true, data: newSub }
@@ -74,19 +58,12 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 🟥 METODO DELETE (BLINDATO CONTRO LA CANCELLAZIONE TOTALE)
+    // 🟥 DELETE
     if (method === 'DELETE') {
-      const queryString = event.path.split('?')[1] || ''
-      const searchParams = new URLSearchParams(queryString)
-
-      const idParam = searchParams.get('id')
-      const type = searchParams.get('type')
-
-      const id = parseInt(idParam || '', 10)
-
-      if (!id || isNaN(id) || id <= 0 || !['category', 'subcategory'].includes(type || '')) {
-        throw createError({ statusCode: 400, message: 'CRITICO: Parametri DELETE non validi o ID mancante. Operazione annullata.' })
-      }
+      const query = getQuery(event)
+      const id = Number(query.id)
+      const type = String(query.type || 'category')
+      if (!id) throw createError({ statusCode: 400, message: 'ID mancante' })
 
       if (type === 'category') {
         await db.delete(blogSubcategories).where(eq(blogSubcategories.categoryId, id))
@@ -94,14 +71,12 @@ export default defineEventHandler(async (event) => {
       } else {
         await db.delete(blogSubcategories).where(eq(blogSubcategories.id, id))
       }
-
-      return { success: true, message: `Elemento ${id} eliminato in sicurezza!` }
+      return { success: true, message: 'Eliminato con successo!' }
     }
 
     throw createError({ statusCode: 405, message: 'Method Not Allowed' })
-    
   } catch (err: any) {
-    console.error('[API CATEGORIES ERROR]:', err)
+    console.error('[API ADMIN CATEGORIES ERROR]:', err)
     return { success: false, message: err.message || 'Errore Server' }
   }
 })

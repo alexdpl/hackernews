@@ -93,11 +93,11 @@ async function handleLogout() {
       
       <!-- BRAND LOGO -->
       <div class="brand-section">
-        <NuxtLink :to="getMainUrl('/')" external class="brand-link">
+        <NuxtLink to="/" external class="brand-link">
           <span class="dk-badge">DK</span>
           <span class="brand-name">DevKernel<span class="pulse-highlight">Pulse</span></span>
         </NuxtLink>
-        <span class="version-tag">v2.4-GOLD</span>
+        <span class="version-tag">v2.5</span>
       </div>
 
       <!-- NAVIGAZIONE PRINCIPALE DESKTOP -->
@@ -261,7 +261,7 @@ async function handleLogout() {
                   <NuxtLink :to="getMainUrl('/admin')" external class="menu-item admin-control-item" @click="closeAllDropdowns">
                     <span>🔒</span> Control Center Admin
                   </NuxtLink>
-				  <NuxtLink to="getMainUrl('/admin/diagnostic')" external class="menu-item admin-control-item" @click="closeAllDropdowns">
+				  <NuxtLink :to="getMainUrl('/admin/diagnostic')" external class="menu-item admin-control-item" @click="closeAllDropdowns">
                     <span>🩺</span> DKP Doctor
                   </NuxtLink>
                 </div>

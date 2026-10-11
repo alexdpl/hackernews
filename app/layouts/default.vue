@@ -18,9 +18,9 @@
     <AppFooter />
 
     <!-- CHAT FLUTTUANTE NEXUS -->
-	<ClientOnly>
+
     <DkpPulseNexus />
-	</ClientOnly>
+
   </div>
 </template>
 

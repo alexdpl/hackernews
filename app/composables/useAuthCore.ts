@@ -79,7 +79,7 @@ export function useAuthCore() {
       userData = {
         id: isAlexAdmin ? 1 : Date.now(),
         username: isAlexAdmin ? 'alexdpl' : usernameOrEmail.split('@')[0],
-        email: isAlexAdmin ? 'alexdpl@devkernelpulse.org' : (usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@devkernel.io`),
+        email: isAlexAdmin ? 'alex@devkernelpulse.org' : (usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@devkernelpulse.org`),
         role: isAlexAdmin ? 'admin' : 'user',
         avatar: isAlexAdmin ? 'https://github.com/alexdpl.png' : undefined,
         bio: isAlexAdmin ? 'Lead Architect & Core Creator of DevKernelPulse' : 'VIP Developer Member',

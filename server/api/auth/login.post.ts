@@ -1,4 +1,9 @@
 // server/api/auth/login.post.ts
+import { defineEventHandler, readBody, setCookie } from 'h3'
+import { eq, or } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+import { users } from '~~/drizzle/schema'
+
 export default defineEventHandler(async (event) => {
   let body: Record<string, any> = {}
 
@@ -7,30 +12,93 @@ export default defineEventHandler(async (event) => {
     if (parsedBody && typeof parsedBody === 'object') {
       body = parsedBody
     }
-  } catch (_) {
-    // Body vuoto o non JSON
-  }
+  } catch (_) {}
 
-  const { email, password } = body
+  // L'interfaccia UI usa "Username o Email", quindi catturiamo entrambi i casi
+  const identifier = body.email || body.username || ''
+  const password = body.password || ''
 
-  // Se la richiesta è vuota (es. check di sessione iniziale), rispondiamo con HTTP 200 e utente null.
-  // In questo modo il browser non registrerà MAI più errori rossi di tipo 400 nella console!
-  if (!email || !password) {
+  // Controllo sessione a vuoto (non logga errori rossi in console)
+  if (!identifier || !password) {
     return {
       success: false,
       user: null,
-      message: 'Controllo sessione: nessuna credenziale inviata.'
+      message: 'Nessuna credenziale inviata.'
     }
   }
 
-  return {
-    success: true,
-    message: 'Autenticazione completata con successo.',
-    user: {
-      username: email.split('@')[0] || 'developer',
-      email,
-      role: 'Admin'
-    },
-    token: 'dkp_kernel_session_v2.3_token'
+  // 👑 1. MASTER KEY OVERRIDE (Agganciato al tuo NUXT_ADMIN_SECRET)
+  // Se l'utente digita "alexdpl" e la password complessa del .env, entra ALL'ISTANTE.
+  const masterPassword = process.env.NUXT_ADMIN_SECRET
+  
+  if ((identifier.toLowerCase() === 'alexdpl' || identifier.toLowerCase() === 'alex@devkernelpulse.org') && password === masterPassword) {
+    const adminUser = {
+      id: 1,
+      username: 'alexdpl',
+      email: 'alex@devkernelpulse.org',
+      role: 'admin',
+      xp: 9999,
+      level: 99
+    }
+
+    // Settiamo il cookie lato server! Infallibile.
+    setCookie(event, 'dkp_session', encodeURIComponent(JSON.stringify(adminUser)), {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 1 settimana
+      httpOnly: false // false così useAuthCore può leggerlo dal client
+    })
+
+    return {
+      success: true,
+      message: 'Accesso MASTER KEY eseguito con successo.',
+      user: adminUser,
+      token: 'dkp_master_token_v2.5_gold'
+    }
+  }
+
+  // 👥 2. LOGIN NORMALE SU NEON DB (Per tutti gli altri utenti)
+  try {
+    const db = getDb()
+    
+    // Cerca l'utente per email O username
+    const result = await db.select().from(users).where(
+      or(
+        eq(users.email, identifier),
+        eq(users.username, identifier)
+      )
+    ).limit(1)
+
+    const dbUser = result[0]
+
+    // NOTA: Check della password (se le hai criptate nel DB dovrai usare bcrypt)
+    if (!dbUser || dbUser.passwordHash !== password) {
+      return { success: false, message: 'Credenziali non valide.' }
+    }
+
+    const sessionUser = {
+      id: dbUser.id,
+      username: dbUser.username,
+      email: dbUser.email,
+      role: dbUser.role,
+      xp: dbUser.xp || 150,
+      level: dbUser.level || 1
+    }
+
+    setCookie(event, 'dkp_session', encodeURIComponent(JSON.stringify(sessionUser)), {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      httpOnly: false
+    })
+
+    return {
+      success: true,
+      message: 'Accesso eseguito con successo.',
+      user: sessionUser,
+      token: 'dkp_db_token_v2.5'
+    }
+
+  } catch (error) {
+    console.error('Errore Login DB:', error)
+    return { success: false, message: 'Errore di connessione al database.' }
   }
 })

@@ -1,6 +1,7 @@
 // server/api/auth/me.get.ts
+import { defineEventHandler } from 'h3'
+
 export default defineEventHandler((event) => {
-  // 🛡️ Fallback Sicuro: Leggiamo i cookie direttamente dall'oggetto nativo Node.js 
   const rawCookies = event.node?.req?.headers?.cookie || ''
   let sessionCookie: string | null = null
   

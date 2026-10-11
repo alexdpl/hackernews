@@ -2,51 +2,42 @@
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 
-// 🔥 ECCO IL FIX: Ora punta alla cartella corretta del tuo schema!
-import * as schema from '~~/drizzle/schema' 
+// ❌ NIENTE IMPORT DI SCHEMA O RELATIONS QUI!
+// Tagliamo il cordone: Drizzle non saprà nulla delle relazioni globali.
 
-// Manteniamo le istanze globali nel modulo per evitare la duplicazione dei socket ad ogni HMR
 let sqlInstance: any = null
 let dbInstance: any = null
 
 export function getDb() {
-  // 1. CACHE HIT: Se l'istanza esiste già, la restituiamo immediatamente azzerando i memory leak
   if (dbInstance) {
-    console.log('=== [DB DEBUG] Restituisco istanza esistente dalla cache ===')
     return dbInstance
   }
 
-  // Lettura sicura protetta da try/catch per evitare il crash dell'Errore 500 fuori dal contesto Nuxt
   let config: any = {}
   try {
     config = useRuntimeConfig()
-  } catch (_) {
-    // Contesto Nuxt non attivo (es. script di test o chiamate esterne)
-  }
+  } catch (_) {}
 
   const connectionString = (config?.databaseUrl || process.env.DATABASE_URL) as string
 
-  // 2. TRACCIAMENTO VARIABILE: Verifica immediata della lettura del file .env o delle var di ambiente
-  console.log('=== [DB DEBUG] Verifica runtimeConfig / env ===')
   if (!connectionString) {
-    console.error('❌ ERRORE: La stringa di connessione è VUOTA o UNDEFINED!')
-    throw new Error('NUXT_DATABASE_URL o DATABASE_URL non è definita nell\'ambiente o nella runtimeConfig.')
-  } else {
-    console.log('✅ Stringa trovata! Inizia con:', connectionString.substring(0, 20) + '...')
+    console.error('❌ ERRORE: La stringa di connessione è VUOTA!')
+    throw new Error('NUXT_DATABASE_URL o DATABASE_URL non definita.')
   }
 
   try {
-    // 3. INIZIALIZZAZIONE: Configurazione sicura del client Neon HTTP e passaggio dello schema a Drizzle
-    console.log('=== [DB DEBUG] Inizializzazione client Neon e Drizzle ===')
-
     sqlInstance = neon(connectionString)
-    dbInstance = drizzle(sqlInstance, { schema })
+    
+    // 🔥 IL TAGLIO DEL CORDONE OMBELICALE 🔥
+    // Inizializziamo Drizzle SENZA passargli { schema } o { relations }.
+    // Diventa un puro costruttore di query SQL. 
+    // È fisicamente impossibile che generi l'errore "referencedTable" perché non mappa più le relazioni al boot!
+    dbInstance = drizzle(sqlInstance)
 
-    console.log('✅ Client DB e istanza Drizzle ORM inizializzati con successo.')
+    console.log('✅ Client DB e Drizzle inizializzati (Pure SQL Mode).')
     return dbInstance
   } catch (error: any) {
-    console.error('❌ ERRORE durante l\'inizializzazione del DB:', error?.message || error)
-    // Resettiamo le istanze a null in caso di fallimento per permettere un tentativo pulito al prossimo ciclo
+    console.error('❌ ERRORE Inizializzazione DB:', error)
     sqlInstance = null
     dbInstance = null
     throw error

@@ -2,8 +2,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-// 🔥 FIX: Importiamo blogPosts e users dal tuo schema corretto
-import { blogPosts, blogCategories, blogSubcategories, users } from '~~/drizzle/schema' // Assicurati che il path sia corretto (es. ~~/drizzle/schema se usi quella cartella)
+import { blogPosts, blogCategories, blogSubcategories, users } from '~~/drizzle/schema' 
 
 function getSafeQuery(event: any): Record<string, any> {
   try {
@@ -26,54 +25,36 @@ export default defineEventHandler(async (event) => {
   const subcategorySlug = query.subcategory || query.subCategory ? String(query.subcategory || query.subCategory) : null
 
   try {
-    const db = getDb()
+    const db = await getDb()
     let postsList: any[] = []
 
-    // 🔥 FIX: Approccio Drizzle Relational Queries (se supportato)
-    if (db.query && db.query.blogPosts) {
-      postsList = await db.query.blogPosts.findMany({
-        where: query.public === 'true' ? eq(blogPosts.status, 'published') : undefined,
-        orderBy: [desc(blogPosts.createdAt)],
-        with: {
-          category: true,
-          subcategory: true,
-          author: {
-            columns: {
-              id: true,
-              username: true,
-              avatarUrl: true,
-            },
-          },
-        },
+    // 🚀 ELIMINATO il db.query.blogPosts.findMany che causava il crash. 
+    // Usiamo ESCLUSIVAMENTE la leftJoin pulita e infallibile.
+    
+    const rawPosts = await db
+      .select({
+        post: blogPosts,
+        category: blogCategories,
+        subcategory: blogSubcategories,
+        author: users,
       })
-    } else {
-      // 🔥 FIX: Fallback manuale robusto se db.query non è impostato nel client DB
-      // Eseguiamo una query leftJoin per recuperare manualmente i dati relazionali
-      const rawPosts = await db
-        .select({
-          post: blogPosts,
-          category: blogCategories,
-          subcategory: blogSubcategories,
-          author: users,
-        })
-        .from(blogPosts)
-        .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
-        .leftJoin(blogSubcategories, eq(blogPosts.subcategoryId, blogSubcategories.id))
-        .leftJoin(users, eq(blogPosts.authorId, users.id))
-        .orderBy(desc(blogPosts.createdAt))
+      .from(blogPosts)
+      .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
+      .leftJoin(blogSubcategories, eq(blogPosts.subcategoryId, blogSubcategories.id))
+      .leftJoin(users, eq(blogPosts.authorId, users.id))
+      .orderBy(desc(blogPosts.createdAt))
 
-      // Rimodelliamo i dati per mimare l'output di db.query.findMany()
-      postsList = rawPosts.map(row => ({
-        ...row.post,
-        category: row.category,
-        subcategory: row.subcategory,
-        author: row.author ? { id: row.author.id, username: row.author.username, avatarUrl: row.author.avatarUrl } : null
-      }))
-      
-      // Filtro status per il fallback
-      if (query.public === 'true') {
-        postsList = postsList.filter(p => p.status === 'published')
-      }
+    // Rimodelliamo i dati
+    postsList = rawPosts.map(row => ({
+      ...row.post,
+      category: row.category,
+      subcategory: row.subcategory,
+      author: row.author ? { id: row.author.id, username: row.author.username, avatarUrl: row.author.avatarUrl } : null
+    }))
+    
+    // Filtro status
+    if (query.public === 'true') {
+      postsList = postsList.filter(p => p.status === 'published')
     }
 
     let filteredPosts = [...postsList]
@@ -98,7 +79,6 @@ export default defineEventHandler(async (event) => {
       const subName = p.subcategory?.name || ''
       const authorName = p.author?.username || 'Alessandro De Paola'
 
-      // Tag sempre garantiti come Array di stringhe
       let tagsArray: string[] = []
       if (Array.isArray(p.tags)) {
         tagsArray = p.tags
@@ -108,10 +88,10 @@ export default defineEventHandler(async (event) => {
 
       return {
         ...p,
-        category: catName,              // Evita il JSON grezzo nel badge <span class="cat-badge">
-        categoryName: catName,          // Per retrocompatibilità
-        categoryObject: p.category,    // Mantiene l'oggetto se servono icona o colore
-        subCategory: subName,          // Stringa pulita per la sottocategoria
+        category: catName,              
+        categoryName: catName,          
+        categoryObject: p.category,    
+        subCategory: subName,          
         subcategoryName: subName,
         subcategoryObject: p.subcategory,
         authorName: authorName,
