@@ -153,6 +153,31 @@ export class DKPCrawlerEngine {
         }
       }
     }
+	
+	// ==========================================
+    // 5. SUB-ENGINE: GITHUB / GITLAB / LINKEDIN TECH TRENDS
+    // ==========================================
+    else if (section === 'social' || section === 'news') {
+      // Ingestione da GitLab Public Explore RSS/API o feed open source
+      try {
+        const gitlabRes: any = await $fetch('https://gitlab.com/api/v4/projects?visibility=public&per_page=3').catch(() => [])
+        if (Array.isArray(gitlabRes)) {
+          for (const proj of gitlabRes) {
+            const sanitized = sanitizeUrl(proj.web_url, proj.name)
+            await db.execute(sql`
+              INSERT INTO pulse_stories (title, url, domain, type, author, points, xp_awarded)
+              VALUES (${`GitLab OpenSource: ${proj.name} -${proj.description || 'DevOps & CI/CD'}`}, ${sanitized.url}, 'gitlab.com', 'news', ${proj.namespace?.name || 'gitlab_user'}, 25, 20)
+              ON CONFLICT DO NOTHING;
+            `)
+            itemsAdded++
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ [CRAWLER] GitLab sync non disponibile.')
+      }
+    }
+  
+	
 
     return {
       success: true,

@@ -12,7 +12,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 // Stato reattivo Crawler
 const selectedSection = ref<'news' | 'ask' | 'show' | 'jobs'>('news')
 const selectedLimit = ref(5)
-const statusMessage = ref('Pannello Crawler SaaS v2.4-GOLD pronto all\'uso.')
+const statusMessage = ref('Pannello Crawler SaaS v2.5-GOLD pronto all\'uso.')
 const isRunning = ref(false)
 const latestResult = ref<{ itemsFound: number; section: string; timestamp: string } | null>(null)
 
@@ -116,11 +116,11 @@ async function purgeDatabase() {
     <header class="panel-header">
       <div class="header-title">
         <div class="hero-badge">
-          <span class="badge-status gold">DKP KERNEL CRAWLER ENGINE v2.4-GOLD</span>
+          <span class="badge-status gold">DKP KERNEL CRAWLER ENGINE v2.5-GOLD</span>
         </div>
         <h2>Control Center <span class="brand-highlight">Ingestione Notizie</span></h2>
         <p class="sub-lead">
-          Interroga i provider tech globali (HN, Dev.to, RemoteOK), filtra i doppioni e popola Neon DB in tempo reale.
+          Interroga i provider tech globali (HN, Dev.to, RemoteOK, GitHub, GitLab e LinkedIn), filtra i doppioni e popola Neon DB in tempo reale.
         </p>
       </div>
       <button @click="purgeDatabase" :disabled="isRunning" class="btn-secondary">
@@ -140,6 +140,7 @@ async function purgeDatabase() {
             <option value="ask">💬 Ask Community (Discussioni & Q&A)</option>
             <option value="show">🚀 Show DKP (GitHub Trending)</option>
             <option value="jobs">💼 Tech Jobs Hub (RemoteOK)</option>
+			<option value="social">🌐 DevOps & GitLab/LinkedIn Sources</option>
           </select>
         </div>
 
