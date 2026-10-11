@@ -136,7 +136,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
         <div class="nexus-pill">
           <span class="status-dot"></span>
           <span class="nexus-title">⚡ Pulse Nexus</span>
-          <span class="nexus-version">v2.4</span>
+          <span class="nexus-version">v2.5</span>
         </div>
       </div>
     </div>

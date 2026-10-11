@@ -285,7 +285,7 @@ onMounted(() => {
             </h1>
             <div class="user-badges">
               <span class="role-badge">🛡️ Developer VIP Member</span>
-              <span class="points-badge">⚡ 127 Punti DKP</span>
+              <span class="points-badge">⚡ 850 Punti DKP</span>
             </div>
           </div>
         </div>
@@ -358,7 +358,7 @@ onMounted(() => {
 
           <div class="nexus-badge-wrap">
             <div class="pulse-nexus-badge">
-              <span class="dot"></span> ⚡ Pulse Nexus <span class="ver">v2.4</span>
+              <span class="dot"></span> ⚡ Pulse Nexus <span class="ver">v2.5</span>
             </div>
           </div>
         </div>

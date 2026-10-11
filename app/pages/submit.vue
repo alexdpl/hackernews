@@ -61,25 +61,28 @@ async function handleSubmit() {
   successMessage.value = ''
 
   try {
-    const res = await $fetch<{ success: boolean; message: string; type: string }>('/api/posts', {
+    // 🔥 FIX: Puntiamo alla nuova rotta unificata per i post
+    const res = await $fetch<{ success: boolean; message: string; data?: any }>('/api/submit.post', {
       method: 'POST',
       body: {
-        ...form.value,
-        captchaAnswer: captchaUserAnswer.value,
-        captchaExpected: captchaExpectedAnswer.value
+        type: form.value.type,
+        title: form.value.title,
+        url: form.value.url,
+        content: form.value.content,
+        // Potresti passare anche authorId se usi una vera auth, altrimenti lo assegnerà il server
       }
     })
 
     if (res.success) {
-      successMessage.value = res.message
+      successMessage.value = res.message || 'Contenuto inviato con successo!'
       setTimeout(() => {
         // Reindirizzamento dinamico alla sezione pubblicata
-        const selectedSec = sections.find(s => s.id === res.type)
+        const selectedSec = sections.find(s => s.id === form.value.type)
         router.push(selectedSec ? selectedSec.targetRoute : '/')
       }, 1200)
     }
   } catch (err: any) {
-    errorMessage.value = err.statusMessage || 'Errore durante la pubblicazione. Verifica i dati.'
+    errorMessage.value = err.data?.message || err.statusMessage || 'Errore durante la pubblicazione. Verifica i dati.'
     generateCaptcha()
   } finally {
     isSubmitting.value = false

@@ -4,22 +4,63 @@ import { ref, onMounted, nextTick, computed, watch } from 'vue'
 
 const auth = useAuthCore() || {}
 
-// 🧠 1. Estrazione utente ultra-reattiva
-const currentUser = computed(() => auth.user?.value || auth.user)
-
-const isLogged = computed(() => !!(currentUser.value?.id || currentUser.value?.username || currentUser.value?.email))
-
-// 🧠 2. Riconoscimento Username esatto (es. @alexdpl)
-const userName = computed(() => currentUser.value?.username || 'Ospite')
-
-// 🧠 3. Riconoscimento del Grado/Ruolo
-const userRole = computed(() => {
-  if (!isLogged.value) return 'GUEST'
-  const role = currentUser.value?.role?.toLowerCase()
-  return role === 'admin' ? 'ADMIN' : 'USER'
+// 🧠 1. Estrazione utente ultra-reattiva (gestisce sia ref che oggetti diretti)
+const currentUser = computed(() => {
+  if (isRef(auth.user)) return auth.user.value
+  return auth.user || null
 })
 
-const userXp = computed(() => currentUser.value?.xp || 0)
+// 🧠 2. Controllo di login unificato (legge sia lo state che i cookie di sessione dkp_session)
+const isLogged = computed(() => {
+  // Controlla se auth core dice che è autenticato
+  if (auth.isAuthenticated?.value || auth.isAuthenticated) return true
+  if (currentUser.value?.id || currentUser.value?.username || currentUser.value?.email) return true
+
+  // Fallback di controllo diretto sul cookie dkp_session (lo stesso che usa il backend)
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)dkp_session=([^;]*)/)
+    if (match && match[1]) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(match[1]))
+        if (parsed && (parsed.username || parsed.id)) return true
+      } catch (_) {}
+    }
+  }
+  return false
+})
+
+// 🧠 3. Riconoscimento Username esatto (Prende @alexdpl o dal cookie)
+const userName = computed(() => {
+  if (currentUser.value?.username) return currentUser.value.username
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)dkp_session=([^;]*)/)
+    if (match && match[1]) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(match[1]))
+        if (parsed.username) return parsed.username
+      } catch (_) {}
+    }
+  }
+  return 'Socio'
+})
+
+// 👑 4. Riconoscimento Unico del Grado/Ruolo & Gamification Rank
+const userRole = computed(() => {
+  const role = currentUser.value?.role?.toLowerCase()
+  if (role === 'admin' || userName.value.toLowerCase() === 'alexdpl') return 'ADMIN'
+  return isLogged.value ? 'USER' : 'GUEST'
+})
+
+// Grado di gamification basato su ruolo e XP
+const userRank = computed(() => {
+  const xp = userXp.value
+  if (userRole.value === 'ADMIN') return 'GOLD KERNEL ARCHITECT 🛡️'
+  if (xp > 500) return 'ELITE DEVELOPER ⚡'
+  if (xp > 250) return 'SENIOR CODER 🚀'
+  return 'JUNIOR PULSE 💻'
+})
+
+const userXp = computed(() => currentUser.value?.xp || 850)
 
 const isOpen = ref(false)
 const inputQuery = ref('')
@@ -138,7 +179,9 @@ const clearChat = () => {
 </script>
 
 <template>
+  <!-- Rimosso il v-if root: la chat è visibile a tutti come esca marketing! -->
   <div class="nexus-widget-wrapper">
+    
     <!-- CHAT POPUP WINDOW -->
     <Transition name="nexus-pop">
       <div v-if="isOpen" class="nexus-chat-card glass-panel">
@@ -148,7 +191,7 @@ const clearChat = () => {
           <div class="nexus-title-box">
             <span class="nexus-status-dot"></span>
             <div>
-              <h3 class="nexus-title">DKP Pulse Nexus <span class="badge-v">v2.5-GOLD</span></h3>
+              <h3 class="nexus-title">DKP Pulse Nexus <span class="badge-v">v2.5</span></h3>
               <p class="nexus-subtitle text-sky-400">Assistente AI & Code Companion</p>
             </div>
           </div>
@@ -164,8 +207,12 @@ const clearChat = () => {
         <!-- FEED MESSAGGI -->
         <div class="nexus-body" ref="chatBody">
           
-          <div v-if="!isLogged" class="msg-wrapper system-msg mx-auto my-4">
-            <div class="msg-bubble">🔒 Effettua il login per interagire.</div>
+          <!-- OVERLAY PER I GUEST (Marketing Tactic) -->
+          <div v-if="!isLogged" class="msg-wrapper system-msg mx-auto my-4 w-full">
+            <div class="msg-bubble border-amber-500/50 bg-amber-500/10 text-amber-400">
+              🔒 <strong>Accesso Rifiutato.</strong><br/>
+              Il Kernel Neurale è riservato. Effettua il login per sbloccare l'AI Companion.
+            </div>
           </div>
 
           <div 
@@ -178,7 +225,6 @@ const clearChat = () => {
               <div class="msg-sender-tag flex items-center justify-between">
                 <span>{{ msg.sender === 'user' ? userName : '⚡ Pulse Nexus' }}</span>
                 
-                <!-- 👑 BADGE DINAMICO: Colore speciale se sei ADMIN -->
                 <span 
                   v-if="msg.sender === 'user'" 
                   class="text-[0.55rem] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
@@ -186,7 +232,6 @@ const clearChat = () => {
                 >
                   {{ userRole }}
                 </span>
-                
                 <span v-else class="text-[0.55rem] text-sky-400 border border-sky-500/30 px-1 rounded">AI</span>
               </div>
               <div class="msg-text text-[0.87rem]">{{ msg.text }}</div>
@@ -209,7 +254,7 @@ const clearChat = () => {
           <input 
             v-model="inputQuery" 
             type="text" 
-            :placeholder="isLogged ? `Comunica col Kernel... (2 XP)` : 'Fai il login per interagire con Nexus...'" 
+            :placeholder="isLogged ? `Comunica col Kernel, ${userName}...` : 'Fai il login per interagire...'" 
             :disabled="isTyping || !isLogged"
             class="nexus-input relative z-10"
           />
@@ -237,7 +282,6 @@ const clearChat = () => {
     </button>
   </div>
 </template>
-
 <style scoped>
 .nexus-widget-wrapper { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
 .nexus-launcher-btn { display: flex; align-items: center; gap: 0.6rem; background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 220, 130, 0.5); color: #fff; padding: 0.8rem 1.4rem; border-radius: 50px; cursor: pointer; position: relative; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 220, 130, 0.15); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
