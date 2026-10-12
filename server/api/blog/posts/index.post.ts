@@ -23,7 +23,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Payload della richiesta non valido.' })
   }
   
-  // Mappiamo sia i nomi standard sia quelli inviati dalla dashboard utente
   const { 
     title, 
     categoryId, category, 
@@ -43,18 +42,23 @@ export default defineEventHandler(async (event) => {
 
   const generatedSlug = slugify(cleanTitle)
   
+  // 🟢 Split avanzato dei tag
   let cleanTags: string[] = []
   if (Array.isArray(tags)) {
     cleanTags = tags.map(t => String(t).trim().replace(/^#/, '')).filter(Boolean)
   } else if (typeof tags === 'string') {
-    // 🟢 Spezza sia con la virgola che con il punto e virgola o spazi multipli
     cleanTags = tags.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+  }
+
+  // 🟢 ECCO LA RIGA CHE MANCAVA!
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante nelle variabili d\'ambiente.' })
   }
 
   const sql = postgres(connectionString, { ssl: 'require' })
 
   try {
-    // 1. Risolviamo l'ID della Categoria (gestendo sia se arriva l'ID sia se arriva il Nome stringa)
     let finalCategoryId = categoryId ? Number(categoryId) : null
 
     if (!finalCategoryId && category) {
@@ -64,17 +68,15 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Se ancora non abbiamo una categoria valida, prendiamo la prima disponibile come fallback
     if (!finalCategoryId) {
       const defaultCat = await sql`SELECT id FROM blog_categories LIMIT 1`
       if (defaultCat.length > 0) {
         finalCategoryId = defaultCat[0].id
       } else {
-        throw createError({ statusCode: 400, statusMessage: 'Nessuna categoria disponibile nel Database. Creane una prima di pubblicare.' })
+        throw createError({ statusCode: 400, statusMessage: 'Nessuna categoria disponibile nel DB.' })
       }
     }
 
-    // 2. Risolviamo l'ID della Sottocategoria (se presente)
     let finalSubcategoryId = subcategoryId ? Number(subcategoryId) : null
     if (!finalSubcategoryId && subCategory) {
       const foundSub = await sql`SELECT id FROM blog_subcategories WHERE name ILIKE ${subCategory} LIMIT 1`
@@ -83,7 +85,6 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 3. Risolviamo l'Autore
     let authorId = 1
     try {
       const usersList = await sql`SELECT id FROM users LIMIT 1`
@@ -101,7 +102,6 @@ export default defineEventHandler(async (event) => {
     const finalExcerpt = excerpt || summary || null
     const finalContent = content || finalExcerpt || 'Contenuto non disponibile.'
 
-    // 4. Inserimento nel database Neon
     const [newPost] = await sql`
       INSERT INTO blog_posts (
         title, slug, content, excerpt, category_id, subcategory_id, author_id, tags, status, is_verified, vault_certificate_id, vault_hash, views, likes

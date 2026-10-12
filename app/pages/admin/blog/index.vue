@@ -5,12 +5,12 @@ import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import { useBlog } from '~/composables/useBlog'
 
 useDkpSeo({
-  title: "Taxonomy & Moderation Vault v2.5-GOLD - DKP Admin Center",
+  title: "Taxonomy & Publishing v2.5-GOLD - DKP Admin Center",
   description:
-    "Gestione categorie, sottocategorie, queue di moderazione DKP Vault e pubblicazione articoli sull'ecosistema DevKernelPulse.",
+    "Gestione categorie, sottocategorie e pubblicazione diretta articoli nell'ecosistema DevKernelPulse con Vault AI.",
 });
 
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain();
+const { getMainUrl, getApiUrl } = useDomain();
 
 // --- 1. IMPORTIAMO IL NOSTRO COMPOSABLE v2.5-GOLD ---
 const { fetchAdminPosts, isLoading: isBlogLoading } = useBlog()
@@ -65,7 +65,6 @@ interface Post {
 }
 
 // --- STATI GLOBALI ---
-const activeTab = ref<"moderation_queue" | "publish_manage">("publish_manage");
 const categories = ref<Category[]>([]);
 const isLoading = ref(false);
 const errorMessage = ref("");
@@ -94,10 +93,20 @@ const newArticle = ref({
   status: 'published' as "published" | "pending_vault" | "draft"
 });
 
+// 🟢 COMPUTED: SOTTOCATEGORIE DINAMICHE IN BASE ALLA CATEGORIA SELEZIONATA
+const availableSubcategories = computed(() => {
+  if (!newArticle.value.categoryId) return [];
+  const selectedCat = categories.value.find(c => String(c.id) === String(newArticle.value.categoryId));
+  return selectedCat?.subcategories || [];
+});
+
+// Funzione chiamata al cambio di categoria per resettare la sottocategoria
+function onCategoryChange() {
+  newArticle.value.subcategoryId = '';
+}
+
 // --- LISTA POST UNIFICATA ---
 const posts = ref<Post[]>([]);
-const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault" || p.status === "draft"));
-const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
 
 // 🟢 FUNZIONE: PUBBLICAZIONE ARTICOLO
 async function publishArticle() {
@@ -108,7 +117,7 @@ async function publishArticle() {
   isLoading.value = true;
 
   try {
-    triggerToast('🛡️ Avvio scansione SAST Pulse Sentinel AI...');
+    triggerToast('🛡️ Avvio scansione automatica SAST Pulse Sentinel AI...');
     let vaultData: any = null;
     
     try {
@@ -121,7 +130,8 @@ async function publishArticle() {
         vaultData = vaultRes.vaultData;
         
         if (vaultData.sastCheck === 'CRITICAL') {
-           alert(`⚠️ PULSE SENTINEL ALERT:\nTrovate vulnerabilità CRITICHE (${vaultData.totalIssuesFound} issue).\nL'articolo NON sarà pubblicato online. Verrà salvato in BOZZA per revisione.`);
+           triggerToast(`⚠️ Trovate vulnerabilità CRITICHE. L'articolo NON sarà pubblicato online. Verrà salvato in BOZZA.`);
+           newArticle.value.status = 'draft'; // Forza a bozza se critico
         } else if (vaultData.sastCheck === 'WARNING') {
            triggerToast(`⚠️ Pulse Sentinel: Rilevati Warning minori. Sicurezza: ${vaultData.securityScore}/100`);
         } else {
@@ -142,11 +152,11 @@ async function publishArticle() {
       authorName: newArticle.value.author,
       vaultHash: vaultData?.vaultHashPreview || undefined,
       sastStatus: vaultData?.sastCheck || 'PASSED',
-      status: newArticle.value.status // Usa lo stato selezionato nel form
+      status: newArticle.value.status 
     };
 
     if (isEditing.value && newArticle.value.id) {
-       triggerToast('✅ Articolo aggiornato!');
+       triggerToast('✅ Articolo aggiornato con successo!');
        await loadPosts(); 
     } else {
        const res: any = await $fetch('/api/blog/posts', {
@@ -156,7 +166,7 @@ async function publishArticle() {
 
        if (res && res.success) {
           triggerToast(res.data.status === 'draft' 
-            ? '📝 Salvato in Bozza' 
+            ? '📝 Salvato in Bozza (Intervento Sentinel)' 
             : '🚀 Articolo pubblicato e Notarizzato con DKP Vault!');
           await loadPosts(); 
        } else {
@@ -384,11 +394,6 @@ const inspectVaultReport = (post: Post) => {
   isVaultReportModalOpen.value = true;
 };
 
-const moderatePost = async (post: Post, action: "approve" | "reject") => {
-  alert("Moderazione avanzata in fase di refactoring per DB Neon.");
-  isVaultReportModalOpen.value = false;
-};
-
 onMounted(() => {
   fetchCategories();
   loadPosts(); 
@@ -437,11 +442,11 @@ onMounted(() => {
     <header class="header-section">
       <div class="badge">
         <span class="badge-dot"></span>
-        DKP v2.4-GOLD TAXONOMY &amp; MODERATION VAULT
+        DKP v2.5-GOLD TAXONOMY &amp; PUBLISHING
       </div>
       <h1>Gestione <span class="highlight">DKP Blog &amp; Taxonomy</span></h1>
       <p class="subtitle">
-        Amministra le categorie sul Database Neon / GCP, esamina le verifiche DKP Vault ed approva o pubblica articoli in tempo reale.
+        Amministra le categorie sul Database Neon e pubblica articoli con scansione automatica DKP Vault & Sentinel AI.
       </p>
     </header>
 
@@ -535,78 +540,21 @@ onMounted(() => {
         </div>
       </aside>
 
-      <!-- ================= COLONNA DESTRA: TABS MODERAZIONE & PUBBLICAZIONE ================= -->
+      <!-- ================= COLONNA DESTRA: TABS PUBBLICAZIONE ================= -->
       <main class="main-panel">
-        
-        <!-- BARRA SUB-TAB PER SWITCHARE FRA MODERAZIONE E PUBBLICAZIONE -->
-        <div class="panel-subtabs mb-4">
-          <button 
-            :class="['subtab-btn', { active: activeTab === 'moderation_queue' }]" 
-            @click="activeTab = 'moderation_queue'"
-          >
-            🛡️ Queue Moderazione Vault ({{ pendingVaultPosts.length }})
-          </button>
-          <button 
-            :class="['subtab-btn', { active: activeTab === 'publish_manage' }]" 
-            @click="activeTab = 'publish_manage'"
-          >
-            ✍️ Pubblica &amp; Gestisci Articoli ({{ posts.length }})
-          </button>
-        </div>
 
         <div v-if="isBlogLoading" class="text-center py-10 text-emerald-400 animate-pulse">Caricamento DB Neon...</div>
 
-        <!-- TAB 1: CODA DI MODERAZIONE DKP VAULT (STEP 2.2) -->
-        <div v-else-if="activeTab === 'moderation_queue'" class="moderation-tab-section">
-          <div v-if="!pendingVaultPosts.length" class="card empty-vault-box">
-            <div class="empty-vault-inner">
-              <span class="empty-icon">🎉</span>
-              <h4>Nessun articolo in coda di moderazione!</h4>
-              <p>Tutti gli articoli proposti dalla community sono stati verificati ed elaborati.</p>
-            </div>
-          </div>
-
-          <div v-else class="moderation-cards-stack">
-            <div v-for="post in pendingVaultPosts" :key="post.id" class="card post-moderation-card">
-              <div class="mod-card-header">
-                <div class="mod-title-box">
-                  <span class="badge-pending">PENDING / BOZZA</span>
-                  <h4>{{ post.title }}</h4>
-                  <span class="mod-sub">Autore: <strong>@{{ post.authorName || 'community_user' }}</strong> • Categoria: {{ getCategoryName(post.categoryId) }}</span>
-                </div>
-                <div class="vault-score-badge" title="Score Autenticità DKP Vault">
-                  <span class="score-label">AUTHENTICITY</span>
-                  <span class="score-value text-emerald">{{ post.vaultReport?.authenticityScore || 95 }}%</span>
-                </div>
-              </div>
-
-              <p class="mod-excerpt">{{ post.excerpt || 'Nessun estratto fornito per la moderazione.' }}</p>
-
-              <div class="mod-card-footer">
-                <button @click="inspectVaultReport(post)" class="btn-inspect-report">
-                  🔍 Ispeziona Report Vault
-                </button>
-                <div class="mod-actions-btn-group">
-                  <button @click="editPost(post); activeTab = 'publish_manage'" class="btn-action-approve">
-                    ✏️ Modifica
-                  </button>
-                  <button @click="deletePost(post.id)" class="btn-action-reject" :disabled="isLoading">
-                    🔴 Elimina
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-       <!-- TAB 2: FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI -->
-        <div v-else-if="activeTab === 'publish_manage'">
+        <!-- FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI -->
+        <div v-else>
           
           <!-- Form Pubblicazione/Modifica Articolo -->
           <div class="card mb-6">
-            <h3 class="card-title">
-              {{ isEditing ? '✏️ Modifica Articolo' : '✍️ Pubblica Nuovo Articolo' }}
-            </h3>
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
+              <h3 class="card-title m-0">
+                {{ isEditing ? '✏️ Modifica Articolo' : '✍️ Pubblica Nuovo Articolo (Vault Auto-Scan)' }}
+              </h3>
+            </div>
             
             <form @submit.prevent="publishArticle" class="form-stack">
               <div class="form-group">
@@ -620,10 +568,11 @@ onMounted(() => {
                 />
               </div>
 
+              <!-- 🟢 ROW CATEGORIA E SOTTOCATEGORIA -->
               <div class="form-row">
                 <div class="form-group">
                   <label>Categoria *</label>
-                  <select v-model="newArticle.categoryId" class="dkp-input" required>
+                  <select v-model="newArticle.categoryId" @change="onCategoryChange" class="dkp-input" required>
                     <option value="" disabled>Seleziona una categoria</option>
                     <option
                       v-for="cat in categories"
@@ -634,6 +583,23 @@ onMounted(() => {
                     </option>
                   </select>
                 </div>
+                
+                <div class="form-group">
+                  <label>Sottocategoria (Opzionale)</label>
+                  <select v-model="newArticle.subcategoryId" class="dkp-input" :disabled="!availableSubcategories.length">
+                    <option value="">Nessuna (Generale)</option>
+                    <option
+                      v-for="sub in availableSubcategories"
+                      :key="sub.id"
+                      :value="sub.id"
+                    >
+                      {{ sub.name }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
                 <div class="form-group">
                   <label>Status</label>
                   <select v-model="newArticle.status" class="dkp-input">
@@ -641,22 +607,21 @@ onMounted(() => {
                     <option value="draft">Bozza (Draft)</option>
                   </select>
                 </div>
+                <div class="form-group">
+                  <label>Autore</label>
+                  <input v-model="newArticle.author" class="dkp-input" type="text" />
+                </div>
               </div>
 
-              <div class="form-group">
-                <label>Autore</label>
-                <input v-model="newArticle.author" class="dkp-input" type="text" />
-              </div>
-
-              <!-- ➕ COMPONENTE TAG AGGIUNTO QUI -->
-              <div class="form-group full-width mt-4">
+              <!-- COMPONENTE TAG -->
+              <div class="form-group full-width mt-2">
                 <label style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">
                   TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)
                 </label>
                 <DkpTagInput v-model="newArticle.tags" />
               </div>
 
-              <div class="form-group mt-4">
+              <div class="form-group mt-2">
                 <label>Estratto Breve / Summary</label>
                 <textarea
                   v-model="newArticle.excerpt"
@@ -672,7 +637,7 @@ onMounted(() => {
                   ❌ Annulla Modifica
                 </button>
                 <button type="submit" class="btn-submit" style="flex: 1;">
-                  {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Salva / Pubblica' }}
+                  {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Salva & Pubblica con Vault' }}
                 </button>
               </div>
             </form>
@@ -715,14 +680,16 @@ onMounted(() => {
                       <span
                         v-else-if="post.status === 'pending_vault'"
                         class="status-badge warning"
-                      >Vault (In Analisi)</span>
+                      >Vault (Analisi)</span>
                       <span v-else class="status-badge draft">Bozza</span>
                     </td>
                     <td class="date-text">{{ post.date || (post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '') }}</td>
                     <td class="views-text">👁️ {{ post.views || 0 }} <span class="text-rose-400">❤️ {{ post.likes || 0 }}</span></td>
                     <td style="text-align: right;">
                       <div class="action-buttons">
-                        <!-- EVENTI CLICK AGGIUNTI AI BOTTONI -->
+                        <button v-if="post.vaultReport" @click="inspectVaultReport(post)" class="btn-icon text-blue-400 border-blue-400/30" type="button" title="Ispeziona Report Vault">
+                          🛡️
+                        </button>
                         <button @click="editPost(post)" class="btn-icon btn-edit" type="button" title="Modifica Articolo">
                           ✏️
                         </button>
@@ -743,9 +710,8 @@ onMounted(() => {
             </div>
           </div>
 
-        </div> <!-- 👈 CHIUSURA DIV TAB "publish_manage" -->
-
-      </main> <!-- 👈 CHIUSURA DEL MAIN-PANEL GENERALE -->
+        </div> 
+      </main> 
     </div>
   </div>
 
@@ -764,7 +730,7 @@ onMounted(() => {
         <div class="vault-report-content mt-4">
           <h4 class="report-title">{{ selectedPostForReport.title }}</h4>
           <p class="report-sub">
-            Autore: <strong>@{{ selectedPostForReport.authorName || 'user_community' }}</strong> • Data: {{ selectedPostForReport.date }}
+            Autore: <strong>@{{ selectedPostForReport.authorName || 'user_community' }}</strong> • Data: {{ selectedPostForReport.date || 'Recente' }}
           </p>
 
           <div class="report-grid-metrics">
@@ -784,15 +750,12 @@ onMounted(() => {
 
           <div class="vault-hash-box">
             <span class="hash-label">HASH CRITTOGRAFICO SHA-256 VAULT PREVIEW:</span>
-            <code>{{ selectedPostForReport.vaultReport?.vaultHashPreview || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }}</code>
+            <code>{{ selectedPostForReport.vaultReport?.vaultHashPreview || selectedPostForReport.vaultHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }}</code>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button @click="moderatePost(selectedPostForReport, 'approve')" class="btn-action-approve" :disabled="isLoading">
-            🟢 Approva e Rilascia Certificato DKP Vault
-          </button>
-          <button @click="isVaultReportModalOpen = false" class="btn-cancel">
+          <button @click="isVaultReportModalOpen = false" class="btn-cancel" style="width: 100%;">
             Chiudi Report
           </button>
         </div>
@@ -808,7 +771,7 @@ onMounted(() => {
       <div class="modal-box">
         <div class="vault-modal-header">
           <h3>
-            📁 {{ catForm.id ? "Modifica Categoria Tassonomia" : "Nuova Categoria Tassonomia" }}
+            📁 {{ catForm.id ? "Modifica Categoria" : "Nuova Categoria" }}
           </h3>
           <button class="icon-btn" @click="isCatModalOpen = false">×</button>
         </div>
@@ -820,7 +783,7 @@ onMounted(() => {
               v-model="catForm.name"
               @input="handleCatNameInput"
               type="text"
-              placeholder="Es. Cybersecurity &amp; Vault"
+              placeholder="Es. Cybersecurity & Vault"
               required
             />
           </div>
@@ -881,7 +844,7 @@ onMounted(() => {
 
           <!-- Selettore Colore Accent -->
           <div class="form-group">
-            <label>Colore Badge &amp; Accent</label>
+            <label>Colore Badge & Accent</label>
             <div class="color-picker">
               <span
                 v-for="color in presetColors"
@@ -968,7 +931,7 @@ onMounted(() => {
           </div>
 
           <div class="form-group">
-            <label>DESCRIZIONE BREVE SOTTOCATEGORIA (GUIDA UTENTE &amp; SEO) *</label>
+            <label>DESCRIZIONE BREVE *</label>
             <textarea
               v-model="subForm.description"
               rows="3"
@@ -1257,237 +1220,6 @@ onMounted(() => {
 
 .alert { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 600; }
 .alert.error { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-
-/* ==========================================================================
-   SUB-TABS SWITCHER (MODERAZIONE VAULT VS PUBBLICAZIONE)
-   ========================================================================== */
-.panel-subtabs {
-  display: flex;
-  gap: 10px;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  padding: 6px;
-  border-radius: 10px;
-}
-
-.subtab-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #94a3b8;
-  font-weight: 700;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.subtab-btn:hover {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.subtab-btn.active {
-  background: rgba(0, 220, 130, 0.1);
-  color: #00dc82;
-  border-color: rgba(0, 220, 130, 0.3);
-  box-shadow: 0 0 12px rgba(0, 220, 130, 0.15);
-}
-
-/* ==========================================================================
-   CODA DI MODERAZIONE DKP VAULT (STEP 2.2)
-   ========================================================================== */
-.moderation-tab-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.empty-vault-box {
-  text-align: center;
-  padding: 3rem 1.5rem;
-  background: #090d16;
-  border: 1px dashed #1e293b;
-}
-
-.empty-vault-inner .empty-icon {
-  font-size: 2.5rem;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-
-.empty-vault-inner h4 {
-  margin: 0 0 0.4rem 0;
-  color: #f8fafc;
-  font-size: 1.1rem;
-  font-weight: 800;
-}
-
-.empty-vault-inner p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.85rem;
-}
-
-.moderation-cards-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.post-moderation-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-left: 4px solid #f59e0b;
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: border-color 0.2s, transform 0.2s;
-}
-
-.post-moderation-card:hover {
-  border-color: rgba(245, 158, 11, 0.6);
-  transform: translateY(-2px);
-}
-
-.mod-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.mod-title-box h4 {
-  margin: 6px 0 4px 0;
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.mod-sub {
-  font-size: 0.78rem;
-  color: #94a3b8;
-}
-
-.badge-pending {
-  display: inline-block;
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  font-size: 0.68rem;
-  font-weight: 900;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
-}
-
-.vault-score-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 0.4rem 0.75rem;
-  border-radius: 8px;
-}
-
-.score-label {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 0.05em;
-}
-
-.score-value {
-  font-size: 1rem;
-  font-weight: 900;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-}
-
-.mod-excerpt {
-  font-size: 0.88rem;
-  color: #cbd5e1;
-  line-height: 1.5;
-  margin: 0;
-  background: rgba(2, 4, 32, 0.5);
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.mod-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid #1e293b;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.btn-inspect-report {
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  padding: 0.45rem 0.85rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-inspect-report:hover {
-  background: rgba(56, 189, 248, 0.2);
-  border-color: #38bdf8;
-}
-
-.mod-actions-btn-group {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-action-approve {
-  background: #00dc82;
-  color: #020420;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 800;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-action-approve:hover {
-  opacity: 0.9;
-  box-shadow: 0 0 10px rgba(0, 220, 130, 0.3);
-  transform: translateY(-1px);
-}
-
-.btn-action-reject {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 800;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-action-reject:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: #ef4444;
-}
 
 /* ==========================================================================
    MODALE VERIFICATION REPORT DKP VAULT

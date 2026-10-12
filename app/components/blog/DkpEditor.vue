@@ -569,7 +569,7 @@ onMounted(() => {
   flex-direction: column; 
   gap: 1rem; 
   width: 100%; 
-  max-height: 67vh; 
+  max-height: 72vh; /* Aumentato per non far chiudere l'editor */
   overflow-y: auto; 
   padding-right: 10px; 
   box-sizing: border-box;
@@ -594,29 +594,41 @@ onMounted(() => {
   transition: all 0.3s ease; 
 }
 
+/* 🟢 MODALITÀ ZEN FIXATA AL 100% */
 .zen-mode-active {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999; 
+  z-index: 999999 !important; /* Forza l'editor sopra a tutte le altre modali */
   border-radius: 0;
   border: none;
   background: #050814; 
+  display: flex;
+  flex-direction: column;
 }
 
-/* Modifiche Layout Toolbar dinamica */
 .toolbar-bar { 
   display: flex; 
   flex-direction: column; 
   background: #0b1120; 
   border-bottom: 1px solid #1e293b; 
 }
+
+/* Fissa la barra in alto quando è in Zen Mode */
+.zen-mode-active .toolbar-bar {
+  flex-shrink: 0; 
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+}
+
 @media (min-width: 768px) {
   .toolbar-bar {
     flex-direction: row; 
-    justify-content: flex-start; /* Riempie lo spazio da sinistra */
+    justify-content: flex-start;
     align-items: center;
     padding: 0.4rem 0.6rem;
     gap: 1rem;
@@ -629,7 +641,7 @@ onMounted(() => {
   padding: 0.3rem; 
   background: #020420; 
   border-bottom: 1px solid #1e293b;
-  flex-shrink: 0; /* Impedisce che il blocco switch si rimpicciolisca */
+  flex-shrink: 0; 
 }
 @media (min-width: 768px) {
   .tab-switch-group { border-bottom: none; padding: 0; background: transparent; }
@@ -650,15 +662,13 @@ onMounted(() => {
 .tab-toggle-btn:hover { color: #cbd5e1; }
 .tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
 
-/* La magia del flex-wrap per i nuovi pulsanti */
 .formatting-tools { 
   display: flex; 
-  flex-wrap: wrap; /* Manda a capo i gruppi di bottoni se non c'è spazio */
+  flex-wrap: wrap; 
   align-items: center; 
-  gap: 0.4rem; /* Spazio tra i blocchi quando vanno a capo */
+  gap: 0.4rem; 
   padding: 0.3rem 0;
 }
-/* Forziamo una riga unica solo in modalità Zen */
 .zen-mode-active .formatting-tools {
   flex-wrap: nowrap;
 }
@@ -709,8 +719,11 @@ onMounted(() => {
 
 .zen-mode-active .textarea-container, 
 .zen-mode-active .preview-container {
-  height: calc(100vh - 45px); 
+  height: calc(100vh - 55px); /* Regolato spazio per la barra superiore */
+  overflow-y: auto;
+  flex-grow: 1; 
 }
+
 .zen-mode-active .markdown-textarea,
 .zen-mode-active .dkp-preview-content {
   max-width: 800px;
