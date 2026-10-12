@@ -29,6 +29,26 @@ const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 9 // 🟢 9 articoli per pagina (griglie perfette da 3x3)
 
+// Funzione di sicurezza per normalizzare i tag di qualsiasi articolo (vecchio o nuovo)
+function parseTags(tagsRaw: any): string[] {
+  if (Array.isArray(tagsRaw)) {
+    // Se è un array ma dentro contiene elementi con virgole o punti e virgola
+    const expanded: string[] = []
+    for (const item of tagsRaw) {
+      if (typeof item === 'string' && (item.includes(',') || item.includes(';'))) {
+        expanded.push(...item.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean))
+      } else if (item) {
+        expanded.push(String(item).trim().replace(/^#/, ''))
+      }
+    }
+    return expanded
+  }
+  if (typeof tagsRaw === 'string') {
+    return tagsRaw.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+  }
+  return []
+}
+
 function getCategoryName(category: any): string {
   if (!category) return 'Generale'
   if (typeof category === 'object') return category.name || 'Generale'
@@ -240,7 +260,7 @@ function changePage(page: number) {
 
           <!-- TAGS ROW -->
           <div v-if="post.tags && post.tags.length > 0" class="tags-row">
-            <span v-for="tag in post.tags" :key="tag" class="tag-badge">#{{ tag }}</span>
+            <span v-for="tag in parseTags" :key="tag" class="tag-badge">#{{ tag }}</span>
           </div>
 
           <!-- Footer Unificato Gamificato -->

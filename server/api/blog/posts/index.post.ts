@@ -44,12 +44,11 @@ export default defineEventHandler(async (event) => {
   const generatedSlug = slugify(cleanTitle)
   
   let cleanTags: string[] = []
-  if (Array.isArray(tags)) cleanTags = tags
-  else if (typeof tags === 'string') cleanTags = tags.split(',').map(t => t.trim()).filter(Boolean)
-
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante nelle variabili d\'ambiente.' })
+  if (Array.isArray(tags)) {
+    cleanTags = tags.map(t => String(t).trim().replace(/^#/, '')).filter(Boolean)
+  } else if (typeof tags === 'string') {
+    // 🟢 Spezza sia con la virgola che con il punto e virgola o spazi multipli
+    cleanTags = tags.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
   }
 
   const sql = postgres(connectionString, { ssl: 'require' })
