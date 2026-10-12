@@ -1,5 +1,4 @@
 // server/api/submit.post.ts
-import { defineEventHandler, readBody, createError } from 'h3'
 import { getDb } from '~~/server/utils/db'
 import { blogPosts } from '~~/drizzle/schema'
 import { eq } from 'drizzle-orm'

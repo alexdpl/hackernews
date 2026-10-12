@@ -1,5 +1,4 @@
 // server/api/blog/index.get.ts
-import { defineEventHandler, getQuery } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { blogPosts, blogCategories, blogSubcategories, users } from '~~/drizzle/schema' 
@@ -20,6 +19,14 @@ function getSafeQuery(event: any): Record<string, any> {
 }
 
 export default defineEventHandler(async (event) => {
+  // 🚨 HACK / POLYFILL: Inganniamo il bug di pnpm/h3 sugli headers se si attiva nelle query GET
+  if (event.node?.req?.headers && typeof (event.node.req.headers as any).get !== 'function') {
+    (event.node.req.headers as any).get = (key: string) => (event.node.req.headers as any)[key.toLowerCase()]
+  }
+  if (event.req?.headers && typeof (event.req.headers as any).get !== 'function') {
+    (event.req.headers as any).get = (key: string) => (event.req.headers as any)[key.toLowerCase()]
+  }
+
   const query = getSafeQuery(event)
   const categorySlug = query.category ? String(query.category) : null
   const subcategorySlug = query.subcategory || query.subCategory ? String(query.subcategory || query.subCategory) : null
@@ -28,9 +35,6 @@ export default defineEventHandler(async (event) => {
     const db = await getDb()
     let postsList: any[] = []
 
-    // 🚀 ELIMINATO il db.query.blogPosts.findMany che causava il crash. 
-    // Usiamo ESCLUSIVAMENTE la leftJoin pulita e infallibile.
-    
     const rawPosts = await db
       .select({
         post: blogPosts,
@@ -88,7 +92,7 @@ export default defineEventHandler(async (event) => {
 
       return {
         ...p,
-        category: catName,              
+        category: catName,            
         categoryName: catName,          
         categoryObject: p.category,    
         subCategory: subName,          

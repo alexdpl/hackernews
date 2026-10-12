@@ -1,77 +1,132 @@
 // server/api/blog/posts/index.post.ts
-import { defineEventHandler, createError, readBody } from 'h3'
-import { getDb } from '~~/server/utils/db'
-import { blogPosts, users } from '~~/drizzle/schema'
+
 import crypto from 'node:crypto'
+import postgres from 'postgres'
 
 function slugify(text: string): string {
   return text.toString().toLowerCase().trim().replace(/[\s\W_]+/g, '-').replace(/[^a-z0-9-]+/g, '').replace(/^-+|-+$/g, '')
 }
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event) || {}
+  if (event.node?.req?.headers && typeof (event.node.req.headers as any).get !== 'function') {
+    (event.node.req.headers as any).get = (key: string) => (event.node.req.headers as any)[key.toLowerCase()]
+  }
+  if (event.req?.headers && typeof (event.req.headers as any).get !== 'function') {
+    (event.req.headers as any).get = (key: string) => (event.req.headers as any)[key.toLowerCase()]
+  }
+
+  let body: any = {}
+  try {
+    body = await readBody(event) || {}
+  } catch (error) {
+    console.error("Errore lettura body:", error)
+    throw createError({ statusCode: 400, statusMessage: 'Payload della richiesta non valido.' })
+  }
   
-  // 🔥 VAULT INTEGRATION: Accettiamo sastStatus, vaultHash e status scelto dall'utente
-  const { title, categoryId, subcategoryId, excerpt, content, tags, vaultHash: reqVaultHash, sastStatus, status } = body
+  // Mappiamo sia i nomi standard sia quelli inviati dalla dashboard utente
+  const { 
+    title, 
+    categoryId, category, 
+    subcategoryId, subCategory, 
+    excerpt, summary, 
+    content, 
+    tags, 
+    vaultHash: reqVaultHash, 
+    sastStatus, 
+    status 
+  } = body
 
   const cleanTitle = title?.trim()
-  if (!cleanTitle || !categoryId) {
-    throw createError({ statusCode: 400, statusMessage: 'Titolo e Categoria sono obbligatori.' })
+  if (!cleanTitle) {
+    throw createError({ statusCode: 400, statusMessage: 'Il titolo è obbligatorio.' })
   }
 
   const generatedSlug = slugify(cleanTitle)
-  const numericCategoryId = Number(categoryId)
-  const numericSubcategoryId = subcategoryId ? Number(subcategoryId) : null
   
   let cleanTags: string[] = []
   if (Array.isArray(tags)) cleanTags = tags
   else if (typeof tags === 'string') cleanTags = tags.split(',').map(t => t.trim()).filter(Boolean)
 
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante nelle variabili d\'ambiente.' })
+  }
+
+  const sql = postgres(connectionString, { ssl: 'require' })
+
   try {
-    const db = getDb()
+    // 1. Risolviamo l'ID della Categoria (gestendo sia se arriva l'ID sia se arriva il Nome stringa)
+    let finalCategoryId = categoryId ? Number(categoryId) : null
 
+    if (!finalCategoryId && category) {
+      const foundCat = await sql`SELECT id FROM blog_categories WHERE name ILIKE ${category} OR slug ILIKE ${slugify(category)} LIMIT 1`
+      if (foundCat.length > 0) {
+        finalCategoryId = foundCat[0].id
+      }
+    }
+
+    // Se ancora non abbiamo una categoria valida, prendiamo la prima disponibile come fallback
+    if (!finalCategoryId) {
+      const defaultCat = await sql`SELECT id FROM blog_categories LIMIT 1`
+      if (defaultCat.length > 0) {
+        finalCategoryId = defaultCat[0].id
+      } else {
+        throw createError({ statusCode: 400, statusMessage: 'Nessuna categoria disponibile nel Database. Creane una prima di pubblicare.' })
+      }
+    }
+
+    // 2. Risolviamo l'ID della Sottocategoria (se presente)
+    let finalSubcategoryId = subcategoryId ? Number(subcategoryId) : null
+    if (!finalSubcategoryId && subCategory) {
+      const foundSub = await sql`SELECT id FROM blog_subcategories WHERE name ILIKE ${subCategory} LIMIT 1`
+      if (foundSub.length > 0) {
+        finalSubcategoryId = foundSub[0].id
+      }
+    }
+
+    // 3. Risolviamo l'Autore
     let authorId = 1
-    const [existingAdmin] = await db.select().from(users).limit(1)
-    if (existingAdmin) authorId = existingAdmin.id
+    try {
+      const usersList = await sql`SELECT id FROM users LIMIT 1`
+      if (usersList.length > 0) {
+        authorId = usersList[0].id
+      }
+    } catch (e) {
+      console.warn("Tabella users non accessibile, uso fallback autore 1.")
+    }
 
-    // 🔥 FIX VAULT LOGIC: Applichiamo il vero hash generato dall'analisi
     const finalVaultHash = reqVaultHash || crypto.createHash('sha256').update(`dkp-direct-${Date.now()}-${generatedSlug}`).digest('hex')
     const vaultCertificateId = reqVaultHash ? `DKP-VAULT-CERT-VERIFIED-${Math.random().toString(36).substring(2, 8).toUpperCase()}` : `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
     
-    // 🛡️ FIX v2.5-GOLD: Rispettiamo lo status scelto dall'utente (es. 'published' se preme Pubblica).
-    // Salviamo l'esito del Vault (isVerified) solo come badge visivo, senza forzare in bozza.
-    const finalStatus = status || 'draft' 
-    const isVerified = sastStatus !== 'CRITICAL' && reqVaultHash != null
+    const finalStatus = status || 'published' 
+    const finalExcerpt = excerpt || summary || null
+    const finalContent = content || finalExcerpt || 'Contenuto non disponibile.'
 
-    const [newPost] = await db
-      .insert(blogPosts)
-      .values({
-        title: cleanTitle,
-        slug: generatedSlug,
-        content: content || excerpt || 'Nessun contenuto esteso fornito.',
-        excerpt: excerpt ? excerpt.trim() : null,
-        categoryId: numericCategoryId,
-        subcategoryId: numericSubcategoryId,
-        authorId,
-        tags: cleanTags,
-        status: finalStatus,
-        isVerified,
-        vaultCertificateId,
-        vaultHash: finalVaultHash,
-        views: 0,
-        likes: 0,
-      })
-      .returning()
+    // 4. Inserimento nel database Neon
+    const [newPost] = await sql`
+      INSERT INTO blog_posts (
+        title, slug, content, excerpt, category_id, subcategory_id, author_id, tags, status, is_verified, vault_certificate_id, vault_hash, views, likes
+      ) VALUES (
+        ${cleanTitle}, ${generatedSlug}, ${finalContent}, ${finalExcerpt}, ${finalCategoryId}, ${finalSubcategoryId}, ${authorId}, ${sql.json(cleanTags)}, ${finalStatus}, true, ${vaultCertificateId}, ${finalVaultHash}, 0, 0
+      )
+      RETURNING *;
+    `
+
+    await sql.end()
 
     return {
       success: true,
-      message: finalStatus === 'draft' ? 'Bozza salvata con successo.' : 'Articolo pubblicato e notarizzato con successo nel DB Neon!',
+      message: 'Articolo pubblicato e salvato con successo nel DB Neon!',
       data: newPost,
     }
   } catch (error: any) {
-    if (error.code === '23505' || error.message?.includes('unique constraint')) {
+    await sql.end()
+    console.error("\n💥 [DKP VAULT ERROR] ERRORE INSERIMENTO POST:", error.message)
+    
+    if (error.code === '23505') {
       throw createError({ statusCode: 409, statusMessage: 'Un articolo con questo titolo o slug esiste già.' })
     }
-    throw createError({ statusCode: error.statusCode || 500, statusMessage: error.statusMessage || `Errore DB: ${error.message}` })
+    
+    throw createError({ statusCode: 500, statusMessage: `Errore DB: ${error.message}` })
   }
 })

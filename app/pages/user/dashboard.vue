@@ -1,11 +1,3 @@
-Socio, hai ragione da vendere. Diamo a Cesare quel che è di Cesare: abbiamo rifatto l'editor e ti sei meritato il pulsante Modifica per sistemare quell'articolo!
-
-Nel file della tua dashboard (app/pages/user/dashboard.vue), aggiungeremo il pulsante "Modifica" di fianco al pulsante "Elimina" che hai già. In più, collegheremo il clic su "Modifica" al popolamento corretto del form, così quando si apre la modale ti trovi tutti i dati pre-compilati pronti per essere corretti o aggiornati.
-
-Il Fix Completo della Dashboard
-Sostituisci il tuo attuale file app/pages/user/dashboard.vue con questo codice aggiornato. Ho inserito la logica per modificare gli articoli esistenti (la funzione editArticle) e aggiunto il pulsante verde di "Modifica" nella tabella della sezione "I Miei Contenuti":
-
-Snippet di codice
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
@@ -151,7 +143,6 @@ function openNewArticleModal() {
   isEditingArticle.value = true
 }
 
-// 🔥 NUOVA FUNZIONE: Apre la modale per modificare un articolo esistente
 function editArticle(article: any) {
   articleForm.value = {
     id: article.id,
@@ -163,7 +154,7 @@ function editArticle(article: any) {
     tags: Array.isArray(article.tags) ? [...article.tags] : [],
     status: article.status || 'draft'
   }
-  useAdvancedEditor.value = true // Apre direttamente l'editor avanzato per comodità
+  useAdvancedEditor.value = true 
   isEditingArticle.value = true
 }
 
@@ -172,25 +163,42 @@ function submitWithStatus(status: 'draft' | 'published') {
   saveArticle()
 }
 
+// 🟢 CARICAMENTO ARTICOLI DAL DB NEON
+async function fetchUserArticles() {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const rawData = (res && res.success) ? res.data : (Array.isArray(res) ? res : [])
+    articles.value = rawData.map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      category: p.categoryName || p.category || 'Generale',
+      subCategory: p.subCategory || '',
+      summary: p.excerpt || p.summary || '',
+      content: p.content || '',
+      tags: p.tags || [],
+      status: p.status || 'published',
+      date: p.createdAt ? p.createdAt.split('T')[0] : '2026-10-12'
+    }))
+  } catch (e) {
+    console.warn("Impossibile caricare i post utente dal DB", e)
+  }
+}
+
+// 🟢 SALVATAGGIO DIRETTO NEL DB NEON
 async function saveArticle() {
   if (!articleForm.value.title.trim() || !articleForm.value.category) {
     triggerToast('❌ Compila Titolo e Categoria prima di salvare.')
     return
   }
 
-  const index = articles.value.findIndex(a => a.id === articleForm.value.id)
-  const isNew = index === -1
-
   const payload = {
-    id: isNew ? Date.now() : articleForm.value.id,
     title: articleForm.value.title,
     category: articleForm.value.category,
     subCategory: articleForm.value.subCategory,
-    summary: articleForm.value.summary,
+    excerpt: articleForm.value.summary,
     content: articleForm.value.content,
     tags: [...articleForm.value.tags],
-    status: articleForm.value.status,
-    date: new Date().toISOString().split('T')[0]
+    status: articleForm.value.status
   }
 
   try {
@@ -198,18 +206,14 @@ async function saveArticle() {
       method: 'POST',
       body: payload
     })
+    
+    triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!')
+    isEditingArticle.value = false
+    await fetchUserArticles() // Ricarica la lista aggiornata direttamente dal database
   } catch (err: any) {
-    console.warn('Aggiornamento locale attivo:', err)
+    console.error('Errore salvataggio post:', err)
+    triggerToast('❌ Errore durante il salvataggio nel DB.')
   }
-
-  if (!isNew) {
-    articles.value[index] = payload
-  } else {
-    articles.value.unshift(payload)
-  }
-
-  triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo aggiornato e pubblicato sul blog!' : '💾 Bozza salvata con successo!')
-  isEditingArticle.value = false
 }
 
 function deleteArticle(id: number) {
@@ -281,6 +285,7 @@ function revokeApiKey(id: string) {
 onMounted(() => {
   fetchCategories()
   fetchTelemetryData()
+  fetchUserArticles() // 🟢 Carica i post reali dal DB all'avvio
 })
 </script>
 
@@ -414,7 +419,7 @@ onMounted(() => {
               <tbody>
                 <tr v-if="articles.length === 0">
                   <td colspan="6" class="text-center py-6 text-gray-500 italic">
-                    Nessun articolo creato. Clicca su "+ Nuovo Post" per iniziare.
+                    Nessun articolo trovato. Clicca su "+ Nuovo Post" per iniziare.
                   </td>
                 </tr>
                 <tr v-for="art in articles" :key="art.id">
@@ -434,7 +439,6 @@ onMounted(() => {
                     </span>
                   </td>
                   <td>{{ art.date }}</td>
-                  <!-- 🔥 FIX: Aggiunto pulsante Modifica a fianco di Elimina -->
                   <td class="actions-cell" style="display: flex; gap: 8px;">
                     <button @click="editArticle(art)" class="dkp-btn-success" style="padding: 4px 8px; font-size: 0.75rem;">✏️ Modifica</button>
                     <button @click="deleteArticle(art.id)" class="btn-danger-sm">Elimina</button>
@@ -444,78 +448,74 @@ onMounted(() => {
             </table>
           </div>
 
-         <!-- MODALE EDITOR UNIFICATA CON HEADER & FOOTER FISSI -->
-<div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
-  <div class="dkp-modal editor-modal">
-    
-    <!-- HEADER MODALE UNIFICATO (VISIBILE IN ENTRAMBE LE MODALITÀ) -->
-    <div class="modal-header-row">
-      <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
-      
-      <button 
-        type="button"
-        @click="useAdvancedEditor = !useAdvancedEditor" 
-        class="btn-switch-editor"
-      >
-        {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato (Live Preview)' }}
-      </button>
-    </div>
+          <!-- MODALE EDITOR UNIFICATA CON HEADER & FOOTER FISSI -->
+          <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
+            <div class="dkp-modal editor-modal">
+              
+              <div class="modal-header-row">
+                <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
+                
+                <button 
+                  type="button"
+                  @click="useAdvancedEditor = !useAdvancedEditor" 
+                  class="btn-switch-editor"
+                >
+                  {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato (Live Preview)' }}
+                </button>
+              </div>
 
-    <!-- 1️⃣ FORM AVANZATO -->
-    <div v-if="useAdvancedEditor">
-      <DkpEditor v-model="articleForm" />
-    </div>
+              <div v-if="useAdvancedEditor">
+                <DkpEditor v-model="articleForm" />
+              </div>
 
-    <!-- 2️⃣ FORM STANDARD -->
-    <div v-else class="form-layout">
-      <div class="form-group">
-        <label>TITOLO POST *</label>
-        <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
-      </div>
+              <div v-else class="form-layout">
+                <div class="form-group">
+                  <label>TITOLO POST *</label>
+                  <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
+                </div>
 
-      <div class="grid-2-cols">
-        <div class="form-group">
-          <label>CATEGORIA *</label>
-          <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
-            <option value="" disabled>Seleziona una categoria</option>
-            <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
-              {{ cat.icon }} {{ cat.name }}
-            </option>
-          </select>
+                <div class="grid-2-cols">
+                  <div class="form-group">
+                    <label>CATEGORIA *</label>
+                    <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
+                      <option value="" disabled>Seleziona una categoria</option>
+                      <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
+                        {{ cat.icon }} {{ cat.name }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label>SOTTOCATEGORIA</label>
+                    <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
+                      <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
+                      <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
+                        {{ sub }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
+                  <DkpTagInput v-model="articleForm.tags" />
+                </div>
+
+                <div class="form-group">
+                  <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
+                  <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
+                </div>
+              </div>
+
+              <div class="modal-actions-row">
+                <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
+                <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
+                <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 Pubblica Ora</button>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div class="form-group">
-          <label>SOTTOCATEGORIA</label>
-          <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
-            <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
-            <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
-              {{ sub }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
-        <DkpTagInput v-model="articleForm.tags" />
-      </div>
-
-      <div class="form-group">
-        <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
-        <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
-      </div>
-    </div>
-
-    <!-- FOOTER AZIONI UNIFICATO (VISIBILE IN ENTRAMBI I FORM) -->
-    <div class="modal-actions-row">
-      <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
-      <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
-      <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 Pubblica Ora</button>
-    </div>
-</div>
-  </div>
-</div>
-</section>
+      </section>
 
       <!-- PANNELLO 3: API CONSOLE -->
       <section v-if="activeTab === 'api'" class="tab-panel">
@@ -619,7 +619,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* TOAST NOTIFICATION */
 .dkp-toast-success {
   position: fixed;
   top: 1.5rem;
@@ -663,7 +662,6 @@ onMounted(() => {
   gap: 1.5rem;
 }
 
-/* HEADER USER CARD */
 .user-header-card {
   background: #090d16;
   border: 1px solid #1e293b;
@@ -687,17 +685,14 @@ onMounted(() => {
 .points-badge { background: rgba(0, 220, 130, 0.12); color: #00dc82; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); }
 .public-profile-btn { background: transparent; border: 1px solid #00dc82; color: #00dc82; font-weight: 700; font-size: 0.85rem; padding: 0.55rem 1.1rem; border-radius: 8px; text-decoration: none; }
 
-/* TABS NAVIGATION */
 .tabs-navigation { display: flex; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.75rem; }
 .tab-item { background: #090d16; border: 1px solid #1e293b; color: #94a3b8; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; flex: 1 1 auto; text-align: center; }
 .tab-item.active { background: rgba(0, 220, 130, 0.12); border-color: #00dc82; color: #00dc82; }
 
-/* PANNELLO CARD */
 .panel-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; position: relative; }
 .section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
 .section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
 
-/* API PLAYGROUND LINK */
 .api-action-header { margin-bottom: 1.25rem; }
 .dkp-api-link-btn {
   display: inline-flex;
@@ -715,15 +710,6 @@ onMounted(() => {
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
 }
 
-.dkp-api-link-btn:hover {
-  background: rgba(56, 189, 248, 0.2);
-  border-color: #38bdf8;
-  color: #ffffff;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
-  transform: translateY(-2px);
-}
-
-/* GRID METRICHE */
 .metrics-grid-2x2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
 @media (max-width: 768px) { .metrics-grid-2x2 { grid-template-columns: 1fr; } }
 
@@ -748,7 +734,6 @@ onMounted(() => {
 .card-sub { font-size: 0.75rem; font-weight: 700; }
 .card-sub.engine { color: #00dc82; }
 
-/* FORMS & INPUTS */
 .form-layout { display: flex; flex-direction: column; gap: 1.25rem; }
 .social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -761,7 +746,6 @@ onMounted(() => {
 .dkp-btn-success { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.65rem 1.3rem; border-radius: 6px; cursor: pointer; }
 .save-toast { color: #00dc82; font-weight: 700; font-size: 0.85rem; }
 
-/* API KEY GENERATOR */
 .api-generate-box { display: flex; gap: 0.75rem; }
 .generated-key-alert { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .alert-title { color: #f59e0b; font-size: 0.82rem; font-weight: 700; margin: 0; }
@@ -769,7 +753,6 @@ onMounted(() => {
 .raw-key-box code { color: #00dc82; font-family: monospace; font-size: 0.9rem; }
 .btn-copy { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
 
-/* TABELLA */
 .panel-header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .table-container { overflow-x: auto; margin-top: 1rem; }
 .dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
@@ -785,7 +768,6 @@ onMounted(() => {
 .code-badge { background: #020420; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #1e293b; font-family: monospace; }
 .code-badge.clickable { cursor: pointer; }
 
-/* MODALE EDITOR FISSA & STILI PULSANTI */
 .dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
 .dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 750px; display: flex; flex-direction: column; gap: 1rem; }
 
@@ -817,20 +799,12 @@ onMounted(() => {
   transition: all 0.2s ease-in-out;
 }
 
-.btn-switch-editor:hover {
-  background: rgba(56, 189, 248, 0.25);
-  border-color: #38bdf8;
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
-}
-
 .grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 @media (max-width: 600px) { .grid-2-cols { grid-template-columns: 1fr; } }
 
 .mini-tag { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; margin-right: 0.2rem; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 0.2rem; }
 
-/* STILI PULSANTI FOOTER MODALE */
 .modal-actions-row {
   display: flex;
   justify-content: flex-end;
@@ -850,12 +824,6 @@ onMounted(() => {
   padding: 0.55rem 1.1rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-cancel:hover {
-  background: #334155;
-  color: #ffffff;
 }
 
 .btn-draft {
@@ -867,14 +835,6 @@ onMounted(() => {
   padding: 0.55rem 1.1rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-draft:hover {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: #f59e0b;
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 
 .btn-publish {
@@ -886,17 +846,9 @@ onMounted(() => {
   padding: 0.6rem 1.3rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
   box-shadow: 0 0 15px rgba(0, 220, 130, 0.3);
 }
 
-.btn-publish:hover {
-  background: #00b368;
-  box-shadow: 0 0 20px rgba(0, 220, 130, 0.5);
-  transform: translateY(-1px);
-}
-
-/* BADGES FOOTER NEXUS */
 .nexus-badge-wrap { display: flex; justify-content: center; margin-top: 1.5rem; }
 .pulse-nexus-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: #020420; border: 1px solid #00dc82; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; color: #ffffff; }
 .pulse-nexus-badge .dot { width: 7px; height: 7px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 8px #00dc82; }

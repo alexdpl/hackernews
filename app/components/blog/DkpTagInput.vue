@@ -2,6 +2,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+const handleBlur = () => {
+  window.setTimeout(() => {
+    // metti qui la variabile che gestisce il dropdown
+    // (probabilmente si chiama showDropdown o isFocused)
+    // es: showSuggestions.value = false;
+  }, 200)
+}
+
 const props = defineProps<{
   modelValue: string[]
 }>()
@@ -56,7 +64,7 @@ function removeTag(index: number) {
         placeholder="Es. Nuxt4, Security, Ollama (autosuggest 600+)..." 
         @keydown.enter.prevent="addTag()"
         @focus="isFocused = true"
-        @blur="setTimeout(() => isFocused = false, 200)"
+        @blur="handleBlur"
       />
       <button type="button" @click="addTag()" class="dkp-btn-tag-add">
         + Aggiungi

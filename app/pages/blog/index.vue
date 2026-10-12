@@ -1,4 +1,4 @@
-!-- app/pages/blog/index.vue -->
+<!-- app/pages/blog/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useBlog } from '~/composables/useBlog'
@@ -8,29 +8,27 @@ useDkpSeo({
   description: 'Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente scritti dalla community di DevKernelPulse.'
 })
 
-// --- 1. CARICAMENTO DATI (TRAMITE NUOVO COMPOSABLE v2.5-GOLD) ---
+// --- 1. CARICAMENTO DATI ---
 const { posts, fetchPosts, getAuthorRank, isLoading } = useBlog()
 
-// Le categorie le prendiamo ancora dirette perché sono indipendenti dal blog
 const { data: catResponse, pending: loadingCats } = await useFetch('/api/blog/categories')
 
-// Categorie Reali dal DB
 const categories = computed(() => {
   const raw = (catResponse.value as any)?.data || []
   return Array.isArray(raw) ? raw : []
 })
 
-// Carichiamo i post all'avvio
 onMounted(async () => {
   await fetchPosts()
 })
 
-// --- 2. STATI DI FILTRAGGIO & RICERCA ---
+// --- 2. STATI DI FILTRAGGIO, RICERCA & PAGINAZIONE ---
 const selectedCategory = ref<string | null>(null)
 const selectedSubcategory = ref<string | null>(null)
 const searchQuery = ref('')
+const currentPage = ref(1)
+const itemsPerPage = 9 // 🟢 9 articoli per pagina (griglie perfette da 3x3)
 
-// Helper per i nomi e icone
 function getCategoryName(category: any): string {
   if (!category) return 'Generale'
   if (typeof category === 'object') return category.name || 'Generale'
@@ -68,6 +66,7 @@ const activeSubcategories = computed(() => {
 function selectCategory(catName: string | null) {
   selectedCategory.value = catName
   selectedSubcategory.value = null
+  currentPage.value = 1 // Reset pagina al cambio filtro
 }
 
 // --- 3. FILTRO ARTICOLI ---
@@ -89,6 +88,22 @@ const filteredPosts = computed(() => {
     return matchesCat && matchesSub && matchesSearch
   })
 })
+
+// --- 4. PAGINAZIONE CALCOLATA ---
+const totalPages = computed(() => Math.ceil(filteredPosts.value.length / itemsPerPage))
+
+const paginatedPosts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredPosts.value.slice(start, end)
+})
+
+function changePage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    window.scrollTo({ top: 300, behavior: 'smooth' })
+  }
+}
 </script>
 
 <template>
@@ -97,7 +112,6 @@ const filteredPosts = computed(() => {
       
       <!-- HERO SECTION NEWSROOM PREMIUM -->
       <header class="blog-hero relative">
-        <!-- 🟢 Sentinel AI Live Status -->
         <div class="flex justify-center mb-6">
           <div class="flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
             <span class="relative flex h-2.5 w-2.5">
@@ -123,9 +137,8 @@ const filteredPosts = computed(() => {
           Approfondimenti di sistema, architetture cloud, annunci strategici e guide notarizzate direttamente dalla community.
         </p>
 
-        <!-- CTA Sottoponi Articolo -->
         <div class="mt-8 flex justify-center gap-4">
-          <NuxtLink to="/admin/blog" class="bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold px-6 py-2.5 rounded-lg transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transform hover:-translate-y-1">
+          <NuxtLink to="/user/dashboard?tab=content" class="bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold px-6 py-2.5 rounded-lg transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transform hover:-translate-y-1">
             ✍️ Sottoponi un Articolo
           </NuxtLink>
         </div>
@@ -140,8 +153,9 @@ const filteredPosts = computed(() => {
             type="text" 
             placeholder="Cerca notizie, guide o tag (es. #Nuxt4, #Security, #Ollama)..." 
             class="search-input"
+            @input="currentPage = 1"
           />
-          <button v-if="searchQuery" @click="searchQuery = ''" class="clear-search-btn" type="button">×</button>
+          <button v-if="searchQuery" @click="searchQuery = ''; currentPage = 1" class="clear-search-btn" type="button">×</button>
         </div>
       </div>
 
@@ -175,7 +189,7 @@ const filteredPosts = computed(() => {
         <div v-if="activeSubcategories.length > 0" class="subcategories-bar">
           <span class="sub-label">Sottocategorie:</span>
           <button
-            @click="selectedSubcategory = null"
+            @click="selectedSubcategory = null; currentPage = 1"
             :class="['sub-btn', { active: selectedSubcategory === null }]"
             type="button"
           >
@@ -184,7 +198,7 @@ const filteredPosts = computed(() => {
           <button
             v-for="sub in activeSubcategories"
             :key="sub.id || sub.name"
-            @click="selectedSubcategory = sub.name"
+            @click="selectedSubcategory = sub.name; currentPage = 1"
             :class="['sub-btn', { active: selectedSubcategory === sub.name }]"
             type="button"
           >
@@ -202,12 +216,12 @@ const filteredPosts = computed(() => {
         <div class="empty-icon">📂</div>
         <h3>Nessun articolo trovato</h3>
         <p>Non ci sono post disponibili. Usa il form di Gestione Post per scriverne uno.</p>
-        <button @click="selectCategory(null); searchQuery = ''" class="btn-reset" type="button">Ripristina Filtri</button>
+        <button @click="selectCategory(null); searchQuery = ''; currentPage = 1" class="btn-reset" type="button">Ripristina Filtri</button>
       </div>
 
-      <!-- GRIGLIA ARTICOLI v2.5-GOLD -->
+      <!-- GRIGLIA ARTICOLI v2.5-GOLD (PAGINATA) -->
       <div v-else class="blog-grid">
-        <article v-for="post in filteredPosts" :key="post.id" class="post-card group hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all">
+        <article v-for="post in paginatedPosts" :key="post.id" class="post-card group hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all">
           <div class="card-header">
             <span class="cat-badge">{{ getCategoryName(post.categoryObject || post.category) }}</span>
             <span v-if="post.isVerified" class="text-xs text-emerald-400 font-bold border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded" title="Verificato dal Vault DKP">🛡️ Verified</span>
@@ -231,8 +245,6 @@ const filteredPosts = computed(() => {
 
           <!-- Footer Unificato Gamificato -->
           <div class="post-footer">
-            
-            <!-- Gamification Autore (Mini-Box) -->
             <div class="flex items-center gap-2 mb-2 w-full border-b border-slate-800/50 pb-2">
               <div class="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] border"
                    :style="{ background: `linear-gradient(135deg, ${getAuthorRank(post.authorXp).color}, #0f172a)`, borderColor: getAuthorRank(post.authorXp).color }">
@@ -246,7 +258,6 @@ const filteredPosts = computed(() => {
               </div>
             </div>
 
-            <!-- Meta Info Standard -->
             <div class="meta-info w-full flex justify-between items-center">
               <span class="post-date">📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
               <div class="flex gap-3 text-xs">
@@ -260,6 +271,39 @@ const filteredPosts = computed(() => {
             </NuxtLink>
           </div>
         </article>
+      </div>
+
+      <!-- 🟢 CONTROLLI PAGINAZIONE NUMERATA -->
+      <div v-if="totalPages > 1" class="pagination-container">
+        <button 
+          @click="changePage(currentPage - 1)" 
+          :disabled="currentPage === 1"
+          class="page-btn"
+          type="button"
+        >
+          ← Indietro
+        </button>
+
+        <div class="page-numbers">
+          <button 
+            v-for="page in totalPages" 
+            :key="page"
+            @click="changePage(page)"
+            :class="['page-number-btn', { active: currentPage === page }]"
+            type="button"
+          >
+            {{ page }}
+          </button>
+        </div>
+
+        <button 
+          @click="changePage(currentPage + 1)" 
+          :disabled="currentPage === totalPages"
+          class="page-btn"
+          type="button"
+        >
+          Avanti →
+        </button>
       </div>
 
       <!-- BADGE FOOTER PULSE NEXUS -->
@@ -330,6 +374,72 @@ const filteredPosts = computed(() => {
 
 .read-more-btn { color: #00dc82; text-decoration: none; font-weight: 800; font-size: 0.9rem; transition: all 0.2s ease; }
 .read-more-btn:hover { color: #38bdf8; transform: translateX(3px); }
+
+/* STILI PAGINAZIONE */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #1e293b;
+}
+
+.page-btn {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #00dc82;
+  color: #00dc82;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.page-number-btn {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.page-number-btn:hover {
+  border-color: #334155;
+  color: #ffffff;
+}
+
+.page-number-btn.active {
+  background: rgba(0, 220, 130, 0.15);
+  color: #00dc82;
+  border-color: #00dc82;
+  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
+}
 
 .loading-state, .no-posts { text-align: center; color: #94a3b8; padding: 3rem 1rem; }
 .empty-icon { font-size: 3rem; margin-bottom: 0.5rem; }

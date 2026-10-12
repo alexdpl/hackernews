@@ -1,15 +1,14 @@
 {
-  "name": "devkernelpulse-ecosystem",
-  "version": "2.4.0 GOLD",
+  "name": "devkernelpulse",
+  "version": "2.5.0 GOLD",
   "private": true,
   "type": "module",
-  "description": "DevKernelPulse v2.4.0 GOLD - Kernel Core Engine and Proprietary SaaS Modular Ecosystem",
+  "description": "DevKernelPulse v2.5.0 GOLD - Kernel Core Engine and Proprietary SaaS Modular Ecosystem",
   "scripts": {
-    "dev": "nuxt dev",
     "build": "nuxt build",
-    "postinstall": "nuxi prepare",
-    "dkp:doctor": "tsx scripts/dkp-doctor.ts",
-    "dkp:fix": "tsx scripts/dkp-doctor.ts --fix"
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
   },
   "overrides": {
     "drizzle-orm": ">=0.45.2",
@@ -20,18 +19,20 @@
     "esbuild": "^0.25.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "vue-demi"
-    ]
+    "overrides": {
+      "h3": "1.15.11"
+    }
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",
     "@vueuse/core": "^11.1.0",
     "cheerio": "^1.2.0",
+    "dotenv": "^18.0.7",
     "drizzle-orm": "^0.45.3",
     "nodemailer": "^10.0.10",
     "nuxt": "^3.13.0",
     "ofetch": "^1.3.4",
+    "postgres": "^3.4.9",
     "prismjs": "^1.30.0",
     "puppeteer": "^25.12.0",
     "stripe": "^22.6.2",
