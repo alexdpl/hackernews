@@ -11,8 +11,8 @@ function slugify(text: string): string {
 export default defineEventHandler(async (event) => {
   const body = await readBody(event) || {}
   
-  // 🔥 VAULT INTEGRATION: Accettiamo sastStatus e vaultHash dal frontend
-  const { title, categoryId, subcategoryId, excerpt, content, tags, vaultHash: reqVaultHash, sastStatus } = body
+  // 🔥 VAULT INTEGRATION: Accettiamo sastStatus, vaultHash e status scelto dall'utente
+  const { title, categoryId, subcategoryId, excerpt, content, tags, vaultHash: reqVaultHash, sastStatus, status } = body
 
   const cleanTitle = title?.trim()
   if (!cleanTitle || !categoryId) {
@@ -38,9 +38,10 @@ export default defineEventHandler(async (event) => {
     const finalVaultHash = reqVaultHash || crypto.createHash('sha256').update(`dkp-direct-${Date.now()}-${generatedSlug}`).digest('hex')
     const vaultCertificateId = reqVaultHash ? `DKP-VAULT-CERT-VERIFIED-${Math.random().toString(36).substring(2, 8).toUpperCase()}` : `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
     
-    // 🛡️ SICUREZZA AUTOMATICA: Se Pulse Sentinel rileva criticità, forziamo in bozza!
-    const finalStatus = sastStatus === 'CRITICAL' ? 'draft' : 'published'
-    const isVerified = sastStatus !== 'CRITICAL'
+    // 🛡️ FIX v2.5-GOLD: Rispettiamo lo status scelto dall'utente (es. 'published' se preme Pubblica).
+    // Salviamo l'esito del Vault (isVerified) solo come badge visivo, senza forzare in bozza.
+    const finalStatus = status || 'draft' 
+    const isVerified = sastStatus !== 'CRITICAL' && reqVaultHash != null
 
     const [newPost] = await db
       .insert(blogPosts)
@@ -64,7 +65,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      message: finalStatus === 'draft' ? 'Salvato in bozza per problemi di sicurezza.' : 'Articolo pubblicato e notarizzato!',
+      message: finalStatus === 'draft' ? 'Bozza salvata con successo.' : 'Articolo pubblicato e notarizzato con successo nel DB Neon!',
       data: newPost,
     }
   } catch (error: any) {

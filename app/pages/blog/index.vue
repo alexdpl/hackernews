@@ -1,16 +1,18 @@
-<!-- app/pages/blog/index.vue -->
+!-- app/pages/blog/index.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useBlog } from '~/composables/useBlog'
 
 useDkpSeo({
   title: 'DKP Technical Blog & Vault Articles NewsRoom - DevKernelPulse — v2.5',
   description: 'Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente scritti dalla community di DevKernelPulse.'
 })
 
-// --- 1. CARICAMENTO DATI DA NEON POSTGRESQL ---
-// 🔥 FIX: Aggiornati gli URL per puntare ai nuovi endpoint puliti
-const { data: catResponse, pending: loadingCats, refresh: refreshCats } = await useFetch('/api/blog/categories')
-const { data: postsResponse, pending: loadingPosts, refresh: refreshPosts } = await useFetch('/api/blog/posts?public=true')
+// --- 1. CARICAMENTO DATI (TRAMITE NUOVO COMPOSABLE v2.5-GOLD) ---
+const { posts, fetchPosts, getAuthorRank, isLoading } = useBlog()
+
+// Le categorie le prendiamo ancora dirette perché sono indipendenti dal blog
+const { data: catResponse, pending: loadingCats } = await useFetch('/api/blog/categories')
 
 // Categorie Reali dal DB
 const categories = computed(() => {
@@ -18,10 +20,9 @@ const categories = computed(() => {
   return Array.isArray(raw) ? raw : []
 })
 
-// Articoli Reali dal DB
-const posts = computed(() => {
-  const raw = (postsResponse.value as any)?.data || []
-  return Array.isArray(raw) ? raw : []
+// Carichiamo i post all'avvio
+onMounted(async () => {
+  await fetchPosts()
 })
 
 // --- 2. STATI DI FILTRAGGIO & RICERCA ---
@@ -29,7 +30,7 @@ const selectedCategory = ref<string | null>(null)
 const selectedSubcategory = ref<string | null>(null)
 const searchQuery = ref('')
 
-// Helper
+// Helper per i nomi e icone
 function getCategoryName(category: any): string {
   if (!category) return 'Generale'
   if (typeof category === 'object') return category.name || 'Generale'
@@ -82,6 +83,7 @@ const filteredPosts = computed(() => {
     const matchesSearch = !q ||
       (p.title && p.title.toLowerCase().includes(q)) ||
       (p.excerpt && p.excerpt.toLowerCase().includes(q)) ||
+      (p.summary && p.summary.toLowerCase().includes(q)) ||
       (Array.isArray(p.tags) && p.tags.some((t: string) => t.toLowerCase().includes(q)))
 
     return matchesCat && matchesSub && matchesSearch
@@ -192,8 +194,8 @@ const filteredPosts = computed(() => {
       </Transition>
 
       <!-- SPINNER & EMPTY STATE -->
-      <div v-if="loadingPosts" class="loading-state">
-        ⏳ Caricamento pubblicazioni da Neon DB GCP...
+      <div v-if="isLoading" class="loading-state">
+        ⏳ Estrazione articoli dal Vault in corso...
       </div>
 
       <div v-else-if="filteredPosts.length === 0" class="no-posts">
@@ -203,39 +205,57 @@ const filteredPosts = computed(() => {
         <button @click="selectCategory(null); searchQuery = ''" class="btn-reset" type="button">Ripristina Filtri</button>
       </div>
 
-      <!-- GRIGLIA ARTICOLI v2.4-GOLD -->
+      <!-- GRIGLIA ARTICOLI v2.5-GOLD -->
       <div v-else class="blog-grid">
-        <article v-for="post in filteredPosts" :key="post.id" class="post-card">
+        <article v-for="post in filteredPosts" :key="post.id" class="post-card group hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all">
           <div class="card-header">
             <span class="cat-badge">{{ getCategoryName(post.categoryObject || post.category) }}</span>
-            <span v-if="post.isVerified" class="text-xs text-sky-400 font-bold" title="Verificato dal Vault DKP">🛡️ Verified</span>
+            <span v-if="post.isVerified" class="text-xs text-emerald-400 font-bold border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded" title="Verificato dal Vault DKP">🛡️ Verified</span>
             <span class="read-time">5 min</span>
           </div>
 
           <!-- Titolo Articolo -->
           <h2 class="post-title">
-            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="title-link">
+            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="title-link group-hover:text-emerald-400">
               {{ post.title }}
             </NuxtLink>
           </h2>
 
           <!-- Estratto -->
-          <p class="post-excerpt">{{ post.excerpt || 'Nessuna anteprima disponibile.' }}</p>
+          <p class="post-excerpt">{{ post.excerpt || post.summary || 'Nessuna anteprima disponibile.' }}</p>
 
           <!-- TAGS ROW -->
           <div v-if="post.tags && post.tags.length > 0" class="tags-row">
             <span v-for="tag in post.tags" :key="tag" class="tag-badge">#{{ tag }}</span>
           </div>
 
-          <!-- Footer Unificato -->
+          <!-- Footer Unificato Gamificato -->
           <div class="post-footer">
-            <div class="meta-info">
-              <span class="post-author">👤 {{ post.authorName || 'Alessandro De Paola' }}</span>
-              <span class="post-date">📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : 'Recente' }}</span>
-              <span v-if="post.views !== undefined" class="post-views">👁️ {{ post.views }}</span>
+            
+            <!-- Gamification Autore (Mini-Box) -->
+            <div class="flex items-center gap-2 mb-2 w-full border-b border-slate-800/50 pb-2">
+              <div class="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] border"
+                   :style="{ background: `linear-gradient(135deg, ${getAuthorRank(post.authorXp).color}, #0f172a)`, borderColor: getAuthorRank(post.authorXp).color }">
+                {{ (post.authorName || 'D')[0].toUpperCase() }}
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs font-bold text-slate-300 leading-tight">{{ post.authorName || 'DevKernelPulse' }}</span>
+                <span class="text-[0.60rem] leading-tight" :style="{ color: getAuthorRank(post.authorXp).color }">
+                  {{ getAuthorRank(post.authorXp).badge }} {{ getAuthorRank(post.authorXp).title }}
+                </span>
+              </div>
             </div>
 
-            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="read-more-btn">
+            <!-- Meta Info Standard -->
+            <div class="meta-info w-full flex justify-between items-center">
+              <span class="post-date">📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
+              <div class="flex gap-3 text-xs">
+                <span title="Visualizzazioni" class="text-slate-400">👁️ {{ post.views || 0 }}</span>
+                <span title="Karma Likes" class="text-rose-400/80">❤️ {{ post.likes || 0 }}</span>
+              </div>
+            </div>
+
+            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="read-more-btn mt-2 w-full text-right block">
               Leggi articolo ↗
             </NuxtLink>
           </div>
@@ -292,8 +312,7 @@ const filteredPosts = computed(() => {
 .fade-sub-enter-from, .fade-sub-leave-to { opacity: 0; transform: translateY(-6px); }
 
 .blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
-.post-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; color: #ffffff; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease-in-out; }
-.post-card:hover { border-color: rgba(0, 220, 130, 0.4); transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 220, 130, 0.08); }
+.post-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; color: #ffffff; display: flex; flex-direction: column; justify-content: space-between; }
 
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .cat-badge { color: #00dc82; font-weight: 800; background: rgba(0, 220, 130, 0.12); border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; }
@@ -301,18 +320,15 @@ const filteredPosts = computed(() => {
 
 .post-title { font-size: 1.25rem; font-weight: 700; line-height: 1.35; margin-bottom: 0.75rem; }
 .title-link { color: #ffffff; text-decoration: none; transition: color 0.2s ease; }
-.title-link:hover { color: #38bdf8; }
-.post-excerpt { color: #94a3b8; font-size: 0.92rem; line-height: 1.5; margin: 0 0 1rem 0; }
+.post-excerpt { color: #94a3b8; font-size: 0.92rem; line-height: 1.5; margin: 0 0 1rem 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
 .tags-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
 .tag-badge { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-family: monospace; }
 
-.post-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #1e293b; padding-top: 1rem; margin-top: auto; gap: 0.75rem; flex-wrap: wrap; }
-.meta-info { display: flex; align-items: center; gap: 0.6rem; font-size: 0.8rem; color: #64748b; flex-wrap: wrap; }
-.post-author { color: #cbd5e1; font-weight: 600; }
-.post-date, .post-views { color: #64748b; font-size: 0.8rem; font-family: monospace; }
+.post-footer { display: flex; flex-direction: column; align-items: flex-start; border-top: 1px solid #1e293b; padding-top: 1rem; margin-top: auto; }
+.post-date { color: #64748b; font-family: monospace; }
 
-.read-more-btn { color: #00dc82; text-decoration: none; font-weight: 800; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.2rem; transition: all 0.2s ease; }
+.read-more-btn { color: #00dc82; text-decoration: none; font-weight: 800; font-size: 0.9rem; transition: all 0.2s ease; }
 .read-more-btn:hover { color: #38bdf8; transform: translateX(3px); }
 
 .loading-state, .no-posts { text-align: center; color: #94a3b8; padding: 3rem 1rem; }
@@ -328,6 +344,5 @@ const filteredPosts = computed(() => {
 @media (max-width: 640px) {
   .hero-title { font-size: 2rem; }
   .blog-grid { grid-template-columns: 1fr; }
-  .post-footer { flex-direction: column; align-items: flex-start; }
 }
 </style>

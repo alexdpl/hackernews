@@ -38,7 +38,7 @@ export function useBlog() {
   const fetchAdminPosts = async () => {
     isLoading.value = true
     try {
-      const res: any = await $fetch('/api/admin/blog/posts')
+      const res: any = await $fetch('/api/blog/posts')
       return res.data || res || []
     } catch (err: any) {
       console.error('[useBlog] fetchAdminPosts error:', err)

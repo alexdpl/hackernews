@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
+import { useBlog } from '~/composables/useBlog'
 
 useDkpSeo({
   title: "Taxonomy & Moderation Vault v2.5-GOLD - DKP Admin Center",
@@ -10,6 +11,9 @@ useDkpSeo({
 });
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain();
+
+// --- 1. IMPORTIAMO IL NOSTRO COMPOSABLE v2.5-GOLD ---
+const { fetchAdminPosts, isLoading: isBlogLoading } = useBlog()
 
 // --- INTERFACCE DATI ---
 interface Subcategory {
@@ -49,12 +53,15 @@ interface Post {
   authorName?: string;
   tags?: string[];
   views: number;
-  date: string;
+  likes?: number;
+  date?: string;
+  createdAt?: string;
   status: "published" | "pending_vault" | "draft";
   isVerified?: boolean;
   vaultCertificateId?: string;
   vaultHash?: string;
   vaultReport?: VaultReport;
+  category?: any;
 }
 
 // --- STATI GLOBALI ---
@@ -89,7 +96,7 @@ const newArticle = ref({
 
 // --- LISTA POST UNIFICATA ---
 const posts = ref<Post[]>([]);
-const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault"));
+const pendingVaultPosts = computed(() => posts.value.filter((p) => p.status === "pending_vault" || p.status === "draft"));
 const publishedPosts = computed(() => posts.value.filter((p) => p.status === "published"));
 
 // 🟢 FUNZIONE: PUBBLICAZIONE ARTICOLO
@@ -134,12 +141,13 @@ async function publishArticle() {
       tags: [...newArticle.value.tags],
       authorName: newArticle.value.author,
       vaultHash: vaultData?.vaultHashPreview || undefined,
-      sastStatus: vaultData?.sastCheck || 'PASSED'
+      sastStatus: vaultData?.sastCheck || 'PASSED',
+      status: newArticle.value.status // Usa lo stato selezionato nel form
     };
 
     if (isEditing.value && newArticle.value.id) {
        triggerToast('✅ Articolo aggiornato!');
-       await fetchPosts(); 
+       await loadPosts(); 
     } else {
        const res: any = await $fetch('/api/blog/posts', {
           method: 'POST',
@@ -147,10 +155,10 @@ async function publishArticle() {
        });
 
        if (res && res.success) {
-          triggerToast(payload.sastStatus === 'CRITICAL' 
-            ? '📝 Salvato in Bozza (Non Sicuro)' 
+          triggerToast(res.data.status === 'draft' 
+            ? '📝 Salvato in Bozza' 
             : '🚀 Articolo pubblicato e Notarizzato con DKP Vault!');
-          await fetchPosts(); 
+          await loadPosts(); 
        } else {
           throw new Error("Errore durante il salvataggio.");
        }
@@ -238,9 +246,7 @@ const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g
 const handleCatNameInput = () => { if (!catForm.value.id) catForm.value.slug = autoSlug(catForm.value.name); };
 const handleSubNameInput = () => { if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name); };
 
-
 // --- 🔗 INTERAZIONE REALE CON API CATEGORIE NEON DB ---
-
 const fetchCategories = async () => {
   isLoading.value = true;
   errorMessage.value = "";
@@ -259,22 +265,15 @@ const fetchCategories = async () => {
   }
 };
 
-const fetchPosts = async () => {
-   isLoading.value = true;
-   try {
-      const res: any = await $fetch("/api/blog/posts");
-      if(res && res.success) {
-         posts.value = res.data.map((p: any) => ({
-             ...p,
-             date: p.createdAt ? String(p.createdAt).slice(0, 10) : 'N/A'
-         })) || [];
-      }
-   } catch(e) {
-      console.error("Errore fetch posts:", e);
-   } finally {
-      isLoading.value = false;
-   }
-}
+// 🟢 CARICAMENTO POST TRAMITE COMPOSABLE
+const loadPosts = async () => {
+  try {
+    const data = await fetchAdminPosts();
+    posts.value = data;
+  } catch (e) {
+    console.error("Errore fetch posts:", e);
+  }
+};
 
 // 🔓 MODAL SBLOCCATI
 const openCatModal = (cat: Category | null = null) => {
@@ -346,7 +345,7 @@ const saveSubcategory = async () => {
     const res: any = await $fetch(url, { method, body: payload });
     if (res?.success) {
       triggerToast(subForm.value.id ? 'Sottocategoria Aggiornata' : 'Sottocategoria Creata');
-      await fetchCategories(); // Ricarica le cat per prendere le sottocategorie
+      await fetchCategories();
       isSubModalOpen.value = false;
     } else {
       triggerToast('Errore durante il salvataggio sottocategoria');
@@ -392,9 +391,10 @@ const moderatePost = async (post: Post, action: "approve" | "reject") => {
 
 onMounted(() => {
   fetchCategories();
-  fetchPosts(); 
+  loadPosts(); 
 });
 </script>
+
 <template>
   <div class="admin-page-container">
     <!-- TOAST NOTIFICATION FLOATING -->
@@ -453,7 +453,7 @@ onMounted(() => {
       <!-- ================= COLONNA SINISTRA: CATEGORIE ================= -->
       <aside class="sidebar-panel">
         <div class="sidebar-header">
-          <h3 class="flex-center gap-2">
+          <h3 class="flex items-center gap-2">
             📂 Categorie ({{ categories.length }})
           </h3>
           <button @click="openCatModal()" class="btn-primary btn-sm">
@@ -554,8 +554,10 @@ onMounted(() => {
           </button>
         </div>
 
+        <div v-if="isBlogLoading" class="text-center py-10 text-emerald-400 animate-pulse">Caricamento DB Neon...</div>
+
         <!-- TAB 1: CODA DI MODERAZIONE DKP VAULT (STEP 2.2) -->
-        <div v-if="activeTab === 'moderation_queue'" class="moderation-tab-section">
+        <div v-else-if="activeTab === 'moderation_queue'" class="moderation-tab-section">
           <div v-if="!pendingVaultPosts.length" class="card empty-vault-box">
             <div class="empty-vault-inner">
               <span class="empty-icon">🎉</span>
@@ -568,7 +570,7 @@ onMounted(() => {
             <div v-for="post in pendingVaultPosts" :key="post.id" class="card post-moderation-card">
               <div class="mod-card-header">
                 <div class="mod-title-box">
-                  <span class="badge-pending">PENDING VAULT</span>
+                  <span class="badge-pending">PENDING / BOZZA</span>
                   <h4>{{ post.title }}</h4>
                   <span class="mod-sub">Autore: <strong>@{{ post.authorName || 'community_user' }}</strong> • Categoria: {{ getCategoryName(post.categoryId) }}</span>
                 </div>
@@ -585,11 +587,11 @@ onMounted(() => {
                   🔍 Ispeziona Report Vault
                 </button>
                 <div class="mod-actions-btn-group">
-                  <button @click="moderatePost(post, 'approve')" class="btn-action-approve" :disabled="isLoading">
-                    🟢 Approva &amp; Pubblica
+                  <button @click="editPost(post); activeTab = 'publish_manage'" class="btn-action-approve">
+                    ✏️ Modifica
                   </button>
-                  <button @click="moderatePost(post, 'reject')" class="btn-action-reject" :disabled="isLoading">
-                    🔴 Rifiuta
+                  <button @click="deletePost(post.id)" class="btn-action-reject" :disabled="isLoading">
+                    🔴 Elimina
                   </button>
                 </div>
               </div>
@@ -633,9 +635,17 @@ onMounted(() => {
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Autore</label>
-                  <input v-model="newArticle.author" class="dkp-input" type="text" readonly />
+                  <label>Status</label>
+                  <select v-model="newArticle.status" class="dkp-input">
+                    <option value="published">Online (Published)</option>
+                    <option value="draft">Bozza (Draft)</option>
+                  </select>
                 </div>
+              </div>
+
+              <div class="form-group">
+                <label>Autore</label>
+                <input v-model="newArticle.author" class="dkp-input" type="text" />
               </div>
 
               <!-- ➕ COMPONENTE TAG AGGIUNTO QUI -->
@@ -662,7 +672,7 @@ onMounted(() => {
                   ❌ Annulla Modifica
                 </button>
                 <button type="submit" class="btn-submit" style="flex: 1;">
-                  {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Pubblica nel Blog DKP' }}
+                  {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Salva / Pubblica' }}
                 </button>
               </div>
             </form>
@@ -681,7 +691,7 @@ onMounted(() => {
                     <th>Categoria</th>
                     <th>Stato</th>
                     <th>Data</th>
-                    <th>Visualizzazioni</th>
+                    <th>Metriche</th>
                     <th style="text-align: right;">Azioni</th>
                   </tr>
                 </thead>
@@ -705,11 +715,11 @@ onMounted(() => {
                       <span
                         v-else-if="post.status === 'pending_vault'"
                         class="status-badge warning"
-                      >DKP Vault (In Analisi)</span>
+                      >Vault (In Analisi)</span>
                       <span v-else class="status-badge draft">Bozza</span>
                     </td>
-                    <td class="date-text">{{ post.date || (post.createdAt ? post.createdAt.slice(0, 10) : '') }}</td>
-                    <td class="views-text">👁️ {{ post.views || 0 }}</td>
+                    <td class="date-text">{{ post.date || (post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '') }}</td>
+                    <td class="views-text">👁️ {{ post.views || 0 }} <span class="text-rose-400">❤️ {{ post.likes || 0 }}</span></td>
                     <td style="text-align: right;">
                       <div class="action-buttons">
                         <!-- EVENTI CLICK AGGIUNTI AI BOTTONI -->
@@ -796,9 +806,12 @@ onMounted(() => {
       @click.self="isCatModalOpen = false"
     >
       <div class="modal-box">
-        <h3>
-          📁 {{ catForm.id ? "Modifica Categoria Tassonomia" : "Nuova Categoria Tassonomia" }}
-        </h3>
+        <div class="vault-modal-header">
+          <h3>
+            📁 {{ catForm.id ? "Modifica Categoria Tassonomia" : "Nuova Categoria Tassonomia" }}
+          </h3>
+          <button class="icon-btn" @click="isCatModalOpen = false">×</button>
+        </div>
 
         <div class="form-stack mt-4">
           <div class="form-group">
@@ -921,9 +934,12 @@ onMounted(() => {
       @click.self="isSubModalOpen = false"
     >
       <div class="modal-box">
-        <h3>
-          ➕ {{ subForm.id ? "Modifica Sottocategoria" : "Nuova Sottocategoria" }}
-        </h3>
+        <div class="vault-modal-header">
+          <h3>
+            ➕ {{ subForm.id ? "Modifica Sottocategoria" : "Nuova Sottocategoria" }}
+          </h3>
+          <button class="icon-btn" @click="isSubModalOpen = false">×</button>
+        </div>
         <p class="modal-sub-info">
           Categoria Padre:
           <strong class="highlight text-emerald">{{ subForm.categoryName }}</strong>
