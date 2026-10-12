@@ -1,3 +1,11 @@
+Socio, hai ragione da vendere. Diamo a Cesare quel che è di Cesare: abbiamo rifatto l'editor e ti sei meritato il pulsante Modifica per sistemare quell'articolo!
+
+Nel file della tua dashboard (app/pages/user/dashboard.vue), aggiungeremo il pulsante "Modifica" di fianco al pulsante "Elimina" che hai già. In più, collegheremo il clic su "Modifica" al popolamento corretto del form, così quando si apre la modale ti trovi tutti i dati pre-compilati pronti per essere corretti o aggiornati.
+
+Il Fix Completo della Dashboard
+Sostituisci il tuo attuale file app/pages/user/dashboard.vue con questo codice aggiornato. Ho inserito la logica per modificare gli articoli esistenti (la funzione editArticle) e aggiunto il pulsante verde di "Modifica" nella tabella della sezione "I Miei Contenuti":
+
+Snippet di codice
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
@@ -143,6 +151,22 @@ function openNewArticleModal() {
   isEditingArticle.value = true
 }
 
+// 🔥 NUOVA FUNZIONE: Apre la modale per modificare un articolo esistente
+function editArticle(article: any) {
+  articleForm.value = {
+    id: article.id,
+    title: article.title || '',
+    category: article.category || '',
+    subCategory: article.subCategory || '',
+    summary: article.summary || '',
+    content: article.content || '',
+    tags: Array.isArray(article.tags) ? [...article.tags] : [],
+    status: article.status || 'draft'
+  }
+  useAdvancedEditor.value = true // Apre direttamente l'editor avanzato per comodità
+  isEditingArticle.value = true
+}
+
 function submitWithStatus(status: 'draft' | 'published') {
   articleForm.value.status = status
   saveArticle()
@@ -184,7 +208,7 @@ async function saveArticle() {
     articles.value.unshift(payload)
   }
 
-  triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo pubblicato sul blog!' : '💾 Bozza salvata con successo!')
+  triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo aggiornato e pubblicato sul blog!' : '💾 Bozza salvata con successo!')
   isEditingArticle.value = false
 }
 
@@ -410,7 +434,9 @@ onMounted(() => {
                     </span>
                   </td>
                   <td>{{ art.date }}</td>
-                  <td class="actions-cell">
+                  <!-- 🔥 FIX: Aggiunto pulsante Modifica a fianco di Elimina -->
+                  <td class="actions-cell" style="display: flex; gap: 8px;">
+                    <button @click="editArticle(art)" class="dkp-btn-success" style="padding: 4px 8px; font-size: 0.75rem;">✏️ Modifica</button>
                     <button @click="deleteArticle(art.id)" class="btn-danger-sm">Elimina</button>
                   </td>
                 </tr>

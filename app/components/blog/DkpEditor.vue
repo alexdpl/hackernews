@@ -3,6 +3,20 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 
+// 🎨 PRISMJS: Importazione moduli nativi per colorazione codice
+import Prism from 'prismjs'
+import 'prismjs/themes/prism-tomorrow.css'
+import 'prismjs/components/prism-markup'
+import 'prismjs/components/prism-css'
+import 'prismjs/components/prism-javascript'
+import 'prismjs/components/prism-typescript'
+import 'prismjs/components/prism-python'
+import 'prismjs/components/prism-bash'
+import 'prismjs/components/prism-json'
+import 'prismjs/components/prism-sql'
+import 'prismjs/components/prism-go'
+import 'prismjs/components/prism-rust'
+
 const props = defineProps<{
   modelValue?: {
     title: string
@@ -200,7 +214,6 @@ const parsedContent = computed(() => {
     const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
     const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn">📋</button></div>` : '';
     
-    // Escape dei soli tag HTML dentro il codice per Prism
     const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     
     codeBlocks.push(`<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${escapedCode}</code></pre></div>`);
@@ -229,8 +242,12 @@ const parsedContent = computed(() => {
     return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
   })
 
-  // 4. Inline
+  // 4. Nuovi Strumenti Editor (Immagini, Video, Highlight, Link, Base)
   html = html
+    .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
+    .replace(/@[video]\(([^)]+)\)/g, '<div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen></iframe></div>')
+    .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1</mark>')
+    .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1</u>')
     .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
     .replace(/\*(.*?)\*/g, '<em>$1</em>') 
@@ -245,22 +262,15 @@ const parsedContent = computed(() => {
     .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
     .replace(/^---$/gm, '<hr class="dkp-hr" />')
 
-  // 6. LISTE (Regex semplificate e funzionanti)
-  // Processa le liste annidate (che iniziano con 2+ spazi o tab)
-  html = html.replace(/^( {2,}|\t+)- (.*?)\r?$/gm, '<li class="dkp-li-nested">$2</li>')
-  html = html.replace(/^( {2,}|\t+)[0-9]+\. (.*?)\r?$/gm, '<li class="dkp-li-nested dkp-li-num">$2</li>')
-  
-  // Processa le liste principali (che NON iniziano con spazio)
+  // 6. LISTE (Nidificazione Corretta)
+  html = html.replace(/^( {2,}|\t+)- (.*?)\r?$/gm, '<ul class="dkp-sub-list"><li class="dkp-li-nested">$2</li></ul>')
+  html = html.replace(/^( {2,}|\t+)[0-9]+\. (.*?)\r?$/gm, '<ol class="dkp-sub-list"><li class="dkp-li-nested dkp-li-num">$2</li></ol>')
   html = html.replace(/^-(?!\S) (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
   html = html.replace(/^[0-9]+\. (.*?)\r?$/gm, '<ol><li class="dkp-li-main">$1</li></ol>')
-  
-  // Rimuovi ul/ol contigui 
-  html = html.replace(/<\/ul>\s*(<li class="dkp-li-nested[^>]*>.*?<\/li>\s*)*<ul>/g, (match) => {
-      return match.replace(/<\/ul>\s*/, '').replace(/<ul>/, '');
-  });
-  html = html.replace(/<\/ol>\s*(<li class="dkp-li-nested[^>]*>.*?<\/li>\s*)*<ol>/g, (match) => {
-      return match.replace(/<\/ol>\s*/, '').replace(/<ol>/, '');
-  });
+  html = html.replace(/<\/ul>\s*<ul>/g, '')
+  html = html.replace(/<\/ol>\s*<ol>/g, '')
+  html = html.replace(/<\/ul>\s*<ul class="dkp-sub-list">/g, '')
+  html = html.replace(/<\/ol>\s*<ol class="dkp-sub-list">/g, '')
 
   // 7. Reinseriamo il codice
   codeBlocks.forEach((block, index) => {
@@ -278,7 +288,7 @@ const parsedContent = computed(() => {
      if (line.includes('<div class="dkp-code-wrapper">')) inCodeBlock = true;
      if (line.includes('</div>') && inCodeBlock && !line.includes('<div class="dkp-code-header">')) inCodeBlock = false;
 
-     if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li)/.test(line.trim())) {
+     if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(line.trim())) {
         parsedHtml += line + '\n'; 
      } else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line.trim())) {
          parsedHtml += line + '\n';
@@ -296,14 +306,13 @@ const parsedContent = computed(() => {
 })
 
 // === PRISMJS TRICK INFALLIBILE ===
-// Usiamo un piccolo intervallo per assicurarci che Prism catturi le nuove classi DOM
 let prismTimer: any = null;
 const applyPrism = () => {
-  if (typeof window !== 'undefined' && (window as any).Prism) {
+  if (typeof window !== 'undefined' && Prism) {
     clearTimeout(prismTimer);
     prismTimer = setTimeout(() => {
-      (window as any).Prism.highlightAll();
-    }, 50); // Attesa di 50ms post-render
+      Prism.highlightAll();
+    }, 50);
   }
 };
 
@@ -372,6 +381,7 @@ onMounted(() => {
 
     <div :class="['editor-body-box', { 'zen-mode-active': isZenMode }]">
       <div class="toolbar-bar">
+        <!-- Gruppo Switch Tab -->
         <div class="tab-switch-group">
           <button 
             type="button"
@@ -389,6 +399,7 @@ onMounted(() => {
           </button>
         </div>
 
+        <!-- Strumenti Editor Dinamici -->
         <div v-show="activeTab === 'write'" class="formatting-tools">
           <div class="tool-group">
             <button type="button" @click="insertFormatting('# ')" class="tool-icon-btn" title="Titolo 1">H1</button>
@@ -401,7 +412,9 @@ onMounted(() => {
           <div class="tool-group">
             <button type="button" @click="insertFormatting('**', '**')" class="tool-icon-btn font-bold" title="Grassetto (Ctrl+B)">B</button>
             <button type="button" @click="insertFormatting('*', '*')" class="tool-icon-btn italic" title="Corsivo (Ctrl+I)">I</button>
+            <button type="button" @click="insertFormatting('++', '++')" class="tool-icon-btn underline-btn" title="Sottolinea">U</button>
             <button type="button" @click="insertFormatting('~~', '~~')" class="tool-icon-btn strikethrough" title="Barrato">S</button>
+            <button type="button" @click="insertFormatting('==', '==')" class="tool-icon-btn highlight-btn" title="Evidenzia Testo">🖍️</button>
           </div>
 
           <div class="tool-divider"></div>
@@ -417,8 +430,9 @@ onMounted(() => {
           
           <div class="tool-group">
             <button type="button" @click="insertFormatting('[', '](url)')" class="tool-icon-btn" title="Inserisci Link">🔗</button>
+            <button type="button" @click="insertFormatting('![Descrizione Immagine](', ')')" class="tool-icon-btn" title="Inserisci Immagine">🖼️</button>
+            <button type="button" @click="insertFormatting('@[video](', ')')" class="tool-icon-btn" title="Embed Video (YouTube/Vimeo)">🎬</button>
             <button type="button" @click="insertFormatting('\n| Intestazione 1 | Intestazione 2 |\n|---|---|\n| Cella 1 | Cella 2 |\n', '')" class="tool-icon-btn text-emerald-400" title="Inserisci Tabella">⊞</button>
-            <button type="button" @click="insertFormatting('\n<div class=\'dkp-custom-html\'>\n  ', '\n</div>\n')" class="tool-icon-btn text-emerald-400" title="Inserisci Tag HTML">&lt;/&gt;</button>
           </div>
 
           <div class="tool-divider"></div>
@@ -436,7 +450,7 @@ onMounted(() => {
           ref="textareaRef"
           v-model="content" 
           class="markdown-textarea"
-          placeholder="Inizia a scrivere il tuo articolo professionale qui..."
+          placeholder="Inizia a scrivere il tuo articolo qui..."
           @keydown.enter="handleEnter"
         ></textarea>
       </div>
@@ -450,6 +464,14 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* Nuovi elementi formattazione testuale/multimediale */
+:deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
+:deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+:deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+:deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
+:deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
+
+/* Resto dello stile esistente */
 :deep(.dkp-inline-code) { 
   background-color: rgba(30, 41, 59, 0.8); 
   color: #e2e8f0; 
@@ -584,6 +606,7 @@ onMounted(() => {
   background: #050814; 
 }
 
+/* Modifiche Layout Toolbar dinamica */
 .toolbar-bar { 
   display: flex; 
   flex-direction: column; 
@@ -593,8 +616,10 @@ onMounted(() => {
 @media (min-width: 768px) {
   .toolbar-bar {
     flex-direction: row; 
-    justify-content: space-between;
-    padding: 0.3rem 0.4rem;
+    justify-content: flex-start; /* Riempie lo spazio da sinistra */
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    gap: 1rem;
   }
 }
 
@@ -604,6 +629,7 @@ onMounted(() => {
   padding: 0.3rem; 
   background: #020420; 
   border-bottom: 1px solid #1e293b;
+  flex-shrink: 0; /* Impedisce che il blocco switch si rimpicciolisca */
 }
 @media (min-width: 768px) {
   .tab-switch-group { border-bottom: none; padding: 0; background: transparent; }
@@ -624,12 +650,17 @@ onMounted(() => {
 .tab-toggle-btn:hover { color: #cbd5e1; }
 .tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
 
+/* La magia del flex-wrap per i nuovi pulsanti */
 .formatting-tools { 
   display: flex; 
-  flex-wrap: wrap; 
+  flex-wrap: wrap; /* Manda a capo i gruppi di bottoni se non c'è spazio */
   align-items: center; 
-  padding: 0.3rem;
-  gap: 0.15rem;
+  gap: 0.4rem; /* Spazio tra i blocchi quando vanno a capo */
+  padding: 0.3rem 0;
+}
+/* Forziamo una riga unica solo in modalità Zen */
+.zen-mode-active .formatting-tools {
+  flex-wrap: nowrap;
 }
 
 .tool-group {
@@ -661,6 +692,8 @@ onMounted(() => {
 .tool-icon-btn:hover { background: #1e293b; color: #e2e8f0; }
 .tool-icon-btn:active { background: rgba(0, 220, 130, 0.2); color: #00dc82; transform: scale(0.95); }
 .tool-icon-btn.text-emerald-400 { color: #00dc82; } 
+.tool-icon-btn.highlight-btn { font-weight: bold; }
+.tool-icon-btn.underline-btn { text-decoration: underline; font-weight: bold; }
 
 .tool-icon-btn.font-bold { font-weight: 900; }
 .tool-icon-btn.italic { font-style: italic; font-family: serif;}
@@ -688,7 +721,7 @@ onMounted(() => {
 .markdown-textarea { 
   width: 100%; height: 100%; background: transparent; color: #f8fafc; padding: 1.25rem; 
   border: none; outline: none; resize: none; font-family: monospace; font-size: 0.9rem; 
-  line-height: 1.7; box-sizing: border-box; overflow: hidden; 
+  line-height: 1.7; box-sizing: border-box; overflow-y: auto; 
 }
 
 .preview-empty { color: #64748b; font-style: italic; }

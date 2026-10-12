@@ -3,16 +3,22 @@
 import { computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
-import SocialShare from '~/components/blog/SocialShare.vue'
 
 const route = useRoute()
-const { likePost, incrementView } = useBlog()
-
 const postIdOrSlug = route.params.id as string
 
-// 1. Fetch diretto dall'API Neon 
+// 1. Inizializziamo il nostro super-composable v2.5-GOLD
+const { likePost, incrementView, getAuthorRank, sharePost } = useBlog()
+
+// 2. Fetch diretto dall'API Neon 
 const { data: apiResponse, pending, error } = await useFetch(`/api/blog/posts/${postIdOrSlug}`)
 const post = computed(() => (apiResponse.value as any)?.data)
+
+// 3. Calcolo dinamico del Rank dell'autore (Gamification)
+const authorRank = computed(() => {
+  // Passiamo gli XP dell'autore (se l'API non li restituisce, passiamo 0)
+  return getAuthorRank(post.value?.authorXp || 0)
+})
 
 useDkpSeo({
   title: post.value ? `${post.value.title} - DevKernelPulse` : 'Articolo DKP',
@@ -74,10 +80,15 @@ const currentUrl = computed(() => {
     <!-- State: Post Trovato -->
     <div v-else class="flex flex-col lg:flex-row gap-8 relative">
       
-      <!-- 📱 SOCIAL STICKY SIDEBAR (Desktop) -->
+      <!-- 📱 SOCIAL STICKY SIDEBAR (Desktop) - Ora usa le funzioni native di useBlog -->
       <aside class="hidden lg:block w-16 flex-shrink-0">
-        <div class="sticky top-32 flex flex-col items-center gap-4">
-           <SocialShare :title="post.title" :url="currentUrl" :vertical="true" />
+        <div class="sticky top-32 flex flex-col items-center gap-4 bg-[#020420] p-3 rounded-2xl border border-slate-800 shadow-xl">
+           <button @click="sharePost('twitter', currentUrl, post.title)" class="social-btn text-slate-300 hover:text-[#1DA1F2]" title="Condividi su X">𝕏</button>
+           <button @click="sharePost('linkedin', currentUrl, post.title)" class="social-btn text-slate-300 hover:text-[#0077b5]" title="Condividi su LinkedIn">in</button>
+           <button @click="sharePost('reddit', currentUrl, post.title)" class="social-btn text-slate-300 hover:text-[#FF4500]" title="Condividi su Reddit">👽</button>
+           <div class="w-8 h-px bg-slate-700 my-2"></div>
+           <button @click="handleLike" class="social-btn text-slate-300 hover:text-rose-500" title="Lascia Karma">❤️</button>
+           <span class="text-xs font-bold text-emerald-400">{{ post.likes || 0 }}</span>
         </div>
       </aside>
 
@@ -101,16 +112,23 @@ const currentUrl = computed(() => {
 
         <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-8 leading-tight relative z-10">{{ post.title }}</h1>
         
-        <!-- 🧑‍💻 BLOCCO AUTORE PREMIUM -->
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border border-slate-800 mb-10 relative z-10">
+        <!-- 🧑‍💻 BLOCCO AUTORE PREMIUM CON GAMIFICATION DINAMICA -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border mb-10 relative z-10 transition-colors"
+             :style="{ borderColor: `${authorRank.color}40`, boxShadow: `0 4px 20px ${authorRank.color}10` }">
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+            <!-- Avatar dell'autore -->
+            <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-2"
+                 :style="{ background: `linear-gradient(135deg, ${authorRank.color}, #0f172a)`, borderColor: authorRank.color }">
               {{ (post.authorName || 'D')[0].toUpperCase() }}
             </div>
             <div>
               <div class="text-slate-200 font-bold flex items-center gap-2">
                 {{ post.authorName || 'DevKernelPulse Team' }}
-                <span class="text-[0.65rem] bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded uppercase tracking-wider">Gold Author</span>
+                <!-- Badge Gamification -->
+                <span class="text-[0.65rem] px-2 py-0.5 rounded uppercase tracking-wider border font-bold flex items-center gap-1"
+                      :style="{ backgroundColor: `${authorRank.color}15`, color: authorRank.color, borderColor: `${authorRank.color}40` }">
+                  <span>{{ authorRank.badge }}</span> Lvl. {{ authorRank.level }} - {{ authorRank.title }}
+                </span>
               </div>
               <div class="text-xs text-slate-400 flex items-center gap-3 mt-1 flex-wrap">
                 <span>📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
@@ -121,11 +139,11 @@ const currentUrl = computed(() => {
         </div>
 
         <!-- Estratto -->
-        <p v-if="post.excerpt" class="text-sky-400 font-semibold text-lg leading-relaxed mb-8 border-l-4 border-sky-400 pl-4 relative z-10">
-          {{ post.excerpt }}
+        <p v-if="post.excerpt || post.summary" class="text-sky-400 font-semibold text-lg leading-relaxed mb-8 border-l-4 border-sky-400 pl-4 relative z-10">
+          {{ post.excerpt || post.summary }}
         </p>
 
-        <!-- 🚀 Render Html Parsato con le tue classi personalizzate -->
+        <!-- 🚀 Render Html Parsato -->
         <div class="prose prose-invert max-w-none text-slate-200 mb-12 dkp-preview-content relative z-10" v-html="post.content || post.description || 'Nessun contenuto esteso disponibile.'"></div>
 
         <!-- Tags dell'articolo -->
@@ -168,9 +186,13 @@ const currentUrl = computed(() => {
           </div>
 
           <!-- 📱 Barra Social Mobile / Tablet -->
-          <div class="flex flex-col gap-2 items-center md:items-end">
-            <span class="text-slate-400 text-sm font-semibold mb-2">Condividi con il network:</span>
-            <SocialShare :title="post.title" :url="currentUrl" :horizontal="true" />
+          <div class="flex flex-col gap-3 items-center md:items-end lg:hidden">
+            <span class="text-slate-400 text-sm font-semibold">Condividi con il network:</span>
+            <div class="flex gap-4">
+              <button @click="sharePost('twitter', currentUrl, post.title)" class="social-btn text-slate-300 hover:text-[#1DA1F2]">𝕏</button>
+              <button @click="sharePost('linkedin', currentUrl, post.title)" class="social-btn text-slate-300 hover:text-[#0077b5]">in</button>
+              <button @click="sharePost('reddit', currentUrl, post.title)" class="social-btn text-slate-300 hover:text-[#FF4500]">👽</button>
+            </div>
           </div>
         </div>
       </article>
@@ -179,11 +201,26 @@ const currentUrl = computed(() => {
 </template>
 
 <style scoped>
-.glass-panel {
-  backdrop-filter: blur(12px);
-}
+.glass-panel { backdrop-filter: blur(12px); }
 
-/* === GLI STILI DEL TUO EDITOR PRISM/DKP MANTENUTI === */
+.social-btn {
+  font-size: 1.2rem;
+  font-weight: bold;
+  font-family: monospace;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+}
+.social-btn:hover { transform: scale(1.1); }
+
+/* === GLI STILI DEL TUO EDITOR PRISM/DKP MANTENUTI E AGGIORNATI === */
+:deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
+:deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+:deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+:deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
+:deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
+
 :deep(.dkp-inline-code) { background-color: rgba(30, 41, 59, 0.8); color: #e2e8f0; padding: 0.2rem 0.4rem; border-radius: 6px; font-family: 'Fira Code', Consolas, monospace; font-size: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1); }
 :deep(.dkp-preview-content ul), :deep(.dkp-preview-content ol) { padding-left: 1.5rem; margin: 0.8rem 0; color: #cbd5e1; }
 :deep(.dkp-preview-content ul) { list-style-type: none; }

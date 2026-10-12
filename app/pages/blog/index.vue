@@ -3,7 +3,7 @@
 import { ref, computed } from 'vue'
 
 useDkpSeo({
-  title: 'DKP Technical Blog & Vault Articles NewsRoom - DevKernelPulse — v2.4-GOLD',
+  title: 'DKP Technical Blog & Vault Articles NewsRoom - DevKernelPulse — v2.5',
   description: 'Aggiornamenti di sistema, rilasci di kernel, annunci strategici e approfondimenti tecnologici direttamente scritti dalla community di DevKernelPulse.'
 })
 
@@ -110,7 +110,7 @@ const filteredPosts = computed(() => {
 
         <div class="badge-tag mx-auto">
           <span class="badge-dot"></span>
-          DKP Editorial Hub v2.5-BETA
+          DKP Editorial Hub v2.5
         </div>
         
         <h1 class="hero-title mt-4">
@@ -245,7 +245,7 @@ const filteredPosts = computed(() => {
       <!-- BADGE FOOTER PULSE NEXUS -->
       <div class="blog-footer-badge">
         <div class="pulse-nexus-badge">
-          <span class="dot"></span> ⚡ Pulse Nexus <span class="ver">v2.5-BETA</span>
+          <span class="dot"></span> ⚡ Pulse Nexus <span class="ver">v2.5</span>
         </div>
       </div>
 
