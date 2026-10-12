@@ -1,5 +1,4 @@
 // server/api/nexus/send.post.ts
-import { defineEventHandler, readBody } from 'h3'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { pulseChatMessages, users } from '~~/drizzle/schema'
@@ -15,12 +14,13 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event) || {}
     const userText = String(body.message || body.query || '').trim()
     
-    const rawCookies = event.node?.req?.headers?.cookie || ''
-    let username = 'Socio' 
-    const match = rawCookies.match(/(?:^|;\s*)dkp_session=([^;]*)/)
-    if (match && match[1]) {
+    // Lettura sicura del cookie tramite parseCookies di H3
+    const cookies = parseCookies(event)
+    let username = 'Socio'
+    
+    if (cookies.dkp_session) {
       try {
-        const parsed = JSON.parse(decodeURIComponent(match[1]))
+        const parsed = JSON.parse(decodeURIComponent(cookies.dkp_session))
         if (parsed.username) username = parsed.username
       } catch (_) {}
     }
