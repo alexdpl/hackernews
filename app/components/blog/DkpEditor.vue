@@ -3,19 +3,64 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 
-// 🎨 PRISMJS: Importazione moduli nativi per colorazione codice
+// 🎨 PRISMJS: Importazione NATIVA ordinata per prevenire l'Errore 500 (Dipendenze rispettate)
 import Prism from 'prismjs'
 import 'prismjs/themes/prism-tomorrow.css'
+
+// 1️⃣ CORE & DIPENDENZE BASE (DEVONO stare in cima)
 import 'prismjs/components/prism-markup'
 import 'prismjs/components/prism-css'
+import 'prismjs/components/prism-clike'
 import 'prismjs/components/prism-javascript'
+import 'prismjs/components/prism-c' // Base per C++, Objective-C, OpenCL
+import 'prismjs/components/prism-java' // Base per Scala, Javadoc
+import 'prismjs/components/prism-markup-templating' // 🟢 IL SALVATORE: Base obbligatoria per Django e PHP
+import 'prismjs/components/prism-javadoclike' // Base per i linguaggi di documentazione
+
+// 2️⃣ LINGUAGGI CHE DIPENDONO DALLE BASI
+import 'prismjs/components/prism-cpp'
+import 'prismjs/components/prism-objectivec'
+import 'prismjs/components/prism-opencl'
+import 'prismjs/components/prism-scala'
+import 'prismjs/components/prism-php'
+import 'prismjs/components/prism-django'
+import 'prismjs/components/prism-javadoc'
+import 'prismjs/components/prism-xml-doc'
+
+// 3️⃣ TUTTI GLI ALTRI LINGUAGGI INDIPENDENTI
 import 'prismjs/components/prism-typescript'
 import 'prismjs/components/prism-python'
 import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-json'
+import 'prismjs/components/prism-jsonp'
 import 'prismjs/components/prism-sql'
 import 'prismjs/components/prism-go'
 import 'prismjs/components/prism-rust'
+import 'prismjs/components/prism-yaml'
+import 'prismjs/components/prism-csharp'
+import 'prismjs/components/prism-kotlin'
+import 'prismjs/components/prism-swift'
+import 'prismjs/components/prism-ruby'
+import 'prismjs/components/prism-perl'
+import 'prismjs/components/prism-docker'
+import 'prismjs/components/prism-graphql'
+import 'prismjs/components/prism-haskell'
+import 'prismjs/components/prism-apacheconf'
+import 'prismjs/components/prism-applescript'
+import 'prismjs/components/prism-git'
+import 'prismjs/components/prism-makefile'
+import 'prismjs/components/prism-mongodb'
+import 'prismjs/components/prism-neon'
+import 'prismjs/components/prism-nginx'
+import 'prismjs/components/prism-visual-basic'
+import 'prismjs/components/prism-wiki'
+import 'prismjs/components/prism-cobol'
+import 'prismjs/components/prism-http'
+import 'prismjs/components/prism-pascal'
+import 'prismjs/components/prism-powershell'
+import 'prismjs/components/prism-qsharp'
+import 'prismjs/components/prism-rest'
+import 'prismjs/components/prism-typoscript'
 
 const props = defineProps<{
   modelValue?: {
@@ -83,7 +128,7 @@ watch([title, categoryName, subCategoryName, tags, summary, content], () => {
   syncToParent()
 }, { deep: true })
 
-const { data: catResponse } = await useFetch<any>('/api/blog/categories')
+const { data: catResponse } = useFetch<any>('/api/blog/categories') // Rimossa la keyword await
 
 const categories = computed(() => {
   const raw = catResponse.value?.data || []
@@ -305,10 +350,10 @@ const parsedContent = computed(() => {
   return parsedHtml
 })
 
-// === PRISMJS TRICK INFALLIBILE ===
+// === APPLICAZIONE PRISM IN LOCALE ===
 let prismTimer: any = null;
 const applyPrism = () => {
-  if (typeof window !== 'undefined' && Prism) {
+  if (typeof window !== 'undefined' && typeof Prism !== 'undefined') {
     clearTimeout(prismTimer);
     prismTimer = setTimeout(() => {
       Prism.highlightAll();
@@ -569,7 +614,7 @@ onMounted(() => {
   flex-direction: column; 
   gap: 1rem; 
   width: 100%; 
-  max-height: 72vh; /* Aumentato per non far chiudere l'editor */
+  max-height: 72vh;
   overflow-y: auto; 
   padding-right: 10px; 
   box-sizing: border-box;
@@ -719,7 +764,7 @@ onMounted(() => {
 
 .zen-mode-active .textarea-container, 
 .zen-mode-active .preview-container {
-  height: calc(100vh - 55px); /* Regolato spazio per la barra superiore */
+  height: calc(100vh - 55px);
   overflow-y: auto;
   flex-grow: 1; 
 }
