@@ -1,3 +1,12 @@
+Hai centrato in pieno il problema, socio! L'errore "L'articolo esiste già" nasceva dal fatto che la funzione di salvataggio usava sempre il metodo POST (che serve per creare). Quando aprivi un post esistente per modificarlo, il sistema provava a "ri-crearlo", e il DB Neon bloccava tutto giustamente per via dello slug duplicato.
+
+Inoltre, la vecchia funzione "Elimina" cancellava il post solo visivamente dallo schermo, ma non mandava il comando DELETE al database.
+
+Ho riscritto il motore della tua dashboard. Ora la logica è intelligente: se crei un post fa una POST, se lo modifichi fa una PUT, e se lo elimini fa una DELETE. E soprattutto, ho inserito la Griglia 2x2 che volevi per i bottoni: Modifica, Elimina, Pubblica Subito, Ritira in Bozza. Tutto con un CSS super responsivo e in stile v2.5-GOLD.
+
+Sostituisci per intero il file app/pages/user/dashboard.vue con questo codice:
+
+Snippet di codice
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
@@ -6,7 +15,7 @@ import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import DkpEditor from '~/components/blog/DkpEditor.vue'
 
 useHead({
-  title: 'Pannello Riservato Utente — DevKernelPulse v2.4-GOLD',
+  title: 'Pannello Riservato Utente — DevKernelPulse v2.5-GOLD',
   meta: [{ name: 'description', content: 'Gestisci il tuo profilo, gli articoli pubblicati e le tue API keys su DevKernelPulse.' }]
 })
 
@@ -106,7 +115,7 @@ const isEditingArticle = ref(false)
 const useAdvancedEditor = ref(false)
 
 const articleForm = ref({
-  id: 0,
+  id: null as number | null, // 🟢 NULL significa "Nuovo Articolo" (POST), Numero significa "Aggiornamento" (PUT)
   title: '',
   category: '',
   subCategory: '',
@@ -130,7 +139,7 @@ function openNewArticleModal() {
   const defaultCat = availableCategories.value.length > 0 ? availableCategories.value[0] : null
   
   articleForm.value = {
-    id: Date.now(),
+    id: null, // 🟢 ID Null forza il sistema a fare una chiamata POST (Creazione)
     title: '',
     category: defaultCat ? defaultCat.name : 'AI, LLM & Machine Learning',
     subCategory: defaultCat && defaultCat.subcategories.length > 0 ? defaultCat.subcategories[0] : '',
@@ -145,7 +154,7 @@ function openNewArticleModal() {
 
 function editArticle(article: any) {
   articleForm.value = {
-    id: article.id,
+    id: article.id, // 🟢 Passiamo l'ID reale. Il sistema ora farà una PUT (Aggiornamento)
     title: article.title || '',
     category: article.category || '',
     subCategory: article.subCategory || '',
@@ -184,7 +193,7 @@ async function fetchUserArticles() {
   }
 }
 
-// 🟢 SALVATAGGIO DIRETTO NEL DB NEON
+// 🟢 SALVATAGGIO INTELLIGENTE (POST per i nuovi, PUT per gli esistenti)
 async function saveArticle() {
   if (!articleForm.value.title.trim() || !articleForm.value.category) {
     triggerToast('❌ Compila Titolo e Categoria prima di salvare.')
@@ -201,25 +210,60 @@ async function saveArticle() {
     status: articleForm.value.status
   }
 
+  const isUpdate = articleForm.value.id !== null;
+  const method = isUpdate ? 'PUT' : 'POST';
+  const url = isUpdate ? `/api/blog/posts/${articleForm.value.id}` : '/api/blog/posts';
+
   try {
-    await $fetch('/api/blog/posts', {
-      method: 'POST',
+    await $fetch(url, {
+      method: method,
       body: payload
     })
     
     triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!')
     isEditingArticle.value = false
-    await fetchUserArticles() // Ricarica la lista aggiornata direttamente dal database
+    await fetchUserArticles() // Ricarica la lista aggiornata
   } catch (err: any) {
     console.error('Errore salvataggio post:', err)
     triggerToast('❌ Errore durante il salvataggio nel DB.')
   }
 }
 
-function deleteArticle(id: number) {
-  if (!confirm('Sei sicuro di voler eliminare questo post?')) return
-  articles.value = articles.value.filter(a => a.id !== id)
-  triggerToast('🗑️ Articolo rimosso.')
+// 🟢 AZIONE RAPIDA 2x2: Aggiorna Stato (Pubblica/Bozza) senza aprire l'editor
+async function quickUpdateStatus(art: any, newStatus: 'published' | 'draft') {
+  try {
+    const payload = {
+      title: art.title,
+      category: art.category,
+      subCategory: art.subCategory,
+      excerpt: art.summary,
+      content: art.content,
+      tags: art.tags,
+      status: newStatus
+    }
+    
+    await $fetch(`/api/blog/posts/${art.id}`, {
+      method: 'PUT',
+      body: payload
+    })
+    
+    triggerToast(newStatus === 'published' ? '🚀 Articolo online!' : '📝 Ritirato in bozza.')
+    await fetchUserArticles()
+  } catch (err: any) {
+    triggerToast('❌ Errore durante l\'aggiornamento dello stato.')
+  }
+}
+
+// 🟢 ELIMINAZIONE REALE DAL DATABASE
+async function deleteArticle(id: number) {
+  if (!confirm('Sei sicuro di voler eliminare permanentemente questo post dal Vault?')) return
+  try {
+    await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' })
+    articles.value = articles.value.filter(a => a.id !== id)
+    triggerToast('🗑️ Articolo rimosso con successo.')
+  } catch (err) {
+    triggerToast('❌ Impossibile eliminare l\'articolo dal DB.')
+  }
 }
 
 // 5. API TELEMETRIA
@@ -285,7 +329,7 @@ function revokeApiKey(id: string) {
 onMounted(() => {
   fetchCategories()
   fetchTelemetryData()
-  fetchUserArticles() // 🟢 Carica i post reali dal DB all'avvio
+  fetchUserArticles()
 })
 </script>
 
@@ -413,7 +457,7 @@ onMounted(() => {
                   <th>Tag</th>
                   <th>Stato</th>
                   <th>Data</th>
-                  <th>Azioni</th>
+                  <th>Gestione Rapida (2x2)</th>
                 </tr>
               </thead>
               <tbody>
@@ -438,10 +482,15 @@ onMounted(() => {
                       {{ art.status === 'published' ? 'Pubblicato' : 'Bozza' }}
                     </span>
                   </td>
-                  <td>{{ art.date }}</td>
-                  <td class="actions-cell" style="display: flex; gap: 8px;">
-                    <button @click="editArticle(art)" class="dkp-btn-success" style="padding: 4px 8px; font-size: 0.75rem;">✏️ Modifica</button>
-                    <button @click="deleteArticle(art.id)" class="btn-danger-sm">Elimina</button>
+                  <td style="white-space: nowrap;">{{ art.date }}</td>
+                  <td class="actions-cell">
+                    <!-- 🟢 GRIGLIA AZIONI 2x2 -->
+                    <div class="action-grid-2x2">
+                      <button @click="editArticle(art)" class="btn-action edit" title="Apri Editor Avanzato">✏️ Edit</button>
+                      <button @click="deleteArticle(art.id)" class="btn-action delete" title="Elimina dal Vault">🗑️ Del</button>
+                      <button @click="quickUpdateStatus(art, 'published')" class="btn-action publish" title="Metti Online Ora">🚀 Pubblica</button>
+                      <button @click="quickUpdateStatus(art, 'draft')" class="btn-action draft" title="Nascondi e Metti in Bozza">📝 Bozza</button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -465,7 +514,9 @@ onMounted(() => {
               </div>
 
               <div v-if="useAdvancedEditor">
-                <DkpEditor v-model="articleForm" />
+                <!-- FIX: Uniamo i dati vecchi (ID e status) con quelli nuovi dell'editor -->
+               <DkpEditor :modelValue="articleForm" 
+                    @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
               </div>
 
               <div v-else class="form-layout">
@@ -510,7 +561,7 @@ onMounted(() => {
               <div class="modal-actions-row">
                 <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
                 <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
-                <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 Pubblica Ora</button>
+                <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 {{ articleForm.id ? 'Aggiorna Articolo' : 'Pubblica Ora' }}</button>
               </div>
             </div>
           </div>
@@ -694,21 +745,7 @@ onMounted(() => {
 .section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
 
 .api-action-header { margin-bottom: 1.25rem; }
-.dkp-api-link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  font-weight: 800;
-  font-size: 0.9rem;
-  padding: 0.65rem 1.2rem;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: all 0.25s ease-in-out;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
-}
+.dkp-api-link-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 800; font-size: 0.9rem; padding: 0.65rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.25s ease-in-out; box-shadow: 0 0 12px rgba(56, 189, 248, 0.15); }
 
 .metrics-grid-2x2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
 @media (max-width: 768px) { .metrics-grid-2x2 { grid-template-columns: 1fr; } }
@@ -717,18 +754,14 @@ onMounted(() => {
 .metric-card.cyan-border { border-color: rgba(56, 189, 248, 0.3); background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), #020420 80%); }
 .card-value.cyan-text { color: #38bdf8; }
 .card-sub.cyan { color: #38bdf8; }
-
 .metric-card.green-border { border-color: rgba(0, 220, 130, 0.3); background: radial-gradient(circle at top right, rgba(0, 220, 130, 0.05), #020420 80%); }
 .card-value.green-text { color: #00dc82; }
-
 .metric-card.purple-border { border-color: rgba(168, 85, 247, 0.3); background: radial-gradient(circle at top right, rgba(168, 85, 247, 0.05), #020420 80%); }
 .card-value.purple-text { color: #a855f7; }
 .card-sub.purple { color: #a855f7; }
-
 .metric-card.gold-border { border-color: rgba(245, 158, 11, 0.35); background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.05), #020420 80%); }
 .card-value.gold-text { color: #f59e0b; }
 .card-sub.gold { color: #f59e0b; }
-
 .card-label { font-size: 0.8rem; color: #64748b; font-weight: 600; }
 .card-value { font-size: 1.8rem; font-weight: 900; color: #ffffff; }
 .card-sub { font-size: 0.75rem; font-weight: 700; }
@@ -764,6 +797,34 @@ onMounted(() => {
 .status-pill { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
 .status-pill.published { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 .status-pill.draft { background: rgba(234, 179, 8, 0.15); color: #eab308; }
+
+/* 🟢 CSS GRIGLIA 2x2 BOTTONI TABELLA */
+.actions-cell { min-width: 170px; }
+.action-grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.btn-action {
+  padding: 5px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-action.edit { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
+.btn-action.edit:hover { background: #38bdf8; color: #020420; }
+.btn-action.delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
+.btn-action.delete:hover { background: #ef4444; color: #020420; }
+.btn-action.publish { background: rgba(0, 220, 130, 0.1); color: #00dc82; border-color: rgba(0, 220, 130, 0.3); }
+.btn-action.publish:hover { background: #00dc82; color: #020420; }
+.btn-action.draft { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+.btn-action.draft:hover { background: #f59e0b; color: #020420; }
 .btn-danger-sm { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
 .code-badge { background: #020420; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #1e293b; font-family: monospace; }
 .code-badge.clickable { cursor: pointer; }
@@ -771,33 +832,9 @@ onMounted(() => {
 .dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
 .dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 750px; display: flex; flex-direction: column; gap: 1rem; }
 
-.modal-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #1e293b;
-  margin-bottom: 0.5rem;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #ffffff;
-  margin: 0;
-}
-
-.btn-switch-editor {
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  font-weight: 700;
-  font-size: 0.78rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
+.modal-header-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #1e293b; margin-bottom: 0.5rem; }
+.modal-title { font-size: 1.25rem; font-weight: 800; color: #ffffff; margin: 0; }
+.btn-switch-editor { background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 700; font-size: 0.78rem; padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease-in-out; }
 
 .grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 @media (max-width: 600px) { .grid-2-cols { grid-template-columns: 1fr; } }
@@ -805,49 +842,10 @@ onMounted(() => {
 .mini-tag { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; margin-right: 0.2rem; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 0.2rem; }
 
-.modal-actions-row {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.65rem;
-  padding-top: 1rem;
-  border-top: 1px solid #1e293b;
-  margin-top: 1rem;
-}
-
-.btn-cancel {
-  background: #1e293b;
-  color: #cbd5e1;
-  border: 1px solid #334155;
-  font-weight: 700;
-  font-size: 0.82rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-draft {
-  background: #090d16;
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  font-weight: 800;
-  font-size: 0.82rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-publish {
-  background: #00dc82;
-  color: #020420;
-  border: none;
-  font-weight: 800;
-  font-size: 0.85rem;
-  padding: 0.6rem 1.3rem;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 0 15px rgba(0, 220, 130, 0.3);
-}
+.modal-actions-row { display: flex; justify-content: flex-end; align-items: center; gap: 0.65rem; padding-top: 1rem; border-top: 1px solid #1e293b; margin-top: 1rem; }
+.btn-cancel { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-weight: 700; font-size: 0.82rem; padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer; }
+.btn-draft { background: #090d16; color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 800; font-size: 0.82rem; padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer; }
+.btn-publish { background: #00dc82; color: #020420; border: none; font-weight: 800; font-size: 0.85rem; padding: 0.6rem 1.3rem; border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px rgba(0, 220, 130, 0.3); }
 
 .nexus-badge-wrap { display: flex; justify-content: center; margin-top: 1.5rem; }
 .pulse-nexus-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: #020420; border: 1px solid #00dc82; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; color: #ffffff; }
