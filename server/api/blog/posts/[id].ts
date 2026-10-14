@@ -1,81 +1,84 @@
 // server/api/blog/posts/[id].ts
-import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/server/db/schema'
-import { eq } from 'drizzle-orm'
+import postgres from 'postgres'
+
+let sqlInstance: any = null
+function getSqlClient() {
+  if (sqlInstance) return sqlInstance
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante.' })
+  }
+  sqlInstance = postgres(connectionString, { ssl: 'require', max: 10 })
+  return sqlInstance
+}
 
 export default defineEventHandler(async (event) => {
-  const idParam = getRouterParam(event, 'id')
-  
-  if (!idParam) {
-    throw createError({ statusCode: 400, statusMessage: 'ID Articolo mancante nell\'URL' })
+  const param = getRouterParam(event, 'id')
+
+  if (!param) {
+    throw createError({ statusCode: 400, statusMessage: 'ID o Slug mancante.' })
   }
-  
-  // 🟢 FIX INTELLIGENTE: Se il DB usa UUID (stringhe) o Numeri seriali, li gestiamo entrambi senza dare "NaN"
-  const articleId = isNaN(Number(idParam)) ? idParam : Number(idParam)
-  const method = event.node.req.method
-  
-  const db = getDb()
+
+  const sql = getSqlClient()
 
   try {
-    // ==========================================
-    // 🟢 METODO PUT (AGGIORNAMENTO ARTICOLO)
-    // ==========================================
-    if (method === 'PUT') {
-      const body = await readBody(event)
+    const isNumeric = !isNaN(Number(param))
+    let posts = []
 
-      const updateData: any = {
-        title: body.title,
-        categoryName: body.category,
-        subCategory: body.subCategory,
-        excerpt: body.excerpt || body.summary,
-        content: body.content,
-        tags: body.tags || [],
-        status: body.status || 'draft',
-        updatedAt: new Date()
-      }
-
-      // Aggiorniamo lo slug se il titolo cambia
-      if (body.title) {
-        updateData.slug = body.title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)+/g, '')
-      }
-
-      const updatedPost = await db.update(blogPosts)
-        .set(updateData)
-        .where(eq(blogPosts.id, articleId as any))
-        .returning()
-
-      if (!updatedPost.length) {
-        throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato nel DB Neon' })
-      }
-
-      return { success: true, message: 'Articolo aggiornato con successo', data: updatedPost[0] }
+    if (isNumeric) {
+      posts = await sql`
+        SELECT p.*, c.name as category_name, u.username as author_name, u.xp as author_xp
+        FROM blog_posts p
+        LEFT JOIN blog_categories c ON p.category_id = c.id
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE p.id = ${Number(param)}
+        LIMIT 1;
+      `
+    } else {
+      posts = await sql`
+        SELECT p.*, c.name as category_name, u.username as author_name, u.xp as author_xp
+        FROM blog_posts p
+        LEFT JOIN blog_categories c ON p.category_id = c.id
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE p.slug = ${param}
+        LIMIT 1;
+      `
     }
 
-    // ==========================================
-    // 🔴 METODO DELETE (ELIMINAZIONE ARTICOLO)
-    // ==========================================
-    if (method === 'DELETE') {
-      const deletedPost = await db.delete(blogPosts)
-        .where(eq(blogPosts.id, articleId as any))
-        .returning()
-
-      if (!deletedPost.length) {
-        throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato o già eliminato' })
-      }
-
-      return { success: true, message: 'Articolo eliminato definitivamente dal Vault' }
+    if (posts.length === 0) {
+      throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato nel Vault.' })
     }
 
-    throw createError({ statusCode: 405, statusMessage: 'Metodo non consentito su questo endpoint' })
+    const row = posts[0]
 
+    const formattedPost = {
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      content: row.content,
+      excerpt: row.excerpt,
+      categoryId: row.category_id,
+      categoryName: row.category_name || 'Generale',
+      subcategoryId: row.subcategory_id,
+      authorId: row.author_id,
+      authorName: row.author_name || 'alexdpl',
+      authorXp: row.author_xp || 500,
+      tags: row.tags || [],
+      status: row.status,
+      isVerified: row.is_verified,
+      vaultCertificateId: row.vault_certificate_id,
+      vaultHash: row.vault_hash,
+      views: row.views || 0,
+      likes: row.likes || 0,
+      createdAt: row.created_at,
+    }
+
+    return {
+      success: true,
+      data: formattedPost,
+    }
   } catch (error: any) {
-    console.error(`Errore API [id].ts (${method}):`, error)
-    throw createError({
-      statusCode: error.statusCode || 500,
-      statusMessage: error.statusMessage || 'Errore interno del server'
-    })
+    console.error(`💥 ERRORE API [id]:`, error.message)
+    throw createError({ statusCode: error.statusCode || 500, statusMessage: error.message })
   }
 })

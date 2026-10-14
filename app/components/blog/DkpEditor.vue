@@ -373,75 +373,51 @@ onMounted(() => {
 
 <template>
   <div class="dkp-editor-wrapper">
-    <div class="editor-fields-grid">
-      <div class="field-group full-width">
-        <label class="field-label">TITOLO DELL'ARTICOLO *</label>
-        <input 
-          v-model="title" 
-          type="text" 
-          class="dkp-input-element" 
-          placeholder="Es: Architettura DKP v2.4-GOLD su Cloud GCP..."
-        />
-      </div>
+    <!-- 🟢 NUOVO: Area superiore con scroll indipendente per i Tag -->
+    <div class="top-fields-scroll">
+      <div class="editor-fields-grid">
+        <div class="field-group full-width">
+          <label class="field-label">TITOLO DELL'ARTICOLO *</label>
+          <input v-model="title" type="text" class="dkp-input-element" placeholder="Es: Architettura DKP v2.4-GOLD su Cloud GCP..." />
+        </div>
 
-      <div class="field-group">
-        <label class="field-label">CATEGORIA *</label>
-        <select v-model="categoryName" @change="onCategoryChange" class="dkp-input-element">
-          <option value="" disabled>Seleziona Categoria</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.name">
-            {{ cat.icon || '🏷️' }} {{ cat.name }}
-          </option>
-        </select>
-      </div>
+        <div class="field-group">
+          <label class="field-label">CATEGORIA *</label>
+          <select v-model="categoryName" @change="onCategoryChange" class="dkp-input-element">
+            <option value="" disabled>Seleziona Categoria</option>
+            <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+              {{ cat.icon || '🏷️' }} {{ cat.name }}
+            </option>
+          </select>
+        </div>
 
-      <div class="field-group">
-        <label class="field-label">SOTTOCATEGORIA</label>
-        <select 
-          v-model="subCategoryName" 
-          class="dkp-input-element" 
-          :disabled="!categoryName || availableSubcategories.length === 0"
-        >
-          <option value="">Nessuna / Generale</option>
-          <option v-for="sub in availableSubcategories" :key="sub" :value="sub">
-            {{ sub }}
-          </option>
-        </select>
-      </div>
-      
-      <div class="field-group full-width">
-        <label class="field-label">TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
-        <DkpTagInput v-model="tags" />
-      </div>
+        <div class="field-group">
+          <label class="field-label">SOTTOCATEGORIA</label>
+          <select v-model="subCategoryName" class="dkp-input-element" :disabled="!categoryName || availableSubcategories.length === 0">
+            <option value="">Nessuna / Generale</option>
+            <option v-for="sub in availableSubcategories" :key="sub" :value="sub">{{ sub }}</option>
+          </select>
+        </div>
+        
+        <div class="field-group full-width">
+          <label class="field-label">TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
+          <DkpTagInput v-model="tags" />
+        </div>
 
-      <div class="field-group full-width">
-        <label class="field-label">BREVE RIASSUNTO (EXCERPT)</label>
-        <textarea 
-          v-model="summary" 
-          rows="2" 
-          class="dkp-input-element" 
-          placeholder="Un breve riassunto per le card dell'articolo..."
-        ></textarea>
+        <div class="field-group full-width">
+          <label class="field-label">BREVE RIASSUNTO (EXCERPT)</label>
+          <textarea v-model="summary" rows="2" class="dkp-input-element" placeholder="Un breve riassunto per le card dell'articolo..."></textarea>
+        </div>
       </div>
     </div>
 
+    <!-- 🟢 Area Editor: Prende lo spazio restante e blocca la toolbar in cima -->
     <div :class="['editor-body-box', { 'zen-mode-active': isZenMode }]">
       <div class="toolbar-bar">
         <!-- Gruppo Switch Tab -->
         <div class="tab-switch-group">
-          <button 
-            type="button"
-            @click="activeTab = 'write'" 
-            :class="['tab-toggle-btn', activeTab === 'write' ? 'active' : '']"
-          >
-            ✏️ Editor
-          </button>
-          <button 
-            type="button"
-            @click="activeTab = 'preview'" 
-            :class="['tab-toggle-btn', activeTab === 'preview' ? 'active' : '']"
-          >
-            👁️ Preview
-          </button>
+          <button type="button" @click="activeTab = 'write'" :class="['tab-toggle-btn', activeTab === 'write' ? 'active' : '']">✏️ Editor</button>
+          <button type="button" @click="activeTab = 'preview'" :class="['tab-toggle-btn', activeTab === 'preview' ? 'active' : '']">👁️ Preview</button>
         </div>
 
         <!-- Strumenti Editor Dinamici -->
@@ -451,9 +427,7 @@ onMounted(() => {
             <button type="button" @click="insertFormatting('## ')" class="tool-icon-btn" title="Titolo 2">H2</button>
             <button type="button" @click="insertFormatting('### ')" class="tool-icon-btn" title="Titolo 3">H3</button>
           </div>
-          
           <div class="tool-divider"></div>
-          
           <div class="tool-group">
             <button type="button" @click="insertFormatting('**', '**')" class="tool-icon-btn font-bold" title="Grassetto (Ctrl+B)">B</button>
             <button type="button" @click="insertFormatting('*', '*')" class="tool-icon-btn italic" title="Corsivo (Ctrl+I)">I</button>
@@ -461,27 +435,21 @@ onMounted(() => {
             <button type="button" @click="insertFormatting('~~', '~~')" class="tool-icon-btn strikethrough" title="Barrato">S</button>
             <button type="button" @click="insertFormatting('==', '==')" class="tool-icon-btn highlight-btn" title="Evidenzia Testo">🖍️</button>
           </div>
-
           <div class="tool-divider"></div>
-          
           <div class="tool-group">
             <button type="button" @click="insertList('bullet')" class="tool-icon-btn symbol-btn" title="Elenco Puntato">•</button>
             <button type="button" @click="insertList('number')" class="tool-icon-btn symbol-btn" title="Elenco Numerato">1.</button>
             <button type="button" @click="insertFormatting('> ')" class="tool-icon-btn symbol-btn" title="Citazione">”</button>
             <button type="button" @click="insertFormatting('\n---\n')" class="tool-icon-btn symbol-btn" title="Linea Orizzontale">—</button>
           </div>
-
           <div class="tool-divider"></div>
-          
           <div class="tool-group">
             <button type="button" @click="insertFormatting('[', '](url)')" class="tool-icon-btn" title="Inserisci Link">🔗</button>
             <button type="button" @click="insertFormatting('![Descrizione Immagine](', ')')" class="tool-icon-btn" title="Inserisci Immagine">🖼️</button>
             <button type="button" @click="insertFormatting('@[video](', ')')" class="tool-icon-btn" title="Embed Video (YouTube/Vimeo)">🎬</button>
             <button type="button" @click="insertFormatting('\n| Intestazione 1 | Intestazione 2 |\n|---|---|\n| Cella 1 | Cella 2 |\n', '')" class="tool-icon-btn text-emerald-400" title="Inserisci Tabella">⊞</button>
           </div>
-
           <div class="tool-divider"></div>
-
           <div class="tool-group">
             <button type="button" @click="insertFormatting('`', '`')" class="tool-icon-btn code-font" title="Codice Inline">`</button>
             <button type="button" @click="insertFormatting('\n```\n', '\n```\n')" class="tool-icon-btn code-font" title="Blocco Codice">{ }</button>
@@ -491,19 +459,11 @@ onMounted(() => {
       </div>
 
       <div v-show="activeTab === 'write'" class="textarea-container">
-        <textarea 
-          ref="textareaRef"
-          v-model="content" 
-          class="markdown-textarea"
-          placeholder="Inizia a scrivere il tuo articolo qui..."
-          @keydown.enter="handleEnter"
-        ></textarea>
+        <textarea ref="textareaRef" v-model="content" class="markdown-textarea" placeholder="Inizia a scrivere il tuo articolo qui..." @keydown.enter="handleEnter"></textarea>
       </div>
-
       <div v-show="activeTab === 'preview'" class="preview-container">
         <div class="dkp-preview-content" v-html="parsedContent"></div>
       </div>
-      
     </div>
   </div>
 </template>
@@ -517,108 +477,43 @@ onMounted(() => {
 :deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
 
 /* Resto dello stile esistente */
-:deep(.dkp-inline-code) { 
-  background-color: rgba(30, 41, 59, 0.8); 
-  color: #e2e8f0; 
-  padding: 0.2rem 0.4rem; 
-  border-radius: 6px; 
-  font-family: 'Fira Code', Consolas, monospace; 
-  font-size: 0.85rem; 
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-:deep(.dkp-preview-content ul), :deep(.dkp-preview-content ol) { 
-  padding-left: 1.5rem; 
-  margin: 0.8rem 0; 
-  color: #cbd5e1;
-}
+:deep(.dkp-inline-code) { background-color: rgba(30, 41, 59, 0.8); color: #e2e8f0; padding: 0.2rem 0.4rem; border-radius: 6px; font-family: 'Fira Code', Consolas, monospace; font-size: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1); }
+:deep(.dkp-preview-content ul), :deep(.dkp-preview-content ol) { padding-left: 1.5rem; margin: 0.8rem 0; color: #cbd5e1; }
 :deep(.dkp-preview-content ul) { list-style-type: none; }
 :deep(.dkp-preview-content ol) { list-style-type: decimal; }
+:deep(.dkp-li-main) { margin-bottom: 0.4rem; position: relative; }
+:deep(ul > .dkp-li-main::before) { content: '○'; color: #38bdf8; position: absolute; left: -1.2rem; top: 0; font-weight: bold; }
+:deep(.dkp-li-nested) { margin-left: 1.5rem; margin-bottom: 0.3rem; color: #94a3b8; position: relative; }
+:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) { content: '▪'; color: #00dc82; position: absolute; left: -1.2rem; top: 0; }
 
-:deep(.dkp-li-main) { 
-  margin-bottom: 0.4rem; 
-  position: relative;
-}
-:deep(ul > .dkp-li-main::before) {
-  content: '○';
-  color: #38bdf8;
-  position: absolute;
-  left: -1.2rem;
-  top: 0;
-  font-weight: bold;
-}
+/* Stili Blocchi Codice */
+:deep(.dkp-code-wrapper) { background: #0d1117; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; margin: 1.2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+:deep(.dkp-code-header) { background: #161b22; padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; font-family: sans-serif; font-size: 0.8rem; font-weight: bold; color: #8b949e; text-transform: capitalize; }
+:deep(.dkp-copy-btn) { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 1rem; transition: color 0.2s; }
+:deep(.dkp-copy-btn:hover) { color: #00dc82; }
+:deep(.dkp-code-block) { padding: 1rem; margin: 0; overflow-x: auto; }
+:deep(.dkp-code-block code) { font-family: 'Fira Code', 'Courier New', Courier, monospace; color: #c9d1d9; font-size: 0.9rem; line-height: 1.5; }
 
-:deep(.dkp-li-nested) { 
-  margin-left: 1.5rem; 
-  margin-bottom: 0.3rem; 
-  color: #94a3b8; 
-  position: relative;
-}
-:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) {
-  content: '▪'; 
-  color: #00dc82;
-  position: absolute;
-  left: -1.2rem;
-  top: 0;
-}
-
-:deep(.dkp-code-wrapper) {
-  background: #0d1117; 
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  overflow: hidden;
-  margin: 1.2rem 0;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-}
-
-:deep(.dkp-code-header) {
-  background: #161b22;
-  padding: 0.5rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #1e293b;
-  font-family: sans-serif;
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: #8b949e;
-  text-transform: capitalize;
-}
-
-:deep(.dkp-copy-btn) {
-  background: none;
-  border: none;
-  color: #8b949e;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: color 0.2s;
-}
-:deep(.dkp-copy-btn:hover) {
-  color: #00dc82;
-}
-
-:deep(.dkp-code-block) { 
-  padding: 1rem; 
-  margin: 0;
-  overflow-x: auto; 
-}
-:deep(.dkp-code-block code) {
-  font-family: 'Fira Code', 'Courier New', Courier, monospace; 
-  color: #c9d1d9; 
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
+/* 🟢 FIX LAYOUT E SCROLL */
 .dkp-editor-wrapper { 
   display: flex; 
   flex-direction: column; 
   gap: 1rem; 
   width: 100%; 
-  max-height: 72vh;
-  overflow-y: auto; 
-  padding-right: 10px; 
+  height: 85vh; /* Altezza fissa del modulo */
+  max-height: 800px;
+  overflow: hidden; /* Blocca lo scroll globale */
   box-sizing: border-box;
 }
+
+.top-fields-scroll {
+  max-height: 35%; /* Occupa al massimo 1/3 dello schermo */
+  overflow-y: auto; /* Aggiunge scroll indipendente qui se ci sono 1000 tag! */
+  flex-shrink: 0;
+  padding-right: 8px;
+}
+.top-fields-scroll::-webkit-scrollbar { width: 6px; }
+.top-fields-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
 
 .editor-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 650px) { .editor-fields-grid { grid-template-columns: 1fr; } }
@@ -632,26 +527,12 @@ onMounted(() => {
 .editor-body-box { 
   border: 1px solid #1e293b; 
   border-radius: 8px; 
-  overflow: hidden; 
   background: #020420;
   display: flex;
   flex-direction: column;
+  flex-grow: 1; /* Prende tutto lo spazio rimasto in basso! */
+  overflow: hidden;
   transition: all 0.3s ease; 
-}
-
-/* 🟢 MODALITÀ ZEN FIXATA AL 100% */
-.zen-mode-active {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 999999 !important; /* Forza l'editor sopra a tutte le altre modali */
-  border-radius: 0;
-  border: none;
-  background: #050814; 
-  display: flex;
-  flex-direction: column;
 }
 
 .toolbar-bar { 
@@ -659,129 +540,59 @@ onMounted(() => {
   flex-direction: column; 
   background: #0b1120; 
   border-bottom: 1px solid #1e293b; 
-}
-
-/* Fissa la barra in alto quando è in Zen Mode */
-.zen-mode-active .toolbar-bar {
-  flex-shrink: 0; 
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .toolbar-bar {
-    flex-direction: row; 
-    justify-content: flex-start;
-    align-items: center;
-    padding: 0.4rem 0.6rem;
-    gap: 1rem;
-  }
-}
-
-.tab-switch-group { 
-  display: flex; 
-  gap: 0.2rem; 
-  padding: 0.3rem; 
-  background: #020420; 
-  border-bottom: 1px solid #1e293b;
-  flex-shrink: 0; 
+  flex-shrink: 0; /* La barra strumenti non si comprime mai */
+  z-index: 10;
 }
 @media (min-width: 768px) {
-  .tab-switch-group { border-bottom: none; padding: 0; background: transparent; }
+  .toolbar-bar { flex-direction: row; justify-content: flex-start; align-items: center; padding: 0.4rem 0.6rem; gap: 1rem; }
 }
-
-.tab-toggle-btn { 
-  background: transparent; 
-  border: 1px solid transparent; 
-  color: #64748b; 
-  padding: 0.3rem 0.6rem; 
-  border-radius: 6px; 
-  font-size: 0.75rem; 
-  font-weight: 700; 
-  cursor: pointer; 
-  transition: all 0.2s ease; 
-  text-transform: uppercase;
-}
-.tab-toggle-btn:hover { color: #cbd5e1; }
-.tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
-
-.formatting-tools { 
-  display: flex; 
-  flex-wrap: wrap; 
-  align-items: center; 
-  gap: 0.4rem; 
-  padding: 0.3rem 0;
-}
-.zen-mode-active .formatting-tools {
-  flex-wrap: nowrap;
-}
-
-.tool-group {
-  display: flex;
-  gap: 0.1rem; 
-  background: #020420;
-  padding: 0.15rem;
-  border-radius: 6px;
-  border: 1px solid #1e293b;
-}
-
-.tool-divider { width: 1px; height: 16px; background: #334155; margin: 0 0.15rem; }
-
-.tool-icon-btn { 
-  background: transparent; 
-  border: 1px solid transparent; 
-  color: #94a3b8; 
-  min-width: 22px; 
-  height: 26px; 
-  padding: 0 0.25rem; 
-  border-radius: 4px; 
-  font-size: 0.75rem; 
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  transition: all 0.1s ease; 
-}
-.tool-icon-btn:hover { background: #1e293b; color: #e2e8f0; }
-.tool-icon-btn:active { background: rgba(0, 220, 130, 0.2); color: #00dc82; transform: scale(0.95); }
-.tool-icon-btn.text-emerald-400 { color: #00dc82; } 
-.tool-icon-btn.highlight-btn { font-weight: bold; }
-.tool-icon-btn.underline-btn { text-decoration: underline; font-weight: bold; }
-
-.tool-icon-btn.font-bold { font-weight: 900; }
-.tool-icon-btn.italic { font-style: italic; font-family: serif;}
-.tool-icon-btn.strikethrough { text-decoration: line-through; }
-.tool-icon-btn.code-font { font-family: monospace; font-weight: bold; }
-.tool-icon-btn.symbol-btn { font-size: 0.85rem; font-weight: 800; }
 
 .textarea-container, .preview-container {
-  height: 250px; 
-  overflow-y: auto; 
+  height: 100%;
+  flex-grow: 1;
+  overflow-y: auto; /* Scroll indipendente per l'area di testo! */
   box-sizing: border-box;
-}
-
-.zen-mode-active .textarea-container, 
-.zen-mode-active .preview-container {
-  height: calc(100vh - 55px);
-  overflow-y: auto;
-  flex-grow: 1; 
-}
-
-.zen-mode-active .markdown-textarea,
-.zen-mode-active .dkp-preview-content {
-  max-width: 800px;
-  margin: 0 auto;
 }
 
 .preview-container { padding: 1.25rem; background: #050814; }
 .markdown-textarea { 
   width: 100%; height: 100%; background: transparent; color: #f8fafc; padding: 1.25rem; 
   border: none; outline: none; resize: none; font-family: monospace; font-size: 0.9rem; 
-  line-height: 1.7; box-sizing: border-box; overflow-y: auto; 
+  line-height: 1.7; box-sizing: border-box; 
 }
 
+/* Modalità ZEN FIXATA */
+.zen-mode-active {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: 999999 !important; border-radius: 0; border: none; background: #050814; 
+  display: flex; flex-direction: column;
+}
+.zen-mode-active .toolbar-bar { flex-shrink: 0; position: sticky; top: 0; z-index: 100; width: 100%; }
+.zen-mode-active .textarea-container, 
+.zen-mode-active .preview-container { height: calc(100vh - 55px); overflow-y: auto; flex-grow: 1; }
+.zen-mode-active .markdown-textarea,
+.zen-mode-active .dkp-preview-content { max-width: 800px; margin: 0 auto; }
+
+.tab-switch-group { display: flex; gap: 0.2rem; padding: 0.3rem; background: #020420; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
+@media (min-width: 768px) { .tab-switch-group { border-bottom: none; padding: 0; background: transparent; } }
+.tab-toggle-btn { background: transparent; border: 1px solid transparent; color: #64748b; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
+.tab-toggle-btn:hover { color: #cbd5e1; }
+.tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
+.formatting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.3rem 0; }
+.zen-mode-active .formatting-tools { flex-wrap: nowrap; }
+.tool-group { display: flex; gap: 0.1rem; background: #020420; padding: 0.15rem; border-radius: 6px; border: 1px solid #1e293b; }
+.tool-divider { width: 1px; height: 16px; background: #334155; margin: 0 0.15rem; }
+.tool-icon-btn { background: transparent; border: 1px solid transparent; color: #94a3b8; min-width: 22px; height: 26px; padding: 0 0.25rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s ease; }
+.tool-icon-btn:hover { background: #1e293b; color: #e2e8f0; }
+.tool-icon-btn:active { background: rgba(0, 220, 130, 0.2); color: #00dc82; transform: scale(0.95); }
+.tool-icon-btn.text-emerald-400 { color: #00dc82; } 
+.tool-icon-btn.highlight-btn { font-weight: bold; }
+.tool-icon-btn.underline-btn { text-decoration: underline; font-weight: bold; }
+.tool-icon-btn.font-bold { font-weight: 900; }
+.tool-icon-btn.italic { font-style: italic; font-family: serif;}
+.tool-icon-btn.strikethrough { text-decoration: line-through; }
+.tool-icon-btn.code-font { font-family: monospace; font-weight: bold; }
+.tool-icon-btn.symbol-btn { font-size: 0.85rem; font-weight: 800; }
 .preview-empty { color: #64748b; font-style: italic; }
 
 :deep(.dkp-h1) { font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-top: 1.2rem; margin-bottom: 0.6rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.3rem;}
@@ -791,7 +602,6 @@ onMounted(() => {
 :deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px;}
 :deep(.dkp-link:hover) { color: #00dc82;}
 :deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.5rem 0; }
-
 :deep(.dkp-table-wrapper) { overflow-x: auto; margin: 1rem 0; border-radius: 8px; border: 1px solid #1e293b; }
 :deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.85rem;}
 :deep(.dkp-table td) { padding: 0.75rem 1rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }

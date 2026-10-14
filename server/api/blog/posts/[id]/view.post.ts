@@ -1,8 +1,15 @@
 // server/api/blog/posts/[id]/view.post.ts
-import { defineEventHandler, getRouterParam } from 'h3'
-import { eq, sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/drizzle/schema'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
+import postgres from 'postgres'
+
+let sqlInstance: any = null
+function getSqlClient() {
+  if (sqlInstance) return sqlInstance
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante.' })
+  sqlInstance = postgres(connectionString, { ssl: 'require', max: 10 })
+  return sqlInstance
+}
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -11,16 +18,14 @@ export default defineEventHandler(async (event) => {
     return { success: false, message: 'ID non valido' }
   }
 
-  try {
-    const db = await getDb()
+  const sql = getSqlClient()
 
-    // Incrementa in modo atomico il campo views
-    await db
-      .update(blogPosts)
-      .set({
-        views: sql`${blogPosts.views} + 1`
-      })
-      .where(eq(blogPosts.id, Number(id)))
+  try {
+    await sql`
+      UPDATE blog_posts 
+      SET views = COALESCE(views, 0) + 1 
+      WHERE id = ${Number(id)}
+    `
 
     return { success: true }
   } catch (error: any) {

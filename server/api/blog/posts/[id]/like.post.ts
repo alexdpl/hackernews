@@ -1,8 +1,15 @@
 // server/api/blog/posts/[id]/like.post.ts
-import { defineEventHandler, getRouterParam, setCookie, getCookie } from 'h3'
-import { eq, sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { blogPosts } from '~~/drizzle/schema'
+import { defineEventHandler, getRouterParam, setCookie, getCookie, createError } from 'h3'
+import postgres from 'postgres'
+
+let sqlInstance: any = null
+function getSqlClient() {
+  if (sqlInstance) return sqlInstance
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante.' })
+  sqlInstance = postgres(connectionString, { ssl: 'require', max: 10 })
+  return sqlInstance
+}
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -11,7 +18,6 @@ export default defineEventHandler(async (event) => {
     return { success: false, message: 'ID non valido' }
   }
 
-  // Semplice protezione anti-spam con cookie (per evitare 1000 click dallo stesso utente non loggato)
   const cookieName = `dkp_liked_${id}`
   const alreadyLiked = getCookie(event, cookieName)
 
@@ -19,18 +25,15 @@ export default defineEventHandler(async (event) => {
     return { success: false, message: 'Hai già assegnato karma a questo articolo!' }
   }
 
+  const sql = getSqlClient()
+
   try {
-    const db = await getDb()
+    await sql`
+      UPDATE blog_posts 
+      SET likes = COALESCE(likes, 0) + 1 
+      WHERE id = ${Number(id)}
+    `
 
-    // Incrementa in modo atomico il campo likes
-    await db
-      .update(blogPosts)
-      .set({
-        likes: sql`${blogPosts.likes} + 1`
-      })
-      .where(eq(blogPosts.id, Number(id)))
-
-    // Imposta il cookie per 24 ore
     setCookie(event, cookieName, 'true', { maxAge: 60 * 60 * 24 })
 
     return { success: true, message: 'Karma assegnato!' }
