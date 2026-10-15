@@ -3,6 +3,14 @@ import { fileURLToPath } from 'node:url'
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-25',
   devtools: { enabled: true },
+  
+  app: {
+    head: {
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/dkp-logo.svg' },
+      ]
+    }
+  },
 
   vite: {
     optimizeDeps: {

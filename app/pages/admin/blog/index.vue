@@ -373,17 +373,18 @@ const deleteItem = async (id: number | string, type: "category" | "subcategory")
   if (!confirm(`Sei sicuro di voler eliminare questa ${type}?`)) return;
   isLoading.value = true;
   try {
-    const url = type === 'category' ? `/api/blog/categories/${id}` : `/api/blog/subcategories/${id}`;
+    // Passiamo sempre l'id alla rotta delle categorie specificando il type via query string
+    const url = `/api/blog/categories/${id}?type=${type}`;
     const res: any = await $fetch(url, { method: 'DELETE' });
     if (res?.success) {
-      triggerToast(`${type === 'category' ? 'Categoria' : 'Sottocategoria'} eliminata`);
+      triggerToast(`${type === 'category' ? 'Categoria' : 'Sottocategoria'} eliminata con successo.`);
       await fetchCategories();
     } else {
-      triggerToast('Errore eliminazione');
+      triggerToast('Errore durante l eliminazione.');
     }
-  } catch (e) {
-    console.error(e);
-    triggerToast('Errore API eliminazione');
+  } catch (e: any) {
+    console.error("Errore API eliminazione:", e);
+    triggerToast(`❌ Errore API eliminazione: ${e.message || 'Errore DB'}`);
   } finally {
     isLoading.value = false;
   }

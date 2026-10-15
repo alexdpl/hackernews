@@ -2,35 +2,45 @@
 import { defineEventHandler, createError, getQuery } from 'h3'
 import { eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-// 🔥 FIX: Assicurati che il percorso import sia corretto
-import { blogCategories, blogSubcategories } from '~~/drizzle/schema'
+import { blogCategories, blogSubcategories, blogPosts } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
   try {
-    // 1. Validazione sicura dei parametri
-    const idParam = event.context.params?.id // Prende l'ID dalla rotta [id]
+    const idParam = event.context.params?.id
     const query = getQuery(event)
-    const typeParam = query.type || query.target // Si aspetta ?type=category o ?type=subcategory
+    const typeParam = query.type || 'category'
 
     const id = idParam ? Number(idParam) : NaN
-    const type = typeof typeParam === 'string' ? typeParam.trim() : ''
+    const type = typeof typeParam === 'string' ? typeParam.trim().toLowerCase() : 'category'
 
-    if (!id || isNaN(id) || (type !== 'category' && type !== 'subcategory')) {
+    if (!id || isNaN(id)) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'ID o parametro type (category/subcategory) non valido o mancante.'
+        statusMessage: 'ID non valido o mancante.'
       })
     }
 
     const db = await getDb()
 
-    // 2. Esecuzione dell'eliminazione
     if (type === 'category') {
-      // Per eliminare una categoria, eliminiamo prima le sottocategorie associate per non violare le Foreign Keys (anche se 'cascade' dovrebbe farlo in automatico, è una sicurezza extra)
+      // 1. Sgancia gli articoli dalla categoria madre
+      if (blogPosts) {
+        await db.update(blogPosts)
+          .set({ categoryId: null, subcategoryId: null } as any)
+          .where(eq(blogPosts.categoryId, id))
+      }
+      // 2. Elimina le sottocategorie figlie
       await db.delete(blogSubcategories).where(eq(blogSubcategories.categoryId, id))
+      // 3. Elimina la categoria
       await db.delete(blogCategories).where(eq(blogCategories.id, id))
     } else {
-      // Elimina solo una specifica sottocategoria
+      // 1. Sgancia gli articoli dalla sottocategoria
+      if (blogPosts) {
+        await db.update(blogPosts)
+          .set({ subcategoryId: null } as any)
+          .where(eq(blogPosts.subcategoryId, id))
+      }
+      // 2. Elimina la sottocategoria
       await db.delete(blogSubcategories).where(eq(blogSubcategories.id, id))
     }
 
@@ -40,11 +50,9 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (err: any) {
-    console.error('[DB DELETE CATEGORY ERROR]:', err)
-    
-    // Ritorna errore chiaro al frontend
+    console.error('[DB DELETE ERROR]:', err)
     throw createError({
-      statusCode: 500,
+      statusCode: err.statusCode || 500,
       statusMessage: `Errore durante l'eliminazione dal DB: ${err.message}`
     })
   }

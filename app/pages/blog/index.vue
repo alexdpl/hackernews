@@ -32,7 +32,6 @@ const itemsPerPage = 9 // 🟢 9 articoli per pagina (griglie perfette da 3x3)
 // Funzione di sicurezza per normalizzare i tag di qualsiasi articolo (vecchio o nuovo)
 function parseTags(tagsRaw: any): string[] {
   if (Array.isArray(tagsRaw)) {
-    // Se è un array ma dentro contiene elementi con virgole o punti e virgola
     const expanded: string[] = []
     for (const item of tagsRaw) {
       if (typeof item === 'string' && (item.includes(',') || item.includes(';'))) {
@@ -87,6 +86,15 @@ function selectCategory(catName: string | null) {
   selectedCategory.value = catName
   selectedSubcategory.value = null
   currentPage.value = 1 // Reset pagina al cambio filtro
+}
+
+// --- FUNZIONE TEMPO DI LETTURA REALE ---
+function calculateReadTime(post: any): number {
+  const text = post.content || post.description || post.summary || ''
+  if (!text) return 1
+  const plainText = text.replace(/<\/?[^>]+(>|$)/g, "").replace(/[#*`_\[\]()]/g, "")
+  const words = plainText.trim().split(/\s+/).length
+  return Math.max(1, Math.ceil(words / 200))
 }
 
 // --- 3. FILTRO ARTICOLI ---
@@ -242,10 +250,25 @@ function changePage(page: number) {
       <!-- GRIGLIA ARTICOLI v2.5-GOLD (PAGINATA) -->
       <div v-else class="blog-grid">
         <article v-for="post in paginatedPosts" :key="post.id" class="post-card group hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all">
-          <div class="card-header">
-            <span class="cat-badge">{{ getCategoryName(post.categoryObject || post.category) }}</span>
-            <span v-if="post.isVerified" class="text-xs text-emerald-400 font-bold border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded" title="Verificato dal Vault DKP">🛡️ Verified</span>
-            <span class="read-time">5 min</span>
+          
+          <!-- 🟢 FIX 1: Header Card su 2 livelli per non accavallare -->
+          <div class="mb-4 flex flex-col gap-2.5 border-b border-slate-800/50 pb-3">
+            <!-- Riga 1: Categoria con troncamento per testi lunghi -->
+            <div class="flex w-full">
+              <span class="cat-badge truncate max-w-full" :title="getCategoryName(post.categoryObject || post.category)">
+                {{ getCategoryName(post.categoryObject || post.category) }}
+              </span>
+            </div>
+            <!-- Riga 2: Verified (se c'è) e Tempo di Lettura Reale -->
+            <div class="flex items-center justify-between w-full">
+              <span v-if="post.isVerified" class="text-[10px] sm:text-[11px] text-emerald-400 font-bold border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded shadow-sm flex items-center gap-1" title="Verificato dal Vault DKP">
+                🛡️ Verified
+              </span>
+              <div v-else></div> <!-- Spazio vuoto se non verificato per spingere il tempo a destra -->
+              <span class="font-mono text-[10px] sm:text-xs text-slate-400">
+                ⏱️ {{ calculateReadTime(post) }} min
+              </span>
+            </div>
           </div>
 
           <!-- Titolo Articolo -->
@@ -258,9 +281,9 @@ function changePage(page: number) {
           <!-- Estratto -->
           <p class="post-excerpt">{{ post.excerpt || post.summary || 'Nessuna anteprima disponibile.' }}</p>
 
-          <!-- TAGS ROW -->
-          <div v-if="post.tags && post.tags.length > 0" class="tags-row">
-            <span v-for="tag in parseTags" :key="tag" class="tag-badge">#{{ tag }}</span>
+          <!-- 🟢 FIX 2: TAGS ROW con parseTags(post.tags) invocato correttamente -->
+          <div v-if="post.tags && parseTags(post.tags).length > 0" class="tags-row mt-2">
+            <span v-for="tag in parseTags(post.tags)" :key="tag" class="tag-badge">#{{ tag }}</span>
           </div>
 
           <!-- Footer Unificato Gamificato -->
@@ -378,9 +401,7 @@ function changePage(page: number) {
 .blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
 .post-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; color: #ffffff; display: flex; flex-direction: column; justify-content: space-between; }
 
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.cat-badge { color: #00dc82; font-weight: 800; background: rgba(0, 220, 130, 0.12); border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; }
-.read-time { color: #64748b; font-size: 0.78rem; font-family: monospace; }
+.cat-badge { color: #00dc82; font-weight: 800; background: rgba(0, 220, 130, 0.12); border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; display: inline-block; }
 
 .post-title { font-size: 1.25rem; font-weight: 700; line-height: 1.35; margin-bottom: 0.75rem; }
 .title-link { color: #ffffff; text-decoration: none; transition: color 0.2s ease; }

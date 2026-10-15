@@ -1,9 +1,12 @@
-<!-- app/pages/blog/[slug].vue -->
+// app/pages/blog/[slug].vue
 <script setup lang="ts">
-import { computed, watch, nextTick, onMounted } from 'vue'
+import { computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
 import SocialShare from '~/components/blog/SocialShare.vue'
+
+// 🟢 Abilita la copia codice per l'articolo renderizzato
+useCodeCopy()
 
 const route = useRoute()
 const slug = route.params.slug as string
@@ -17,7 +20,18 @@ const post = computed(() => {
   return res?.data || null
 })
 
-// === PARSER CUSTOM (Identico all'Editor + not-prose) ===
+// === CALCOLO TEMPO DI LETTURA REALE ===
+const readTime = computed(() => {
+  const text = post.value?.content || post.value?.description || ''
+  if (!text) return 1
+  // Rimuovi tag HTML e conta le parole
+  const plainText = text.replace(/<\/?[^>]+(>|$)/g, "")
+  const words = plainText.trim().split(/\s+/).length
+  const wpm = 200 // Parole medie al minuto
+  return Math.max(1, Math.ceil(words / wpm))
+})
+
+// === PARSER CUSTOM ===
 const parsedContent = computed(() => {
   try {
     const contentVal = post.value?.content || post.value?.description || ''
@@ -30,10 +44,12 @@ const parsedContent = computed(() => {
       const index = codeBlocks.length;
       const cleanLang = lang ? lang.trim().toLowerCase() : '';
       const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
-      const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn">📋</button></div>` : '';
+      
+      // 🟢 FIX COPIA: Aggiungiamo un data-attribute per identificare il blocco di codice
+      const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn" data-code-id="code-block-${index}" title="Copia codice">📋</button></div>` : '';
       const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-      codeBlocks.push(`<div class="dkp-code-wrapper not-prose">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${escapedCode}</code></pre></div>`);
+      codeBlocks.push(`<div class="dkp-code-wrapper not-prose">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code id="code-block-${index}" class="${languageClass}">${escapedCode}</code></pre></div>`);
       return `__DKP_CODE_BLOCK_${index}__`;
     });
 
@@ -132,7 +148,6 @@ onMounted(() => {
   if (post.value?.id) incrementView(String(post.value.id))
 })
 
-// 🟢 FIX CRUCIALE: ATTIVAZIONE SICURA DI PRISM SULL'HTML RENDERIZZATO
 let prismTimer: any = null
 const applyPrism = () => {
   if (import.meta.client && $prism) {
@@ -147,6 +162,59 @@ const applyPrism = () => {
   }
 }
 
+// 🟢 LOGICA TASTO COPIA 🟢
+const handleCopyClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  // Controlla se il clic è avvenuto sul bottone di copia o su un suo figlio
+  const copyBtn = target.closest('.dkp-copy-btn') as HTMLButtonElement | null;
+  
+  if (copyBtn) {
+    const codeId = copyBtn.getAttribute('data-code-id');
+    if (codeId) {
+      const codeElement = document.getElementById(codeId);
+      if (codeElement) {
+        // Usa API Clipboard moderna o fallback
+        const textToCopy = codeElement.innerText || codeElement.textContent || '';
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showCopyFeedback(copyBtn);
+            });
+        } else {
+            // Fallback per vecchi browser o contesti non sicuri
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            // Evita scrolling
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopyFeedback(copyBtn);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+      }
+    }
+  }
+}
+
+const showCopyFeedback = (btn: HTMLButtonElement) => {
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '✅'; // Feedback visivo
+  btn.style.color = '#00dc82';
+  
+  setTimeout(() => {
+    btn.innerHTML = originalText;
+    btn.style.color = ''; // Ripristina il colore originale dal CSS
+  }, 2000);
+}
+
 // Reagisce ogni volta che il contenuto HTML viene calcolato e montato
 watch(parsedContent, async () => {
   await nextTick()
@@ -155,7 +223,15 @@ watch(parsedContent, async () => {
 
 onMounted(() => {
   setTimeout(applyPrism, 200)
+  // Aggiungi event listener globale per catturare i click sui bottoni generati dinamicamente
+  document.addEventListener('click', handleCopyClick)
 })
+
+onUnmounted(() => {
+   // Pulizia
+   document.removeEventListener('click', handleCopyClick)
+})
+
 
 function handleLike() {
   if (post.value?.id) {
@@ -220,6 +296,8 @@ function handleLike() {
               <div class="text-xs text-slate-400 flex items-center gap-3 mt-1 flex-wrap">
                 <span>📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
                 <span>👁️ {{ post.views || 0 }} visualizzazioni</span>
+				<!-- 🟢 NUOVO: Aggiunto tempo di lettura reale -->
+                <span>⏱️ {{ readTime }} min lettura</span>
               </div>
             </div>
           </div>

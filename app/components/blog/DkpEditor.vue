@@ -3,7 +3,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 
-// 🎨 PRISMJS: Importazione NATIVA ordinata per prevenire l'Errore 500 (Dipendenze rispettate)
+// 🎨 PRISMJS: Importazione NATIVA ordinata per prevenire l'Errore 500
 import Prism from 'prismjs'
 import 'prismjs/themes/prism-tomorrow.css'
 
@@ -12,10 +12,10 @@ import 'prismjs/components/prism-markup'
 import 'prismjs/components/prism-css'
 import 'prismjs/components/prism-clike'
 import 'prismjs/components/prism-javascript'
-import 'prismjs/components/prism-c' // Base per C++, Objective-C, OpenCL
-import 'prismjs/components/prism-java' // Base per Scala, Javadoc
-import 'prismjs/components/prism-markup-templating' // 🟢 IL SALVATORE: Base obbligatoria per Django e PHP
-import 'prismjs/components/prism-javadoclike' // Base per i linguaggi di documentazione
+import 'prismjs/components/prism-c'
+import 'prismjs/components/prism-java'
+import 'prismjs/components/prism-markup-templating'
+import 'prismjs/components/prism-javadoclike'
 
 // 2️⃣ LINGUAGGI CHE DIPENDONO DALLE BASI
 import 'prismjs/components/prism-cpp'
@@ -61,6 +61,9 @@ import 'prismjs/components/prism-powershell'
 import 'prismjs/components/prism-qsharp'
 import 'prismjs/components/prism-rest'
 import 'prismjs/components/prism-typoscript'
+
+// 🟢 Abilita la logica del tasto Copia
+useCodeCopy()
 
 const props = defineProps<{
   modelValue?: {
@@ -128,7 +131,7 @@ watch([title, categoryName, subCategoryName, tags, summary, content], () => {
   syncToParent()
 }, { deep: true })
 
-const { data: catResponse } = useFetch<any>('/api/blog/categories') // Rimossa la keyword await
+const { data: catResponse } = useFetch<any>('/api/blog/categories')
 
 const categories = computed(() => {
   const raw = catResponse.value?.data || []
@@ -246,22 +249,61 @@ function handleEnter(e: KeyboardEvent) {
   }
 }
 
+// 🟢 HELPER PER OTTENERE LA GRAMMATICA PRISM (con supporto Alias)
+function getPrismGrammar(lang: string) {
+  if (!lang) return null
+  const l = lang.toLowerCase()
+  const aliases: Record<string, string> = {
+    js: 'javascript',
+    ts: 'typescript',
+    py: 'python',
+    sh: 'bash',
+    bash: 'bash',
+    yml: 'yaml',
+    yaml: 'yaml',
+    html: 'markup',
+    xml: 'markup',
+    json: 'json',
+    css: 'css',
+    cpp: 'cpp',
+    c: 'c',
+    cs: 'csharp',
+    java: 'java',
+    php: 'php',
+    sql: 'sql'
+  }
+  const target = aliases[l] || l
+  return Prism.languages[target] || Prism.languages[l] || null
+}
+
 const parsedContent = computed(() => {
   if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...</p>'
   
   let rawContent = content.value;
   const codeBlocks: string[] = [];
   
-  // 1. ISOLIAMO I BLOCCHI DI CODICE
+  // 1. ISOLIAMO I BLOCCHI DI CODICE ED ESEGUIAMO PRISM HIGHLIGHTING SINCRONO
   rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
     const index = codeBlocks.length;
     const cleanLang = lang ? lang.trim().toLowerCase() : '';
     const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
-    const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn">📋</button></div>` : '';
+    const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn" type="button">📋 Copia</button></div>` : '';
     
-    const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Evidenziazione sincronizzata tramite PrismJS
+    let highlightedCode = ''
+    const grammar = getPrismGrammar(cleanLang)
     
-    codeBlocks.push(`<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${escapedCode}</code></pre></div>`);
+    if (grammar) {
+      try {
+        highlightedCode = Prism.highlight(code, grammar, cleanLang)
+      } catch (err) {
+        highlightedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      }
+    } else {
+      highlightedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+    
+    codeBlocks.push(`<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}</code></pre></div>`);
     
     return `__DKP_CODE_BLOCK_${index}__`;
   });
@@ -287,7 +329,7 @@ const parsedContent = computed(() => {
     return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
   })
 
-  // 4. Nuovi Strumenti Editor (Immagini, Video, Highlight, Link, Base)
+  // 4. Nuovi Strumenti Editor
   html = html
     .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
     .replace(/@[video]\(([^)]+)\)/g, '<div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen></iframe></div>')
@@ -307,7 +349,7 @@ const parsedContent = computed(() => {
     .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
     .replace(/^---$/gm, '<hr class="dkp-hr" />')
 
-  // 6. LISTE (Nidificazione Corretta)
+  // 6. LISTE
   html = html.replace(/^( {2,}|\t+)- (.*?)\r?$/gm, '<ul class="dkp-sub-list"><li class="dkp-li-nested">$2</li></ul>')
   html = html.replace(/^( {2,}|\t+)[0-9]+\. (.*?)\r?$/gm, '<ol class="dkp-sub-list"><li class="dkp-li-nested dkp-li-num">$2</li></ol>')
   html = html.replace(/^-(?!\S) (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
@@ -317,7 +359,7 @@ const parsedContent = computed(() => {
   html = html.replace(/<\/ul>\s*<ul class="dkp-sub-list">/g, '')
   html = html.replace(/<\/ol>\s*<ol class="dkp-sub-list">/g, '')
 
-  // 7. Reinseriamo il codice
+  // 7. Reinseriamo il codice già evidenziato
   codeBlocks.forEach((block, index) => {
     html = html.replace(`__DKP_CODE_BLOCK_${index}__`, block);
   });
@@ -349,31 +391,11 @@ const parsedContent = computed(() => {
 
   return parsedHtml
 })
-
-// === APPLICAZIONE PRISM IN LOCALE ===
-let prismTimer: any = null;
-const applyPrism = () => {
-  if (typeof window !== 'undefined' && typeof Prism !== 'undefined') {
-    clearTimeout(prismTimer);
-    prismTimer = setTimeout(() => {
-      Prism.highlightAll();
-    }, 50);
-  }
-};
-
-watch([parsedContent, activeTab], async () => {
-  await nextTick();
-  applyPrism();
-});
-
-onMounted(() => {
-  applyPrism();
-});
 </script>
 
 <template>
   <div class="dkp-editor-wrapper">
-    <!-- 🟢 NUOVO: Area superiore con scroll indipendente per i Tag -->
+    <!-- Area superiore compattata con scrollbar indipendente -->
     <div class="top-fields-scroll">
       <div class="editor-fields-grid">
         <div class="field-group full-width">
@@ -411,16 +433,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 🟢 Area Editor: Prende lo spazio restante e blocca la toolbar in cima -->
+    <!-- Area Editor -->
     <div :class="['editor-body-box', { 'zen-mode-active': isZenMode }]">
       <div class="toolbar-bar">
-        <!-- Gruppo Switch Tab -->
         <div class="tab-switch-group">
           <button type="button" @click="activeTab = 'write'" :class="['tab-toggle-btn', activeTab === 'write' ? 'active' : '']">✏️ Editor</button>
           <button type="button" @click="activeTab = 'preview'" :class="['tab-toggle-btn', activeTab === 'preview' ? 'active' : '']">👁️ Preview</button>
         </div>
 
-        <!-- Strumenti Editor Dinamici -->
         <div v-show="activeTab === 'write'" class="formatting-tools">
           <div class="tool-group">
             <button type="button" @click="insertFormatting('# ')" class="tool-icon-btn" title="Titolo 1">H1</button>
@@ -429,8 +449,8 @@ onMounted(() => {
           </div>
           <div class="tool-divider"></div>
           <div class="tool-group">
-            <button type="button" @click="insertFormatting('**', '**')" class="tool-icon-btn font-bold" title="Grassetto (Ctrl+B)">B</button>
-            <button type="button" @click="insertFormatting('*', '*')" class="tool-icon-btn italic" title="Corsivo (Ctrl+I)">I</button>
+            <button type="button" @click="insertFormatting('**', '**')" class="tool-icon-btn font-bold" title="Grassetto">B</button>
+            <button type="button" @click="insertFormatting('*', '*')" class="tool-icon-btn italic" title="Corsivo">I</button>
             <button type="button" @click="insertFormatting('++', '++')" class="tool-icon-btn underline-btn" title="Sottolinea">U</button>
             <button type="button" @click="insertFormatting('~~', '~~')" class="tool-icon-btn strikethrough" title="Barrato">S</button>
             <button type="button" @click="insertFormatting('==', '==')" class="tool-icon-btn highlight-btn" title="Evidenzia Testo">🖍️</button>
@@ -446,8 +466,8 @@ onMounted(() => {
           <div class="tool-group">
             <button type="button" @click="insertFormatting('[', '](url)')" class="tool-icon-btn" title="Inserisci Link">🔗</button>
             <button type="button" @click="insertFormatting('![Descrizione Immagine](', ')')" class="tool-icon-btn" title="Inserisci Immagine">🖼️</button>
-            <button type="button" @click="insertFormatting('@[video](', ')')" class="tool-icon-btn" title="Embed Video (YouTube/Vimeo)">🎬</button>
-            <button type="button" @click="insertFormatting('\n| Intestazione 1 | Intestazione 2 |\n|---|---|\n| Cella 1 | Cella 2 |\n', '')" class="tool-icon-btn text-emerald-400" title="Inserisci Tabella">⊞</button>
+            <button type="button" @click="insertFormatting('@[video](', ')')" class="tool-icon-btn" title="Embed Video">🎬</button>
+            <button type="button" @click="insertFormatting('\n| Intestazione 1 | Intestazione 2 |\n|---|---|\n| Cella 1 | Cella 2 |\n', '')" class="tool-icon-btn text-emerald-400" title="Tabella">⊞</button>
           </div>
           <div class="tool-divider"></div>
           <div class="tool-group">
@@ -469,59 +489,59 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Nuovi elementi formattazione testuale/multimediale */
-:deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
-:deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+/* Elementi di formattazione */
+:deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
+:deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1rem 0; border-radius: 8px; }
 :deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 :deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
 :deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
 
-/* Resto dello stile esistente */
-:deep(.dkp-inline-code) { background-color: rgba(30, 41, 59, 0.8); color: #e2e8f0; padding: 0.2rem 0.4rem; border-radius: 6px; font-family: 'Fira Code', Consolas, monospace; font-size: 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1); }
-:deep(.dkp-preview-content ul), :deep(.dkp-preview-content ol) { padding-left: 1.5rem; margin: 0.8rem 0; color: #cbd5e1; }
-:deep(.dkp-preview-content ul) { list-style-type: none; }
-:deep(.dkp-preview-content ol) { list-style-type: decimal; }
-:deep(.dkp-li-main) { margin-bottom: 0.4rem; position: relative; }
-:deep(ul > .dkp-li-main::before) { content: '○'; color: #38bdf8; position: absolute; left: -1.2rem; top: 0; font-weight: bold; }
-:deep(.dkp-li-nested) { margin-left: 1.5rem; margin-bottom: 0.3rem; color: #94a3b8; position: relative; }
-:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) { content: '▪'; color: #00dc82; position: absolute; left: -1.2rem; top: 0; }
+/* Stili Blocchi Codice & Header */
+:deep(.dkp-code-wrapper) { background: #0d1117; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; margin: 1rem 0; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+:deep(.dkp-code-header) { background: #161b22; padding: 0.4rem 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; font-family: sans-serif; font-size: 0.75rem; font-weight: bold; color: #8b949e; text-transform: uppercase; }
+:deep(.dkp-copy-btn) { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #8b949e; cursor: pointer; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem; }
+:deep(.dkp-copy-btn:hover) { background: rgba(0, 220, 130, 0.15); border-color: rgba(0, 220, 130, 0.4); color: #00dc82; }
+:deep(.dkp-code-block) { padding: 0.85rem 1rem; margin: 0; overflow-x: auto; background: #080c14; }
+:deep(.dkp-code-block code) { font-family: 'Fira Code', 'Courier New', Courier, monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9; }
 
-/* Stili Blocchi Codice */
-:deep(.dkp-code-wrapper) { background: #0d1117; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; margin: 1.2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-:deep(.dkp-code-header) { background: #161b22; padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; font-family: sans-serif; font-size: 0.8rem; font-weight: bold; color: #8b949e; text-transform: capitalize; }
-:deep(.dkp-copy-btn) { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 1rem; transition: color 0.2s; }
-:deep(.dkp-copy-btn:hover) { color: #00dc82; }
-:deep(.dkp-code-block) { padding: 1rem; margin: 0; overflow-x: auto; }
-:deep(.dkp-code-block code) { font-family: 'Fira Code', 'Courier New', Courier, monospace; color: #c9d1d9; font-size: 0.9rem; line-height: 1.5; }
+/* 🎨 COLORI TOKEN PRISMJS VIBRANTI (Tomorrow Theme) */
+:deep(.token.punctuation) { color: #cbd5e1; }
+:deep(.token.property), :deep(.token.class-name), :deep(.token.constant), :deep(.token.symbol) { color: #f8c555; font-weight: 600; }
+:deep(.token.string), :deep(.token.char), :deep(.token.attr-value) { color: #7ec699; }
+:deep(.token.number), :deep(.token.boolean), :deep(.token.function) { color: #f08d49; font-weight: 600; }
+:deep(.token.keyword), :deep(.token.atrule), :deep(.token.selector) { color: #cc99cd; font-weight: bold; }
+:deep(.token.operator), :deep(.token.entity), :deep(.token.url) { color: #67cdcc; }
+:deep(.token.comment) { color: #64748b; font-style: italic; }
 
-/* 🟢 FIX LAYOUT E SCROLL */
+/* FIX ALTEZZA COMPATTA */
 .dkp-editor-wrapper { 
   display: flex; 
   flex-direction: column; 
-  gap: 1rem; 
+  gap: 0.65rem; 
   width: 100%; 
-  height: 85vh; /* Altezza fissa del modulo */
-  max-height: 800px;
-  overflow: hidden; /* Blocca lo scroll globale */
+  height: calc(100vh - 250px);
+  min-height: 380px;
+  max-height: 560px;
+  overflow: hidden; 
   box-sizing: border-box;
 }
 
 .top-fields-scroll {
-  max-height: 35%; /* Occupa al massimo 1/3 dello schermo */
-  overflow-y: auto; /* Aggiunge scroll indipendente qui se ci sono 1000 tag! */
+  max-height: 135px; 
+  overflow-y: auto; 
   flex-shrink: 0;
-  padding-right: 8px;
+  padding-right: 4px;
 }
-.top-fields-scroll::-webkit-scrollbar { width: 6px; }
+.top-fields-scroll::-webkit-scrollbar { width: 5px; }
 .top-fields-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
 
-.editor-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.editor-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
 @media (max-width: 650px) { .editor-fields-grid { grid-template-columns: 1fr; } }
-.field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.field-group { display: flex; flex-direction: column; gap: 0.25rem; }
 .field-group.full-width { grid-column: 1 / -1; }
-.field-label { font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+.field-label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
 
-.dkp-input-element { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.88rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
+.dkp-input-element { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.45rem 0.7rem; border-radius: 6px; font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
 .dkp-input-element:focus { border-color: #00dc82; }
 
 .editor-body-box { 
@@ -530,9 +550,9 @@ onMounted(() => {
   background: #020420;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Prende tutto lo spazio rimasto in basso! */
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
-  transition: all 0.3s ease; 
 }
 
 .toolbar-bar { 
@@ -540,28 +560,28 @@ onMounted(() => {
   flex-direction: column; 
   background: #0b1120; 
   border-bottom: 1px solid #1e293b; 
-  flex-shrink: 0; /* La barra strumenti non si comprime mai */
+  flex-shrink: 0;
   z-index: 10;
 }
 @media (min-width: 768px) {
-  .toolbar-bar { flex-direction: row; justify-content: flex-start; align-items: center; padding: 0.4rem 0.6rem; gap: 1rem; }
+  .toolbar-bar { flex-direction: row; justify-content: flex-start; align-items: center; padding: 0.3rem 0.5rem; gap: 0.65rem; }
 }
 
 .textarea-container, .preview-container {
-  height: 100%;
-  flex-grow: 1;
-  overflow-y: auto; /* Scroll indipendente per l'area di testo! */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto; 
   box-sizing: border-box;
 }
 
-.preview-container { padding: 1.25rem; background: #050814; }
+.preview-container { padding: 1rem; background: #050814; }
 .markdown-textarea { 
-  width: 100%; height: 100%; background: transparent; color: #f8fafc; padding: 1.25rem; 
-  border: none; outline: none; resize: none; font-family: monospace; font-size: 0.9rem; 
-  line-height: 1.7; box-sizing: border-box; 
+  width: 100%; height: 100%; background: transparent; color: #f8fafc; padding: 1rem; 
+  border: none; outline: none; resize: none; font-family: monospace; font-size: 0.88rem; 
+  line-height: 1.6; box-sizing: border-box; 
 }
 
-/* Modalità ZEN FIXATA */
+/* Modalità ZEN */
 .zen-mode-active {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   z-index: 999999 !important; border-radius: 0; border: none; background: #050814; 
@@ -573,38 +593,27 @@ onMounted(() => {
 .zen-mode-active .markdown-textarea,
 .zen-mode-active .dkp-preview-content { max-width: 800px; margin: 0 auto; }
 
-.tab-switch-group { display: flex; gap: 0.2rem; padding: 0.3rem; background: #020420; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
+.tab-switch-group { display: flex; gap: 0.2rem; padding: 0.2rem; background: #020420; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
 @media (min-width: 768px) { .tab-switch-group { border-bottom: none; padding: 0; background: transparent; } }
-.tab-toggle-btn { background: transparent; border: 1px solid transparent; color: #64748b; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
+.tab-toggle-btn { background: transparent; border: 1px solid transparent; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
 .tab-toggle-btn:hover { color: #cbd5e1; }
 .tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
-.formatting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.3rem 0; }
+.formatting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.2rem 0; }
 .zen-mode-active .formatting-tools { flex-wrap: nowrap; }
-.tool-group { display: flex; gap: 0.1rem; background: #020420; padding: 0.15rem; border-radius: 6px; border: 1px solid #1e293b; }
-.tool-divider { width: 1px; height: 16px; background: #334155; margin: 0 0.15rem; }
-.tool-icon-btn { background: transparent; border: 1px solid transparent; color: #94a3b8; min-width: 22px; height: 26px; padding: 0 0.25rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s ease; }
+.tool-group { display: flex; gap: 0.1rem; background: #020420; padding: 0.1rem; border-radius: 5px; border: 1px solid #1e293b; }
+.tool-divider { width: 1px; height: 14px; background: #334155; margin: 0 0.1rem; }
+.tool-icon-btn { background: transparent; border: 1px solid transparent; color: #94a3b8; min-width: 20px; height: 24px; padding: 0 0.2rem; border-radius: 4px; font-size: 0.72rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s ease; }
 .tool-icon-btn:hover { background: #1e293b; color: #e2e8f0; }
-.tool-icon-btn:active { background: rgba(0, 220, 130, 0.2); color: #00dc82; transform: scale(0.95); }
 .tool-icon-btn.text-emerald-400 { color: #00dc82; } 
-.tool-icon-btn.highlight-btn { font-weight: bold; }
-.tool-icon-btn.underline-btn { text-decoration: underline; font-weight: bold; }
-.tool-icon-btn.font-bold { font-weight: 900; }
-.tool-icon-btn.italic { font-style: italic; font-family: serif;}
-.tool-icon-btn.strikethrough { text-decoration: line-through; }
-.tool-icon-btn.code-font { font-family: monospace; font-weight: bold; }
-.tool-icon-btn.symbol-btn { font-size: 0.85rem; font-weight: 800; }
 .preview-empty { color: #64748b; font-style: italic; }
 
-:deep(.dkp-h1) { font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-top: 1.2rem; margin-bottom: 0.6rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.3rem;}
-:deep(.dkp-h2) { font-size: 1.4rem; font-weight: 800; color: #ffffff; margin-top: 1rem; margin-bottom: 0.5rem; }
-:deep(.dkp-h3) { font-size: 1.1rem; font-weight: 700; color: #00dc82; margin-top: 0.8rem; margin-bottom: 0.4rem; }
-:deep(.dkp-quote) { border-left: 3px solid #00dc82; padding-left: 0.8rem; color: #94a3b8; font-style: italic; margin: 0.8rem 0; background: rgba(0, 220, 130, 0.05); padding-top: 0.2rem; padding-bottom: 0.2rem;}
+:deep(.dkp-h1) { font-size: 1.6rem; font-weight: 900; color: #ffffff; margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.25rem;}
+:deep(.dkp-h2) { font-size: 1.3rem; font-weight: 800; color: #ffffff; margin-top: 0.8rem; margin-bottom: 0.4rem; }
+:deep(.dkp-h3) { font-size: 1rem; font-weight: 700; color: #00dc82; margin-top: 0.7rem; margin-bottom: 0.3rem; }
+:deep(.dkp-quote) { border-left: 3px solid #00dc82; padding-left: 0.7rem; color: #94a3b8; font-style: italic; margin: 0.6rem 0; background: rgba(0, 220, 130, 0.05); }
 :deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px;}
-:deep(.dkp-link:hover) { color: #00dc82;}
-:deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.5rem 0; }
-:deep(.dkp-table-wrapper) { overflow-x: auto; margin: 1rem 0; border-radius: 8px; border: 1px solid #1e293b; }
-:deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.85rem;}
-:deep(.dkp-table td) { padding: 0.75rem 1rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-:deep(.dkp-table tr:first-child td) { background: #020420; color: #00dc82; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;}
-:deep(.dkp-table tr:last-child td) { border-bottom: none; }
+:deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.2rem 0; }
+:deep(.dkp-table-wrapper) { overflow-x: auto; margin: 0.8rem 0; border-radius: 6px; border: 1px solid #1e293b; }
+:deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.82rem;}
+:deep(.dkp-table td) { padding: 0.6rem 0.85rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
 </style>
