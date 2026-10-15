@@ -1,5 +1,4 @@
 // server/api/blog/posts/index.post.ts
-
 import crypto from 'node:crypto'
 import postgres from 'postgres'
 
@@ -42,7 +41,6 @@ export default defineEventHandler(async (event) => {
 
   const generatedSlug = slugify(cleanTitle)
   
-  // 🟢 Split avanzato dei tag
   let cleanTags: string[] = []
   if (Array.isArray(tags)) {
     cleanTags = tags.map(t => String(t).trim().replace(/^#/, '')).filter(Boolean)
@@ -50,7 +48,6 @@ export default defineEventHandler(async (event) => {
     cleanTags = tags.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
   }
 
-  // 🟢 ECCO LA RIGA CHE MANCAVA!
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) {
     throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante nelle variabili d\'ambiente.' })
@@ -111,11 +108,23 @@ export default defineEventHandler(async (event) => {
       RETURNING *;
     `
 
+    // 🟢 AGGIUNTA XP AUTOMATICI PER LA PUBBLICAZIONE (+150 XP)
+    await sql`
+      UPDATE users 
+      SET xp = COALESCE(xp, 0) + 150 
+      WHERE id = ${authorId}
+    `
+
+    await sql`
+      INSERT INTO xp_transactions (user_id, action, points) 
+      VALUES (${authorId}, ${`Pubblicazione articolo: "${cleanTitle.substring(0, 30)}..."`}, 150)
+    `
+
     await sql.end()
 
     return {
       success: true,
-      message: 'Articolo pubblicato e salvato con successo nel DB Neon!',
+      message: 'Articolo pubblicato, salvato nel DB e +150 XP assegnati!',
       data: newPost,
     }
   } catch (error: any) {
