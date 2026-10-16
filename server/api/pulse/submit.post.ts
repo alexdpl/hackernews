@@ -1,6 +1,7 @@
 // server/api/pulse/submit.post.ts
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { users, xpTransactions } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -11,7 +12,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Titolo e Sezione sono obbligatori' })
     }
 
-    const db = getDb()
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
     if (!db) throw createError({ statusCode: 500, statusMessage: 'Database non disponibile' })
 
     // Calcolo bonus XP in base alla tipologia di contenuto
@@ -22,17 +24,25 @@ export default defineEventHandler(async (event) => {
 
     const safeUrl = url || `https://devkernelpulse.org/item?title=${encodeURIComponent(title)}`
 
-    // 1. Inserimento del contenuto
+    // 1. Inserimento del contenuto nella tabella pulse_stories
     await db.execute(sql`
       INSERT INTO pulse_stories (title, url, domain, type, author, author_id, points, xp_awarded)
       VALUES (${title}, ${safeUrl}, 'devkernelpulse.org', ${type}, ${username || 'community_user'}, ${userId || null}, 1, ${xpBonus});
     `)
 
-    // 2. Assegnazione automatica del Bonus XP all'utente
-    if (userId) {
-      await db.execute(sql`
-        UPDATE users SET xp = COALESCE(xp, 0) + ${xpBonus} WHERE id = ${userId};
-      `)
+    // 2. Assegnazione automatica del Bonus XP all'utente e registrazione transazione
+    const targetUserId = userId ? Number(userId) : null
+    if (targetUserId) {
+      await db.update(users)
+        .set({ xp: sql`COALESCE(xp, 0) + ${xpBonus}` })
+        .where(sql`id = ${targetUserId}`)
+
+      // Registrazione nello storico della Dashboard (Gamification Engine)
+      await db.insert(xpTransactions).values({
+        userId: targetUserId,
+        action: `Pulse Submit [${type.toUpperCase()}]: ${title.substring(0, 30)}...`,
+        points: xpBonus
+      })
     }
 
     return {
@@ -41,6 +51,7 @@ export default defineEventHandler(async (event) => {
       xpGranted: xpBonus
     }
   } catch (err: any) {
+    console.error('[PULSE SUBMIT ERROR]', err)
     return { success: false, message: err?.message || 'Errore durante la pubblicazione' }
   }
 })

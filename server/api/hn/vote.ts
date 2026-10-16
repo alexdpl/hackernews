@@ -1,21 +1,29 @@
-import { and, eq } from 'drizzle-orm'
-import { votes } from '~~/server/db/schema'
+// server/api/hn/vote.post.ts
+import { and, eq, sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+import { votes, users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
 
   if (method === 'POST') {
     const body = await readBody(event)
-    const { postId } = body
+    const { postId, userId, username } = body
     
-    // Utente simulato in attesa dell'autenticazione reale
-    const currentUsername = 'utente_neon' 
+    const currentUsername = username || 'utente_neon'
+    const targetUserId = userId ? Number(userId) : 1
 
     if (!postId) {
       throw createError({ statusCode: 400, statusMessage: 'postId obbligatorio.' })
     }
 
     try {
+      // Correzione v2.5-GOLD: getDb() è asincrono
+      const db = await getDb()
+      if (!db) {
+        throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+      }
+
       // Controlla se il voto esiste già
       const existingVote = await db
         .select()
@@ -38,8 +46,21 @@ export default defineEventHandler(async (event) => {
         username: currentUsername,
       })
 
-      return { success: true, message: 'Upvote registrato con successo.' }
+      // GAMIFICATION v2.5-GOLD: +5 XP per l'upvote
+      const rewardXp = 5
+      await db.update(users)
+        .set({ xp: sql`COALESCE(xp, 0) + ${rewardXp}` })
+        .where(eq(users.id, targetUserId))
+
+      await db.insert(xpTransactions).values({
+        userId: targetUserId,
+        action: `Vote HN Post #${postId}`,
+        points: rewardXp
+      }).catch(() => {})
+
+      return { success: true, message: 'Upvote registrato con successo! +5 XP ⚡' }
     } catch (error: any) {
+      if (error.statusCode) throw error
       throw createError({
         statusCode: 500,
         statusMessage: error.message || 'Errore durante la registrazione del voto.',

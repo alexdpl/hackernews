@@ -17,7 +17,9 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const db = getDb()
+    // Correzione v2.5-GOLD: getDb() asincrono
+    const db = await getDb()
+    if (!db) throw new Error('Database non disponibile')
 
     const rawMessages = await db.select()
       .from(pulseChatMessages)
@@ -41,7 +43,6 @@ export default defineEventHandler(async (event) => {
       messages: rawMessages.reverse().map((m: any) => ({
         id: m.id ? m.id.toString() : Date.now().toString(),
         sender: m.username || 'Socio',
-        // 🔥 FIX: Leggiamo direttamente le colonne reali dal DB!
         role: m.role || 'user', 
         text: m.text || m.message || '', 
         xpEarned: m.xpEarned || 0,
@@ -60,7 +61,7 @@ export default defineEventHandler(async (event) => {
         id: '1',
         sender: 'Pulse Nexus',
         role: 'assistant',
-        text: '⚡ SISTEMA NEXUS ONLINE v2.5-GOLD. Benvenuto!',
+        text: '⚡ SISTEMA NEXUS ONLINE v2.5-GOLD. Benvenuto socio!',
         xpEarned: 0,
         timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
       }]

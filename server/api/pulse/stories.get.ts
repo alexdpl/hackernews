@@ -32,7 +32,8 @@ export default defineEventHandler(async (event) => {
     const limit = Math.min(50, Math.max(1, parseInt(query.limit as string) || 15))
     const offset = (page - 1) * limit
 
-    const db = getDb()
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
     if (!db) {
       return { 
         success: false, 
@@ -47,7 +48,8 @@ export default defineEventHandler(async (event) => {
     const countResult: any = await db.execute(sql`
       SELECT COUNT(*)::int as total FROM pulse_stories WHERE type = ${type};
     `)
-    const totalItems = countResult?.rows?.[0]?.total ?? countResult?.[0]?.total ?? 0
+    const rowsCount = countResult?.rows || countResult || []
+    const totalItems = rowsCount[0]?.total ?? 0
     const totalPages = Math.ceil(totalItems / limit) || 1
 
     // 2. Query Paginata per il Feed

@@ -14,10 +14,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const db = getDb()
-
   try {
-    // Interroga il database Neon per calcolare karma (somma punti) e data di registrazione (prima attività) dell'utente
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
+    if (!db) {
+      throw new Error('Database non disponibile')
+    }
+
+    // Interroga il database Neon per calcolare karma e data di registrazione
     const statsResult: any = await db.execute(sql`
       SELECT 
         COALESCE(SUM(points), 0) AS karma,
@@ -28,7 +32,6 @@ export default defineEventHandler(async (event) => {
 
     const stats = statsResult[0] || statsResult?.rows?.[0] || { karma: 0, created_at: null }
     
-    // Converte la data in timestamp UNIX (secondi) per compatibilità con i componenti esistenti
     let createdTimestamp = Math.floor(Date.now() / 1000)
     if (stats.created_at) {
       const d = new Date(stats.created_at)
@@ -42,7 +45,7 @@ export default defineEventHandler(async (event) => {
       karma: Number(stats.karma || 0),
       created: createdTimestamp,
       created_time: createdTimestamp,
-      about: `Profilo ufficiale di ${id} su DevKernelPulse.`
+      about: `Profilo ufficiale di ${id} su DevKernelPulse v2.5-GOLD.`
     }
   } catch (err: any) {
     console.error(`Errore nel recupero utente ${id} da Neon DB:`, err)

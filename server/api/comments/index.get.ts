@@ -14,9 +14,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const db = getDb()
-
   try {
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
+    if (!db) {
+      throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+    }
+
     // 1. Assicura che la tabella 'comments' esista nel Neon DB
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS comments (
@@ -43,6 +47,7 @@ export default defineEventHandler(async (event) => {
       comments
     }
   } catch (err: any) {
+    if (err.statusCode) throw err
     throw createError({
       statusCode: 500,
       statusMessage: err.message || 'Errore nel recupero dei commenti'

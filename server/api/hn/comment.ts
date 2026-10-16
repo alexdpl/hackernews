@@ -1,5 +1,7 @@
+// server/api/hn/comment.ts 
 import { eq, and, sql } from 'drizzle-orm'
-import { posts, comments, votes } from '~~/server/db/schema'
+import { getDb } from '~~/server/utils/db'
+import { posts, comments, votes, users, xpTransactions } from '~~/server/db/schema'
 
 interface CommentNode {
   id: number
@@ -12,6 +14,10 @@ interface CommentNode {
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
+  const db = await getDb()
+  if (!db) {
+    throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+  }
 
   // ----------------------------------------------------
   // GESTIONE RECUPERO POST + ALBERO COMMENTI (GET)
@@ -24,7 +30,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'postId mancante o non valido.' })
     }
 
-    // 1. Recupera il post usando il singleton dentro l'handler
+    // 1. Recupera il post dal database Neon
     const postResult = await db.select().from(posts).where(eq(posts.id, postId)).limit(1)
     if (postResult.length === 0) {
       throw createError({ statusCode: 404, statusMessage: 'Post non trovato.' })
@@ -37,13 +43,13 @@ export default defineEventHandler(async (event) => {
       .from(votes)
       .where(eq(votes.postId, postId))
     
-    const realScore = voteCountResult[0]?.count || 0
+    const realScore = voteCountResult[0]?.count || post.points || 0
 
-    // Arricchimento con dati reali e mock
+    // Arricchimento con dati reali
     const enrichedPost = {
       ...post,
       score: realScore,
-      by: 'utente_neon',
+      by: post.author || 'community_dev',
       descendants: 0
     }
 
@@ -60,11 +66,11 @@ export default defineEventHandler(async (event) => {
     const commentMap: Record<number, CommentNode> = {}
     const rootComments: CommentNode[] = []
 
-    allComments.forEach((c) => {
+    allComments.forEach((c: any) => {
       commentMap[c.id] = { ...c, replies: [] }
     })
 
-    allComments.forEach((c) => {
+    allComments.forEach((c: any) => {
       const node = commentMap[c.id]
       if (c.parentId && commentMap[c.parentId]) {
         commentMap[c.parentId].replies.push(node)
@@ -74,17 +80,18 @@ export default defineEventHandler(async (event) => {
     })
 
     return {
+      success: true,
       post: enrichedPost,
       comments: rootComments
     }
   }
 
   // ----------------------------------------------------
-  // GESTIONE AGGIUNTA NUOVO COMMENTO (POST)
+  // GESTIONE AGGIUNTA NUOVO COMMENTO (POST) + GAMIFICATION XP
   // ----------------------------------------------------
   if (method === 'POST') {
     const body = await readBody(event)
-    const { postId, parentId, content } = body
+    const { postId, parentId, content, userId } = body
 
     if (!postId || !content || content.trim() === '') {
       throw createError({
@@ -92,10 +99,11 @@ export default defineEventHandler(async (event) => {
         statusMessage: 'Campi obbligatori mancanti (postId, content).'
       })
     }
-	
-	const cleanContent = content.trim()
+  
+    const cleanContent = content.trim()
     const parsedPostId = parseInt(postId, 10)
     const parsedParentId = parentId ? parseInt(parentId, 10) : null
+    const targetUserId = userId ? Number(userId) : 1
 
     // --- FILTRO ANTI-DUPLICATI PER I COMMENTI ---
     const duplicateComment = await db
@@ -104,7 +112,6 @@ export default defineEventHandler(async (event) => {
       .where(
         and(
           eq(comments.postId, parsedPostId),
-          // Gestisce il confronto sia con parentId numerico che NULL
           parsedParentId ? eq(comments.parentId, parsedParentId) : sql`${comments.parentId} IS NULL`,
           eq(comments.content, cleanContent)
         )
@@ -121,15 +128,28 @@ export default defineEventHandler(async (event) => {
 
     // Inserimento record nel DB Neon tramite Drizzle
     const newComment = await db.insert(comments).values({
-      postId: parseInt(postId, 10),
-      parentId: parentId ? parseInt(parentId, 10) : null,
-      content: content.trim(),
+      postId: parsedPostId,
+      parentId: parsedParentId,
+      content: cleanContent,
       createdAt: new Date()
     }).returning()
 
+    // GAMIFICATION v2.5-GOLD: Accredito punti XP per il commento
+    const rewardXp = 10
+    await db.update(users)
+      .set({ xp: sql`COALESCE(xp, 0) + ${rewardXp}` })
+      .where(eq(users.id, targetUserId))
+
+    await db.insert(xpTransactions).values({
+      userId: targetUserId,
+      action: `Comment on HN Post #${parsedPostId}`,
+      points: rewardXp
+    }).catch(() => {})
+
     return {
       success: true,
-      comment: newComment
+      comment: newComment,
+      message: 'Commento pubblicato con successo! +10 XP ⚡'
     }
   }
 

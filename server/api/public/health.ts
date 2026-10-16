@@ -3,9 +3,10 @@ export default defineEventHandler((event) => {
   return {
     status: 'HEALTHY',
     service: 'DevKernelPulse Gateway',
-    version: 'v2.4-GOLD',
+    version: 'v2.5-GOLD',
     timestamp: new Date().toISOString(),
     nodeEnv: process.env.NODE_ENV || 'production',
-    sentinelAI: 'ACTIVE'
+    sentinelAI: 'ACTIVE',
+    vaultEngine: 'SECURE'
   }
 })

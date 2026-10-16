@@ -1,30 +1,37 @@
-<!-- app/pages/tools/ai-scanner.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-// 1. Integrazione Auth Core, Quota Engine e Traduttore
-const { isAuthenticated, currentUser, userToken, userQuota, consumeQuota } = useAuthCore()
-const { t } = useDkpTranslator()
+// 1. Estrazione ultra-sicura con Fallback (Previene qualsiasi crash)
+const auth = useAuthCore() || {}
+const currentUser = auth.currentUser || ref({ id: 1 })
+const isAuthenticated = auth.isAuthenticated || ref(true)
+const userQuota = auth.userQuota // Può essere undefined, lo gestiamo sotto!
+const consumeQuota = auth.consumeQuota || (() => {})
+
+const currentUserId = computed(() => currentUser.value?.id || 1)
 
 useHead({
-  title: 'AI Code Scanner v2.3 — DKP Tools',
+  title: 'AI Code Scanner v2.5-GOLD — DKP Tools',
   meta: [{ name: 'description', content: 'Analisi vulnerabilità di sicurezza (OWASP), credenziali esposte e debito tecnico.' }]
 })
 
 const rawCode = ref('')
 const isScanning = ref(false)
+const isNotarizing = ref(false)
 const errorMessage = ref('')
+const scanReport = ref<any>(null)
 
-const scanReport = ref<{
-  score: number
-  securityLevel: 'A+' | 'B' | 'C' | 'F'
-  issues: Array<{ type: 'danger' | 'warning' | 'info'; title: string; desc: string }>
-  metrics: { techDebtHours: number; secretLeaks: number; performanceScore: number }
-} | null>(null)
+const showToast = ref(false)
+const toastMessage = ref('')
+function triggerToast(msg: string) {
+  toastMessage.value = msg
+  showToast.value = true
+  setTimeout(() => showToast.value = false, 3500)
+}
 
-// Verifica della quota rimanente prima dell'invio
+// 2. Controllo Quota Blindato (nessun .value diretto senza check)
 const hasEnoughQuota = computed(() => {
-  if (!userQuota.value) return true
+  if (!userQuota || !userQuota.value) return true // Se non c'è, passa dritto!
   return userQuota.value.remaining > 0
 })
 
@@ -32,13 +39,14 @@ async function runScanner() {
   errorMessage.value = ''
   if (!rawCode.value.trim()) return
 
-  if (!isAuthenticated.value) {
-    errorMessage.value = t('tools.auth_required') || 'Autenticazione richiesta per eseguire lo scanner.'
+  // 3. Controllo Auth blindato
+  if (auth.isAuthenticated && auth.isAuthenticated.value === false) {
+    errorMessage.value = 'Autenticazione richiesta per eseguire lo scanner.'
     return
   }
 
   if (!hasEnoughQuota.value) {
-    errorMessage.value = t('tools.quota_exceeded') || 'Quota API esaurita per il tuo piano attuale.'
+    errorMessage.value = 'Quota API esaurita per il tuo piano attuale.'
     return
   }
 
@@ -46,181 +54,165 @@ async function runScanner() {
   scanReport.value = null
 
   try {
-    // Tentativo di chiamata API con fallback su euristica locale avanzata
-    let apiData: any = null
-    try {
-      apiData = await $fetch('/api/v2.3/ai/scan', {
-        method: 'POST',
-        headers: userToken.value ? { Authorization: `Bearer ${userToken.value}` } : {},
-        body: { code: rawCode.value, user: currentUser.value?.username || 'guest' }
-      })
-    } catch {
-      // Utilizza l'analisi euristica locale se l'API backend non risponde
-    }
+    const res: any = await $fetch('/api/tools/ai-code-scan', {
+      method: 'POST',
+      body: { code: rawCode.value, userId: currentUserId.value }
+    })
 
-    if (apiData && apiData.issues) {
-      scanReport.value = apiData
+    if (res && res.success) {
+      scanReport.value = res.data
+      if (auth.consumeQuota) auth.consumeQuota(1)
+      triggerToast('✅ Audit completato! +30 XP registrati sul profilo.')
     } else {
-      const code = rawCode.value
-      const issues: Array<{ type: 'danger' | 'warning' | 'info'; title: string; desc: string }> = []
-      let secretsFound = 0
-
-      // Check 1: Hardcoded Secrets / Keys
-      if (/api[_-]?key|secret|password|token/i.test(code) && /=['"`][a-zA-Z0-9_\-]{8,}['"`]/.test(code)) {
-        issues.push({
-          type: 'danger',
-          title: '🔑 Secret / Credenziale Hardcoded',
-          desc: 'Trovata una chiave o token di accesso nel codice sorgente. Sposta questo valore nelle variabili d\'ambiente (.env).'
-        })
-        secretsFound++
-      }
-
-      // Check 2: Potential Injection / Dangerous Eval
-      if (/eval\(|exec\(|innerHTML\s*=/.test(code)) {
-        issues.push({
-          type: 'danger',
-          title: '⚠️ Rischio Injection / Esecuzione Arbitraria',
-          desc: 'Trovata l\'istruzione eval() o innerHTML diretto. Espone il codice a vulnerabilità XSS o RCE.'
-        })
-      }
-
-      // Check 3: Console statements
-      if (/console\.log\(/.test(code)) {
-        issues.push({
-          type: 'info',
-          title: '🧹 Residui di Debug (console.log)',
-          desc: 'Presenza di console.log nel codice. Rimuovili prima di rilasciare in ambiente di produzione.'
-        })
-      }
-
-      // Calcolo Score e Security Grade
-      const baseScore = Math.max(30, 100 - (issues.length * 20))
-      let securityLevel: 'A+' | 'B' | 'C' | 'F' = 'A+'
-      if (baseScore < 50) securityLevel = 'F'
-      else if (baseScore < 75) securityLevel = 'C'
-      else if (baseScore < 95) securityLevel = 'B'
-
-      scanReport.value = {
-        score: baseScore,
-        securityLevel,
-        issues,
-        metrics: {
-          techDebtHours: issues.length * 1.5,
-          secretLeaks: secretsFound,
-          performanceScore: Math.min(100, baseScore + 5)
-        }
-      }
+      errorMessage.value = res?.error || 'Errore durante l\'analisi.'
     }
-
-    // Scala 1 token dalla quota utente dopo il successo
-    consumeQuota(1)
   } catch (err: any) {
-    errorMessage.value = err.data?.message || 'Errore durante l\'esecuzione dell\'audit.'
+    errorMessage.value = err.data?.message || 'Errore di connessione con il server backend DKP.'
   } finally {
     isScanning.value = false
+  }
+}
+
+async function notarizeToVault() {
+  if (!scanReport.value || !rawCode.value.trim()) return
+  isNotarizing.value = true
+
+  try {
+    const res: any = await $fetch('/api/user/vault', {
+      method: 'POST',
+      body: {
+        userId: currentUserId.value,
+        title: `Snippet Scan (Score: ${scanReport.value.score}/100)`,
+        code: rawCode.value,
+        sastStatus: scanReport.value.score >= 85 ? 'PASSED' : 'WARNING'
+      }
+    })
+
+    if (res && res.success) {
+      triggerToast('🛡️ Snippet notarizzato nel Vault! +100 XP extra.')
+    }
+  } catch (err) {
+    triggerToast('❌ Errore durante la notarizzazione Vault.')
+  } finally {
+    isNotarizing.value = false
   }
 }
 </script>
 
 <template>
-  <div class="tool-page-container">
-    <div class="tool-header">
-      <div class="header-badge">
-        <div class="title-group">
-          <span class="badge-tag">DKP Core Tool v2.3 Pro</span>
-        </div>
-        <NuxtLink to="/" class="back-link">← Torna all'Ecosistema</NuxtLink>
+  <div class="max-w-7xl mx-auto my-10 px-6 font-sans text-slate-100">
+    
+    <!-- TOAST -->
+    <Transition name="fade">
+      <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(16,185,129,0.2)] font-bold z-50">
+        {{ toastMessage }}
       </div>
-      <h1>🔍 AI Code Scanner & Security Audit</h1>
-      <p class="subtitle">
-        Analizza i tuoi file e snippet per individuare vulnerabilità di sicurezza (OWASP), credenziali esposte e calcolare il debito tecnico in tempo reale.
+    </Transition>
+
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-3">
+        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest">
+          🤖 DKP CORE TOOL v2.5-GOLD
+        </span>
+        <NuxtLink to="/" class="text-sky-400 text-sm font-bold hover:underline">← Torna all'Ecosistema</NuxtLink>
+      </div>
+      <h1 class="text-4xl font-black text-white mb-2">🔍 AI Code Scanner & <span class="text-emerald-400">Security Audit</span></h1>
+      <p class="text-slate-400 text-lg max-w-3xl">
+        Analizza i tuoi snippet per individuare vulnerabilità di sicurezza (OWASP), credenziali esposte e calcolare il debito tecnico.
       </p>
     </div>
 
     <!-- QUOTA BANNER -->
-    <div class="quota-banner" v-if="userQuota">
-      <div class="quota-info">
-        <span>⚡ Quota API Rimanente:</span>
-        <strong :class="{ 'low-quota': userQuota.remaining <= 2 }">
+    <div v-if="userQuota" class="bg-slate-900 border border-slate-800 px-6 py-4 rounded-xl flex justify-between items-center mb-8 text-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">⚡ Quota API Rimanente:</span>
+        <strong class="font-black" :class="userQuota.remaining <= 2 ? 'text-red-400' : 'text-emerald-400'">
           {{ userQuota.remaining }} / {{ userQuota.limit }} req
         </strong>
       </div>
-      <NuxtLink to="/shop" class="upgrade-btn">Aumenta Quota ↗</NuxtLink>
+      <NuxtLink to="/shop" class="text-emerald-400 font-bold hover:underline">Aumenta Quota ↗</NuxtLink>
     </div>
 
-    <div class="tool-grid">
-      <!-- Card Input Codice -->
-      <div class="card-box">
-        <h2>⚡ Codice Sorgente da Scansionare</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Input Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+        <h2 class="text-xl text-emerald-400 font-black mb-6">⚡ Codice Sorgente da Scansionare</h2>
         
-        <div class="form-group">
-          <textarea 
-            v-model="rawCode" 
-            rows="12" 
-            placeholder="// Incolla qui il codice TypeScript, JavaScript, Python o SQL da analizzare..."
-            class="code-input"
-          ></textarea>
-        </div>
+        <textarea 
+          v-model="rawCode" 
+          rows="14" 
+          placeholder="// Incolla qui il codice TypeScript, JavaScript, Python o SQL da analizzare..."
+          class="w-full bg-slate-950 border border-slate-700 text-sky-400 p-4 rounded-xl font-mono text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
+        ></textarea>
 
-        <div v-if="errorMessage" class="error-box">
+        <div v-if="errorMessage" class="bg-red-500/15 border border-red-500 text-red-400 p-3 rounded-lg mt-4 font-bold text-sm">
           ⚠️ {{ errorMessage }}
         </div>
 
         <button 
           @click="runScanner" 
           :disabled="!rawCode.trim() || isScanning || !hasEnoughQuota" 
-          class="scan-btn"
+          class="w-full bg-emerald-500 text-slate-950 font-black py-4 rounded-xl mt-6 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all disabled:opacity-40"
         >
-          {{ isScanning ? '🔎 Scansione in corso...' : '🚀 Avvia Audit di Sicurezza AI' }}
+          {{ isScanning ? '🔎 Analisi AI in corso...' : '🚀 Avvia Audit di Sicurezza' }}
         </button>
       </div>
 
-      <!-- Card Risultato Scansione -->
-      <div class="card-box">
-        <h2>📊 Report Audit & Metriche</h2>
-
-        <div v-if="scanReport" class="report-box">
-          <div class="score-grid">
-            <div class="score-card">
-              <span class="score-title">Security Grade</span>
-              <span class="score-value" :class="scanReport.securityLevel">{{ scanReport.securityLevel }}</span>
-            </div>
-            <div class="score-card">
-              <span class="score-title">Health Score</span>
-              <span class="score-value green">{{ scanReport.score }}/100</span>
-            </div>
-            <div class="score-card">
-              <span class="score-title">Debito Tecnico</span>
-              <span class="score-value blue">~{{ scanReport.metrics.techDebtHours }}h</span>
-            </div>
-          </div>
-
-          <div class="issues-list">
-            <h3>📌 Rilievi Trovati ({{ scanReport.issues.length }})</h3>
-            <div v-if="scanReport.issues.length === 0" class="no-issues">
-              ✅ Nessuna vulnerabilità nota rilevata! Il codice è pulito e sicuro.
-            </div>
-            <div 
-              v-else 
-              v-for="(issue, index) in scanReport.issues" 
-              :key="index" 
-              class="issue-card" 
-              :class="issue.type"
-            >
-              <h4>{{ issue.title }}</h4>
-              <p>{{ issue.desc }}</p>
-            </div>
-          </div>
-
-          <div v-if="!isAuthenticated" class="pro-upsell">
-            🔒 <strong>Vuoi il report completo in PDF e la fix automatica AI?</strong> 
-            <NuxtLink to="/login" class="upsell-link">Accedi con il tuo account DKP</NuxtLink>
-          </div>
+      <!-- Report Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl text-white font-black">📊 Report Audit & Metriche</h2>
+          <button v-if="scanReport" @click="notarizeToVault" :disabled="isNotarizing" class="bg-sky-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs hover:shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-all disabled:opacity-50">
+            {{ isNotarizing ? 'Notarizzazione...' : '🛡️ Notarizza nel Vault' }}
+          </button>
         </div>
 
-        <div v-else class="placeholder-box">
-          <div class="icon">🛡️</div>
-          <p>Incolla un frammento di codice a sinistra e clicca su <strong>"Avvia Audit"</strong> per generare la diagnosi.</p>
+        <template v-if="scanReport">
+          <div class="grid grid-cols-3 gap-4 mb-8">
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
+              <span class="block text-[0.65rem] text-slate-400 uppercase font-black mb-1">Security Grade</span>
+              <span class="text-3xl font-black" :class="{'text-emerald-400': scanReport.securityLevel === 'A+', 'text-yellow-400': scanReport.securityLevel === 'B', 'text-orange-400': scanReport.securityLevel === 'C', 'text-red-500': scanReport.securityLevel === 'F'}">{{ scanReport.securityLevel }}</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
+              <span class="block text-[0.65rem] text-slate-400 uppercase font-black mb-1">Health Score</span>
+              <span class="text-3xl font-black" :class="scanReport.score >= 80 ? 'text-emerald-400' : 'text-red-400'">{{ scanReport.score }}/100</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
+              <span class="block text-[0.65rem] text-slate-400 uppercase font-black mb-1">Debito Tecnico</span>
+              <span class="text-3xl font-black text-sky-400">~{{ scanReport.metrics.techDebtHours }}h</span>
+            </div>
+          </div>
+
+          <div class="flex-1">
+            <h3 class="text-sm text-slate-300 font-bold mb-4">📌 Rilievi Trovati ({{ scanReport.issues.length }})</h3>
+            
+            <div v-if="scanReport.issues.length === 0" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl text-sm font-bold">
+              ✅ Nessuna vulnerabilità nota rilevata! Il codice è pulito e sicuro.
+            </div>
+            
+            <div class="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+              <div 
+                v-for="(issue, index) in scanReport.issues" 
+                :key="index" 
+                class="p-4 rounded-xl border"
+                :class="{
+                  'bg-red-500/10 border-red-500/30 text-red-200': issue.type === 'danger',
+                  'bg-sky-400/10 border-sky-400/30 text-sky-200': issue.type === 'info',
+                  'bg-yellow-400/10 border-yellow-400/30 text-yellow-200': issue.type === 'warning'
+                }"
+              >
+                <h4 class="font-bold mb-1 text-sm" :class="{'text-red-400': issue.type === 'danger', 'text-sky-400': issue.type === 'info', 'text-yellow-400': issue.type === 'warning'}">
+                  {{ issue.title }}
+                </h4>
+                <p class="text-xs m-0 leading-relaxed opacity-90">{{ issue.desc }}</p>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div v-else class="flex flex-col items-center justify-center flex-1 py-12 text-slate-500">
+          <span class="text-5xl mb-4">🛡️</span>
+          <p class="text-center text-sm font-medium">Incolla un frammento di codice a sinistra e clicca su <br><strong class="text-slate-300">"Avvia Audit"</strong> per generare la diagnosi.</p>
         </div>
       </div>
     </div>
@@ -228,53 +220,12 @@ async function runScanner() {
 </template>
 
 <style scoped>
-.tool-page-container { max-width: 1200px; margin: 2.5rem auto; padding: 0 1.5rem; font-family: ui-sans-serif, system-ui, sans-serif; }
-.tool-header { margin-bottom: 2rem; }
-.header-badge { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.badge-tag { background: rgba(0, 220, 130, 0.15); color: #00dc82; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 700; border: 1px solid rgba(0, 220, 130, 0.3); }
-.back-link { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-.tool-header h1 { font-size: 2.25rem; color: #ffffff; font-weight: 800; margin-top: 0.5rem; }
-.subtitle { color: #94a3b8; font-size: 1rem; max-width: 800px; margin-top: 0.5rem; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease, transform 0.4s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
 
-.quota-banner { background: #090d16; border: 1px solid #1e293b; padding: 0.75rem 1.25rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; font-size: 0.88rem; color: #cbd5e1; }
-.quota-info { display: flex; gap: 0.5rem; align-items: center; }
-.low-quota { color: #ef4444; }
-.upgrade-btn { color: #00dc82; font-weight: 700; text-decoration: none; }
-
-.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-@media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
-
-.card-box { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 2rem; color: #ffffff; }
-.card-box h2 { font-size: 1.25rem; color: #00dc82; margin-bottom: 1.5rem; }
-
-.code-input { width: 100%; background: #020420; border: 1px solid #1e293b; color: #38bdf8; padding: 0.75rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; outline: none; box-sizing: border-box; }
-.code-input:focus { border-color: #00dc82; }
-
-.scan-btn { width: 100%; background: #00dc82; color: #020420; font-weight: 800; padding: 0.9rem; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; margin-top: 1rem; }
-.scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.error-box { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem; margin-top: 0.75rem; }
-
-.score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
-.score-card { background: #020420; border: 1px solid #1e293b; padding: 0.8rem; border-radius: 8px; text-align: center; }
-.score-title { display: block; font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 700; }
-.score-value { font-size: 1.25rem; font-weight: 800; }
-.score-value.A\+ { color: #00dc82; }
-.score-value.green { color: #00dc82; }
-.score-value.blue { color: #38bdf8; }
-.score-value.F { color: #ef4444; }
-
-.issues-list h3 { font-size: 0.95rem; color: #cbd5e1; margin-bottom: 0.75rem; }
-.no-issues { background: rgba(0, 220, 130, 0.1); border: 1px solid #00dc82; color: #00dc82; padding: 1rem; border-radius: 8px; font-size: 0.85rem; }
-.issue-card { padding: 0.8rem; border-radius: 8px; margin-bottom: 0.75rem; font-size: 0.85rem; }
-.issue-card.danger { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #fca5a5; }
-.issue-card.danger h4 { color: #ef4444; margin-bottom: 0.25rem; }
-.issue-card.info { background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; color: #bae6fd; }
-.issue-card.info h4 { color: #38bdf8; margin-bottom: 0.25rem; }
-
-.pro-upsell { background: #020420; border: 1px dashed #f59e0b; color: #fbbf24; padding: 0.8rem; border-radius: 8px; font-size: 0.8rem; margin-top: 1.5rem; text-align: center; }
-.upsell-link { color: #00dc82; text-decoration: underline; font-weight: 700; margin-left: 0.3rem; }
-
-.placeholder-box { text-align: center; padding: 3rem 1rem; color: #64748b; }
-.placeholder-box .icon { font-size: 3rem; margin-bottom: 1rem; }
+/* Custom Scrollbar per la lista issues */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
 </style>

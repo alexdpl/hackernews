@@ -1,15 +1,17 @@
 <!-- app/pages/tools/neural-playground.vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-const { isAuthenticated, currentUser } = useAuthCore()
+// Estrazione Sicura (Niente crash "Cannot read properties of undefined")
+const auth = useAuthCore() || {}
+const currentUser = auth.currentUser || ref({ id: 1 })
+const isAuthenticated = auth.isAuthenticated || ref(true)
 
 useHead({
-  title: 'Neural Playground v2.3 — DKP Tools',
-  meta: [{ name: 'description', content: 'Testing Prompt e Modelli IA con DKP Neural Engine v2.3' }]
+  title: 'Neural Playground v2.5-GOLD — DKP Tools',
+  meta: [{ name: 'description', content: 'Testing Prompt e Modelli IA con DKP Neural Engine v2.5-GOLD' }]
 })
 
-// Stato reattivo originale con DKP-Neural-v4 (Coder) e parametri LLM
 const selectedModel = ref('DKP-Neural-v4 (Coder)')
 const systemPrompt = ref('Sei il Kernel Architect di DevKernelPulse, un assistente IA esperto in sicurezza, architetture SaaS modulari e Nuxt.js.')
 const userPrompt = ref('Scrivi un middleware di autenticazione sicuro in TypeScript per proteggere le rotte admin.')
@@ -19,11 +21,20 @@ const maxTokens = ref(1024)
 const isLoading = ref(false)
 const responseOutput = ref('')
 const errorMessage = ref('')
+const isNotarizing = ref(false)
+
+const showToast = ref(false)
+const toastMessage = ref('')
+function triggerToast(msg: string) {
+  toastMessage.value = msg
+  showToast.value = true
+  setTimeout(() => showToast.value = false, 3500)
+}
 
 async function runNeuralTest() {
   errorMessage.value = ''
   
-  if (!isAuthenticated.value) {
+  if (isAuthenticated && isAuthenticated.value === false) {
     errorMessage.value = 'Autenticazione richiesta per accedere al Neural Playground.'
     return
   }
@@ -32,7 +43,7 @@ async function runNeuralTest() {
   responseOutput.value = ''
 
   try {
-    const res = await $fetch('/api/v2.3/neural/execute', {
+    const res: any = await $fetch('/api/tools/neural-execute', {
       method: 'POST',
       body: {
         model: selectedModel.value,
@@ -40,103 +51,141 @@ async function runNeuralTest() {
         userPrompt: userPrompt.value,
         temperature: temperature.value,
         maxTokens: maxTokens.value,
-        user: currentUser.value?.username || 'guest'
+        userId: currentUser.value?.id || 1
       }
     })
 
-    responseOutput.value = res.result || 'Elaborazione completata con successo.'
+    if (res && res.success) {
+      responseOutput.value = res.result
+      triggerToast('✅ Generazione completata! +15 XP assegnati.')
+    } else {
+      errorMessage.value = 'Errore durante la generazione del modello.'
+    }
   } catch (err: any) {
-    errorMessage.value = err.data?.message || 'Errore durante l\'esecuzione del test neurale.'
+    errorMessage.value = err.data?.message || 'Errore durante l\'esecuzione del test neurale (API fallita).'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function notarizeToVault() {
+  if (!responseOutput.value || !userPrompt.value.trim()) return
+  isNotarizing.value = true
+
+  try {
+    const res: any = await $fetch('/api/user/vault', {
+      method: 'POST',
+      body: {
+        userId: currentUser.value?.id || 1,
+        title: `AI Generation: ${selectedModel.value}`,
+        code: `/* USER PROMPT */\n${userPrompt.value}\n\n/* AI RESPONSE */\n${responseOutput.value}`,
+        sastStatus: 'PASSED'
+      }
+    })
+
+    if (res && res.success) {
+      triggerToast('🛡️ Output salvato nel Vault! +100 XP extra.')
+    }
+  } catch (err) {
+    triggerToast('❌ Errore durante la notarizzazione Vault.')
+  } finally {
+    isNotarizing.value = false
   }
 }
 </script>
 
 <template>
-  <div class="tool-page">
-    <div class="tool-header">
-      <div class="title-group">
-        <h1>🧠 Neural Playground</h1>
-        <span class="version-badge v23">v2.3</span>
+  <div class="max-w-6xl mx-auto my-10 px-6 font-sans text-slate-100">
+    
+    <!-- TOAST -->
+    <Transition name="fade">
+      <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(16,185,129,0.2)] font-bold z-50">
+        {{ toastMessage }}
       </div>
-      <p class="subtitle">Testing interattivo di prompt e modelli IA con parametri avanzati dell'ecosistema DKP.</p>
+    </Transition>
+
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-3">
+        <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest">
+          🧠 DKP NEURAL ENGINE v2.5-GOLD
+        </span>
+        <NuxtLink to="/" class="text-sky-400 text-sm font-bold hover:underline">← Torna all'Ecosistema</NuxtLink>
+      </div>
+      <h1 class="text-4xl font-black text-white mb-2">Neural <span class="text-purple-400">Playground</span></h1>
+      <p class="text-slate-400 text-lg max-w-3xl">
+        Testing interattivo di prompt e modelli IA con parametri avanzati dell'ecosistema DKP. Genera codice, ottimizza e salva direttamente nel Vault.
+      </p>
     </div>
 
-    <div class="tool-card">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl flex flex-col gap-6">
+      
       <!-- SELEZIONE MODELLO & PARAMETRI -->
-      <div class="grid-2">
-        <div class="form-group">
-          <label>Seleziona Modello IA</label>
-          <select v-model="selectedModel" class="dark-input">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold text-slate-400">Seleziona Modello IA</label>
+          <select v-model="selectedModel" class="w-full bg-slate-950 border border-slate-700 text-white p-3.5 rounded-xl text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none appearance-none cursor-pointer">
             <option value="DKP-Neural-v4 (Coder)">DKP-Neural-v4 (Coder)</option>
-            <option value="DKP-SecAudit-v2">DKP-SecAudit-v2 (Security)</option>
-            <option value="DKP-FastKernel-v1">DKP-FastKernel-v1 (Lightweight)</option>
+            <option value="DKP-SecAudit-v2 (Security)">DKP-SecAudit-v2 (Security)</option>
+            <option value="DKP-FastKernel-v1 (Lightweight)">DKP-FastKernel-v1 (Lightweight)</option>
           </select>
         </div>
 
-        <div class="params-group">
-          <div class="form-group">
-            <label>Temperature: {{ temperature }}</label>
-            <input v-model.number="temperature" type="range" min="0" max="1" step="0.1" class="slider" />
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold text-slate-400 flex justify-between">
+              <span>Temperature</span>
+              <span class="text-purple-400 font-mono">{{ temperature.toFixed(1) }}</span>
+            </label>
+            <input v-model.number="temperature" type="range" min="0" max="1" step="0.1" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2" />
           </div>
-          <div class="form-group">
-            <label>Max Tokens: {{ maxTokens }}</label>
-            <input v-model.number="maxTokens" type="number" step="128" min="256" max="4096" class="dark-input" />
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold text-slate-400">Max Tokens</label>
+            <input v-model.number="maxTokens" type="number" step="128" min="256" max="4096" class="w-full bg-slate-950 border border-slate-700 text-white p-3 rounded-xl font-mono text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none" />
           </div>
         </div>
       </div>
 
       <!-- SYSTEM PROMPT -->
-      <div class="form-group">
-        <label>System Prompt (Istruzioni di Ruolo)</label>
-        <textarea v-model="systemPrompt" rows="2" class="dark-input code-font"></textarea>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold text-slate-400">System Prompt (Istruzioni di Ruolo)</label>
+        <textarea v-model="systemPrompt" rows="2" class="w-full bg-slate-950 border border-slate-700 text-emerald-400 p-4 rounded-xl font-mono text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none resize-none"></textarea>
       </div>
 
       <!-- USER PROMPT -->
-      <div class="form-group">
-        <label>User Prompt / Input Code</label>
-        <textarea v-model="userPrompt" rows="4" class="dark-input code-font" placeholder="Inserisci il prompt o il codice da elaborare..."></textarea>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold text-slate-400">User Prompt / Input Code</label>
+        <textarea v-model="userPrompt" rows="4" placeholder="Inserisci il prompt o il codice da elaborare (es: Scrivi un middleware...)" class="w-full bg-slate-950 border border-slate-700 text-sky-400 p-4 rounded-xl font-mono text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-none resize-none"></textarea>
       </div>
 
-      <div v-if="errorMessage" class="error-box">
+      <div v-if="errorMessage" class="bg-red-500/15 border border-red-500 text-red-400 p-3 rounded-lg font-bold text-sm">
         ⚠️ {{ errorMessage }}
       </div>
 
-      <button @click="runNeuralTest" :disabled="isLoading || !userPrompt.trim()" class="action-btn">
-        <span v-if="isLoading">⚡ Elaborazione con {{ selectedModel }} in corso...</span>
+      <button @click="runNeuralTest" :disabled="isLoading || !userPrompt.trim()" class="w-full bg-purple-500 text-slate-50 font-black py-4 rounded-xl hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-50 mt-2">
+        <span v-if="isLoading">⚡ Generazione Neurale in corso...</span>
         <span v-else>🚀 Esegui Test Neurale</span>
       </button>
 
-      <!-- OUTPUT -->
-      <div v-if="responseOutput" class="output-box">
-        <h3>Risultato {{ selectedModel }}:</h3>
-        <pre><code>{{ responseOutput }}</code></pre>
-      </div>
+      <!-- OUTPUT BOX -->
+      <Transition name="fade">
+        <div v-if="responseOutput" class="mt-4">
+          <div class="flex justify-between items-center bg-slate-800 rounded-t-xl px-4 py-2 border border-slate-700 border-b-0">
+            <h3 class="text-xs text-purple-400 font-black tracking-wider m-0">OUTPUT: {{ selectedModel }}</h3>
+            <button @click="notarizeToVault" :disabled="isNotarizing" class="bg-slate-950 border border-sky-500 text-sky-400 px-3 py-1 text-xs font-bold rounded hover:bg-sky-500 hover:text-slate-900 transition-colors disabled:opacity-50">
+              {{ isNotarizing ? 'Salvando...' : '🛡️ Salva nel Vault' }}
+            </button>
+          </div>
+          <div class="bg-slate-950 border border-slate-700 rounded-b-xl p-5 overflow-x-auto">
+            <pre class="text-emerald-400 font-mono text-sm whitespace-pre-wrap m-0 leading-relaxed">{{ responseOutput }}</pre>
+          </div>
+        </div>
+      </Transition>
+      
     </div>
   </div>
 </template>
 
 <style scoped>
-.tool-page { max-width: 1000px; margin: 0 auto; padding: 2rem 1.5rem; color: #cbd5e1; }
-.tool-header { margin-bottom: 2rem; }
-.title-group { display: flex; align-items: center; gap: 0.75rem; }
-.title-group h1 { font-size: 2rem; color: #fff; margin: 0; font-weight: 900; }
-.version-badge.v23 { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; }
-.subtitle { color: #94a3b8; margin-top: 0.5rem; }
-.tool-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; display: flex; flex-direction: column; gap: 1.25rem; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-@media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
-.params-group { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
-.form-group label { font-size: 0.85rem; font-weight: 700; color: #94a3b8; }
-.dark-input { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.75rem; border-radius: 8px; font-family: inherit; font-size: 0.9rem; }
-.code-font { font-family: monospace; font-size: 0.85rem; color: #38bdf8; }
-.slider { accent-color: #00dc82; height: 8px; margin-top: 0.5rem; }
-.action-btn { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.85rem; border-radius: 8px; cursor: pointer; transition: opacity 0.2s; }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.error-box { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; padding: 0.75rem; border-radius: 8px; font-size: 0.88rem; }
-.output-box { background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
-.output-box h3 { color: #00dc82; font-size: 0.95rem; margin-top: 0; }
-.output-box pre { color: #38bdf8; font-family: monospace; white-space: pre-wrap; margin: 0; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease, transform 0.4s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
 </style>

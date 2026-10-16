@@ -12,7 +12,9 @@ export default defineEventHandler(async (event) => {
   if (isNaN(postId)) throw createError({ statusCode: 400, statusMessage: 'ID post non valido' })
 
   try {
-    const db = getDb()
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
+    if (!db) throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile' })
 
     // 1. Recupera i dettagli del post
     const [post] = await db.select().from(posts).where(eq(posts.id, postId))
@@ -33,6 +35,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error: any) {
+    if (error.statusCode) throw error
     throw createError({ statusCode: 500, statusMessage: error.message || 'Errore lettura post' })
   }
 })

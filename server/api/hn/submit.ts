@@ -1,12 +1,14 @@
-import { and, eq } from 'drizzle-orm'
-import { posts } from '~~/server/db/schema'
+// server/api/hn/submit.post.ts
+import { and, eq, sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+import { posts, users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
 
   if (method === 'POST') {
     const body = await readBody(event)
-    const { title, url } = body
+    const { title, url, userId, username } = body
 
     if (!title || title.trim() === '') {
       throw createError({
@@ -17,10 +19,17 @@ export default defineEventHandler(async (event) => {
 
     const cleanTitle = title.trim()
     const cleanUrl = url && url.trim() !== '' ? url.trim() : null
+    const targetUserId = userId ? Number(userId) : 1
+    const authorName = username || 'utente_neon'
+
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
+    if (!db) {
+      throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+    }
 
     // --- FILTRO ANTI-DUPLICATI PER I POST ---
     if (cleanUrl) {
-      // Se c'è un URL, controlla se quel link è già stato inserito
       const existingPostByUrl = await db
         .select()
         .from(posts)
@@ -34,7 +43,6 @@ export default defineEventHandler(async (event) => {
         })
       }
     } else {
-      // Se è un post di solo testo (Ask/Show HN), controlla il titolo identico
       const existingPostByTitle = await db
         .select()
         .from(posts)
@@ -50,16 +58,30 @@ export default defineEventHandler(async (event) => {
     }
     // ----------------------------------------
 
-    // Se passa i controlli, esegue l'inserimento reale
+    // Inserimento record nel DB Neon
     const newPost = await db.insert(posts).values({
       title: cleanTitle,
       url: cleanUrl,
+      author: authorName,
       createdAt: new Date()
     }).returning()
 
+    // GAMIFICATION v2.5-GOLD: +30 XP per la pubblicazione della notizia
+    const rewardXp = 30
+    await db.update(users)
+      .set({ xp: sql`COALESCE(xp, 0) + ${rewardXp}` })
+      .where(eq(users.id, targetUserId))
+
+    await db.insert(xpTransactions).values({
+      userId: targetUserId,
+      action: `Publish HN Post: ${cleanTitle.substring(0, 25)}`,
+      points: rewardXp
+    }).catch(() => {})
+
     return {
       success: true,
-      post: newPost[0]
+      post: newPost[0],
+      message: 'Post pubblicato con successo! +30 XP ⚡'
     }
   }
 

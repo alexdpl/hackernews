@@ -4,8 +4,8 @@ import { ref, computed } from 'vue'
 const currentYear = new Date().getFullYear()
 
 useDkpSeo({
-  title: 'Roadmap Ecosistema 2026 v2.5-BETA - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: Firewall Live SSE, Code Vault Blog Engine, API Key Management, AI Repo Scanner e Gamification XP.'
+  title: 'Roadmap Ecosistema 2026-2027 v2.5-GOLD - DevKernelPulse',
+  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: Firewall Live SSE, Code Vault, Proof of Code, AI Tools e Visione Futura 2027.'
 })
 
 interface RoadmapMilestone {
@@ -27,7 +27,7 @@ const milestones = ref<RoadmapMilestone[]>([
     version: 'v2.4-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Consolidamento completo dell area riservata Admin su 8 moduli unificati con rotte relative, eliminazione dei redirect e gestione dei cookie di sessione.',
+    description: 'Consolidamento completo dell area riservata Admin su moduli unificati con rotte relative, eliminazione dei redirect e gestione dei cookie di sessione.',
     features: [
       'Standardizzazione Navbar Admin Grid a 8 Moduli',
       'Persistenza Sessione Admin & Cookie dkp_session',
@@ -43,44 +43,105 @@ const milestones = ref<RoadmapMilestone[]>([
     version: 'v2.4-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Lancio ufficiale del motore AI Link & Repository Scanner con calcolo dello score (94/100), Rank Tier (S-Tier Gold), sistema di reward +250 XP e agente Pulse Nexus v2.4.',
+    description: 'Lancio ufficiale del motore AI Link & Repository Scanner con calcolo dello score, Rank Tier (S-Tier Gold), sistema di reward XP e agente Pulse Nexus.',
     features: [
       'AI Repo Scanner per audit GitHub & Stack Detection',
       'Sistema di Rank Reputazione DKP (S/A/B Tier)',
       'Roadmap automatica di miglioramento del codice con reward XP',
-      'Integrazione Agente Pulse Nexus v2.4 context-aware',
-      'Rilascio DKP CLI Toolkit v2.4-GOLD e restyling Guidelines'
+      'Integrazione Agente Pulse Nexus context-aware',
+      'Rilascio DKP CLI Toolkit v2.4 e restyling Guidelines'
     ]
   },
   {
     id: 'q3-2026',
     quarter: 'Q3 2026',
     phaseTitle: 'Firewall Live SSE, Code Vault Blog & Enterprise Security',
-    version: 'v2.5-BETA',
-    status: 'in-progress',
-    progress: 92,
-    description: 'Rilascio delle tecnologie di sicurezza in tempo reale con Firewall Live SSE, potenziamento del Blog Engine con Code Vault & Zen Mode, e gestione avanzata API Key.',
+    version: 'v2.5-GOLD',
+    status: 'completed',
+    progress: 100,
+    description: 'Rilascio delle tecnologie di sicurezza in tempo reale con Firewall Live SSE, potenziamento del Blog Engine con Code Vault & Zen Mode, e gestione API Key.',
     features: [
-      'Firewall di Sicurezza con streaming Live SSE (Server-Sent Events) (Completato)',
-      'Blog Engine Pro con Code Vault, Tabelle Markdown & Zen Mode Fullscreen (Completato)',
-      'API Key Management con Rate Limiting Nitro Enterprise (Completato)',
-      'Pipeline CI/CD con GitHub Actions e test E2E Playwright (Completato)',
-      'Stripe & PayPal Checkout per acquisto istantaneo licenze Shop (In Corso)'
+      'Firewall di Sicurezza con streaming Live SSE (Server-Sent Events)',
+      'Blog Engine Pro con Code Vault, Tabelle Markdown & Zen Mode Fullscreen',
+      'API Key Management con Rate Limiting Nitro Enterprise',
+      'Pipeline CI/CD con GitHub Actions e test E2E Playwright',
+      'Integrazione nativa delle transazioni XP su Neon DB Serverless'
     ]
   },
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'Ecosystem SDK & Multi-Tenant Cloud Federation',
-    version: 'v3.0-VISION',
-    status: 'upcoming',
-    progress: 15,
-    description: 'Rilascio dell SDK pubblico npm per consentire a sviluppatori terzi di integrare i microservizi DKP nelle proprie architetture SaaS.',
+    phaseTitle: 'Reingegnerizzazione Totale Tools v2.5 & Gamification Core',
+    version: 'v2.5-GOLD',
+    status: 'completed',
+    progress: 100,
+    description: 'Aggiornamento massiccio di tutti i tool della suite (AI Scanner, Neural Playground, Proof of Code Vault e Web Terminal) con integrazione Neon DB e Tailwind CSS.',
     features: [
-      'Rilascio pacchetto npm @devkernelpulse/sdk',
-      'Integrazione LLM Custom nel Neural Playground',
-      'Federazione Multi-Tenant per installazioni On-Premise',
-      'Leaderboard pubblica VIP Developers DKP basata su XP'
+      'Upgrade completo di tutti i tool alla v2.5-GOLD',
+      'Connessione nativa Proof of Code Vault con generazione hash SHA-256',
+      'Terminal Web Shell con comandi dinamici ed easter egg XP',
+      'Neural Playground multi-modello con risposte live',
+      'Pulizia completa e unificazione dei namespace API al singolare (/api/user/)'
+    ]
+  },
+  {
+    id: 'q1-2027',
+    quarter: 'Q1 2027',
+    phaseTitle: 'DKP Public SDK & Developer Ecosystem Expansion',
+    version: 'v3.0-BETA',
+    status: 'in-progress',
+    progress: 45,
+    description: ' Apertura dell ecosistema agli sviluppatori terzi con il rilascio del pacchetto npm ufficiale e librerie SDK per integrare i servizi DKP ovunque.',
+    features: [
+      'Rilascio pacchetto npm ufficiale @devkernelpulse/sdk',
+      'Documentazione interattiva API Hub v3 con playground live',
+      'Sistema di Webhook personalizzati per notifiche eventi Vault e Firewall',
+      'CLI Toolkit avanzata con comandi di sincronizzazione Cloud bidirezionale'
+    ]
+  },
+  {
+    id: 'q2-2027',
+    quarter: 'Q2 2027',
+    phaseTitle: 'Autonomous Neural Agents & Custom LLM Fine-Tuning',
+    version: 'v3.2',
+    status: 'upcoming',
+    progress: 10,
+    description: 'Evoluzione del Neural Playground in un agente autonomo in grado di correggere e applicare patch di sicurezza direttamente via pull request GitHub.',
+    features: [
+      'Integrazione di Agentic AI per fix automatici delle vulnerabilità SAST',
+      'Fine-tuning di modelli custom focalizzati su architetture Nuxt e Neon DB',
+      'Sandbox isolata in container WASM per l esecuzione sicura di codice untrusted',
+      'Dashboard predittiva per la stima del debito tecnico aziendale'
+    ]
+  },
+  {
+    id: 'q3-2027',
+    quarter: 'Q3 2027',
+    phaseTitle: 'Multi-Tenant Enterprise Cloud & On-Premise Federation',
+    version: 'v3.5-ENTERPRISE',
+    status: 'upcoming',
+    progress: 0,
+    description: 'Soluzione enterprise per grandi aziende che necessitano di installazioni isolate On-Premise o in Cloud privato con federazione dei dati.',
+    features: [
+      'Federazione Multi-Tenant per cluster Kubernetes isolati',
+      'Supporto a SSO Enterprise (SAML, Okta, Active Directory)',
+      'Storage di Vault crittografato con HSM (Hardware Security Module) dedicati',
+      'Compliance avanzata (GDPR, SOC2, ISO 27001)'
+    ]
+  },
+  {
+    id: 'q4-2027',
+    quarter: 'Q4 2027',
+    phaseTitle: 'Global VIP Developers Guild & Decentralized Reputation',
+    version: 'v4.0-VISION',
+    status: 'upcoming',
+    progress: 0,
+    description: 'Lancio della Leaderboard globale gamificata con premi in token di reputazione e community DAO per il governo delle future release di DevKernelPulse.',
+    features: [
+      'Classifica globale VIP Developers basata su XP verificati nel Vault',
+      'Rilascio di badge NFT crittografati per i contributori Open Source',
+      'Governance decentralizzata della community per votare le nuove feature',
+      'Hackathon globali annuali integrati nell ecosistema DKP'
     ]
   }
 ])
@@ -93,8 +154,10 @@ const filteredMilestones = computed(() => {
 })
 
 const overallCompletion = computed(() => {
-  const total = milestones.value.reduce((acc, m) => acc + m.progress, 0)
-  return Math.round(total / milestones.value.length)
+  const completedCount = milestones.value.filter(m => m.status === 'completed').length
+  const inProgressSum = milestones.value.filter(m => m.status === 'in-progress').reduce((acc, m) => acc + m.progress, 0)
+  const totalWeight = (completedCount * 100) + inProgressSum
+  return Math.round(totalWeight / milestones.value.length)
 })
 </script>
 
@@ -104,17 +167,17 @@ const overallCompletion = computed(() => {
     <!-- HERO HEADER -->
     <header class="roadmap-hero">
       <div class="hero-badge">
-        <span class="badge-status gold">🚀 DKP ECOSYSTEM ROADMAP 2026</span>
+        <span class="badge-status gold">🚀 DKP ECOSYSTEM ROADMAP 2026-2027</span>
       </div>
-      <h1>Piano di Sviluppo & <span class="highlight">Vision v2.5-BETA</span></h1>
+      <h1>Piano di Sviluppo & <span class="highlight">Vision v2.5-GOLD</span></h1>
       <p class="subtitle">
-        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA e rilasci dell ecosistema DevKernelPulse.
+        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, rilasci dell ecosistema DevKernelPulse e la nuova visione strategica per il 2027.
       </p>
 
       <!-- PROGRESS OVERALL METRIC -->
       <div class="overall-progress-card">
         <div class="progress-info">
-          <span>Stato Completamento Ecosistema 2026:</span>
+          <span>Stato Avanzamento Globale Ecosistema:</span>
           <strong class="progress-percent">{{ overallCompletion }}%</strong>
         </div>
         <div class="progress-bar-track">
@@ -127,9 +190,9 @@ const overallCompletion = computed(() => {
     <div class="controls-bar">
       <div class="filter-pills">
         <button type="button" @click="activeFilter = 'all'" class="pill" :class="{ active: activeFilter === 'all' }">Tutte le Fasi</button>
-        <button type="button" @click="activeFilter = 'completed'" class="pill" :class="{ active: activeFilter === 'completed' }">🟢 Completati</button>
-        <button type="button" @click="activeFilter = 'in-progress'" class="pill" :class="{ active: activeFilter === 'in-progress' }">⚡ In Corso</button>
-        <button type="button" @click="activeFilter = 'upcoming'" class="pill" :class="{ active: activeFilter === 'upcoming' }">🔮 In Arrivo</button>
+        <button type="button" @click="activeFilter = 'completed'" class="pill" :class="{ active: activeFilter === 'completed' }">🟢 Completati (2026)</button>
+        <button type="button" @click="activeFilter = 'in-progress'" class="pill" :class="{ active: activeFilter === 'in-progress' }">⚡ In Corso (2027)</button>
+        <button type="button" @click="activeFilter = 'upcoming'" class="pill" :class="{ active: activeFilter === 'upcoming' }">🔮 Visione Futura</button>
       </div>
     </div>
 
@@ -151,7 +214,7 @@ const overallCompletion = computed(() => {
             </div>
 
             <div class="status-badge" :class="item.status">
-              <template v-if="item.status === 'completed'">🟢 RAGGIUNTO (100%)</template>
+              <template v-if="item.status === 'completed'">🟢 COMPLETATO (100%)</template>
               <template v-else-if="item.status === 'in-progress'">⚡ IN CORSO ({{ item.progress }}%)</template>
               <template v-else>🔮 IN ARRIVO</template>
             </div>
@@ -327,6 +390,7 @@ const overallCompletion = computed(() => {
 
 .timeline-item.completed .marker-dot { border-color: #00dc82; background: #00dc82; box-shadow: 0 0 12px #00dc82; }
 .timeline-item.in-progress .marker-dot { border-color: #facc15; background: #facc15; box-shadow: 0 0 12px #facc15; }
+.timeline-item.upcoming .marker-dot { border-color: #38bdf8; background: #38bdf8; box-shadow: 0 0 12px #38bdf8; }
 
 /* MILESTONE CARD */
 .milestone-card {
@@ -371,8 +435,8 @@ const overallCompletion = computed(() => {
 }
 
 .status-badge.completed { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: finup; color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
-.status-badge.upcoming { background: rgba(148, 163, 184, 0.12); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
+.status-badge.upcoming { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
 
 .milestone-title { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.6rem 0; color: #ffffff; }
 .milestone-desc { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.25rem; }

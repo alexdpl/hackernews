@@ -112,7 +112,7 @@ const scrollToBottom = async () => {
 }
 
 const handleSend = async () => {
-  if (!inputQuery.value.trim() || isTyping.value || !isLogged.value) return
+  if (!inputQuery.value.trim() || isTyping.value) return // Rimosso !isLogged.value per consentire sempre l'invio
 
   const userText = inputQuery.value.trim()
   const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })

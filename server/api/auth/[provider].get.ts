@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
       email: 'alexdpl@gmail.com',
       role: 'admin',
       avatar: 'https://github.com/alexdpl.png',
-      bio: 'Lead Architect & Core Creator of DevKernelPulse',
+      bio: 'Lead Engineer Architect & Core Creator of DevKernelPulse',
       reputation: 9999,
       xp: 9999,
       authenticated: true

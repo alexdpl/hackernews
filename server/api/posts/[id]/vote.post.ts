@@ -1,14 +1,11 @@
 // server/api/posts/[id]/vote.post.ts
-import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { eq, sql } from 'drizzle-orm'
-
-// Relative imports per struttura Nuxt 4
 import { getDb } from '~~/server/utils/db'
-import { posts } from '~~/server/db/schema'
+import { posts, users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   try {
-    // 1. Estrazione e validazione ID post
     const rawId = getRouterParam(event, 'id')
     const postId = Number(rawId)
 
@@ -19,9 +16,16 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    const db = getDb()
+    const body = await readBody(event).catch(() => ({}))
+    const userId = body?.userId ? Number(body.userId) : 1 // Fallback utente default
 
-    // 2. Incremento atomico dei punti (+1) con clausola returning
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
+    if (!db) {
+      throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+    }
+
+    // 1. Incremento atomico dei punti del post (+1)
     const updatedPost = await db
       .update(posts)
       .set({
@@ -37,10 +41,22 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // 2. GAMIFICATION v2.5-GOLD: Assegniamo +5 XP per il voto al post
+    const rewardXp = 5
+    await db.update(users)
+      .set({ xp: sql`COALESCE(xp, 0) + ${rewardXp}` })
+      .where(sql`id = ${userId}`)
+
+    await db.insert(xpTransactions).values({
+      userId: userId,
+      action: `Vote Post ID #${postId}`,
+      points: rewardXp
+    })
+
     return {
       success: true,
       points: updatedPost[0].points,
-      message: 'Voto registrato con successo.'
+      message: 'Voto registrato con successo! +5 XP ⚡'
     }
 
   } catch (error: any) {

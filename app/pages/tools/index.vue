@@ -1,11 +1,9 @@
-<!-- app/pages/tools.vue -->
+<!-- app/pages/tools/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-const currentYear = new Date().getFullYear()
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 useDkpSeo({
-  title: 'Toolkit & Developer Tools v2.5-BETA - DevKernelPulse',
+  title: 'Toolkit & Developer Tools v2.5-GOLD - DevKernelPulse',
   description: 'Suite ufficiale di strumenti professionali DKP: Neural Playground, AI Repo Scanner, Code Vault, CLI Toolkit e API Management.'
 })
 
@@ -24,105 +22,104 @@ interface DkpTool {
   isExternal?: boolean
 }
 
-// Qui ho ricostruito l'elenco ESATTO partendo dal tuo menu a tendina + le nuove aggiunte
 const toolsList = ref<DkpTool[]>([
   {
     id: 'ai-repo-scanner',
     title: 'AI Repository Scanner',
     category: 'Code Quality & AI',
-    version: 'v2.4-GOLD',
+    version: 'v2.5-GOLD',
     status: 'active',
     icon: '🤖',
-    description: 'Analizza repository GitHub con intelligenza artificiale. Estrae lo stack tecnologico e calcola il Reputation Score (S-Tier).',
+    description: 'Analizza repository GitHub con intelligenza artificiale. Estrae lo stack tecnologico reale, calcola il Reputation Score e assegna XP sul DB.',
     features: [
       'Audit automatico dello stack tecnologico',
-      'Calcolo Reputation Score (fino a 100/100)',
-      'Sistema di reward XP per gli sviluppatori'
+      'Calcolo Reputation Score dinamico',
+      'Sistema di reward XP integrato in Neon DB'
     ],
     badgeText: 'S-TIER RANK',
     linkText: 'Analizza Repository',
-    route: '/ai-repo-scanner'
+    route: '/tools/ai-repo-scanner'
   },
   {
     id: 'neural-playground',
     title: 'Neural Playground',
     category: 'Code Quality & AI',
-    version: 'v2.3',
+    version: 'v2.5-GOLD',
     status: 'active',
     icon: '🧠',
     description: 'Ambiente di testing avanzato per Prompt Engineering e interazione diretta con i Modelli IA (LLM) configurati nel sistema.',
     features: [
       'Interfaccia chat multi-modello',
-      'Tuning dei parametri (Temperature, Top-P)',
-      'Salvataggio storico prompt'
+      'Tuning dei parametri (Temperature, Max Tokens)',
+      'Notarizzazione istantanea degli output nel Vault'
     ],
     badgeText: 'AI TESTING',
     linkText: 'Apri Playground',
-    route: '/tools/neural-playground' // Adegua questa rotta se diversa
+    route: '/tools/neural-playground'
   },
   {
     id: 'terminal-web-shell',
     title: 'Terminal Web Shell',
     category: 'DevOps & CLI',
-    version: 'v2.3',
+    version: 'v2.5-GOLD',
     status: 'active',
     icon: '💻',
-    description: 'Shell CLI direttamente in-browser per gestire i servizi, avviare task e testare l\'SDK DKP senza uscire dalla piattaforma.',
+    description: 'Shell CLI direttamente in-browser per gestire i servizi, avviare comandi di sistema e testare l\'SDK DKP con gamification.',
     features: [
-      'Esecuzione comandi DKP CLI nativi',
-      'Integrazione diretta con l\'SDK',
-      'Output colorato e persistenza sessione'
+      'Esecuzione comandi DKP OS nativi',
+      'Integrazione con Neon DB e PING reale',
+      'Output colorato e sblocco di comandi segreti'
     ],
     badgeText: 'IN-BROWSER',
     linkText: 'Avvia Terminale',
-    route: '/tools/terminal' // Adegua questa rotta se diversa
+    route: '/tools/terminal'
   },
   {
     id: 'ai-code-scanner',
     title: 'AI Code Scanner Pro',
     category: 'Security & Monitoring',
-    version: 'v2.3 Pro',
+    version: 'v2.5-GOLD',
     status: 'enterprise',
     icon: '🔍',
-    description: 'Audit statico e analisi delle vulnerabilità assistita da IA. Trova bug, leak di token e pattern insicuri nel codice sorgente.',
+    description: 'Audit statico e analisi delle vulnerabilità assistita da IA. Trova bug, leak di token e pattern insicuri negli snippet di codice.',
     features: [
-      'Analisi statica SAST (Static Application Security Testing)',
-      'Identificazione API Key esposte',
-      'Suggerimenti di fix generati dall\'IA'
+      'Analisi statica SAST server-side',
+      'Identificazione API Key esposte e SQL Injection',
+      'Integrazione diretta con il Proof-of-Code Vault'
     ],
     badgeText: 'PRO SECURITY',
     linkText: 'Scansiona Codice',
-    route: '/tools/ai-scanner' // Adegua questa rotta se diversa
+    route: '/tools/ai-scanner'
   },
   {
     id: 'proof-of-code',
     title: 'Proof of Code (Vault)',
     category: 'Security & Monitoring',
-    version: 'v2.3',
+    version: 'v2.5-GOLD',
     status: 'active',
     icon: '🛡️',
-    description: 'Sistema di notarizzazione per snippet di codice. Genera un hash crittografico per dimostrare la paternità e l\'integrità del tuo lavoro.',
+    description: 'Sistema di notarizzazione per snippet di codice. Genera un hash crittografico SHA-256 e salva l\'impronta su Neon DB.',
     features: [
       'Hashing SHA-256 degli snippet sorgente',
-      'Timestamp inalterabile di registrazione',
-      'Certificato di validità condivisibile'
+      'Timestamp inalterabile di registrazione in Cloud',
+      'Certificato di validità condivisibile nella dashboard'
     ],
     badgeText: 'CRYPTO VAULT',
     linkText: 'Apri Vault',
-    route: '/tools/proof-of-code' // Adegua questa rotta se diversa
+    route: '/tools/proof-of-code'
   },
   {
     id: 'code-vault-editor',
     title: 'Code Vault Blog Editor',
     category: 'Content Creation',
-    version: 'v2.5-BETA',
+    version: 'v2.5-GOLD',
     status: 'active',
     icon: '✍️',
-    description: 'Il nuovo Editor Markdown professionale (aggiornato v2.5) con supporto per tabelle HTML, toolbar stile Docs e Zen Mode Fullscreen.',
+    description: 'Editor Markdown professionale con supporto per tabelle HTML, toolbar stile Docs e Zen Mode Fullscreen collegato al DB.',
     features: [
-      'Zen Mode a tutto schermo per scrittura',
-      'Mini-parser avanzato tabelle/HTML',
-      'Integrazione Sentinel AI per l\'approvazione'
+      'Zen Mode a tutto schermo per la scrittura',
+      'Mini-parser avanzato tabelle e tag',
+      'Salvataggio bozze e pubblicazione diretta'
     ],
     badgeText: 'NEW EDITOR',
     linkText: 'Scrivi Articolo',
@@ -132,31 +129,31 @@ const toolsList = ref<DkpTool[]>([
     id: 'api-management',
     title: 'API Key Management',
     category: 'Developer Services',
-    version: 'v2.4-Gold',
+    version: 'v2.5-GOLD',
     status: 'enterprise',
     icon: '🔑',
     description: 'Gestione granulare delle chiavi API personali con Rate Limiting Nitro integrato. Crea e revoca token in modo sicuro.',
     features: [
       'Generazione token crittografati',
       'Rate Limiting configurabile',
-      'Statistiche e metriche d\'uso'
+      'Statistiche e metriche d\'uso in tempo reale'
     ],
     badgeText: 'NITRO ENGINE',
     linkText: 'Gestisci API Keys',
-    route: '/user/dashboard?tab=api' // Rotta esatta verso il pannello utente
+    route: '/user/dashboard?tab=api'
   },
   {
     id: 'dkp-cli-toolkit',
     title: 'DKP CLI Toolkit',
     category: 'DevOps & CLI',
-    version: 'v2.4-Gold',
+    version: 'v2.5-GOLD',
     status: 'active',
     icon: '⚡',
-    description: 'Strumento a riga di comando per gestire il deploy rapido, la migrazione dei DB Neon e la pulizia della cache di PM2 direttamente da terminale.',
+    description: 'Strumento a riga di comando per gestire il deploy rapido, la migrazione dei DB Neon e l\'interazione remota con le API DKP.',
     features: [
-      'Velocizzare i processi DevOps e CI/CD',
-      'Fornisce agli sviluppatori comandi diretti ',
-      'Semplifica migrazione dei DB Neon (es. db:push) ' 
+      'Emulazione CLI interattiva avanzata',
+      'Comandi diretti per audit remoti di repo',
+      'Semplifica la notarizzazione via Cloud'
     ],
     badgeText: 'CLI TOOLKIT',
     linkText: 'Apri CLI Toolkit',
@@ -185,7 +182,7 @@ const filteredTools = computed(() => {
       <div class="hero-badge">
         <span class="badge-status gold">🛠️ DKP DEVELOPER ECOSYSTEM SUITE</span>
       </div>
-      <h1>Strumenti Professionali & <span class="highlight">Utility v2.5-BETA</span></h1>
+      <h1>Strumenti Professionali & <span class="highlight">Utility v2.5-GOLD</span></h1>
       <p class="subtitle">
         Una suite integrata di strumenti avanzati per l'audit del codice, AI testing, gestione API e creazione contenuti.
       </p>

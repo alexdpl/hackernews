@@ -1,13 +1,11 @@
 // server/api/posts/[id]/comments.post.ts
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
-
-// Relative imports per struttura Nuxt 4 (root /server/)
+import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { comments } from '~~/server/db/schema'
+import { comments, users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   try {
-    // 1. Validazione ID Post
     const rawId = getRouterParam(event, 'id')
     const postId = Number(rawId)
 
@@ -18,7 +16,6 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 2. Lettura e validazione Body
     const body = await readBody(event)
 
     if (!body?.content || typeof body.content !== 'string' || !body.content.trim()) {
@@ -32,13 +29,18 @@ export default defineEventHandler(async (event) => {
       ? body.author.trim()
       : 'utente_anonimo'
 
+    const userId = body.userId ? Number(body.userId) : null
     const parentId = body.parentId && !isNaN(Number(body.parentId))
       ? Number(body.parentId)
       : null
 
-    const db = getDb()
+    // Correzione v2.5-GOLD: getDb() è asincrono
+    const db = await getDb()
+    if (!db) {
+      throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+    }
 
-    // 3. Inserimento commento nel database Neon
+    // 1. Inserimento commento
     const inserted = await db
       .insert(comments)
       .values({
@@ -56,10 +58,24 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 4. Risposta di successo
+    // 2. GAMIFICATION v2.5-GOLD: Se l'utente è loggato, diamo +10 XP per la partecipazione attiva
+    if (userId) {
+      const rewardXp = 10
+      await db.update(users)
+        .set({ xp: sql`COALESCE(xp, 0) + ${rewardXp}` })
+        .where(sql`id = ${userId}`)
+
+      await db.insert(xpTransactions).values({
+        userId: userId,
+        action: `Comment on Post ID #${postId}`,
+        points: rewardXp
+      })
+    }
+
     return {
       success: true,
-      data: inserted[0]
+      data: inserted[0],
+      message: 'Commento pubblicato! +10 XP guadagnati ✨'
     }
 
   } catch (error: any) {
