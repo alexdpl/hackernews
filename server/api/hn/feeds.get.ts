@@ -1,4 +1,4 @@
-// server/api/hn/feed.ts
+// server/api/hn/feeds.get.ts
 import { $fetch } from 'ofetch'
 
 const BASE_URL = 'https://hacker-news.firebaseio.com/v0'
@@ -21,11 +21,34 @@ const feedUrls: Record<keyof typeof feedsInfo, string> = {
   news: 'topstories',
 }
 
+// Funzione interna autonoma per evitare errori di risoluzione moduli di Rollup
+async function fetchHNItem(id: string) {
+  try {
+    const item: any = await $fetch(`${BASE_URL}/item/${id}.json`)
+    if (!item) return null
+    const kidsArray = item.kids ? Object.values(item.kids) : []
+    return {
+      id: item.id,
+      user: item.by || 'anonymous',
+      points: item.score || 0,
+      time: item.time,
+      content: item.text || '',
+      url: item.url || '',
+      type: item.type || 'story',
+      title: item.title || 'Untitled',
+      comments_count: kidsArray.length,
+      comments: []
+    }
+  } catch {
+    return null
+  }
+}
+
 async function fetchFeed(feed: keyof typeof feedsInfo, page = '1') {
-  const { fetchItem } = await import('./item')
   const response = await $fetch<number[]>(`${BASE_URL}/${feedUrls[feed]}.json`)
   const entries = (response || []).slice((Number(page) - 1) * 10, Number(page) * 10).map(String)
-  return Promise.all(entries.map(id => fetchItem(id)))
+  const results = await Promise.all(entries.map(id => fetchHNItem(id)))
+  return results.filter(Boolean)
 }
 
 export default defineCachedEventHandler((event) => {
@@ -42,7 +65,7 @@ export default defineCachedEventHandler((event) => {
 
   return fetchFeed(feed, page)
 }, {
-  name: 'api/hn-feed',
+  name: 'api/hn-feeds',
   getKey(event) {
     const query = getQuery(event)
     const page = query.page || '1'

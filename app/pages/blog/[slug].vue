@@ -362,6 +362,8 @@ function handleLike() {
             <SocialShare :title="post.title" :url="currentUrl" :horizontal="true" />
           </div>
         </div>
+		<!-- INCASTRA QUI IL COMPONENTI COMMENTI PULSE v2.5-GOLD -->
+    <DKPBlogComments :blogSlug="post.slug" />
       </article>
     </div>
   </div>

@@ -1,7 +1,9 @@
 // server/api/admin/crawler/run-all.post.ts
+import { runEngineNews, runEngineAsk, runEngineShow, runEngineJobs } from '~~/server/utils/crawlerEngines'
+
 export default defineEventHandler(async (event) => {
   try {
-    console.log('🤖 Avvio sincronizzazione multi-engine DKP v2.4...')
+    console.log('🤖 Avvio sincronizzazione multi-engine DKP v2.5-GOLD...')
 
     const results = await Promise.all([
       runEngineNews(),

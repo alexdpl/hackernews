@@ -41,7 +41,7 @@
           title="Accendi Kernel (+5 XP)"
         >
           <span class="vote-icon">▲</span>
-          <span class="vote-count">{{ post.likes || 0 }}</span>
+          <span class="vote-count">{{ post.points || 0 }}</span>
         </button>
 
         <!-- CONTENUTO NOTIZIA -->
@@ -49,37 +49,22 @@
           <div class="story-main">
             <span class="story-index">{{ (currentPage - 1) * itemsPerPage + index + 1 }}.</span>
             
-            <!-- 🟢 IL FIX DEL PROBLEMA 1: NUXTLINK INTERNO CON SLUG O ID -->
-            <NuxtLink :to="`/blog/${post.slug || post.id}`" class="story-title group-hover:text-emerald-400 transition-colors">
+            <a :href="post.url" target="_blank" class="story-title group-hover:text-emerald-400 transition-colors">
               {{ post.title }}
-            </NuxtLink>
+            </a>
 
-            <span class="story-category-badge">
-              {{ post.categoryName || post.category || 'Generale' }}
+            <span v-if="post.domain" class="story-category-badge">
+              {{ post.domain }}
             </span>
           </div>
 
           <!-- METADATI (Autore, tempo, verificabilità, XP) -->
           <div class="story-meta mt-1">
-            <span>By <strong class="author-tag">@{{ post.authorName || 'DevKernelPulse' }}</strong></span>
+            <span>By <strong class="author-tag">@{{ post.author || 'community' }}</strong></span>
             <span class="meta-dot">•</span>
-            <span class="time-tag">⏱️ {{ formatTime(post.createdAt || post.date) }}</span>
+            <span class="time-tag">⏱️ {{ formatTime(post.created_at) }}</span>
             <span class="meta-dot">•</span>
-            <span class="views-tag">👁️ {{ post.views || 0 }} views</span>
-            
-            <template v-if="post.tags && post.tags.length > 0">
-              <span class="meta-dot">•</span>
-              <span class="tags-preview">
-                <span v-for="tag in post.tags.slice(0, 2)" :key="tag" class="text-sky-400 font-mono text-[0.65rem] bg-[#020420] px-1.5 py-0.5 rounded border border-slate-700 mr-1">#{{ tag }}</span>
-              </span>
-            </template>
-
-            <template v-if="post.isVerified">
-              <span class="meta-dot">•</span>
-              <span class="verify-tag text-emerald-400 font-bold flex items-center gap-1">
-                🛡️ Vault Verified
-              </span>
-            </template>
+            <span class="views-tag">⚡ {{ post.xp_awarded || 15 }} XP</span>
           </div>
         </div>
       </article>
@@ -111,8 +96,8 @@
     <!-- EMPTY STATE FALLBACK -->
     <div v-else class="empty-feed">
       <div class="text-4xl mb-4">📭</div>
-      <p>Nessun contenuto trovato nel Vault per questa sezione.</p>
-      <NuxtLink to="/user/dashboard?tab=content" class="submit-btn-inline mt-4 inline-block">Sii il primo a pubblicare un articolo!</NuxtLink>
+      <p>Nessun contenuto trovato nel Vault per questa sezione. Esegui il Crawler dal pannello Admin!</p>
+      <NuxtLink to="/admin/crawler" class="submit-btn-inline mt-4 inline-block">Vai al Crawler Admin 🤖</NuxtLink>
     </div>
 
   </div>
@@ -125,7 +110,7 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 
-// 1. Riconoscimento Dinamico Categoria (Per header dinamico)
+// 1. Riconoscimento Dinamico Categoria
 const currentCategory = computed(() => {
   const qType = route.query.type?.toString().toLowerCase()
   const path = route.path.toLowerCase()
@@ -155,35 +140,25 @@ useHead({
   meta: [ { name: 'description', content: headerInfo.value.subtitle } ]
 })
 
-// 3. 🟢 FETCH DIRETTO DAL NUOVO NEON DB (L'API dei Post Blog)
-const { data: apiResponse, pending } = await useFetch('/api/blog/posts')
-
-const allPosts = computed(() => {
-  const raw = (apiResponse.value as any)?.success ? (apiResponse.value as any).data : apiResponse.value;
-  return Array.isArray(raw) ? raw : []
-})
-
-// Filtriamo per non mostrare le bozze e per ordinare dal più recente
-const feedPosts = computed(() => {
-  let published = allPosts.value.filter((p: any) => p.status !== 'draft')
-  // Ordine cronologico decrescente
-  published.sort((a: any, b: any) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
-  return published
-})
-
-// 4. LOGICA DI PAGINAZIONE LOCALE
-const itemsPerPage = 15
+// Paginazione dalla query
 const currentPage = computed(() => {
   const p = parseInt(route.query.page as string)
   return isNaN(p) || p < 1 ? 1 : p
 })
 
-const totalPages = computed(() => Math.ceil(feedPosts.value.length / itemsPerPage) || 1)
-
-const paginatedPosts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return feedPosts.value.slice(start, start + itemsPerPage)
+// 3. 🟢 FETCH CORRETTO DAL NUOVO ENDPOINT PULSE STORIES (Tabella pulse_stories)
+const { data: apiResponse, pending, refresh } = await useFetch('/api/pulse/stories', {
+  query: {
+    type: currentCategory,
+    page: currentPage
+  },
+  watch: [currentCategory, currentPage]
 })
+
+const paginatedPosts = computed(() => (apiResponse.value as any)?.stories || [])
+const paginationMeta = computed(() => (apiResponse.value as any)?.pagination || { totalPages: 1 })
+const totalPages = computed(() => paginationMeta.value.totalPages || 1)
+const itemsPerPage = 15
 
 // Cambio pagina con scroll
 function changePage(newPage: number) {
@@ -195,14 +170,18 @@ function changePage(newPage: number) {
   }
 }
 
-// Logica Voto Reattiva (Gamification)
-const voteStory = (post: any) => {
-  if (post.voted) {
-    post.likes = (post.likes || 1) - 1
-    post.voted = false
-  } else {
-    post.likes = (post.likes || 0) + 1
-    post.voted = true
+// Logica Voto Reattiva
+const voteStory = async (post: any) => {
+  try {
+    const res: any = await $fetch('/api/pulse/vote', {
+      method: 'POST',
+      body: { storyId: post.id, userId: 1 }
+    })
+    if (res?.success) {
+      refresh()
+    }
+  } catch {
+    // Gestione errore voto
   }
 }
 
@@ -249,13 +228,13 @@ function formatTime(dateStr: string | undefined): string {
 .story-main { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .story-index { font-size: 0.85rem; color: #64748b; font-weight: 700; }
 .story-title { color: #f8fafc; font-size: 1.05rem; font-weight: 700; text-decoration: none; line-height: 1.3; }
+.story-title:hover { color: #00dc82; }
 .story-category-badge { font-size: 0.65rem; text-transform: uppercase; font-weight: 800; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 0.15rem 0.4rem; border-radius: 4px; letter-spacing: 0.05em; }
 
 .story-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .author-tag { color: #cbd5e1; font-weight: 600; }
 .meta-dot { color: #334155; }
 .views-tag { color: #94a3b8; }
-.verify-tag { font-size: 0.7rem; background: rgba(0,220,130,0.1); padding: 0.1rem 0.4rem; border-radius: 4px; border: 1px solid rgba(0,220,130,0.2); }
 
 .pagination-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #1e293b; }
 .page-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 700; padding: 0.55rem 1.1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }

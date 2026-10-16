@@ -1,6 +1,6 @@
-<!-- app/components/DKPKernelBadge.vue -->
+// app/components/DKPKernelBadge.vue
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed, isRef } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -8,6 +8,29 @@ const loadTime = ref<string>('0ms')
 const dbLatency = ref<number>(18)
 const isOpen = ref<boolean>(false)
 const isMeasuring = ref<boolean>(false)
+
+// Recupero dati utente reali tramite useFetch o useAuthCore
+const auth = useAuthCore() || {}
+
+const currentUser = computed(() => {
+  if (isRef(auth.user)) return auth.user.value
+  return auth.user || null
+})
+
+// Chiamata di fallback sicura all'API utente se l'auth store locale non ha ancora gli XP in chiaro
+const { data: userProfile } = await useFetch('/api/user/profile', {
+  // Esegue il fetch solo se l'utente loggato non ha già gli XP valorizzati
+  immediate: !currentUser.value?.xp
+})
+
+// Valori reali dinamici con fallback a 0 se l'utente non è autenticato o è nuovo
+const userXp = computed(() => {
+  return currentUser.value?.xp ?? userProfile.value?.user?.xp ?? 0
+})
+
+const userLevel = computed(() => {
+  return currentUser.value?.level ?? userProfile.value?.user?.level ?? 1
+})
 
 // Calcolo tempo di idratazione e rendering pagina
 function measurePerformance() {
@@ -37,76 +60,81 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dkp-badge-wrapper">
+  <div class="dkp-badge-wrapper fixed bottom-0 left-1/2 -translate-x-1/2 z-[99999] font-mono">
     <!-- TAB DOCKED FLUSH AL BORDO INFERIORE -->
     <button 
       @click="isOpen = !isOpen" 
-      class="dkp-badge-pill" 
+      class="dkp-badge-pill flex items-center gap-2.5 bg-slate-950/95 backdrop-blur-md border border-sky-400/30 border-b-0 px-3.5 py-1.5 rounded-t-xl text-slate-100 cursor-pointer shadow-2xl transition-all duration-300 hover:border-sky-400 hover:-translate-y-0.5"
       :class="{ active: isOpen, measuring: isMeasuring }"
-      title="DKP Kernel Telemetry v2.4-GOLD — Clicca per espandere"
+      title="DKP Kernel Telemetry v2.5-GOLD — Clicca per espandere"
     >
       <!-- LOGO DKP 3 FOGLI VERDI NEON (SVG NATIVO) -->
-      <svg class="dkp-logo-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg class="dkp-logo-svg w-4 h-4 filter drop-shadow-[0_0_4px_rgba(0,220,130,0.6)] transition-all" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M6 10L16 4L26 10L16 16L6 10Z" fill="#00DC82" fill-opacity="0.9" />
         <path d="M6 16L16 10L26 16L16 22L6 16Z" fill="#00DC82" fill-opacity="0.6" />
         <path d="M6 22L16 16L26 22L16 28L6 22Z" fill="#00DC82" fill-opacity="0.3" />
       </svg>
 
-      <span class="badge-divider">|</span>
+      <span class="badge-divider text-slate-700 text-xs">|</span>
 
       <!-- TEMPO DI CARICAMENTO -->
-      <span class="metrics-time">{{ loadTime }}</span>
+      <span class="metrics-time text-xs font-bold text-slate-200">{{ loadTime }}</span>
 
-      <span class="badge-divider">|</span>
+      <span class="badge-divider text-slate-700 text-xs">|</span>
 
       <!-- LUCINA AZZURRA CIANO KERNEL PULSANTE -->
-      <div class="cyan-led-container">
-        <span class="cyan-led"></span>
-        <span class="cyan-led-ring"></span>
+      <div class="cyan-led-container relative w-2 h-2 flex items-center justify-center">
+        <span class="cyan-led w-1.5 h-1.5 bg-sky-400 rounded-full shadow-[0_0_8px_#38bdf8]"></span>
+        <span class="cyan-led-ring absolute w-3 h-3 border border-sky-400 rounded-full animate-ping opacity-60"></span>
       </div>
     </button>
 
     <!-- TELEMETRY DRAWER MODAL -->
     <Transition name="drawer-fade">
-      <div v-if="isOpen" class="dkp-telemetry-drawer">
-        <div class="drawer-header">
-          <div class="title-box">
-            <span class="brand-title">DEV KERNEL PULSE</span>
-            <span class="version-tag">v2.4-GOLD</span>
+      <div v-if="isOpen" class="dkp-telemetry-drawer absolute bottom-11 left-1/2 -translate-x-1/2 w-[340px] bg-[#090d16] border border-sky-400/60 rounded-xl shadow-[0_-10px_35px_rgba(0,0,0,0.85)] p-4 overflow-hidden">
+        <div class="drawer-header flex justify-between items-center border-b border-slate-800 pb-2 mb-3">
+          <div class="title-box flex items-center gap-2">
+            <span class="brand-title text-xs font-extrabold text-white tracking-wide">DEV KERNEL PULSE</span>
+            <span class="version-tag text-[10px] text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded font-bold border border-emerald-500/30">v2.5-GOLD</span>
           </div>
-          <button @click="isOpen = false" class="close-btn" title="Chiudi">✕</button>
+          <button @click="isOpen = false" class="close-btn text-slate-400 hover:text-red-400 text-xs font-bold cursor-pointer">✕</button>
         </div>
 
-        <div class="drawer-content">
-          <div class="metric-row">
-            <span class="label">⚡ Page Hydration:</span>
-            <span class="value text-neon">{{ loadTime }}</span>
+        <div class="drawer-content flex flex-col gap-2.5 text-xs">
+          <!-- WIDGET LIVE XP & GAMIFICATION -->
+          <div class="metric-row flex justify-between items-center p-2.5 bg-emerald-950/30 border border-emerald-500/30 rounded-lg">
+            <span class="label text-emerald-300 font-semibold flex items-center gap-1.5">🎮 DKP Gamification:</span>
+            <span class="value text-emerald-400 font-bold font-mono">{{ userXp }} XP <span class="text-[10px] text-slate-400">(Lv. {{ userLevel }})</span></span>
           </div>
 
-          <div class="metric-row">
-            <span class="label">🗄️ Neon DB Latency:</span>
-            <span class="value text-cyan">{{ dbLatency }}ms</span>
+          <div class="metric-row flex justify-between items-center">
+            <span class="label text-slate-400">⚡ Page Hydration:</span>
+            <span class="value text-emerald-400 font-bold">{{ loadTime }}</span>
           </div>
 
-          <!-- NUOVE METRICHE ENTERPRISE V2.4-GOLD -->
-          <div class="metric-row">
-            <span class="label">🤖 api.devkernelpulse.org:</span>
-            <span class="value status-ai">SENTINEL ACTIVE</span>
+          <div class="metric-row flex justify-between items-center">
+            <span class="label text-slate-400">🗄️ Neon DB Latency:</span>
+            <span class="value text-sky-400 font-bold">{{ dbLatency }}ms</span>
           </div>
 
-          <div class="metric-row">
-            <span class="label">📧 mail.devkernelpulse.org:</span>
-            <span class="value status-online">NEXUS ONLINE</span>
+          <div class="metric-row flex justify-between items-center">
+            <span class="label text-slate-400">🤖 api.devkernelpulse.org:</span>
+            <span class="value text-purple-400 bg-purple-500/15 border border-purple-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">SENTINEL ACTIVE</span>
           </div>
 
-          <div class="metric-row">
-            <span class="label">🛡️️ Cloudflare Edge:</span>
-            <span class="value status-secure">ENCRYPTED</span>
+          <div class="metric-row flex justify-between items-center">
+            <span class="label text-slate-400">📧 mail.devkernelpulse.org:</span>
+            <span class="value text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">NEXUS ONLINE</span>
           </div>
 
-          <div class="drawer-footer">
-            <span class="footer-note">Built with ❤️ by Alessandro De Paola & Gemini AI</span>
-            <div class="sub-footer">Managed by Pulse Sentinel AI Architecture</div>
+          <div class="metric-row flex justify-between items-center">
+            <span class="label text-slate-400">🛡️ Cloudflare Edge:</span>
+            <span class="value text-sky-400 bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">ENCRYPTED</span>
+          </div>
+
+          <div class="drawer-footer mt-2 border-t border-slate-800 pt-2 text-center">
+            <span class="footer-note text-[10px] text-slate-500 block">Built with ❤️ by Alessandro De Paola & Gemini AI</span>
+            <span class="sub-footer text-[9px] text-purple-400 italic block mt-0.5">Managed by Pulse Sentinel AI Architecture v2.5</span>
           </div>
         </div>
       </div>
@@ -115,191 +143,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* POSIZIONAMENTO AGGANCIATO AL BORDO FINE PAGINA */
-.dkp-badge-wrapper {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 99999;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-/* TAB FLUSH STYLE DOCKED */
-.dkp-badge-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  background: rgba(9, 13, 22, 0.94);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  border-bottom: none;
-  padding: 0.35rem 0.85rem;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  color: #f8fafc;
-  cursor: pointer;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.7);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* EFFETTO BRILLANTEZZA BLU KERNEL (#38bdf8) AL PASSAGGIO DEL MOUSE */
-.dkp-badge-pill:hover, .dkp-badge-pill.active {
-  border-color: #38bdf8;
-  background: rgba(2, 4, 32, 0.98);
-  box-shadow: 0 -4px 22px rgba(56, 189, 248, 0.45);
-  transform: translateY(-2px);
-}
-
-.dkp-logo-svg {
-  width: 17px;
-  height: 17px;
-  filter: drop-shadow(0 0 4px rgba(0, 220, 130, 0.6));
-  transition: filter 0.2s ease;
-}
-
-.dkp-badge-pill:hover .dkp-logo-svg {
-  filter: drop-shadow(0 0 6px #38bdf8);
-}
-
-.badge-divider {
-  color: #334155;
-  font-size: 0.75rem;
-}
-
-.metrics-time {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #e2e8f0;
-  letter-spacing: -0.2px;
-  transition: color 0.2s;
-}
-
-.dkp-badge-pill:hover .metrics-time {
-  color: #38bdf8;
-}
-
-/* LUCINA AZZURRA CIANO KERNEL */
-.cyan-led-container {
-  position: relative;
-  width: 9px;
-  height: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cyan-led {
-  width: 7px;
-  height: 7px;
-  background-color: #38bdf8;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #38bdf8;
-}
-
-.cyan-led-ring {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 1px solid #38bdf8;
-  border-radius: 50%;
-  animation: led-pulse 2s infinite;
-  opacity: 0.6;
-}
-
-@keyframes led-pulse {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  50% { transform: scale(1.4); opacity: 0; }
-  100% { transform: scale(0.8); opacity: 0; }
-}
-
-/* TELEMETRY DRAWER MODAL */
-.dkp-telemetry-drawer {
-  position: absolute;
-  bottom: 2.8rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 330px;
-  background: #090d16;
-  border: 1px solid #38bdf8;
-  border-radius: 12px;
-  box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.85), 0 0 15px rgba(56, 189, 248, 0.2);
-  padding: 1rem;
-  overflow: hidden;
-}
-
-.drawer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 0.6rem;
-  margin-bottom: 0.75rem;
-}
-
-.brand-title { font-size: 0.75rem; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
-.version-tag { font-size: 0.62rem; color: #00dc82; background: rgba(0, 220, 130, 0.15); padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.4rem; font-weight: bold; }
-.close-btn { background: none; border: none; color: #64748b; cursor: pointer; font-size: 0.85rem; }
-.close-btn:hover { color: #f87171; }
-
-.drawer-content { display: flex; flex-direction: column; gap: 0.55rem; font-size: 0.78rem; }
-.metric-row { display: flex; justify-content: space-between; align-items: center; }
-.label { color: #94a3b8; }
-.value { font-weight: 700; }
-.text-neon { color: #00dc82; }
-.text-cyan { color: #38bdf8; }
-
-/* NUOVI STILI PER STATI ENTERPRISE */
-.status-ai {
-  color: #a855f7;
-  font-weight: 800;
-  background: rgba(168, 85, 247, 0.15);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  font-size: 0.68rem;
-  letter-spacing: 0.03em;
-  animation: pulse-ai 2s infinite;
-}
-
-@keyframes pulse-ai {
-  0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
-  70% { box-shadow: 0 0 0 5px rgba(168, 85, 247, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
-}
-
-.status-online { 
-  color: #34d399; 
-  font-size: 0.68rem; 
-  background: rgba(52, 211, 153, 0.12); 
-  padding: 0.1rem 0.4rem; 
-  border-radius: 4px; 
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  font-weight: 700;
-}
-
-.status-secure { 
-  color: #38bdf8; 
-  font-size: 0.68rem; 
-  background: rgba(56, 189, 248, 0.12); 
-  padding: 0.1rem 0.4rem; 
-  border-radius: 4px; 
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  font-weight: 700;
-}
-
-.drawer-footer { 
-  margin-top: 0.6rem; 
-  border-top: 1px solid #1e293b; 
-  padding-top: 0.5rem; 
-  text-align: center; 
-}
-
-.footer-note { font-size: 0.65rem; color: #64748b; }
-.sub-footer { font-size: 0.60rem; color: #a855f7; font-style: italic; margin-top: 2px; }
-
 .drawer-fade-enter-active, .drawer-fade-leave-active { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .drawer-fade-enter-from, .drawer-fade-leave-to { opacity: 0; transform: translate(-50%, 10px); }
 </style>

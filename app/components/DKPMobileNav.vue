@@ -1,17 +1,27 @@
 <!-- app/components/DKPMobileNav.vue -->
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, computed, isRef } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isOpen = ref(false)
+
+const auth = useAuthCore() || {}
+
+// Estrazione utente reattiva per mostrare gli XP aggiornati in tempo reale anche da mobile
+const currentUser = computed(() => {
+  if (isRef(auth.user)) return auth.user.value
+  return auth.user || null
+})
+
+const userXp = computed(() => currentUser.value?.xp || 850)
+const userLevel = computed(() => currentUser.value?.level || 1)
 
 // Chiusura automatica al cambio pagina
 watch(() => route.fullPath, () => {
   closeMenu()
 })
 
-// Blocco dello scroll del body quando il drawer è aperto
 function toggleMenu() {
   isOpen.value = !isOpen.value
   if (typeof document !== 'undefined') {
@@ -34,94 +44,103 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="dkp-mobile-nav-container">
-    <!-- HAMBURGER BUTTON PER MOBILE (< 768px) -->
+  <div class="dkp-mobile-nav-container md:hidden">
+    <!-- HAMBURGER BUTTON PER MOBILE -->
     <button 
       @click="toggleMenu" 
-      class="hamburger-btn" 
+      class="hamburger-btn flex flex-col justify-center items-center w-11 h-11 bg-slate-900/90 border border-emerald-500/30 rounded-xl focus:outline-none transition-all"
       :class="{ active: isOpen }"
       aria-label="Toggle Mobile Menu"
     >
-      <span class="bar bar-1"></span>
-      <span class="bar bar-2"></span>
-      <span class="bar bar-3"></span>
+      <span class="bar bar-1 w-5 h-0.5 bg-slate-100 rounded transition-all duration-300"></span>
+      <span class="bar bar-2 w-5 h-0.5 bg-slate-100 rounded my-1 transition-all duration-300"></span>
+      <span class="bar bar-3 w-5 h-0.5 bg-slate-100 rounded transition-all duration-300"></span>
     </button>
 
     <!-- BACKDROP SCURO CON BLUR -->
     <Transition name="fade">
-      <div v-if="isOpen" @click="closeMenu" class="mobile-backdrop"></div>
+      <div v-if="isOpen" @click="closeMenu" class="mobile-backdrop fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[99990]"></div>
     </Transition>
 
     <!-- DRAWER LATERALE MOBILE -->
     <Transition name="slide">
-      <div v-if="isOpen" class="mobile-drawer">
+      <div v-if="isOpen" class="mobile-drawer fixed top-0 right-0 bottom-0 w-[85%] max-w-[340px] bg-[#060a12] border-l border-emerald-500/30 shadow-2xl z-[99995] flex flex-col p-5 overflow-y-auto">
         <!-- HEADER DRAWER -->
-        <div class="drawer-header">
-          <div class="brand-box">
-            <span class="brand-logo">DK</span>
-            <span class="brand-name">DevKernelPulse</span>
-            <span class="version-badge">v2.4-GOLD</span>
+        <div class="drawer-header flex justify-between items-center pb-4 border-b border-slate-800 mb-4">
+          <div class="brand-box flex items-center gap-2">
+            <span class="brand-logo bg-emerald-500 text-slate-950 font-black text-xs px-1.5 py-0.5 rounded">DK</span>
+            <span class="brand-name font-extrabold text-sm text-white">DevKernelPulse</span>
+            <span class="version-badge text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1 py-0.5 rounded font-mono">v2.5-GOLD</span>
           </div>
-          <button @click="closeMenu" class="close-btn">✕</button>
+          <button @click="closeMenu" class="close-btn text-slate-400 hover:text-white text-lg font-bold">✕</button>
+        </div>
+
+        <!-- BADGE LIVE XP & LEVEL NEL DRAWER -->
+        <div class="xp-widget-mobile mb-4 p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">⚡</span>
+            <div>
+              <div class="text-[11px] text-slate-400 uppercase font-mono tracking-wider">Gamification Status</div>
+              <div class="text-sm font-bold text-emerald-300 font-mono">{{ userXp }} XP <span class="text-xs font-normal text-slate-400">(Lv. {{ userLevel }})</span></div>
+            </div>
+          </div>
+          <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-md font-mono">ACTIVE</span>
         </div>
 
         <!-- CONTENUTO MENU MOBILE -->
-        <div class="drawer-nav-list">
+        <div class="drawer-nav-list flex flex-col gap-5 flex-1">
           
           <!-- SEZIONE MAIN NAVIGATION -->
-          <div class="nav-section">
-            <span class="section-title">NAVIGAZIONE</span>
-            <NuxtLink to="/" class="mobile-link">
-              <span class="icon">📰</span> Tech Feed <span class="tag-v">v2.4</span>
+          <div class="nav-section flex flex-col gap-1.5">
+            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">NAVIGAZIONE</span>
+            <NuxtLink to="/" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition text-sm font-semibold">
+              <span class="icon">📰</span> Tech Feed <span class="tag-v ml-auto text-[10px] text-slate-500 font-mono">v2.5</span>
             </NuxtLink>
-            <NuxtLink to="/submit" class="mobile-link highlight">
-              <span class="icon">⚡</span> Invia Post (+15 XP)
+            <NuxtLink to="/submit" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition text-sm font-bold">
+              <span class="icon">⚡</span> Invia Post (+30 XP)
             </NuxtLink>
-            <NuxtLink to="/blog" class="mobile-link">
+            <NuxtLink to="/blog" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition text-sm font-semibold">
               <span class="icon">📝</span> DKP Blog
             </NuxtLink>
           </div>
 
-          <!-- SEZIONE AMMINISTRAZIONE & MAIL ENGINE v2.4 -->
-          <div class="nav-section">
-            <span class="section-title">AMMINISTRAZIONE DKP</span>
-            <NuxtLink to="/admin" class="mobile-link admin-link">
+          <!-- SEZIONE AMMINISTRAZIONE -->
+          <div class="nav-section flex flex-col gap-1.5">
+            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">AMMINISTRAZIONE DKP</span>
+            <NuxtLink to="/admin" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition text-sm font-semibold">
               <span class="icon">🔒</span> Control Center Admin
             </NuxtLink>
-            <NuxtLink to="/admin/mail" class="mobile-link mail-link">
-              <span class="icon">📬</span> DKP Mail Center <span class="badge-cyan">v2.4</span>
+            <NuxtLink to="/admin/crawler" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition text-sm font-semibold">
+              <span class="icon">🤖</span> Crawler Engine v2.5
             </NuxtLink>
-            <NuxtLink to="/admin/newsletter" class="mobile-link mail-link">
-              <span class="icon">📣</span> Newsletter & Contatti
-            </NuxtLink>
-            <NuxtLink to="/admin/autoresponder" class="mobile-link mail-link">
-              <span class="icon">🤖</span> Autoresponder Rules
+            <NuxtLink to="/admin/mail" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sky-400 bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20 transition text-sm font-semibold">
+              <span class="icon">📬</span> DKP Mail Center
             </NuxtLink>
           </div>
 
           <!-- SEZIONE TOOLS & ECOSYSTEM -->
-          <div class="nav-section">
-            <span class="section-title">DKP TOOLS SUITE</span>
-            <NuxtLink to="/vault" class="mobile-link">
+          <div class="nav-section flex flex-col gap-1.5">
+            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">DKP TOOLS SUITE</span>
+            <NuxtLink to="/vault" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
               <span class="icon">🛡️</span> Proof of Code (Vault)
             </NuxtLink>
-            <NuxtLink to="/scanner" class="mobile-link">
+            <NuxtLink to="/scanner" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
               <span class="icon">🔍</span> AI Code Scanner v2
             </NuxtLink>
-            <NuxtLink to="/terminal" class="mobile-link">
+            <NuxtLink to="/terminal" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
               <span class="icon">💻</span> Terminal Web Shell
             </NuxtLink>
           </div>
 
         </div>
 
-        <!-- FOOTER DRAWER CON METRICHE RAPIDE -->
-        <div class="drawer-footer">
-          <div class="status-indicator">
-            <span class="status-led"></span>
-            <span class="status-text">Kernel v2.4-GOLD Active</span>
+        <!-- FOOTER DRAWER -->
+        <div class="drawer-footer mt-6 border-t border-slate-800 pt-3 flex flex-col gap-1">
+          <div class="status-indicator flex items-center gap-2 text-xs text-emerald-400 font-mono">
+            <span class="status-led w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#34d399]"></span>
+            <span>Kernel v2.5-GOLD Active</span>
           </div>
-          <span class="author-note">Built by Alessandro De Paola & Gemini AI</span>
+          <span class="author-note text-[11px] text-slate-500">Built by Alessandro De Paola & Gemini AI</span>
         </div>
 
       </div>
@@ -130,238 +149,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.dkp-mobile-nav-container {
-  display: block;
-}
-
-@media (min-width: 769px) {
-  .dkp-mobile-nav-container {
-    display: none; /* Visibile solo su schermi smartphone e tablet */
-  }
-}
-
-/* HAMBURGER BUTTON STYLING */
-.hamburger-btn {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  border-radius: 8px;
-  width: 42px;
-  height: 42px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.25s ease;
-}
-
-.hamburger-btn:hover, .hamburger-btn.active {
-  border-color: #00dc82;
-  box-shadow: 0 0 12px rgba(0, 220, 130, 0.4);
-}
-
-.bar {
-  width: 20px;
-  height: 2px;
-  background-color: #f8fafc;
-  border-radius: 2px;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
 .hamburger-btn.active .bar-1 {
-  transform: translateY(7px) rotate(45deg);
+  transform: translateY(6px) rotate(45deg);
 }
 .hamburger-btn.active .bar-2 {
   opacity: 0;
 }
 .hamburger-btn.active .bar-3 {
-  transform: translateY(-7px) rotate(-45deg);
+  transform: translateY(-6px) rotate(-45deg);
 }
 
-/* BACKDROP OVERLAY */
-.mobile-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.82);
-  backdrop-filter: blur(8px);
-  z-index: 99990;
-}
-
-/* DRAWER CONTAINER */
-.mobile-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 85%;
-  max-width: 340px;
-  background: #060a12;
-  border-left: 1px solid rgba(0, 220, 130, 0.3);
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.9);
-  z-index: 99995;
-  display: flex;
-  flex-direction: column;
-  padding: 1.25rem;
-  overflow-y: auto;
-}
-
-.drawer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #1e293b;
-  margin-bottom: 1rem;
-}
-
-.brand-box {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.brand-logo {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 900;
-  font-size: 0.75rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-}
-
-.brand-name {
-  font-weight: 800;
-  font-size: 0.95rem;
-  color: #fff;
-}
-
-.version-badge {
-  font-size: 0.62rem;
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-
-/* NAV LIST & SECTIONS */
-.drawer-nav-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  flex: 1;
-}
-
-.nav-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.section-title {
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: #64748b;
-  letter-spacing: 1px;
-  margin-bottom: 0.2rem;
-}
-
-.mobile-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
-  border-radius: 8px;
-  color: #cbd5e1;
-  text-decoration: none;
-  font-size: 0.88rem;
-  font-weight: 600;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
-  min-height: 48px; /* Touch target ottimizzato */
-}
-
-.mobile-link:hover, .mobile-link.router-link-exact-active {
-  background: rgba(0, 220, 130, 0.1);
-  border-color: rgba(0, 220, 130, 0.4);
-  color: #00dc82;
-  transform: translateX(3px);
-}
-
-.mobile-link.highlight {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border-color: rgba(0, 220, 130, 0.3);
-  font-weight: 700;
-}
-
-.mobile-link.admin-link {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.2);
-}
-
-.mobile-link.mail-link {
-  color: #38bdf8;
-}
-
-.badge-cyan {
-  font-size: 0.62rem;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  margin-left: auto;
-}
-
-.tag-v {
-  font-size: 0.65rem;
-  color: #94a3b8;
-  margin-left: auto;
-}
-
-/* FOOTER DRAWER */
-.drawer-footer {
-  margin-top: 1.5rem;
-  border-top: 1px solid #1e293b;
-  padding-top: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.72rem;
-  color: #34d399;
-}
-
-.status-led {
-  width: 7px;
-  height: 7px;
-  background: #34d399;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #34d399;
-}
-
-.author-note {
-  font-size: 0.65rem;
-  color: #64748b;
-}
-
-/* ANIMAZIONI TRANSITION */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 

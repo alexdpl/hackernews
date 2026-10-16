@@ -4,11 +4,13 @@ import { DKPCrawlerEngine } from '~~/server/utils/dkp-crawler/engine'
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event).catch(() => ({}))
-    
-    // Esecuzione delegata interamente al plugin isolato DKP Crawler
+    const section = body?.section || 'news'
+    const limit = parseInt(body?.limit, 10) || 5
+
+    // Esecuzione delegata alla classe ufficiale del crawler
     const result = await DKPCrawlerEngine.run({
-      section: body?.section || body?.type || 'news',
-      limit: parseInt(body?.limit) || 5
+      section: section,
+      limit: limit
     })
 
     return result
@@ -16,7 +18,7 @@ export default defineEventHandler(async (event) => {
     console.error('[CRAWLER API ERROR]:', err?.message)
     throw createError({
       statusCode: 500,
-      statusMessage: err?.message || 'Errore durante l\'esecuzione del DKP Crawler Plugin'
+      statusMessage: err?.message || 'Errore durante l\'esecuzione del DKP Crawler Engine'
     })
   }
 })

@@ -48,20 +48,22 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
+// 🟢 CATEGORIE E FEED CON L'AGGIUNTA DEL BLOG EDITORIALE
 const newsCategories = [
   { name: 'News Feed', description: 'Ultimi aggiornamenti tech & ecosistema', icon: '📰', route: '/news' },
   { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
   { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },
-  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
+  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }, // 👈 Aggiunta la virgola mancante qui!
+  { name: 'Blog Editorial Hub', description: 'Articoli e guide della community', icon: '✍️', route: '/blog' }
 ]
 
 const dkpTools = [
-  { name: 'AI Repository v2.4-Gold', description: 'Analizza repository GitHub', icon: '🤖', route: '/tools/ai-repo-scanner' },
-  { name: 'Neural Playground v2.3', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
-  { name: 'Terminal Web Shell v2.3', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
-  { name: 'AI Code Scanner v2.3 Pro', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
-  { name: 'Proof of Code (Vault) v2.3', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' },
-  { name: 'DKP CLI Toolkit v2.4-Gold', description: 'CLI Nativi per Devs & Terminal', icon: '⚡', route: '/tools/cli-toolkit' }
+  { name: 'AI Repository v2.5', description: 'Analizza repository GitHub', icon: '🤖', route: '/tools/ai-repo-scanner' },
+  { name: 'Neural Playground v2.5', description: 'Testing Prompt e Modelli IA', icon: '🧠', route: '/tools/neural-playground' },
+  { name: 'Terminal Web Shell v2.5', description: 'Shell CLI In-Browser e SDK', icon: '💻', route: '/tools/terminal' },
+  { name: 'AI Code Scanner v2.5', description: 'Audit & Analisi Vulnerabilità IA', icon: '🔍', route: '/tools/ai-scanner' },
+  { name: 'Proof of Code (Vault) v2.5', description: 'Notarizzazione e Hash Crittografico', icon: '🛡️', route: '/tools/proof-of-code' },
+  { name: 'DKP CLI Toolkit v2.5', description: 'CLI Nativi per Devs & Terminal', icon: '⚡', route: '/tools/cli-toolkit' }
 ]
 
 const isAdmin = computed(() => {

@@ -66,25 +66,38 @@ export class DKPCrawlerEngine {
     console.log(`[DKP CRAWLER PLUGIN v2.4] Executing sub-engine: '${section.toUpperCase()}' (Limit: ${limit})`)
 
     // ==========================================
-    // 1. SUB-ENGINE: NEWS (Dev.to API)
+    // 1. SUB-ENGINE: NEWS (Dev.to API + HackerNews)
     // ==========================================
     if (section === 'news') {
-      const devToRes: any = await $fetch(`https://dev.to/api/articles?per_page=${limit}`).catch(() => [])
+      // 1. Dev.to API (Molto stabile)
+      const devToRes: any = await $fetch(`https://dev.to/api/articles?per_page=${Math.ceil(limit / 2)}`).catch(() => [])
       if (Array.isArray(devToRes)) {
         for (const article of devToRes) {
           const sanitized = sanitizeUrl(article.url, article.title)
-          
-          // Deep Scraping opzionale per arricchire il contenuto se richiesto
-          if (options.deepScrape && sanitized.url) {
-            await DKPCrawlerEngine.deepCrawl(sanitized.url, { enableJitter: true })
-          }
-
           await db.execute(sql`
             INSERT INTO pulse_stories (title, url, domain, type, author, points, xp_awarded)
             VALUES (${article.title || 'Senza titolo'}, ${sanitized.url}, ${sanitized.domain}, 'news', ${article.user?.username || 'devto_bot'}, ${article.public_reactions_count || 10}, 15)
             ON CONFLICT DO NOTHING;
           `)
           itemsAdded++
+        }
+      }
+
+      // 2. HackerNews Top Stories (Affidabilissima)
+      const topIds: any = await $fetch('https://hacker-news.firebaseio.com/v0/topstories.json').catch(() => [])
+      if (Array.isArray(topIds)) {
+        const targetIds = topIds.slice(0, Math.ceil(limit / 2))
+        for (const id of targetIds) {
+          const item: any = await $fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).catch(() => null)
+          if (item && item.title) {
+            const sanitized = sanitizeUrl(item.url || `https://news.ycombinator.com/item?id=${id}`, item.title)
+            await db.execute(sql`
+              INSERT INTO pulse_stories (title, url, domain, type, author, points, xp_awarded)
+              VALUES (${String(item.title)}, ${sanitized.url}, ${sanitized.domain}, 'news', ${String(item.by || 'hn_crawler')}, ${item.score || 1}, 15)
+              ON CONFLICT DO NOTHING;
+            `)
+            itemsAdded++
+          }
         }
       }
     }

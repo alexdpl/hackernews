@@ -46,7 +46,7 @@ const { getMainUrl } = useDomain()
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/blog')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              📰 DKP Blog & Release Notes 
+              ✍️ DKP Blog Editorial Hub 
               <span class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-[10px] font-extrabold px-1.5 py-0.5 rounded ml-1">v2.5</span>
             </NuxtLink>
           </li>
