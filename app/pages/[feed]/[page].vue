@@ -7,7 +7,7 @@ const route = useRoute()
 const feedType = computed(() => (route.params.feed as string) || 'news')
 const pageNumber = computed(() => parseInt(route.params.page as string) || 1)
 
-// Intestazione e metadati dinamici in base al tipo di feed
+// Intestazione e metadati dinamici in base alla sezione
 const headerInfo = computed(() => {
   switch (feedType.value.toLowerCase()) {
     case 'ask':
@@ -49,32 +49,28 @@ useHead({
   title: computed(() => `${headerInfo.value.title} | DevKernelPulse`)
 })
 
-// Chiamata all'endpoint v2.5-GOLD per il recupero delle storie Pulse
-const { data: response, error, refresh } = await useFetch('/api/pulse/stories', {
+// Chiamata al nuovo endpoint multi-fonte /api/hn/items con paginazione
+const { data: response, error, refresh } = await useFetch('/api/hn/items', {
   query: {
-    type: feedType,
-    page: pageNumber
+    section: feedType,
+    page: pageNumber,
+    limit: 12
   },
   watch: [feedType, pageNumber]
 })
 
-const items = computed(() => response.value?.stories || [])
-const pagination = computed(() => response.value?.pagination || { totalPages: 1 })
+const items = computed(() => response.value?.data || [])
+const pagination = computed(() => ({
+  totalPages: response.value?.totalPages || 1
+}))
 
-// Gestione interattiva dell'Upvote
-const handleVote = async (storyId: number) => {
+// Utility per estrarre il dominio pulito dai link esterni
+const getDomain = (url: string) => {
   try {
-    const res: any = await $fetch(`/api/pulse/vote`, {
-      method: 'POST',
-      body: { storyId, userId: 1 }
-    })
-    if (res?.success) {
-      refresh()
-    } else {
-      alert(res?.message || 'Hai già votato questo elemento!')
-    }
-  } catch (err: any) {
-    alert('Errore durante la registrazione del voto.')
+    const parsed = new URL(url)
+    return parsed.hostname.replace('www.', '')
+  } catch {
+    return 'web'
   }
 }
 </script>
@@ -104,21 +100,18 @@ const handleVote = async (storyId: number) => {
       </NuxtLink>
     </div>
 
-    <!-- MESSAGGIO ERRORE DB -->
+    <!-- MESSAGGIO ERRORE -->
     <div v-if="error" class="error-msg p-4 bg-red-900/40 text-red-300 rounded border border-red-700">
-      Errore nel caricamento dei dati dal database Neon.
+      Errore nel caricamento dei feed multi-fonte dal crawler.
     </div>
 
     <!-- MESSAGGIO EMPTY STATE -->
     <div v-else-if="!items || items.length === 0" class="empty-msg p-12 text-center text-gray-400 bg-gray-900/40 rounded-xl border border-gray-800">
       <div class="text-3xl mb-2">📭</div>
       <p>Nessun contenuto presente in questa sezione.</p>
-      <NuxtLink to="/admin/crawler" class="mt-4 inline-block px-4 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-bold hover:bg-emerald-500 hover:text-slate-900 transition">
-        Esegui il Crawler dal pannello Admin ⚡
-      </NuxtLink>
     </div>
 
-    <!-- LISTA ELEMENTI FEED -->
+    <!-- LISTA ELEMENTI FEED MULTI-FONTE -->
     <div v-else class="item-list">
       <ul class="space-y-3">
         <li 
@@ -127,34 +120,25 @@ const handleVote = async (storyId: number) => {
           class="news-item flex items-center justify-between p-3.5 bg-gray-900/60 rounded-xl border border-gray-800 hover:border-emerald-500/40 transition"
         >
           <div class="flex items-start space-x-3">
-            <span class="index text-emerald-400 font-mono font-bold">{{ ((pageNumber - 1) * 15) + index + 1 }}.</span>
+            <span class="index text-emerald-400 font-mono font-bold">{{ ((pageNumber - 1) * 12) + index + 1 }}.</span>
             
             <div class="main-text">
-              <a :href="item.url" target="_blank" class="title-link text-gray-100 font-semibold hover:text-emerald-400 transition">
+              <a :href="item.link" target="_blank" class="title-link text-gray-100 font-semibold hover:text-emerald-400 transition">
                 {{ item.title }}
               </a>
-              <span v-if="item.domain" class="url-domain text-xs text-gray-400 ml-2">
-                ({{ item.domain }})
+              <span class="url-domain text-xs text-gray-400 ml-2">
+                ({{ getDomain(item.link) }})
               </span>
               
-              <div class="text-xs text-gray-400 mt-1 flex items-center space-x-2 font-mono">
-                <span>⚡ <strong>{{ item.points || 0 }}</strong> punti</span>
+              <div class="text-xs text-gray-400 mt-1 flex items-center space-x-2 font-mono flex-wrap">
+                <span class="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  📡 {{ item.sourceName }}
+                </span>
                 <span>•</span>
-                <span>👤 @{{ item.author || 'community' }}</span>
-                <template v-if="item.xp_awarded">
-                  <span>•</span>
-                  <span class="text-emerald-400">+{{ item.xp_awarded }} XP</span>
-                </template>
+                <span>👤 {{ item.author || 'community' }}</span>
               </div>
             </div>
           </div>
-
-          <button 
-            @click="handleVote(item.id)" 
-            class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 text-xs font-bold rounded-lg border border-emerald-500/30 transition flex items-center gap-1 shrink-0"
-          >
-            ▲ Vota (+5 XP)
-          </button>
         </li>
       </ul>
 

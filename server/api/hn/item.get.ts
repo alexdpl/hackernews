@@ -1,12 +1,22 @@
+// server/api/hn/item.get.ts
 import { $fetch } from 'ofetch'
 import type { Item } from '~~/types'
+
+const BASE_URL = 'https://hacker-news.firebaseio.com/v0'
 
 export async function fetchItem(
   id: string,
   withComments = false,
 ): Promise<Item> {
-  const item = await $fetch(`/item/${id}.json`, { baseURL: BASE_URL })
-  item.kids = item.kids || {}
+  const item: any = await $fetch(`/item/${id}.json`, { baseURL: BASE_URL })
+  if (!item) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: `Item with ID ${id} not found.`,
+    })
+  }
+
+  item.kids = item.kids || []
   return {
     id: item.id,
     user: item.by,
@@ -19,8 +29,8 @@ export async function fetchItem(
     comments_count: Object.values(item.kids).length,
     comments: withComments
       ? await Promise.all(
-          Object.values(item.kids as string[]).map(id =>
-            fetchItem(id, withComments),
+          Object.values(item.kids as string[]).map(kidId =>
+            fetchItem(String(kidId), withComments),
           ),
         )
       : [],
@@ -33,19 +43,19 @@ export default defineCachedEventHandler((event) => {
   if (!id) {
     throw createError({
       statusCode: 422,
-      statusMessage: 'Must provide a item ID.',
+      statusMessage: 'Must provide an item ID.',
     })
   }
   if (Number.isNaN(+id)) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Item ID mush a number but got ' + id,
+      statusMessage: 'Item ID must be a number but got ' + id,
     })
   }
 
   return fetchItem(id, true)
 }, {
-  name: 'api/hn',
+  name: 'api/hn/item',
   getKey(event) {
     const { id } = getQuery(event)
     return ['item', id].join('/')
