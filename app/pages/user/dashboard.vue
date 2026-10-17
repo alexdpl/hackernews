@@ -1,6 +1,6 @@
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import DkpEditor from '~/components/blog/DkpEditor.vue'
@@ -15,6 +15,38 @@ const router = useRouter()
 const { currentUser } = useAuthCore()
 const { getMainUrl, getApiUrl } = useDomain()
 const currentUserId = computed(() => currentUser.value?.id || 1)
+
+// --- GESTIONE ARTICOLI: RICERCA E PAGINAZIONE ---
+const searchQuery = ref('')
+const currentPage = ref(1)
+const itemsPerPage = 5
+
+const filteredAndPaginatedPosts = computed(() => {
+  // 1. Filtro di ricerca (titolo e tag)
+  let filtered = articles.value.filter(post => 
+    post.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    (post.tags && post.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.value.toLowerCase())))
+  )
+  // 2. Calcolo paginazione
+  const start = (currentPage.value - 1) * itemsPerPage
+  return {
+    items: filtered.slice(start, start + itemsPerPage),
+    totalItems: filtered.length,
+    totalPages: Math.ceil(filtered.length / itemsPerPage) || 1
+  }
+})
+
+function changePage(page: number) {
+  if (page >= 1 && page <= filteredAndPaginatedPosts.value.totalPages) {
+    currentPage.value = page
+  }
+}
+
+// Resetta la pagina a 1 quando si effettua una nuova ricerca
+watch(searchQuery, () => {
+  currentPage.value = 1
+})
+// ------------------------------------------------
 
 // TOAST SYSTEM
 const showToast = ref(false)
@@ -89,15 +121,12 @@ const userProfileData = ref({
 const xpHistoryList = ref<any[]>([])
 
 async function activateEarlyPioneerBeta() {
-  // 1. Mostra subito il toast festivo
   triggerToast('🎉 Congratulazioni! Sei ufficialmente registrato nel Developer Beta Program (Pioniere #42)!')
 
-  // 2. Aggiunge visivamente il badge in tempo reale all'interfaccia
   if (!userProfileData.value.badges.includes('Early Pioneer')) {
     userProfileData.value.badges.push('Early Pioneer')
   }
 
-  // 3. Invia la richiesta al backend in background per salvare su Neon DB
   try {
     await $fetch('/api/user/beta-pioneer', {
       method: 'POST',
@@ -110,7 +139,6 @@ async function activateEarlyPioneerBeta() {
 
 async function fetchGamificationData() {
   try {
-    // Caricamento stats e livello
     const res: any = await $fetch('/api/user/gamification?userId=1')
     if (res && res.success && res.data) {
       userProfileData.value.xp = res.data.xp
@@ -120,7 +148,6 @@ async function fetchGamificationData() {
       }
     }
     
-    // Caricamento storico transazioni XP
     const statsRes: any = await $fetch('/api/user/xp-stats')
     if (statsRes && statsRes.success) {
        if (statsRes.history && Array.isArray(statsRes.history)) {
@@ -307,20 +334,21 @@ async function fetchUserArticles() {
   }
 }
 
-// 🟢 SALVATAGGIO INTELLIGENTE
+// 🟢 SALVATAGGIO INTELLIGENTE (UNICA FUNZIONE DEFINITIVA)
 async function saveArticle() {
   if (!articleForm.value.title.trim() || !articleForm.value.category) {
     triggerToast('❌ Compila Titolo e Categoria prima di salvare.')
     return
   }
 
+  // FIX: Clona l'array dei tags per evitare problemi di reattività
   const payload = {
     title: articleForm.value.title,
     category: articleForm.value.category,
     subCategory: articleForm.value.subCategory,
     excerpt: articleForm.value.summary,
     content: articleForm.value.content,
-    tags: [...articleForm.value.tags],
+    tags: JSON.parse(JSON.stringify(articleForm.value.tags)), 
     status: articleForm.value.status
   }
 
@@ -329,14 +357,26 @@ async function saveArticle() {
   const url = isUpdate ? `/api/blog/posts/${articleForm.value.id}` : '/api/blog/posts';
 
   try {
-    await $fetch(url, {
+    const res: any = await $fetch(url, {
       method: method,
       body: payload
     })
     
-    triggerToast(articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!')
-    isEditingArticle.value = false
-    await fetchUserArticles()
+    if (res && res.success) {
+        // 🟢 FIX DEL TOAST: Ora distingue tra Nuovo Post e Aggiornamento!
+        let msg = '';
+        if (isUpdate) {
+          msg = articleForm.value.status === 'published' ? '✅ Articolo aggiornato con successo!' : '💾 Bozza aggiornata!';
+        } else {
+          msg = articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!';
+        }
+        triggerToast(msg)
+        
+        isEditingArticle.value = false
+        await fetchUserArticles()
+    } else {
+        triggerToast('❌ Errore durante il salvataggio: ' + (res?.statusMessage || 'Controlla i dati.'))
+    }
   } catch (err: any) {
     console.error('Errore salvataggio post:', err)
     triggerToast('❌ Errore durante il salvataggio nel DB.')
@@ -370,8 +410,14 @@ async function quickUpdateStatus(art: any, newStatus: 'published' | 'draft') {
 async function deleteArticle(id: number) {
   if (!confirm('Sei sicuro di voler eliminare permanentemente questo post dal Vault?')) return
   try {
+    // Aggiungi /api/blog/posts/[id] per l'eliminazione
     await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' })
+    // Aggiorna l'elenco locale
     articles.value = articles.value.filter(a => a.id !== id)
+    // Se stavamo cercando qualcosa, resetta la pagina
+    if (filteredAndPaginatedPosts.value.items.length === 0 && currentPage.value > 1) {
+        currentPage.value--
+    }
     triggerToast('🗑️ Articolo rimosso con successo.')
   } catch (err) {
     triggerToast('❌ Impossibile eliminare l\'articolo dal DB.')
@@ -463,7 +509,6 @@ function revokeApiKey(id: string) {
               Pannello Riservato <span class="username-highlight">@{{ currentUser?.username || 'alexdpl' }}</span>
             </h1>
             <div class="user-badges">
-              <!-- 🟢 Badge dinamici generati in base ai privilegi sbloccati -->
              <span v-for="badge in userProfileData.badges" :key="badge" class="role-badge">🛡️ {{ badge }}</span>
              <span class="points-badge">⚡ {{ userProfileData.xp }} Punti DKP</span>
             </div>
@@ -546,13 +591,52 @@ function revokeApiKey(id: string) {
 
       <!-- PANNELLO 2: GESTIONE POST BLOG -->
       <section v-if="activeTab === 'content'" class="tab-panel">
+        
+        <!-- 🟢 GUIDA ALL'EDITOR COLLASSABILE -->
+        <div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-4 mb-6">
+          <details class="group cursor-pointer">
+            <summary class="text-emerald-400 font-bold flex justify-between items-center list-none outline-none">
+              <span>💡 Guida rapida all'Editor DKP &amp; Markdown</span>
+              <span class="group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="mt-4 text-sm text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <strong class="text-white">Formattazione Testo:</strong>
+                <ul class="list-disc pl-4 mt-2 space-y-1">
+                  <li><code>**grassetto**</code> per evidenziare</li>
+                  <li><code>*corsivo*</code> o <code>_corsivo_</code></li>
+                  <li><code>[Titolo Link](https://url...)</code> per i collegamenti esterni</li>
+                  <li><code># Titolo Principale</code>, <code>## Sottotitolo</code> per gerarchia</li>
+                  <li>Inizia la riga con <code>- </code> o <code>* </code> per gli elenchi puntati</li>
+                </ul>
+              </div>
+              <div>
+                <strong class="text-white">Blocchi di Codice &amp; Citazioni:</strong>
+                <p class="mt-2 text-xs leading-relaxed">
+                  Usa tre apici inversi (backtick) <code>```</code> seguiti dall'estensione (es. <code>ts</code>, <code>vue</code>, <code>go</code>) per inserire blocchi di codice nativi con syntax highlighting.<br><br>
+                  Per inserire una citazione in evidenza (Blockquote), usa il simbolo <code>> </code> all'inizio della riga.
+                </p>
+              </div>
+            </div>
+          </details>
+        </div>
+
         <div class="panel-card">
-          <div class="panel-header-action">
+          <div class="panel-header-action flex-wrap gap-4">
             <div>
               <h2 class="section-title">Gestione Post &amp; Blog</h2>
               <p class="section-sub">Crea, modifica e gestisci gli articoli pubblicati nell'ecosistema DevKernelPulse.</p>
             </div>
-            <button @click="openNewArticleModal" class="dkp-btn-success">+ Nuovo Post</button>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <input 
+                    v-model="searchQuery" 
+                    type="text" 
+                    placeholder="Cerca per titolo o #tag..." 
+                    class="dkp-input text-sm w-full md:w-64"
+                />
+                <button @click="openNewArticleModal" class="dkp-btn-success whitespace-nowrap">+ Nuovo Post</button>
+            </div>
           </div>
 
           <div class="table-container">
@@ -568,12 +652,13 @@ function revokeApiKey(id: string) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="articles.length === 0">
+                <tr v-if="filteredAndPaginatedPosts.items.length === 0">
                   <td colspan="6" class="text-center py-6 text-gray-500 italic">
-                    Nessun articolo trovato. Clicca su "+ Nuovo Post" per iniziare.
+                    <span v-if="searchQuery">Nessun articolo trovato per "{{ searchQuery }}".</span>
+                    <span v-else>Nessun articolo pubblicato. Clicca su "+ Nuovo Post" per iniziare.</span>
                   </td>
                 </tr>
-                <tr v-for="art in articles" :key="art.id">
+                <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id">
                   <td class="font-bold">{{ art.title }}</td>
                   <td>
                     <span class="text-emerald font-semibold">{{ art.category }}</span>
@@ -591,7 +676,6 @@ function revokeApiKey(id: string) {
                   </td>
                   <td style="white-space: nowrap;">{{ art.date }}</td>
                   <td class="actions-cell">
-                    <!-- 🟢 GRIGLIA AZIONI 2x2 -->
                     <div class="action-grid-2x2">
                       <button @click="editArticle(art)" class="btn-action edit" title="Apri Editor Avanzato">✏️ Edit</button>
                       <button @click="deleteArticle(art.id)" class="btn-action delete" title="Elimina dal Vault">🗑️ Del</button>
@@ -602,6 +686,29 @@ function revokeApiKey(id: string) {
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- 🟢 CONTROLLI PAGINAZIONE -->
+          <div v-if="filteredAndPaginatedPosts.totalPages > 1" class="flex justify-between items-center mt-6 pt-4 border-t border-gray-800 text-sm">
+            <button 
+                @click="changePage(currentPage - 1)" 
+                :disabled="currentPage === 1"
+                class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                ← Precedente
+            </button>
+
+            <span class="text-gray-400 font-mono">
+                Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di {{ filteredAndPaginatedPosts.totalPages }}
+            </span>
+
+            <button 
+                @click="changePage(currentPage + 1)" 
+                :disabled="currentPage === filteredAndPaginatedPosts.totalPages"
+                class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Successiva →
+            </button>
           </div>
 
           <!-- MODALE EDITOR UNIFICATA CON HEADER & FOOTER FISSI -->
@@ -621,9 +728,7 @@ function revokeApiKey(id: string) {
               </div>
 
               <div v-if="useAdvancedEditor">
-                <!-- FIX: Uniamo i dati vecchi (ID e status) con quelli nuovi dell'editor -->
-               <DkpEditor :modelValue="articleForm" 
-                    @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
+               <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
               </div>
 
               <div v-else class="form-layout">
@@ -656,7 +761,7 @@ function revokeApiKey(id: string) {
 
                 <div class="form-group">
                   <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
-                  <DkpTagInput v-model="articleForm.tags" />
+                  <DkpTagInput v-model="articleForm.tags"/>
                 </div>
 
                 <div class="form-group">
@@ -682,7 +787,7 @@ function revokeApiKey(id: string) {
           <p class="section-sub">Genera e gestisci le chiavi API per integrare l'ecosistema DKP nelle tue applicazioni esterne.</p>
           
           <div class="api-action-header">
-            <NuxtLink :to="getApiUrl('/api-console')" external class="dkp-api-link-btn">
+            <NuxtLink :to="getApiUrl('/api-console')" class="dkp-api-link-btn" external>
               <span>⚡ Consumo delle API (Interactive Playground) ↗</span>
             </NuxtLink>
           </div>
@@ -771,7 +876,6 @@ function revokeApiKey(id: string) {
             </div>
           </div>
 
-          <!-- WIDGET INTERATTIVO: NUOVA NOTARIZZAZIONE VAULT -->
           <div class="vault-generator-box">
             <h3 class="box-title">🔐 Notarizza un Nuovo Blocco di Codice o File</h3>
             <p class="box-desc">Incolla qui il codice sorgente o la configurazione che desideri blindare nel Vault. Verrà calcolato l'hash crittografico univoco.</p>
@@ -794,7 +898,6 @@ function revokeApiKey(id: string) {
             </div>
           </div>
 
-          <!-- TABELLA CERTIFICATI VAULT DELL'UTENTE -->
           <div class="vault-certificates-section mt-6">
             <h3 class="box-title mb-3">📜 I tuoi Certificati Vault Emessi</h3>
             <div class="table-container">
@@ -852,7 +955,6 @@ function revokeApiKey(id: string) {
             </div>
           </div>
 
-          <!-- BANNER SPECIALE: DEVELOPER BETA PROGRAM (PRIMI 100) -->
           <div class="beta-pioneer-banner">
             <div class="beta-content">
               <div class="beta-badge-row">
@@ -864,7 +966,7 @@ function revokeApiKey(id: string) {
                 I primi 100 sviluppatori che attivano il programma ricevono permanentemente il badge esclusivo sul profilo pubblico, un boost immediato di <strong>+5.000 chiamate API mensili gratuite</strong> e accesso prioritario ai modelli AI di DKP v2.5.
               </p>
               <div class="beta-action-row">
-                <button @click="registerEarlyPioneer" class="dkp-btn-success pulse-animation">
+                <button @click="activateEarlyPioneerBeta" class="dkp-btn-success pulse-animation">
                   ⚡ Attiva Status "Early Pioneer" (Gratis)
                 </button>
                 <span class="pioneer-perk-hint">✓ Nessuna carta di credito richiesta • Valido per sempre</span>
@@ -872,10 +974,8 @@ function revokeApiKey(id: string) {
             </div>
           </div>
 
-          <!-- GRIGLIA PROGRESSIONE E SORGENTI XP -->
           <div class="gamification-grid-2cols">
             
-            <!-- COLONNA 1: COME GUADAGNARE XP -->
             <div class="game-sub-card">
               <h4 class="sub-card-title">📈 Come accumulare DKP XP</h4>
               <ul class="xp-sources-list">
@@ -910,7 +1010,6 @@ function revokeApiKey(id: string) {
               </ul>
             </div>
 
-            <!-- COLONNA 2: VANTAGGI FREEMIUM API -->
             <div class="game-sub-card">
               <h4 class="sub-card-title">🎁 Sblocco Crediti API Gratuiti</h4>
               <p class="sub-card-desc">Più sali di livello con la gamification, più risorse computazionali sblocchi per i tuoi script e tool:</p>
@@ -942,7 +1041,6 @@ function revokeApiKey(id: string) {
 
           </div>
 
-          <!-- STORICO ATTIVITÀ & XP NEL DB -->
           <div class="game-sub-card full-width mt-4">
             <h4 class="sub-card-title">📜 Storico Attività &amp; Transazioni XP</h4>
             <div class="table-container">
@@ -978,6 +1076,11 @@ function revokeApiKey(id: string) {
 </template>
 
 <style scoped>
+.panel-header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+
 .dkp-toast-success {
   position: fixed;
   top: 1.5rem;
@@ -992,47 +1095,15 @@ function revokeApiKey(id: string) {
   max-width: 420px;
 }
 
-.toast-content {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: #f8fafc;
-  font-family: monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
+.toast-content { display: flex; align-items: center; gap: 0.65rem; color: #f8fafc; font-family: monospace; font-size: 0.85rem; font-weight: 600; }
 
 .toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
 
-.dashboard-page {
-  background: #020420;
-  min-height: 100vh;
-  padding: 2rem 1rem;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
+.dashboard-page { background: #020420; min-height: 100vh; padding: 2rem 1rem; color: #f8fafc; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.dashboard-container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
 
-.dashboard-container {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.user-header-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
+.user-header-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
 .header-main-info { display: flex; align-items: center; gap: 1.25rem; }
 .user-avatar-wrap { position: relative; width: 64px; height: 64px; }
 .user-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #00dc82; }
@@ -1094,7 +1165,6 @@ function revokeApiKey(id: string) {
 .raw-key-box code { color: #00dc82; font-family: monospace; font-size: 0.9rem; }
 .btn-copy { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
 
-.panel-header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .table-container { overflow-x: auto; margin-top: 1rem; }
 .dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
 .dkp-table th { background: #020420; color: #64748b; padding: 0.75rem; border-bottom: 1px solid #1e293b; text-transform: uppercase; font-size: 0.7rem; }
@@ -1106,25 +1176,9 @@ function revokeApiKey(id: string) {
 .status-pill.published { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 .status-pill.draft { background: rgba(234, 179, 8, 0.15); color: #eab308; }
 
-/* 🟢 CSS GRIGLIA 2x2 BOTTONI TABELLA */
 .actions-cell { min-width: 170px; }
-.action-grid-2x2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-.btn-action {
-  padding: 5px 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.action-grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.btn-action { padding: 5px 6px; font-size: 0.72rem; font-weight: 700; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
 .btn-action.edit { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
 .btn-action.edit:hover { background: #38bdf8; color: #020420; }
 .btn-action.delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
@@ -1139,14 +1193,12 @@ function revokeApiKey(id: string) {
 
 .dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
 .dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 750px; display: flex; flex-direction: column; gap: 1rem; }
-
 .modal-header-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #1e293b; margin-bottom: 0.5rem; }
 .modal-title { font-size: 1.25rem; font-weight: 800; color: #ffffff; margin: 0; }
 .btn-switch-editor { background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 700; font-size: 0.78rem; padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease-in-out; }
 
 .grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 @media (max-width: 600px) { .grid-2-cols { grid-template-columns: 1fr; } }
-
 .mini-tag { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; margin-right: 0.2rem; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 0.2rem; }
 
@@ -1160,7 +1212,6 @@ function revokeApiKey(id: string) {
 .pulse-nexus-badge .dot { width: 7px; height: 7px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 8px #00dc82; }
 .pulse-nexus-badge .ver { background: #00dc82; color: #020420; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.7rem; }
 
-/* 🟢 STILI GAMIFICATION & BETA PROGRAM */
 .gamification-card { display: flex; flex-direction: column; gap: 1.5rem; }
 .gamification-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.25rem; }
 .badge-tag { background: rgba(0, 220, 130, 0.12); color: #00dc82; font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); text-transform: uppercase; }
@@ -1184,15 +1235,10 @@ function revokeApiKey(id: string) {
 .pioneer-perk-hint { font-size: 0.75rem; color: #64748b; font-weight: 600; }
 
 .pulse-animation { animation: pulseGlow 2s infinite; }
-@keyframes pulseGlow {
-  0% { box-shadow: 0 0 0 0 rgba(0, 220, 130, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(0, 220, 130, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 220, 130, 0); }
-}
+@keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(0, 220, 130, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0, 220, 130, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 220, 130, 0); } }
 
 .gamification-grid-2cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 @media (max-width: 768px) { .gamification-grid-2cols { grid-template-columns: 1fr; } }
-
 .game-sub-card { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
 .sub-card-title { font-size: 0.95rem; font-weight: 800; color: #ffffff; margin: 0; }
 .sub-card-desc { font-size: 0.82rem; color: #94a3b8; margin: 0; line-height: 1.4; }
@@ -1214,11 +1260,9 @@ function revokeApiKey(id: string) {
 .tier-status.current { color: #00dc82; }
 .tier-status.locked { color: #f59e0b; }
 
-/* 🛡️ STILI PROOF OF CODE VAULT */
 .vault-card { display: flex; flex-direction: column; gap: 1.5rem; }
 .vault-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.25rem; }
 .vault-badge { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
-
 .vault-stats-pill { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 0.75rem 1.25rem; display: flex; align-items: center; gap: 1.5rem; font-size: 0.82rem; color: #94a3b8; }
 .vault-stats-pill strong { color: #ffffff; }
 

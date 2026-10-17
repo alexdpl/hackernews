@@ -7,7 +7,6 @@ import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import Prism from 'prismjs'
 import 'prismjs/themes/prism-tomorrow.css'
 
-// 1️⃣ CORE & DIPENDENZE BASE (DEVONO stare in cima)
 import 'prismjs/components/prism-markup'
 import 'prismjs/components/prism-css'
 import 'prismjs/components/prism-clike'
@@ -17,7 +16,6 @@ import 'prismjs/components/prism-java'
 import 'prismjs/components/prism-markup-templating'
 import 'prismjs/components/prism-javadoclike'
 
-// 2️⃣ LINGUAGGI CHE DIPENDONO DALLE BASI
 import 'prismjs/components/prism-cpp'
 import 'prismjs/components/prism-objectivec'
 import 'prismjs/components/prism-opencl'
@@ -27,7 +25,6 @@ import 'prismjs/components/prism-django'
 import 'prismjs/components/prism-javadoc'
 import 'prismjs/components/prism-xml-doc'
 
-// 3️⃣ TUTTI GLI ALTRI LINGUAGGI INDIPENDENTI
 import 'prismjs/components/prism-typescript'
 import 'prismjs/components/prism-python'
 import 'prismjs/components/prism-bash'
@@ -62,7 +59,6 @@ import 'prismjs/components/prism-qsharp'
 import 'prismjs/components/prism-rest'
 import 'prismjs/components/prism-typoscript'
 
-// 🟢 Abilita la logica del tasto Copia
 useCodeCopy()
 
 const props = defineProps<{
@@ -87,8 +83,6 @@ const content = ref(props.modelValue?.content || '')
 
 const activeTab = ref<'write' | 'preview'>('write')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-
-// --- Stato Zen Mode ---
 const isZenMode = ref(false)
 
 function toggleZenMode() {
@@ -104,7 +98,6 @@ onUnmounted(() => {
   document.body.style.overflow = ''
 })
 
-// Sincronizzazione
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     title.value = newVal.title || ''
@@ -249,47 +242,27 @@ function handleEnter(e: KeyboardEvent) {
   }
 }
 
-// 🟢 HELPER PER OTTENERE LA GRAMMATICA PRISM (con supporto Alias)
 function getPrismGrammar(lang: string) {
   if (!lang) return null
   const l = lang.toLowerCase()
-  const aliases: Record<string, string> = {
-    js: 'javascript',
-    ts: 'typescript',
-    py: 'python',
-    sh: 'bash',
-    bash: 'bash',
-    yml: 'yaml',
-    yaml: 'yaml',
-    html: 'markup',
-    xml: 'markup',
-    json: 'json',
-    css: 'css',
-    cpp: 'cpp',
-    c: 'c',
-    cs: 'csharp',
-    java: 'java',
-    php: 'php',
-    sql: 'sql'
-  }
+  const aliases: Record<string, string> = { js: 'javascript', ts: 'typescript', py: 'python', sh: 'bash', bash: 'bash', yml: 'yaml', yaml: 'yaml', html: 'markup', xml: 'markup', json: 'json', css: 'css', cpp: 'cpp', c: 'c', cs: 'csharp', java: 'java', php: 'php', sql: 'sql' }
   const target = aliases[l] || l
   return Prism.languages[target] || Prism.languages[l] || null
 }
 
+// 🟢 FUNZIONE DEFINITIVA E BLINDATA AL COMPILATORE VUE/VITE
 const parsedContent = computed(() => {
-  if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...</p>'
+  if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...' + '<' + '/p>'
   
   let rawContent = content.value;
   const codeBlocks: string[] = [];
   
-  // 1. ISOLIAMO I BLOCCHI DI CODICE ED ESEGUIAMO PRISM HIGHLIGHTING SINCRONO
   rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
     const index = codeBlocks.length;
     const cleanLang = lang ? lang.trim().toLowerCase() : '';
     const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
-    const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn" type="button">📋 Copia</button></div>` : '';
+    const languageLabel = cleanLang ? `<` + `div class="dkp-code-header"><span>${cleanLang}<` + `/span><button class="dkp-copy-btn" type="button">📋 Copia<` + `/button><` + `/div>` : '';
     
-    // Evidenziazione sincronizzata tramite PrismJS
     let highlightedCode = ''
     const grammar = getPrismGrammar(cleanLang)
     
@@ -303,68 +276,57 @@ const parsedContent = computed(() => {
       highlightedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     }
     
-    codeBlocks.push(`<div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}</code></pre></div>`);
+    codeBlocks.push(`<` + `div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}<` + `/code><` + `/pre><` + `/div>`);
     
     return `__DKP_CODE_BLOCK_${index}__`;
   });
 
-  // 2. Escape globale
   let html = rawContent
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
 
-  html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, "<div class='dkp-custom-html'>")
-  html = html.replace(/&lt;\/div&gt;/g, "</div>")
+  html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, "<" + "div class='dkp-custom-html'>")
+  html = html.replace(/&lt;\/div&gt;/g, "<" + "/div>")
 
-  // 3. Tabelle
   html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
     const cells = p1.split('|').map(c => c.trim())
     if (cells.every(c => /^:?-+:?$/.test(c))) return '' 
-    const rowHtml = cells.map(c => `<td>${c}</td>`).join('')
-    return `<tr>${rowHtml}</tr>`
+    const rowHtml = cells.map(c => `<td>${c}<` + `/td>`).join('')
+    return `<tr>${rowHtml}<` + `/tr>`
   })
-  html = html.replace(/(<tr>.*?<\/tr>[\s\n\r]*)+/g, (match) => {
+  html = html.replace(new RegExp('(<tr>.*?<\\/tr>[\\s\\n\\r]*)+', 'g'), (match) => {
     const cleanRows = match.replace(/[\n\r]+/g, '') 
-    return `<div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}</tbody></table></div>`
+    return `<` + `div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}<` + `/tbody><` + `/table><` + `/div>`
   })
 
-  // 4. Nuovi Strumenti Editor
   html = html
-    .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
-    .replace(/@[video]\(([^)]+)\)/g, '<div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen></iframe></div>')
-    .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1</mark>')
-    .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1</u>')
-    .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
-    .replace(/\*(.*?)\*/g, '<em>$1</em>') 
-    .replace(/~~(.*?)~~/g, '<del>$1</del>') 
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1</a>') 
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
+    .replace(/@[video]\(([^)]+)\)/g, '<' + 'div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen><' + '/iframe><' + '/div>')
+    .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1<' + '/mark>')
+    .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1<' + '/u>')
+    .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1<' + '/code>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="dkp-bold">$1<' + '/strong>') 
+    .replace(/\*(.*?)\*/g, '<em class="dkp-italic">$1<' + '/em>') 
+    .replace(/~~(.*?)~~/g, '<del class="dkp-strike">$1<' + '/del>') 
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1<' + '/a>') 
 
-  // 5. Titoli
   html = html
-    .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
-    .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1</h2>')
-    .replace(/^### (.*?)\r?$/gm, '<h3 class="dkp-h3">$1</h3>')
-    .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
+    .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1<' + '/h1>')
+    .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1<' + '/h2>')
+    .replace(/^### (.*?)\r?$/gm, '<h3 class="dkp-h3">$1<' + '/h3>')
+    .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1<' + '/blockquote>')
     .replace(/^---$/gm, '<hr class="dkp-hr" />')
 
-  // 6. LISTE
-  html = html.replace(/^( {2,}|\t+)- (.*?)\r?$/gm, '<ul class="dkp-sub-list"><li class="dkp-li-nested">$2</li></ul>')
-  html = html.replace(/^( {2,}|\t+)[0-9]+\. (.*?)\r?$/gm, '<ol class="dkp-sub-list"><li class="dkp-li-nested dkp-li-num">$2</li></ol>')
-  html = html.replace(/^-(?!\S) (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
-  html = html.replace(/^[0-9]+\. (.*?)\r?$/gm, '<ol><li class="dkp-li-main">$1</li></ol>')
-  html = html.replace(/<\/ul>\s*<ul>/g, '')
-  html = html.replace(/<\/ol>\s*<ol>/g, '')
-  html = html.replace(/<\/ul>\s*<ul class="dkp-sub-list">/g, '')
-  html = html.replace(/<\/ol>\s*<ol class="dkp-sub-list">/g, '')
+  html = html.replace(/^(\s{2,}|\t+)-\s+(.*?)\r?$/gm, '<ul class="dkp-sub-list"><li class="dkp-li-nested">$2<' + '/li><' + '/ul>')
+  html = html.replace(/^(\s{2,}|\t+)[0-9]+\.\s+(.*?)\r?$/gm, '<ol class="dkp-sub-list"><li class="dkp-li-nested dkp-li-num">$2<' + '/li><' + '/ol>')
+  html = html.replace(/^ {0,1}-\s+(.*?)\r?$/gm, '<ul class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ul>')
+  html = html.replace(/^ {0,1}[0-9]+\.\s+(.*?)\r?$/gm, '<ol class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ol>')
 
-  // 7. Reinseriamo il codice già evidenziato
   codeBlocks.forEach((block, index) => {
     html = html.replace(`__DKP_CODE_BLOCK_${index}__`, block);
   });
 
-  // 8. Gestione Finale "A Capo"
   let lines = html.split(/\r?\n/);
   let parsedHtml = '';
   let inCodeBlock = false;
@@ -372,12 +334,12 @@ const parsedContent = computed(() => {
   for (let i = 0; i < lines.length; i++) {
      let line = lines[i];
      
-     if (line.includes('<div class="dkp-code-wrapper">')) inCodeBlock = true;
-     if (line.includes('</div>') && inCodeBlock && !line.includes('<div class="dkp-code-header">')) inCodeBlock = false;
+     if (line.includes('<' + 'div class="dkp-code-wrapper">')) inCodeBlock = true;
+     if (line.includes('<' + '/div>') && inCodeBlock && !line.includes('<' + 'div class="dkp-code-header">')) inCodeBlock = false;
 
      if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(line.trim())) {
         parsedHtml += line + '\n'; 
-     } else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line.trim())) {
+     } else if (line.trim() === '' || new RegExp('^<\\/(div|table|ul|ol|blockquote)>').test(line.trim())) {
          parsedHtml += line + '\n';
      } else {
         parsedHtml += line + (i < lines.length - 1 ? '<br />' : '');
@@ -385,9 +347,9 @@ const parsedContent = computed(() => {
   }
 
   parsedHtml = parsedHtml
-      .replace(/(<\/h[1-6]>)<br \/>/g, '$1') 
-      .replace(/(<\/pre>)<br \/>/g, '$1')
-      .replace(/(<\/div>)<br \/>/g, '$1');
+      .replace(new RegExp('(<\\/h[1-6]>)<br \\/>', 'g'), '$1') 
+      .replace(new RegExp('(<\\/pre>)<br \\/>', 'g'), '$1')
+      .replace(new RegExp('(<\\/div>)<br \\/>', 'g'), '$1');
 
   return parsedHtml
 })
@@ -423,7 +385,7 @@ const parsedContent = computed(() => {
         
         <div class="field-group full-width">
           <label class="field-label">TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
-          <DkpTagInput v-model="tags" />
+          <DkpTagInput v-model="tags"></DkpTagInput>
         </div>
 
         <div class="field-group full-width">
@@ -481,6 +443,7 @@ const parsedContent = computed(() => {
       <div v-show="activeTab === 'write'" class="textarea-container">
         <textarea ref="textareaRef" v-model="content" class="markdown-textarea" placeholder="Inizia a scrivere il tuo articolo qui..." @keydown.enter="handleEnter"></textarea>
       </div>
+      
       <div v-show="activeTab === 'preview'" class="preview-container">
         <div class="dkp-preview-content" v-html="parsedContent"></div>
       </div>
@@ -489,14 +452,24 @@ const parsedContent = computed(() => {
 </template>
 
 <style scoped>
-/* Elementi di formattazione */
+/* 🟢 FORMATTAZIONE INLINE (Sconfigge il Reset CSS di Tailwind) */
+:deep(.dkp-bold) { font-weight: 800; color: #ffffff; }
+:deep(.dkp-italic) { font-style: italic; color: #e2e8f0; }
+:deep(.dkp-strike) { text-decoration: line-through; color: #64748b; }
+:deep(.dkp-inline-code) { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.15rem 0.35rem; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.85em; }
+
+/* 🟢 FORMATTAZIONE LISTE */
+:deep(ul.dkp-main-list), :deep(ul.dkp-sub-list) { list-style-type: disc; margin: 0.2rem 0; padding-left: 1.5rem; }
+:deep(ol.dkp-main-list), :deep(ol.dkp-sub-list) { list-style-type: decimal; margin: 0.2rem 0; padding-left: 1.5rem; }
+:deep(ul.dkp-sub-list), :deep(ol.dkp-sub-list) { list-style-type: circle; margin: 0.2rem 0; padding-left: 2.2rem; border-left: 1px solid #1e293b; }
+:deep(.dkp-li-main), :deep(.dkp-li-nested) { margin-bottom: 0.35rem; color: #cbd5e1; }
+
 :deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
 :deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1rem 0; border-radius: 8px; }
 :deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 :deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
 :deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
 
-/* Stili Blocchi Codice & Header */
 :deep(.dkp-code-wrapper) { background: #0d1117; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; margin: 1rem 0; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
 :deep(.dkp-code-header) { background: #161b22; padding: 0.4rem 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; font-family: sans-serif; font-size: 0.75rem; font-weight: bold; color: #8b949e; text-transform: uppercase; }
 :deep(.dkp-copy-btn) { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #8b949e; cursor: pointer; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem; }
@@ -504,7 +477,6 @@ const parsedContent = computed(() => {
 :deep(.dkp-code-block) { padding: 0.85rem 1rem; margin: 0; overflow-x: auto; background: #080c14; }
 :deep(.dkp-code-block code) { font-family: 'Fira Code', 'Courier New', Courier, monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9; }
 
-/* 🎨 COLORI TOKEN PRISMJS VIBRANTI (Tomorrow Theme) */
 :deep(.token.punctuation) { color: #cbd5e1; }
 :deep(.token.property), :deep(.token.class-name), :deep(.token.constant), :deep(.token.symbol) { color: #f8c555; font-weight: 600; }
 :deep(.token.string), :deep(.token.char), :deep(.token.attr-value) { color: #7ec699; }
@@ -513,7 +485,6 @@ const parsedContent = computed(() => {
 :deep(.token.operator), :deep(.token.entity), :deep(.token.url) { color: #67cdcc; }
 :deep(.token.comment) { color: #64748b; font-style: italic; }
 
-/* FIX ALTEZZA COMPATTA */
 .dkp-editor-wrapper { 
   display: flex; 
   flex-direction: column; 
@@ -581,7 +552,6 @@ const parsedContent = computed(() => {
   line-height: 1.6; box-sizing: border-box; 
 }
 
-/* Modalità ZEN */
 .zen-mode-active {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   z-index: 999999 !important; border-radius: 0; border: none; background: #050814; 

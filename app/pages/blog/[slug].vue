@@ -4,6 +4,7 @@ import { computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
 import SocialShare from '~/components/blog/SocialShare.vue'
+import DkpRelatedPosts from '~/components/blog/DkpRelatedPosts.vue'
 
 // 🟢 Abilita la copia codice per l'articolo renderizzato
 useCodeCopy()
@@ -362,6 +363,12 @@ function handleLike() {
             <SocialShare :title="post.title" :url="currentUrl" :horizontal="true" />
           </div>
         </div>
+		<!-- 🔗 SEZIONE ARTICOLI CORRELATI -->
+        <DkpRelatedPosts 
+          v-if="post"
+          :current-post-id="post.id" 
+          :category="post.category" 
+          :tags="post.tags || []"  />
 		<!-- INCASTRA QUI IL COMPONENTI COMMENTI PULSE v2.5-GOLD -->
     <DKPBlogComments :blogSlug="post.slug" />
       </article>
