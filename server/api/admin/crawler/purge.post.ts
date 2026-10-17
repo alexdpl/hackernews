@@ -1,6 +1,6 @@
 // server/api/admin/crawler/purge.post.ts
 import { DKPCrawlerEngine } from '~~/server/utils/dkp-crawler/engine'
-import { fetchMultiSourceFeed } from '~/server/utils/multiSourceFetcher'
+import { fetchMultiSourceFeed } from '~~/server/utils/multiSourceFetcher'
 
 export default defineEventHandler(async (event) => {
   try {

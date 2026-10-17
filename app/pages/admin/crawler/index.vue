@@ -1,8 +1,3 @@
-Ricevuto, socio! Andiamo a potenziare il pannello di controllo del Crawler, aggiornando le opzioni del form per riflettere le nuove sezioni multi-fonte (che usano rss-parser) e ripristiniamo il preziosissimo pulsante per eliminare tutti i dati della tabella (Trunca Tabella/Wipe DB), affiancandolo al pulsante "Purge Duplicati".
-
-Ecco il codice aggiornato per app/pages/admin/crawler/index.vue:
-
-Snippet di codice
 <!-- app/pages/admin/crawler/index.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
@@ -16,7 +11,7 @@ const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 // Stato reattivo Crawler
 const selectedSection = ref<'news' | 'ask' | 'show' | 'jobs'>('news')
-const selectedLimit = ref(5)
+const selectedLimit = ref(20) // Invece di 5, così prende un buon blocco di default
 const statusMessage = ref('Pannello Crawler SaaS v2.5-GOLD pronto all\'uso. Attendi input...')
 const isRunning = ref(false)
 const latestResult = ref<{ itemsFound: number; section: string; timestamp: string } | null>(null)

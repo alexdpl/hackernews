@@ -7,8 +7,8 @@ export default defineEventHandler(async (event) => {
     const db = await getDb()
     if (!db) throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile' })
 
-    // Esegue una TRUNCATE sulla tabella del crawler (Sostituisci "dkp_stories" col nome reale della tua tabella)
-    await db.execute(sql`TRUNCATE TABLE dkp_stories RESTART IDENTITY CASCADE;`)
+    // Usiamo il nome corretto della tabella presente nello schema: "pulse_stories"
+    await db.execute(sql`TRUNCATE TABLE pulse_stories RESTART IDENTITY CASCADE;`)
 
     return {
       success: true,

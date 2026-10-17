@@ -1,5 +1,5 @@
 // server/api/hn/items.get.ts
-import { fetchMultiSourceFeed } from '~/server/utils/multiSourceFetcher'
+import { fetchMultiSourceFeed } from '~~/server/utils/multiSourceFetcher'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)

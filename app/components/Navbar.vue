@@ -269,6 +269,10 @@ async function handleLogout() {
               <NuxtLink :to="getMainUrl('/user/dashboard?tab=vault')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
                 <span>🛡️</span> I Miei Certificati Vault
               </NuxtLink>
+			  
+			  <NuxtLink :to="getMainUrl('/bounties')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
+                <span>🎯</span> Bounty Board & $PULSE
+              </NuxtLink>
 
               <NuxtLink :to="getMainUrl('/user/dashboard?tab=api')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-sky-400 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
                 <span>🔑</span> DKP API Console

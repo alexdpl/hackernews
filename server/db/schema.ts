@@ -1,4 +1,4 @@
-// server/db/shema.ts
+// server/db/schema.ts
 import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core'
 import { sql, relations } from 'drizzle-orm'
 
@@ -10,7 +10,7 @@ export const licenseStatusEnum = pgEnum('license_status', ['active', 'suspended'
 export const paymentProviderEnum = pgEnum('payment_provider', ['stripe', 'paypal'])
 
 // -------------------------------------------------------------
-// 1. TABELLA UTENTI (Users + Gamification)
+// 1. TABELLA UTENTI (Users + Gamification & $PULSE Wallet)
 // -------------------------------------------------------------
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -25,13 +25,16 @@ export const users = pgTable('users', {
   level: integer('level').default(1).notNull(),
   badges: jsonb('badges').$type<string[]>().default([]),
   githubHandle: varchar('github_handle', { length: 100 }),
+  
+  // 🔥 AGGIUNTO: Portafoglio Token nativo DKP per la Bounty Board
+  pulseBalance: integer('pulse_balance').default(0).notNull(),
+  
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 // -------------------------------------------------------------
 // 2. CATEGORIE & BLOG v2.4-GOLD
 // -------------------------------------------------------------
-
 export const blogCategories = pgTable('blog_categories', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -39,7 +42,7 @@ export const blogCategories = pgTable('blog_categories', {
   description: text('description'),
   icon: varchar('icon', { length: 50 }).default('i-heroicons-folder'),
   color: varchar('color', { length: 30 }).default('#10B981'),
-  tags: jsonb('tags').$type<string[]>().default([]), // 🔥 AGGIUNTO: Array di Tags in formato JSONB
+  tags: jsonb('tags').$type<string[]>().default([]),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -63,7 +66,7 @@ export const blogPosts = pgTable('blog_posts', {
   categoryId: integer('category_id').references(() => blogCategories.id, { onDelete: 'set null' }),
   subcategoryId: integer('subcategory_id').references(() => blogSubcategories.id, { onDelete: 'set null' }),
   authorId: integer('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  tags: jsonb('tags').$type<string[]>().default([]), // 🔥 AGGIUNTO: Array di Tags per gli articoli
+  tags: jsonb('tags').$type<string[]>().default([]),
   status: varchar('status', { length: 20 }).default('pending_vault').notNull(),
   isVerified: boolean('is_verified').default(false).notNull(),
   vaultCertificateId: varchar('vault_certificate_id', { length: 100 }),
@@ -225,3 +228,28 @@ export const xpTransactions = pgTable('xp_transactions', {
   points: integer('points').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+
+// -------------------------------------------------------------
+// 5. DKP BOUNTY BOARD (Novità v2.5)
+// -------------------------------------------------------------
+export const bounties = pgTable('bounties', {
+  id: serial('id').primaryKey(),
+  githubIssueId: varchar('github_issue_id', { length: 100 }).unique(),
+  repoName: varchar('repo_name', { length: 255 }).notNull(),
+  title: text('title').notNull(),
+  url: text('url').notNull(),
+  rewardPulse: integer('reward_pulse').default(100).notNull(), // Taglia in $PULSE
+  status: varchar('status', { length: 20 }).default('open').notNull(), // 'open', 'claimed', 'resolved'
+  claimedBy: integer('claimed_by').references(() => users.id, { onDelete: 'set null' }), // Utente che ha preso in carico la task
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Relazioni per la Bounty Board
+export const bountiesRelations = relations(bounties, ({ one }) => ({
+  claimer: one(users, {
+    fields: [bounties.claimedBy],
+    references: [users.id],
+  }),
+}))

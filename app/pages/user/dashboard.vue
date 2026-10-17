@@ -521,7 +521,7 @@ function revokeApiKey(id: string) {
       </div>
 
       <!-- TABS -->
-      <nav class="tabs-navigation">
+      <nav class="tabs-navigation grid-nav">
         <button class="tab-item" :class="{ active: activeTab === 'profile' }" @click="activeTab = 'profile'">
           ⚙️ Profilo &amp; Social
         </button>
@@ -537,6 +537,9 @@ function revokeApiKey(id: string) {
         <button class="tab-item" :class="{ active: activeTab === 'gamification' }" @click="activeTab = 'gamification'">
           🏆 Gamification &amp; XP
         </button>
+        <NuxtLink to="/bounties" class="tab-item bounty-link">
+          🎯 Bounty Board &amp; $PULSE
+        </NuxtLink>
       </nav>
 
       <!-- PANNELLO 1: PROFILO -->
@@ -1118,6 +1121,11 @@ details > summary::-webkit-details-marker { display: none; }
 .tabs-navigation { display: flex; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.75rem; }
 .tab-item { background: #090d16; border: 1px solid #1e293b; color: #94a3b8; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; flex: 1 1 auto; text-align: center; }
 .tab-item.active { background: rgba(0, 220, 130, 0.12); border-color: #00dc82; color: #00dc82; }
+.grid-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; } 
+@media (max-width: 768px) { .grid-nav { grid-template-columns: repeat(2, 1fr); } } 
+@media (max-width: 480px) { .grid-nav { grid-template-columns: 1fr; } } 
+.bounty-link { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b; font-weight: 800; text-decoration: none; display: flex; align-items: center; justify-content: center; } 
+.bounty-link:hover { background: rgba(245, 158, 11, 0.2); border-color: #f59e0b; }
 
 .panel-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; position: relative; }
 .section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
