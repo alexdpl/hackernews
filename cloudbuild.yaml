@@ -11,8 +11,9 @@ steps:
       - 'deploy'
       - 'devkernelpulse'
       - '--image=gcr.io/$PROJECT_ID/devkernelpulse:$COMMIT_SHA'
-      - '--region=europe-west1'
+      - '--region=europe-west4'
       - '--platform=managed'
+      - '--max-instances=3'
       - '--allow-unauthenticated'
 
 images:
