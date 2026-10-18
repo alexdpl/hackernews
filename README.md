@@ -1,62 +1,101 @@
-# Nuxt Hacker News
+# DevKernelPulse
 
-Hacker News clone built with [Nuxt](https://nuxt.com).
+[![Nuxt](https://img.shields.io/badge/Nuxt_4-020420?style=for-the-badge&logo=nuxt.js&logoColor=00DC82)](https://nuxt.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Website](https://img.shields.io/badge/Website-devkernelpulse.org-00DC82?style=for-the-badge)](https://devkernelpulse.org)
 
 <p align="center">
-  <a href="https://hn.nuxt.dev" target="_blank">
-    <img width="1090" src="https://github.com/nuxt/hackernews/assets/904724/9aa478bf-a43d-4222-8adf-a7a715d71e38">
-    <br>
-    Live Demo
-  </a>
+  <img src="./docs/preview.png" alt="DevKernelPulse" width="900" />
+</p>
 
+**DevKernelPulse** is a modern developer platform built with Nuxt 4.  
+Official website: [https://devkernelpulse.org](https://devkernelpulse.org)
 
-## Demo
+---
 
-https://hn.nuxt.dev
+## 🚀 Live
 
-> Hosted on Cloudflare Pages with [NuxtHub](https://hub.nuxt.com): `npm run build`
+🌐 **Production**: [https://devkernelpulse.org](https://devkernelpulse.org)
 
-## Performance
+> Currently hosted on **Google Cloud Platform (GCP)**
 
-- Lighthouse [100/100](https://pagespeed.web.dev/report?url=https%3A%2F%2Fhn.nuxt.dev%2Fnews%2F1) (Slow 4G / Mobile Moto G4)
+---
 
-## Features
+## ✨ Features
 
-- Server Side Rendering
-- Vite-based hot module replacement (HMR) dev environment
-- Deploys anywhere with zero config (Vercel, Netlify, Cloudflare, etc.) powered by [Nitro](https://nitro.unjs.io)
-- Code Splitting
-- Prefetch/Preload JS + DNS + Data
+- Modern & fast Nuxt 4 architecture
+- Blog system with related posts
+- Public user profiles with social links
+- DKP Points system
+- Dark theme optimized UI
+- SEO friendly
+- Server-side rendering (SSR)
+- Fully responsive
 
-## Build Setup
+---
 
-**Requires Node.js 14+**
+## 👥 Team
 
-``` bash
-# install dependencies
-npm install # or yarn
+Built with ❤️ by the DevKernelPulse team.
 
-# serve in dev mode, with hot reload at localhost:3000
-npm run dev
+---
 
-# build for production (server-side rendering)
-npm run build
+## 👨‍💻 Author
 
-# serve in production mode (server-side rendering)
-npm start
+**@alexdpl**  
+Lead Engineer Architect & Core Creator of DevKernelPulse
 
-# validate and fix with ESLint (with Prettier)
-npm run lintfix
+- GitHub: [github.com/alexdpl](https://github.com/alexdpl)
+- X: [x.com/alexdpl76](https://x.com/alexdpl76)
+- LinkedIn: [linkedin.com/in/alexdpl](https://linkedin.com/in/alexdpl)
+
+---
+
+## 🛠 Tech Stack
+
+- **Framework**: [Nuxt 4](https://nuxt.com)
+- **Database**: Neon (PostgreSQL) + Drizzle ORM
+- **Styling**: Tailwind CSS
+- **Package Manager**: pnpm
+- **Hosting**: Google Cloud Platform (GCP)
+- **Language**: TypeScript
+
+---
+
+## 📦 Build Setup
+
+**Requires Node.js 18+**
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Preview production build
+pnpm preview
 ```
+---
 
-## Links
+## 📄 License
 
-For the Nuxt 2 version, check out the [`nuxt2` branch](https://github.com/nuxt/hackernews/tree/nuxt2)
+This project is licensed under the **MIT License**.
 
-## License
+MIT License
 
-MIT
+Copyright (c) 2026 Alessandro De Paola (@alexdpl)
 
-## Credits
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-This repository is originally ported from [vue-hackernews-2.0](https://github.com/vuejs/vue-hackernews-2.0)
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+
