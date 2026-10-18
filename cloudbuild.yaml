@@ -1,20 +1,7 @@
 steps:
-  # 1. Compilazione dell'immagine Docker
+  # Compilazione dell'immagine Docker nativa per Nuxt
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/devkernelpulse:$COMMIT_SHA', '.']
-
-  # 2. Rilascio automatico del container su Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - 'run'
-      - 'deploy'
-      - 'devkernelpulse'
-      - '--image=gcr.io/$PROJECT_ID/devkernelpulse:$COMMIT_SHA'
-      - '--region=europe-west4'
-      - '--platform=managed'
-      - '--max-instances=3'
-      - '--allow-unauthenticated'
 
 images:
   - 'gcr.io/$PROJECT_ID/devkernelpulse:$COMMIT_SHA'
