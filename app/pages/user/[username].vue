@@ -1,155 +1,156 @@
 <!-- app/pages/user/[username].vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const username = computed(() => route.params.username as string || 'alexdpl')
+const username = computed(() => (route.params.username as string) || 'alexdpl')
 
 const userProfile = ref({
   username: username.value,
-  bio: 'Lead Architect & Core Creator of DevKernelPulse',
+  bio: 'Lead Engineer Architect & Core Creator of DevKernelPulse',
   avatar: 'https://github.com/alexdpl.png',
   github: 'https://github.com/alexdpl',
-  twitter: 'https://x.com/alexdpl',
+  twitter: 'https://x.com/alexdpl76',
   linkedin: 'https://linkedin.com/in/alexdpl',
   reddit: 'https://reddit.com/user/alexdpl',
-  points: 127,
+  points: 1130,
   rank: 'Developer VIP Member'
 })
 </script>
 
 <template>
-  <div class="public-profile-page">
-    <div class="profile-card">
-      <div class="profile-header">
-        <img :src="userProfile.avatar" alt="Avatar" class="avatar" />
-        <div class="meta">
-          <h1>@{{ userProfile.username }}</h1>
-          <span class="rank">{{ userProfile.rank }}</span>
-          <p class="bio">{{ userProfile.bio }}</p>
+  <div class="min-h-screen bg-[#020420] text-white py-12 px-4 flex justify-center">
+    <div class="w-full max-w-[650px] bg-[#090d16] border border-[#1e293b] rounded-2xl p-8 flex flex-col gap-6">
+      
+      <!-- Header profilo -->
+      <div class="flex items-center gap-6">
+        <img 
+          :src="userProfile.avatar" 
+          alt="Avatar" 
+          class="w-20 h-20 rounded-full border-2 border-[#00dc82] object-cover"
+        />
+        <div>
+          <h1 class="text-2xl font-bold m-0">@{{ userProfile.username }}</h1>
+          <span class="text-[#00dc82] font-bold text-sm">{{ userProfile.rank }}</span>
+          <p class="text-slate-400 text-sm mt-1 mb-0">{{ userProfile.bio }}</p>
         </div>
       </div>
 
-      <!-- ICONE SOCIAL CON REDDIT -->
-      <div class="social-links">
-        <a v-if="userProfile.github" :href="userProfile.github" target="_blank" class="social-btn">🐙 GitHub</a>
-        <a v-if="userProfile.twitter" :href="userProfile.twitter" target="_blank" class="social-btn">🐦 Twitter</a>
-        <a v-if="userProfile.linkedin" :href="userProfile.linkedin" target="_blank" class="social-btn">💼 LinkedIn</a>
-        <a v-if="userProfile.reddit" :href="userProfile.reddit" target="_blank" class="social-btn reddit">🤖 Reddit</a>
+      <!-- ICONE SOCIAL -->
+      <div class="flex flex-wrap gap-3">
+        <!-- GitHub -->
+        <a
+          v-if="userProfile.github"
+          :href="userProfile.github"
+          target="_blank"
+          class="social-btn group"
+        >
+          <img 
+            src="https://img.icons8.com/ios-filled/50/ffffff/github.png" 
+            alt="GitHub"
+            class="w-7 h-7 transition-transform duration-200 group-hover:scale-110"
+          />
+          <span>GitHub</span>
+        </a>
+
+        <!-- Twitter / X -->
+        <a
+          v-if="userProfile.twitter"
+          :href="userProfile.twitter"
+          target="_blank"
+          class="social-btn group"
+        >
+          <img 
+            src="https://img.icons8.com/ios-filled/50/ffffff/twitterx.png" 
+            alt="Twitter X"
+            class="w-7 h-7 transition-transform duration-200 group-hover:scale-110"
+          />
+          <span>Twitter</span>
+        </a>
+
+        <!-- LinkedIn -->
+        <a
+          v-if="userProfile.linkedin"
+          :href="userProfile.linkedin"
+          target="_blank"
+          class="social-btn group linkedin"
+        >
+          <img 
+            src="https://img.icons8.com/color/48/linkedin.png" 
+            alt="LinkedIn"
+            class="w-7 h-7 transition-transform duration-200 group-hover:scale-110"
+          />
+          <span>LinkedIn</span>
+        </a>
+
+        <!-- Reddit -->
+        <a
+          v-if="userProfile.reddit"
+          :href="userProfile.reddit"
+          target="_blank"
+          class="social-btn group reddit"
+        >
+          <img 
+            src="https://img.icons8.com/color/48/reddit.png" 
+            alt="Reddit"
+            class="w-7 h-7 transition-transform duration-200 group-hover:scale-110"
+          />
+          <span>Reddit</span>
+        </a>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-box">
-          <span class="stat-title">Punti DKP</span>
-          <span class="stat-value">{{ userProfile.points }}</span>
+      <!-- Stats -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-[#020420] border border-[#1e293b] rounded-lg p-4 flex flex-col gap-1">
+          <span class="text-xs text-slate-500 uppercase tracking-wider">Punti DKP</span>
+          <span class="text-xl font-extrabold">{{ userProfile.points }}</span>
         </div>
-        <div class="stat-box">
-          <span class="stat-title">Stato Credenziali</span>
-          <span class="stat-value verified">Verificato</span>
+        <div class="bg-[#020420] border border-[#1e293b] rounded-lg p-4 flex flex-col gap-1">
+          <span class="text-xs text-slate-500 uppercase tracking-wider">Stato Credenziali</span>
+          <span class="text-xl font-extrabold text-[#00dc82]">Verificato</span>
         </div>
       </div>
+
     </div>
   </div>
 </template>
 
 <style scoped>
-.public-profile-page {
-  background: #020420;
-  min-height: 100vh;
-  padding: 3rem 1rem;
-  color: #ffffff;
-  display: flex;
-  justify-content: center;
-}
-
-.profile-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 16px;
-  padding: 2rem;
-  max-width: 650px;
-  width: 100%;
+/* CSS normale (niente @apply) → niente errori PostCSS */
+.social-btn {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.profile-header {
-  display: flex;
   align-items: center;
-  gap: 1.5rem;
-}
-
-.avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 2px solid #00dc82;
-}
-
-.meta h1 { margin: 0; font-size: 1.5rem; }
-.rank { color: #00dc82; font-weight: 700; font-size: 0.85rem; }
-.bio { color: #94a3b8; margin: 0.5rem 0 0; font-size: 0.9rem; }
-
-.social-links {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.social-btn {
+  justify-content: center;
+  gap: 0.35rem;
+  width: 72px;
+  height: 72px;
   background: #020420;
   border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.45rem 0.85rem;
-  border-radius: 6px;
+  border-radius: 12px;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-decoration: none;
-  font-size: 0.8rem;
-  font-weight: 700;
+  transition: all 0.2s ease;
 }
 
 .social-btn:hover {
-  border-color: #38bdf8;
+  transform: translateY(-3px);
+  border-color: #00dc82;
   color: #ffffff;
+  box-shadow: 0 0 15px rgba(0, 220, 130, 0.25);
+}
+
+/* Colori ufficiali al hover */
+.social-btn.linkedin:hover {
+  border-color: #0A66C2;
+  box-shadow: 0 0 15px rgba(10, 102, 194, 0.35);
 }
 
 .social-btn.reddit:hover {
-  border-color: #ff4500;
-  color: #ff4500;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.stat-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 1rem;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-/* SINTASSI CSS CORRETTA */
-.stat-title {
-  font-size: 0.7rem;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.stat-value {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.stat-value.verified {
-  color: #00dc82;
+  border-color: #FF4500;
+  box-shadow: 0 0 15px rgba(255, 69, 0, 0.35);
 }
 </style>

@@ -183,9 +183,9 @@ const activeTab = computed({
 // 2. PROFILO
 const profileForm = ref({
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
-  bio: currentUser.value?.bio || 'Lead Architect & Core Creator of DevKernelPulse',
+  bio: currentUser.value?.bio || 'Lead Engineer Architect & Core Creator of DevKernelPulse',
   github: 'https://github.com/alexdpl',
-  twitter: 'https://x.com/alexdpl',
+  twitter: 'https://x.com/alexdpl76',
   linkedin: 'https://linkedin.com/in/alexdpl',
   reddit: 'https://reddit.com/user/alexdpl'
 })

@@ -1,7 +1,7 @@
 <!-- app/components/blog/SocialShare.vue -->
 <template>
   <div class="social-share-container" :class="{ 'vertical': vertical, 'horizontal': horizontal }">
-    <span v-if="!vertical" class="share-label">⚡ Condividi nel Network DKP</span>
+    <span v-if="!vertical" class="share-label">🔌 Condividi nel Network DKP</span>
     
     <div class="share-buttons-grid" :class="{ 'flex-col': vertical }">
       <!-- X / Twitter -->

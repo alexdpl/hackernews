@@ -11,35 +11,21 @@ const props = defineProps<{
 const relatedPosts = ref<any[]>([])
 const isLoading = ref(true)
 
-// Simulazione fetch articoli correlati dal DB (Neon)
 async function fetchRelated() {
   isLoading.value = true
   try {
-    // In produzione chiamerai: await $fetch(`/api/blog/related?id=${props.currentPostId}&cat=${props.category}`)
-    // Per ora usiamo dati dummy per vedere il layout
-    setTimeout(() => {
-      relatedPosts.value = [
-        {
-          id: 101,
-          slug: 'guida-nuxt-4-novita',
-          title: 'Nuxt 4: Tutte le novità della nuova major release',
-          excerpt: 'Scopri i nuovi pattern architetturali e come migrare da Nuxt 3 in modo indolore.',
-          category: 'Cloud Native & DevOps',
-          date: '2026-10-10'
-        },
-        {
-          id: 102,
-          slug: 'implementare-ollama-locale',
-          title: 'AI Locale: Setup di Ollama in 5 minuti',
-          excerpt: 'Esegui modelli Llama 3 e Mistral direttamente sulla tua macchina senza costi Cloud.',
-          category: 'AI, LLM & Machine Learning',
-          date: '2026-10-12'
-        }
-      ]
-      isLoading.value = false
-    }, 800)
+    relatedPosts.value = await $fetch('/api/blog/related', {
+      query: {
+        id: props.currentPostId,
+        cat: props.category,
+        tags: props.tags?.length ? props.tags.join(',') : undefined,
+        limit: 2
+      }
+    })
   } catch (error) {
-    console.error("Errore recupero correlati:", error)
+    console.error('Errore recupero correlati:', error)
+    relatedPosts.value = []
+  } finally {
     isLoading.value = false
   }
 }
@@ -65,7 +51,7 @@ onMounted(() => {
       <NuxtLink 
         v-for="post in relatedPosts" 
         :key="post.id" 
-        :to="`/news/${post.slug}`"
+        :to="`/blog/${post.slug}`"
         class="related-card"
       >
         <div class="card-meta">
