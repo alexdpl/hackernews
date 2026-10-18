@@ -1,6 +1,6 @@
-# 🤝 Guida alla Contribuzione - DKP HackerNews
+# 🤝 Guida alla Contribuzione - DevKernelPulse
 
-Benvenuto a bordo! Apprezziamo il tuo interesse nel migliorare l'ecosistema DKP v2.4-GOLD. Per mantenere il codice pulito e l'architettura stabile, ti chiediamo di seguire queste linee guida.
+Benvenuto a bordo! Apprezziamo il tuo interesse nel migliorare l'ecosistema DKP v2.5-GOLD. Per mantenere il codice pulito e l'architettura stabile, ti chiediamo di seguire queste linee guida.
 
 ## 🚀 Setup Locale
 1. Clona il repository: `git clone git@github.com:alexdpl/hackernews.git`
