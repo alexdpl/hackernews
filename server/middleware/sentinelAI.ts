@@ -1,4 +1,5 @@
 // server/middleware/sentinelAI.ts
+import { defineEventHandler, getHeader, setResponseHeader, getRequestURL, getMethod, createError } from 'h3'
 
 // Helper ultra-sicuro per settare header nativi Node.js senza conflitti di versione h3
 function setSafeHeader(event: any, name: string, value: string) {
@@ -35,6 +36,7 @@ function getSafeHeader(event: any, name: string): string {
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
+  const url = getRequestURL(event)
 
   const host =
     getSafeHeader(event, 'x-forwarded-host') ||
@@ -45,8 +47,11 @@ export default defineEventHandler(async (event) => {
   const isMailSubdomain = host.startsWith('mail.')
 
   // -------------------------------------------------------------
-  // 🌐 1. CONFIGURAZIONE CORS UNIVERSALE
+  // 🌐 1. CONFIGURAZIONE CORS UNIVERSALE & REGION HEADERS
   // -------------------------------------------------------------
+  setSafeHeader(event, 'X-Cloud-Region', 'europe-west4')
+  setSafeHeader(event, 'X-Sentinel-Protection', 'ACTIVE')
+
   const origin = getSafeHeader(event, 'origin')
   const allowedOrigins = [
     'https://devkernelpulse.org',
@@ -74,7 +79,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     // -------------------------------------------------------------
-    // 🤖 2. ROUTING & API SENTINEL AI
+    // 🤖 2. ROUTING & API SENTINEL AI v2.5-GOLD
     // -------------------------------------------------------------
     if (isApiSubdomain) {
       setSafeHeader(event, 'X-Sentinel-AI', 'API-Guard-Active')
@@ -132,6 +137,6 @@ export default defineEventHandler(async (event) => {
     if (error.statusCode) {
       throw error
     }
-    console.error('❌ Errore critico in Sentinel AI:', error)
+    console.error('❌ Errore critico in Sentinel AI v2.4-GOLD:', error)
   }
 })

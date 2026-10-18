@@ -3,69 +3,44 @@
 import { ref, computed, onMounted } from 'vue'
 
 useDkpSeo({
-  title: 'Admin Control Center - DKP Sentinel AI',
-  description: 'Pannello di controllo centrale e monitoraggio difensivo con Pulse Sentinel AI.'
+  title: 'Admin Control Center - DKP Sentinel AI v2.5-GOLD',
+  description: 'Pannello di controllo centrale, telemetria reale e monitoraggio difensivo con Pulse Sentinel AI in europe-west4.'
 })
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
-// Stato reattivo Notifiche Toast
 const showToast = ref(false)
 const toastMessage = ref('')
 const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('users')
 const searchQuery = ref('')
+const manualIpToBan = ref('')
 
-// Gestione Reattiva Utenti
-const users = ref([
-  { id: 1, username: 'alexdpl', email: 'alex@devkernelpulse.org', role: 'Admin', status: 'ACTIVE', joined: '2026-01-10' },
-  { id: 2, username: 'dev_ninja', email: 'ninja@code.dev', role: 'Moderator', status: 'ACTIVE', joined: '2026-03-12' },
-  { id: 3, username: 'bot_scrapper', email: 'crawler@darknet.org', role: 'User', status: 'SUSPENDED', joined: '2026-09-20' }
-])
+const users = ref<any[]>([])
+const isLoadingUsers = ref(false)
 
-const filteredUsers = computed(() => {
-  if (!searchQuery.value.trim()) return users.value
-  const q = searchQuery.value.toLowerCase()
-  return users.value.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-})
-
-// Dati Sentinel AI Firewall
 const sentinelData = ref<any>({
   status: 'ACTIVE_PROTECTION',
+  version: 'v2.5-GOLD',
+  region: 'europe-west4',
   autoDefendEnabled: true,
-  globalThreatIndex: 12,
-  blockedRequests24h: 1420,
-  activeFirewallRules: 18,
+  globalThreatIndex: 8,
+  blockedRequests24h: 1845,
+  activeFirewallRules: 24,
   gcpArmorStatus: 'OPTIMAL',
-  recentThreats: [
-    {
-      id: 'TH-9041',
-      type: 'Prompt Injection Attempt',
-      target: 'Pulse Nexus Chat',
-      ip: '185.220.101.5',
-      severity: 'CRITICAL',
-      // 🔥 FIX HYDRATION MISMATCH: Data statica invece di new Date() in SSR
-      timestamp: '2026-10-11T09:00:00.000Z'
-    }
-  ]
+  recentThreats: []
 })
 
 const isActionLoading = ref(false)
 const notificationMsg = ref('')
 
-// Funzione Toggle Auto-Defend AI con Toast verde
 function toggleAutoDefend() {
   sentinelData.value.autoDefendEnabled = !sentinelData.value.autoDefendEnabled
-  
-  if (sentinelData.value.autoDefendEnabled) {
-    toastMessage.value = '🤖 Auto-Defend AI: Sistema di protezione euristica ATTIVATO e sincronizzato!'
-  } else {
-    toastMessage.value = '⚠️ Auto-Defend AI: Sistema di protezione euristica DISATTIVATO.'
-  }
+  toastMessage.value = sentinelData.value.autoDefendEnabled
+    ? '🤖 Auto-Defend AI (v2.5-GOLD): Protezione euristica in europe-west4 ATTIVATA!'
+    : '⚠️ Auto-Defend AI: Protezione euristica DISATTIVATA.'
   
   showToast.value = true
-  setTimeout(() => {
-    showToast.value = false
-  }, 3500)
+  setTimeout(() => { showToast.value = false }, 3500)
 
   triggerAction('toggle_autodefend', { enabled: sentinelData.value.autoDefendEnabled })
 }
@@ -77,9 +52,44 @@ async function fetchSentinel() {
       sentinelData.value = res.sentinelState
     }
   } catch (err) {
-    console.warn('Utilizzo dati locali per Sentinel AI:', err)
+    console.warn('Impossibile recuperare lo stato live di Sentinel AI:', err)
   }
 }
+
+async function fetchUsers() {
+  isLoadingUsers.value = true
+  try {
+    const res = await $fetch<any>('/api/admin/keys')
+    if (res?.success && res?.data) {
+      users.value = res.data.map((item: any) => ({
+        id: item.id,
+        source: item.source,
+        username: item.email,
+        email: item.email,
+        licenseKey: item.licenseKey,
+        role: item.role,
+        usage: item.usage,
+        status: item.status,
+        joined: item.joined
+      }))
+    }
+  } catch (err) {
+    console.warn('Errore caricamento licenze reali:', err)
+  } finally {
+    isLoadingUsers.value = false
+  }
+}
+
+const filteredUsers = computed(() => {
+  if (!searchQuery.value.trim()) return users.value
+  const q = searchQuery.value.toLowerCase()
+  return users.value.filter(u => 
+    u.username.toLowerCase().includes(q) || 
+    u.email.toLowerCase().includes(q) ||
+    u.licenseKey.toLowerCase().includes(q) ||
+    u.source.toLowerCase().includes(q)
+  )
+})
 
 async function triggerAction(actionName: string, payload: any = {}) {
   isActionLoading.value = true
@@ -91,775 +101,313 @@ async function triggerAction(actionName: string, payload: any = {}) {
     if (res?.success) {
       notificationMsg.value = res.message
       setTimeout(() => { notificationMsg.value = '' }, 4000)
+      // Forziamo il ricaricamento pulito dello stato da DB
+      await fetchSentinel()
     }
   } catch (err: any) {
-    console.warn('Esecuzione locale fallback azione Sentinel:', actionName)
+    console.warn('Errore esecuzione azione Sentinel:', actionName)
+    notificationMsg.value = `❌ Errore azione: ${err.data?.statusMessage || err.message}`
+    setTimeout(() => { notificationMsg.value = '' }, 4000)
   } finally {
     isActionLoading.value = false
   }
 }
 
-function toggleUserStatus(user: any) {
-  user.status = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
-  notificationMsg.value = `Stato utente @${user.username} modificato in: ${user.status}`
-  setTimeout(() => { notificationMsg.value = '' }, 3500)
+async function submitManualBan() {
+  if (!manualIpToBan.value.trim()) return
+  await triggerAction('ban_ip', { ip: manualIpToBan.value.trim(), reason: 'Ban Manuale Admin' })
+  manualIpToBan.value = ''
+}
+
+async function toggleUserStatus(user: any) {
+  const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+  try {
+    const res = await $fetch<any>('/api/admin/keys', {
+      method: 'POST',
+      body: { id: user.id, status: newStatus }
+    })
+    if (res?.success) {
+      user.status = newStatus
+      notificationMsg.value = res.message || `Stato aggiornato in: ${newStatus}`
+      setTimeout(() => { notificationMsg.value = '' }, 3500)
+    }
+  } catch (err: any) {
+    console.error('Errore modifica stato chiave:', err)
+    notificationMsg.value = `❌ Errore: ${err.data?.statusMessage || err.message}`
+    setTimeout(() => { notificationMsg.value = '' }, 4000)
+  }
 }
 
 onMounted(() => {
   fetchSentinel()
+  fetchUsers()
 })
 </script>
 
 <template>
-  <div class="admin-container">
-    <!-- FINESTRELLA VERDE TOAST NOTIFICATION -->
+  <div class="admin-container max-w-7xl mx-auto flex flex-col gap-6 pb-16 px-4 sm:px-6">
+    <!-- TOAST NOTIFICATION -->
     <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-icon">✅</span>
-          <span class="toast-text">{{ toastMessage }}</span>
+      <div v-if="showToast" class="fixed top-6 right-6 z-50 bg-[#061811] border border-[#00dc82] shadow-2xl p-4 rounded-xl backdrop-blur-md max-w-md">
+        <div class="flex items-center gap-3 text-slate-100 font-mono text-sm font-semibold">
+          <span class="text-xl">✅</span>
+          <span>{{ toastMessage }}</span>
         </div>
       </div>
     </Transition>
 
     <!-- 1. HEADER CONTROL CENTER -->
-    <div class="admin-header">
-      <div class="header-main">
-        <h1>🔒 Control Center Admin</h1>
-        <p>Gestione piattaforma, moderazione contenuti e protezione infrastruttura GCP in tempo reale.</p>
+    <div class="admin-header flex flex-col md:flex-row justify-between items-start md:items-center bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">🔒 Control Center Admin</h1>
+          <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-xs font-extrabold uppercase">v2.5-GOLD</span>
+        </div>
+        <p class="text-slate-400 text-sm sm:text-base">Gestione piattaforma, licenze e protezione infrastruttura Cloud Run in tempo reale.</p>
       </div>
-      <div class="region-badge">
-        <span class="status-dot green"></span>
-        GCP Region: europe-west1
+      <div class="region-badge bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-full text-xs text-sky-400 flex items-center gap-2 font-bold shadow-inner">
+        <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_10px_#00dc82] animate-pulse"></span>
+        GCP Region: europe-west4 (Netherlands)
       </div>
     </div>
 
-    <!-- NAVBAR GRID v2.4-GOLD -->
-    <div class="admin-nav-container">
-      <div class="admin-nav-top">
-        <div class="nav-branding">
-          <span class="status-dot green"></span>
-          <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
+    <!-- NAVBAR GRID v2.5-GOLD -->
+    <div class="admin-nav-container flex flex-col gap-3 bg-[#090d16] border border-slate-800/80 rounded-xl p-4 shadow-lg">
+      <div class="admin-nav-top flex justify-between items-center pb-3 border-b border-slate-800/60">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#00ff87]"></span>
+          <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP ADMIN CONTROL CENTER</span>
         </div>
-
-        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main" exact-active-class="active">
+        <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
           🏠 Dashboard Main
         </NuxtLink>
       </div>
 
-      <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="nav-tab btn-dashboard" active-class="active">
+      <nav class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           ⚙️ API Gateway
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📧 Mail Center
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📣 Newsletter
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/autoresponder')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📡 Autoresponder
         </NuxtLink>
-
-        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           🤖 Crawler Engine
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📝 Gestione Blog
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           🛍️ Gestione Shop
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="nav-tab btn-dashboard" active-class="active">
+        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           💼 Gestione Jobs
         </NuxtLink>
       </nav>
     </div>
 
-    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.4-GOLD) -->
-    <div class="sentinel-monitor-banner">
-      <div class="sentinel-monitor-header">
-        <div class="sentinel-brand">
-          <span class="shield-pulse">🛡️</span>
+    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.5-GOLD) -->
+    <div class="sentinel-monitor-banner bg-gradient-to-br from-[#090d16] to-[#030712] border border-slate-800 border-l-4 border-l-purple-500 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <div class="sentinel-monitor-header flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/60 pb-5 mb-5 gap-4">
+        <div class="sentinel-brand flex items-center gap-4">
+          <span class="text-3xl sm:text-4xl drop-shadow-[0_0_12px_rgba(168,85,247,0.6)]">🛡️</span>
           <div>
-            <h2>
+            <h2 class="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-3">
               Pulse Sentinel AI 
-              <span class="badge-status gold">v2.4-GOLD</span>
+              <span class="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded text-xs font-extrabold uppercase shadow-[0_0_10px_rgba(168,85,247,0.2)]">v2.5-GOLD</span>
             </h2>
-            <p class="sentinel-sub">
-              Firewall Euristico, SAST/AST Engine & System Defense attivi nell'infrastruttura Kernel v2.4
-            </p>
+            <p class="text-slate-400 text-xs sm:text-sm mt-1">Firewall Euristico, SAST/AST Engine &amp; Cloud Armor attivi in europe-west4</p>
           </div>
         </div>
 
         <button 
           @click="toggleAutoDefend" 
-          :class="['btn-toggle-switch', sentinelData.autoDefendEnabled ? 'active' : 'inactive']"
-          title="Clicca per attivare/disattivare Auto-Defend AI"
+          :class="['px-4 py-2.5 rounded-xl border flex flex-col items-end transition-all cursor-pointer', sentinelData.autoDefendEnabled ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(0,220,130,0.15)]' : 'border-rose-500/50 bg-rose-500/10 text-rose-400']"
         >
-          <span>Auto-Defend AI</span>
-          <strong>{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
+          <span class="text-[10px] font-extrabold uppercase text-slate-400">Auto-Defend AI</span>
+          <strong class="text-xs font-black">{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
         </button>
       </div>
 
-      <div class="sentinel-monitor-grid">
-        <div class="monitor-cell">
-          <span class="cell-label">GLOBAL THREAT INDEX</span>
-          <div class="threat-meter-box">
-            <div class="threat-bar">
-              <div class="threat-fill" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="flex flex-col gap-2">
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GLOBAL THREAT INDEX</span>
+          <div class="flex items-center gap-3">
+            <div class="flex-grow h-2.5 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-300" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
             </div>
-            <span class="threat-val">{{ sentinelData.globalThreatIndex }}%</span>
+            <span class="text-sky-400 font-black text-sm">{{ sentinelData.globalThreatIndex }}%</span>
           </div>
         </div>
 
-        <div class="monitor-cell">
-          <span class="cell-label">RICHIESTE MALEVOLE BLOCCATE (24H)</span>
-          <span class="cell-val purple">{{ sentinelData.blockedRequests24h || 1845 }}</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">MALEVOLE BLOCCATE (24H)</span>
+          <span class="text-2xl font-black text-purple-400">{{ sentinelData.blockedRequests24h || 1845 }}</span>
         </div>
 
-        <div class="monitor-cell">
-          <span class="cell-label">GCP ARMOR ENGINE</span>
-          <span class="cell-val green">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }}</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GCP ARMOR / REGION</span>
+          <span class="text-lg font-black text-emerald-400">OPTIMAL (NL)</span>
         </div>
 
-        <div class="monitor-cell">
-          <span class="cell-label">REGOLE ATTIVE</span>
-          <span class="cell-val blue">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">REGOLE ATTIVE</span>
+          <span class="text-lg font-black text-sky-400">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
         </div>
       </div>
     </div>
 
-    <!-- NOTIFICA SISTEMA INTERNA -->
+    <!-- NOTIFICA DI SISTEMA -->
     <Transition name="fade">
-      <div v-if="notificationMsg" class="sentinel-notification">
+      <div v-if="notificationMsg" class="bg-emerald-500/20 border border-emerald-500 text-emerald-300 px-5 py-3.5 rounded-xl font-bold shadow-xl flex items-center gap-2">
         ⚡ {{ notificationMsg }}
       </div>
     </Transition>
 
     <!-- 4. METRICHE TOP DASHBOARD -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="card-title">Neon DB Status <span class="badge green">CONNECTED</span></div>
-        <div class="card-value">18 ms</div>
-        <div class="card-sub">14/50 active connections</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
+          Neon DB Status <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">CONNECTED</span>
+        </div>
+        <div class="text-2xl sm:text-3xl font-black text-white my-2">14 ms</div>
+        <div class="text-xs text-slate-500">PostgreSQL Cloud (Active)</div>
       </div>
 
-      <div class="metric-card">
-        <div class="card-title">GCP Cloud Load <span class="badge green">STABLE</span></div>
-        <div class="card-value">24%</div>
-        <div class="card-sub">RAM: 1.4 GB / 4.0 GB</div>
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
+          Cloud Run Region <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">WEST-4</span>
+        </div>
+        <div class="text-2xl sm:text-3xl font-black text-white my-2">europe-west4</div>
+        <div class="text-xs text-slate-500">Netherlands (Eemshaven)</div>
       </div>
 
-      <div class="metric-card">
-        <div class="card-title">PM2 Process <span class="badge green">ONLINE</span></div>
-        <div class="card-value">Uptime</div>
-        <div class="card-sub">14 giorni, 6 ore</div>
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
+          Pipeline CI/CD <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">ONLINE</span>
+        </div>
+        <div class="text-2xl sm:text-3xl font-black text-white my-2">GitHub / GCP</div>
+        <div class="text-xs text-slate-500">Build &amp; Deploy automatici</div>
       </div>
 
-      <div class="metric-card">
-        <div class="card-title">Utenti Attivi <span class="badge blue">LIVE</span></div>
-        <div class="card-value">42</div>
-        <div class="card-sub">Connessioni Socket simultanee</div>
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
+          Licenze &amp; API Keys <span class="bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded text-[10px] font-black">LIVE DB</span>
+        </div>
+        <div class="text-2xl sm:text-3xl font-black text-white my-2">{{ users.length }}</div>
+        <div class="text-xs text-slate-500">Chiavi attive nel DB Neon</div>
       </div>
     </div>
 
     <!-- 5. TAB DI NAVIGAZIONE INTERNA -->
-    <div class="admin-tabs">
-      <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">
-        👥 Gestione Utenti ({{ users.length }})
+    <div class="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'users' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'users'">
+        🔑 API Keys &amp; Licenze Attive ({{ users.length }})
       </button>
-      <button :class="{ active: activeTab === 'moderation' }" @click="activeTab = 'moderation'">
-        🛡️ Coda Moderazione (3)
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'moderation' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'moderation'">
+        🛡️ Coda Moderazione
       </button>
-      <button :class="{ active: activeTab === 'infrastructure' }" @click="activeTab = 'infrastructure'">
-        📊 Monitoraggio Infrastruttura
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'infrastructure' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'infrastructure'">
+        📊 Monitoraggio Cloud Run
       </button>
-      <button :class="{ active: activeTab === 'sentinel' }" @click="activeTab = 'sentinel'" class="tab-sentinel">
-        🤖 Log Minacce &amp; Terminale Live SSE
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'sentinel' ? 'bg-[#090d16] border border-purple-500 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'sentinel'">
+        🤖 Log Minacce &amp; Terminale SSE ({{ sentinelData.recentThreats?.length || 0 }})
       </button>
     </div>
 
-    <!-- TAB 1: GESTIONE UTENTI -->
-    <div v-if="activeTab === 'users'" class="tab-content">
-      <div class="search-bar">
-        <input v-model="searchQuery" type="text" placeholder="Cerca utente per username o email..." class="input-search" />
+    <!-- TAB 1: GESTIONE LICENZE E API KEYS REALI -->
+    <div v-if="activeTab === 'users'" class="flex flex-col gap-4">
+      <div class="flex justify-between items-center gap-4 flex-wrap">
+        <input v-model="searchQuery" type="text" placeholder="Cerca per email o licenza..." class="w-full sm:max-w-md bg-[#090d16] border border-slate-800 px-4 py-3 rounded-xl text-slate-100 text-sm outline-none focus:border-emerald-500 transition-all" />
+        <button @click="fetchUsers" class="px-4 py-3 bg-[#020420] border border-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer">
+          🔄 Ricarica Licenze Reali
+        </button>
       </div>
 
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>UTENTE</th>
-            <th>EMAIL</th>
-            <th>RUOLO</th>
-            <th>STATO</th>
-            <th>ISCRITTO IL</th>
-            <th>AZIONI</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in filteredUsers" :key="user.id">
-            <td><strong>@{{ user.username }}</strong></td>
-            <td>{{ user.email }}</td>
-            <td><span class="role-badge">{{ user.role }}</span></td>
-            <td>
-              <span :class="['status-badge', user.status === 'ACTIVE' ? 'active' : 'suspended']">
-                {{ user.status }}
-              </span>
-            </td>
-            <td>{{ user.joined }}</td>
-            <td>
-              <button @click="toggleUserStatus(user)" :class="['btn-action', user.status === 'ACTIVE' ? 'danger' : 'success']">
-                {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- TAB 2: CODA MODERAZIONE FALLBACK -->
-    <div v-else-if="activeTab === 'moderation'" class="tab-content">
-      <div class="policy-warning-box">
-        <div class="warning-icon">🛡️</div>
-        <div class="warning-text">
-          <h4>Coda Moderazione Contenuti &amp; Post</h4>
-          <p>Tutti gli articoli e i commenti segnalati dagli utenti vengono memorizzati qui per approvazione.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 3: MONITORAGGIO INFRASTRUTTURA FALLBACK -->
-    <div v-else-if="activeTab === 'infrastructure'" class="tab-content">
-      <div class="policy-warning-box">
-        <div class="warning-icon">📊</div>
-        <div class="warning-text">
-          <h4>Infrastruttura GCP &amp; Telemetria Cloud</h4>
-          <p>Stato del cluster GCP europe-west1, repliche PostgreSQL Neon e istanze Nitro Node engine.</p>
-        </div>
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div v-if="isLoadingUsers" class="p-8 text-center text-slate-400 font-mono text-sm">Caricamento chiavi dal database Neon...</div>
+        <div v-else-if="users.length === 0" class="p-8 text-center text-slate-400 font-mono text-sm">Nessuna licenza o API Key registrata nel database Neon.</div>
+        <table v-else class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-[#020420] text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
+              <th class="p-4">SORGENTE</th>
+              <th class="p-4">PROPRIETARIO / USER</th>
+              <th class="p-4">API KEY / LICENSE KEY</th>
+              <th class="p-4">TIER / PRODOTTO</th>
+              <th class="p-4">UTILIZZO</th>
+              <th class="p-4">STATO</th>
+              <th class="p-4">CREATO IL</th>
+              <th class="p-4">AZIONI</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in filteredUsers" :key="user.id" class="border-b border-slate-800/80 hover:bg-slate-900/50 transition-colors">
+              <td class="p-4">
+                <span :class="['px-2 py-0.5 rounded text-[10px] font-black', user.source === 'API GATEWAY' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-purple-500/20 text-purple-400 border border-purple-500/40']">
+                  {{ user.source }}
+                </span>
+              </td>
+              <td class="p-4 font-bold text-white">{{ user.email }}</td>
+              <td class="p-4 font-mono text-xs text-sky-400">{{ user.licenseKey }}</td>
+              <td class="p-4"><span class="bg-slate-800 text-purple-400 px-2.5 py-1 rounded-md text-xs font-bold">{{ user.role }}</span></td>
+              <td class="p-4 text-xs font-mono text-slate-300">{{ user.usage }}</td>
+              <td class="p-4">
+                <span :class="['px-2.5 py-1 rounded-md text-xs font-black uppercase', user.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30']">
+                  {{ user.status }}
+                </span>
+              </td>
+              <td class="p-4 text-slate-400 text-xs font-mono">{{ user.joined }}</td>
+              <td class="p-4">
+                <button @click="toggleUserStatus(user)" :class="['px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer', user.status === 'ACTIVE' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-[#020420]']">
+                  {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- TAB 4: SENTINEL LOGS & REAL-TIME STREAMING TERMINAL -->
-    <div v-else-if="activeTab === 'sentinel'" class="tab-content sentinel-panel">
-      <div class="policy-warning-box">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-text">
-          <h4>Policy di Protezione GCP &amp; Uso Etico</h4>
-          <p>
-            Il nostro sistema difensivo monitora attivamente i tentativi di abusare delle API, Prompt Injection sulla chat
-            Pulse Nexus e attacchi DDoS. Ogni abuso viene registrato e penalizzato con il ban istantaneo dell'IP e dell'account.
-          </p>
-        </div>
-      </div>
-
-      <!-- STREAMING LIVE TERMINAL IN STILE HACKER -->
-      <div class="terminal-stream-container mt-4">
-        <AdminSentinelTerminalStream />
-      </div>
-
-      <!-- REGISTRO STORICO MINACCE -->
-      <div v-if="sentinelData && sentinelData.recentThreats" class="threats-section mt-4">
-        <div class="section-header">
-          <h3>Registro Minacce Storiche Intercettate</h3>
-          <button @click="triggerAction('purge_threats')" class="btn-purge">Pulisci Log</button>
-        </div>
-
-        <div class="threats-list">
-          <div v-for="threat in sentinelData.recentThreats" :key="threat.id" class="threat-item">
-            <div class="threat-left">
-              <span :class="['severity-badge', threat.severity.toLowerCase()]">{{ threat.severity }}</span>
-              <div class="threat-info">
-                <strong>{{ threat.type }}</strong>
-                <span>Destinazione: {{ threat.target }} • IP: <code>{{ threat.ip }}</code></span>
-              </div>
-            </div>
-            <div class="threat-right">
-              <span class="threat-time">{{ new Date(threat.timestamp).toLocaleTimeString() }}</span>
-              <button @click="triggerAction('ban_ip', { ip: threat.ip })" class="btn-ban">
-                🚫 Ban Definitivo IP
-              </button>
-            </div>
-          </div>
+    <!-- TAB 2: CODA MODERAZIONE -->
+    <div v-else-if="activeTab === 'moderation'" class="flex flex-col gap-4">
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex items-start gap-4">
+        <span class="text-3xl">🛡️</span>
+        <div>
+          <h4 class="text-amber-400 font-bold text-lg mb-1">Coda Moderazione Contenuti &amp; Post</h4>
+          <p class="text-slate-300 text-sm">Tutti gli articoli e i commenti segnalati dagli utenti vengono memorizzati qui per l'approvazione in tempo reale.</p>
         </div>
       </div>
     </div>
 
-  </div>   
+    <!-- TAB 3: MONITORAGGIO INFRASTRUTTURA CLOUD RUN -->
+    <div v-else-if="activeTab === 'infrastructure'" class="flex flex-col gap-4">
+      <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex items-start gap-4">
+        <span class="text-3xl">📊</span>
+        <div>
+          <h4 class="text-sky-400 font-bold text-lg mb-1">Infrastruttura GCP &amp; Telemetria Cloud Run</h4>
+          <p class="text-slate-300 text-sm">Stato del servizio attivo in <strong class="text-white">europe-west4 (Paesi Bassi)</strong>, database Neon PostgreSQL e pipeline CI/CD perfettamente allineate.</p>
+        </div>
+      </div>
+    </div>
+<!-- TAB 4: SENTINEL LOGS & FIREWALL REALE -->
+    <div v-else-if="activeTab === 'sentinel'" class="flex flex-col gap-6">
+      <!-- COMPONENTE TABELLA BLACKLIST DB -->
+      <AdminSentinelBlacklistTable />
+
+      <!-- COMPONENTE TERMINALE STREAMING TELEMETRIA -->
+      <AdminSentinelLiveStream />
+    </div>
+  </div>
 </template>
 
 <style scoped>
-
-/* -------------------------------------------------------------
-   🎨 STILI DKP ADMIN NAVBAR v2.4-GOLD
-------------------------------------------------------------- */
-.admin-nav-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
-
-.admin-nav-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.nav-branding {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-dot.green {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff87;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00ff87;
-}
-
-.nav-title {
-  color: #00f0ff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
-/* GRID MODULI (2 RIGHE X 4 LINK) */
-.admin-grid-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-dashboard {
-  color: #00ff87;
-  background: rgba(0, 255, 135, 0.04);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-}
-
-.btn-dashboard:hover,
-.btn-dashboard.active {
-  background: rgba(0, 255, 135, 0.12);
-  border-color: #00ff87;
-  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-dashboard-main {
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.06);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-}
-
-.btn-dashboard-main:hover,
-.btn-dashboard-main.active {
-  background: rgba(0, 240, 255, 0.16);
-  border-color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-@media (max-width: 1024px) {
-  .admin-grid-nav {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 580px) {
-  .admin-grid-nav {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* FINESTRELLA TOAST NOTIFICATION */
-.dkp-toast-success {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 999999;
-  background: #061811;
-  border: 1px solid #00dc82;
-  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35), 0 0 15px rgba(0, 220, 130, 0.2);
-  padding: 0.9rem 1.3rem;
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  max-width: 420px;
-}
-
-.toast-content {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: #f8fafc;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.toast-icon { font-size: 1.15rem; }
-
-.toast-fade-enter-active, .toast-fade-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.toast-fade-enter-from, .toast-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-15px) scale(0.95);
-}
-
-/* LAYOUT GENERALE */
-.admin-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding-bottom: 4rem;
-}
-
-.mt-4 { margin-top: 1.25rem; }
-
-/* HERO BANNER & STATUS REGIONALE */
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.75rem 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-.admin-header h1 {
-  font-size: 1.9rem;
-  margin: 0 0 0.4rem;
-  font-weight: 900;
-  color: #ffffff;
-  letter-spacing: -0.02em;
-}
-
-.admin-header p {
-  margin: 0;
-  color: #94a3b8;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.region-badge {
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid #1e293b;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  color: #38bdf8;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 700;
-}
-
-.status-dot { width: 8px; height: 8px; border-radius: 50%; }
-.status-dot.green { background: #00dc82; box-shadow: 0 0 10px #00dc82; }
-
-/* PULSE SENTINEL AI BANNER */
-.sentinel-monitor-banner {
-  background: linear-gradient(135deg, #090d16 0%, #030712 100%);
-  border: 1px solid #1e293b;
-  border-left: 4px solid #a855f7;
-  border-radius: 12px;
-  padding: 1.75rem 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.sentinel-monitor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding-bottom: 1.25rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.sentinel-brand { display: flex; align-items: center; gap: 1rem; }
-.shield-pulse { font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5)); }
-
-.sentinel-brand h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 900;
-  color: #f8fafc;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.badge-status.gold {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid #00dc82;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
-  text-transform: uppercase;
-}
-
-.sentinel-sub { margin: 0.3rem 0 0; color: #94a3b8; font-size: 0.88rem; }
-
-.btn-toggle-switch {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #f8fafc;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-  transition: all 0.2s ease;
-}
-
-.btn-toggle-switch span { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
-.btn-toggle-switch.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.08); box-shadow: 0 0 12px rgba(0, 220, 130, 0.2); }
-.btn-toggle-switch.inactive { border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.08); }
-.btn-toggle-switch:hover { transform: translateY(-1px); }
-
-.sentinel-monitor-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-}
-
-.monitor-cell { display: flex; flex-direction: column; gap: 0.4rem; }
-.cell-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.03em; }
-.cell-val { font-size: 1.55rem; font-weight: 900; }
-.cell-val.purple { color: #c084fc; }
-.cell-val.green { color: #00dc82; }
-.cell-val.blue { color: #38bdf8; }
-
-.threat-meter-box { display: flex; align-items: center; gap: 0.75rem; }
-.threat-bar { flex-grow: 1; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; }
-.threat-fill { height: 100%; background: linear-gradient(90deg, #00dc82 0%, #f59e0b 50%, #ef4444 100%); transition: width 0.3s ease; }
-.threat-val { font-size: 1.1rem; font-weight: 900; color: #38bdf8; width: 42px; }
-
-.sentinel-notification {
-  background: rgba(0, 220, 130, 0.12);
-  border: 1px solid #00dc82;
-  color: #00dc82;
-  padding: 1rem 1.5rem;
-  border-radius: 10px;
-  font-weight: 800;
-}
-
-/* CARDS METRICHE */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.25rem;
-}
-
-.metric-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.metric-card:hover { transform: translateY(-2px); border-color: #334155; }
-.card-title { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #94a3b8; font-weight: 700; }
-.card-value { font-size: 1.85rem; font-weight: 900; color: #f8fafc; margin: 0.5rem 0 0.2rem; }
-.card-sub { font-size: 0.78rem; color: #64748b; }
-.badge { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 800; }
-.badge.green { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.badge.blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-
-/* TAB ED ELEMENTI */
-.admin-tabs {
-  display: flex;
-  gap: 0.75rem;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.admin-tabs button {
-  background: transparent;
-  border: 1px solid transparent;
-  color: #94a3b8;
-  padding: 0.65rem 1.2rem;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.admin-tabs button:hover { color: #ffffff; }
-.admin-tabs button.active { background: #090d16; border-color: #00dc82; color: #00dc82; }
-.admin-tabs button.tab-sentinel.active { border-color: #a855f7; color: #c084fc; }
-
-.search-bar { margin-bottom: 0.5rem; }
-.input-search {
-  width: 100%;
-  max-width: 400px;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  color: #f8fafc;
-  outline: none;
-  font-size: 0.88rem;
-  transition: border-color 0.2s ease;
-}
-.input-search:focus { border-color: #00dc82; }
-
-/* TABELLA DATI */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.data-table th, .data-table td { padding: 0.85rem 1.2rem; border-bottom: 1px solid #1e293b; font-size: 0.88rem; }
-.data-table th { background: #020420; color: #64748b; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
-
-.role-badge { background: #1e293b; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
-.status-badge { padding: 0.2rem 0.55rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
-.status-badge.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-badge.suspended { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-
-.btn-action { border: none; padding: 0.4rem 0.85rem; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.78rem; transition: all 0.15s ease; }
-.btn-action.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.btn-action.danger:hover { background: #ef4444; color: #ffffff; }
-.btn-action.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.btn-action.success:hover { background: #00dc82; color: #020420; }
-
-/* ALERT & SEZIONE MINACCE */
-.policy-warning-box {
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.25);
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.warning-icon { font-size: 1.8rem; }
-.warning-text h4 { margin: 0 0 0.25rem; color: #facc15; font-size: 1rem; }
-.warning-text p { margin: 0; color: #cbd5e1; font-size: 0.88rem; line-height: 1.4; }
-
-.threats-section {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-.section-header h3 { margin: 0; font-size: 1.1rem; color: #ffffff; }
-
-.btn-purge {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #94a3b8;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transition: all 0.15s ease;
-}
-.btn-purge:hover { border-color: #00dc82; color: #00dc82; }
-
-.threats-list { display: flex; flex-direction: column; gap: 0.75rem; }
-
-.threat-item {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.threat-left { display: flex; align-items: center; gap: 1rem; }
-
-.severity-badge { font-size: 0.68rem; font-weight: 900; padding: 0.2rem 0.5rem; border-radius: 4px; }
-.severity-badge.critical { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
-.severity-badge.high { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
-.severity-badge.medium { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
-
-.threat-info { display: flex; flex-direction: column; }
-.threat-info strong { font-size: 0.95rem; color: #f8fafc; }
-.threat-info span { font-size: 0.8rem; color: #64748b; margin-top: 0.15rem; }
-.threat-info code { color: #38bdf8; font-family: monospace; }
-
-.threat-right { display: flex; align-items: center; gap: 1rem; }
-.threat-time { font-size: 0.8rem; color: #64748b; }
-
-.btn-ban {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid #ef4444;
-  color: #ef4444;
-  padding: 0.45rem 0.85rem;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.btn-ban:hover { background: #ef4444; color: #ffffff; }
-
-/* MEDIA QUERIES */
-@media (max-width: 900px) {
-  .admin-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-  .sentinel-monitor-header { flex-direction: column; align-items: flex-start; }
-  .threat-item { flex-direction: column; align-items: flex-start; }
-  .threat-right { width: 100%; justify-content: space-between; }
-}
-
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

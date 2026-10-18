@@ -2,13 +2,13 @@
 import { defineEventHandler, getHeader } from 'h3'
 
 const ATTACK_TYPES = [
-  'SQL Injection (Blind Payload)',
-  'Cross-Site Scripting (XSS Vector)',
-  'Path Traversal (/etc/passwd attempt)',
-  'L7 DDoS Flood / Rate Limit Exceeded',
+  'SQL Injection (Union Payload)',
+  'Cross-Site Scripting (Reflected XSS)',
+  'Path Traversal (/etc/shadow attempt)',
+  'L7 DDoS Flood / Rate Limit Trigger',
   'Auth Vault Brute Force Attack',
-  'Unauthorized Admin Route Scan',
-  'JWT Token Tampering / Signature Mismatch',
+  'Admin Route Unauthorized Scan',
+  'JWT Signature Tampering',
   'Remote Code Execution (RCE Exploit)'
 ]
 
@@ -19,66 +19,36 @@ const COUNTRIES = [
   { code: 'BR', flag: '🇧🇷', name: 'Brazil' },
   { code: 'IR', flag: '🇮🇷', name: 'Iran' },
   { code: 'NL', flag: '🇳🇱', name: 'Netherlands' },
-  { code: 'DE', flag: '🇩🇪', name: 'Germany' },
-  { code: 'IT', flag: '🇮🇹', name: 'Italy' }
+  { code: 'DE', flag: '🇩🇪', name: 'Germany' }
 ]
-
-const SEVERITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const
-const ACTIONS = ['BLOCKED_403', 'RATE_LIMITED_429', 'IP_BANNED', 'CHALLENGE_FAILED'] as const
 
 function getRandomItem<T>(arr: readonly T[] | T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
 function generateRandomIp(): string {
-  const p1 = Math.floor(Math.random() * 200) + 10
-  const p2 = Math.floor(Math.random() * 250)
-  return `${p1}.${p2}.xxx.${Math.floor(Math.random() * 254) + 1}`
-}
-
-function getClientIp(event: any): string {
-  const forwarded = getHeader(event, 'x-forwarded-for')
-  if (forwarded) {
-    return forwarded.split(',')[0].trim()
-  }
-  return getHeader(event, 'x-real-ip') || event.node?.req?.socket?.remoteAddress || '127.0.0.1'
-}
-
-function parseUserAgent(ua?: string): string {
-  if (!ua) return 'Client Sconosciuto'
-  if (ua.includes('Firefox')) return 'Firefox Browser'
-  if (ua.includes('Edg')) return 'Microsoft Edge'
-  if (ua.includes('Chrome')) return 'Google Chrome'
-  if (ua.includes('Safari')) return 'Apple Safari'
-  if (ua.includes('bot') || ua.includes('crawler')) return 'Bot / Crawler'
-  return 'Browser Web'
+  return `${Math.floor(Math.random() * 200) + 10}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`
 }
 
 export default defineEventHandler((event) => {
-  // Utilizziamo direttamente lo stream HTTP nativo di Node.js (event.node.res / event.node.req)
-  // Questo elimina ogni problema di incompatibilità tra versioni di H3 o polyfill Fetch API
   const res = event.node.res
   const req = event.node.req
 
-  // Impostiamo direttamente gli header HTTP per la connessione SSE streaming
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no'
+    'X-Accel-Buffering': 'no',
+    'X-Cloud-Region': 'europe-west4',
+    'X-DKP-Version': 'v2.5-GOLD'
   })
 
-  // Estraiamo i dati reali del client
-  const clientIp = getClientIp(event)
-  const userAgent = parseUserAgent(getHeader(event, 'user-agent'))
+  const clientIp = getHeader(event, 'x-forwarded-for')?.split(',')[0].trim() || getHeader(event, 'x-real-ip') || '127.0.0.1'
+  
+  res.write(`event: connected\ndata: ${JSON.stringify({
+    message: `🛡️ GCP Sentinel Live Stream Connesso [IP Admin: ${clientIp}]`
+  })}\n\n`)
 
-  // 1. Invio del messaggio di benvenuto SSE iniziale
-  const connectedPayload = JSON.stringify({
-    message: `🛡️ Sentinel Stream Connected [IP Reale: ${clientIp} | Browser: ${userAgent}]`
-  })
-  res.write(`event: connected\ndata: ${connectedPayload}\n\n`)
-
-  // 2. Timer per lo streaming continuo dei log di minaccia
   const interval = setInterval(() => {
     if (res.writableEnded || res.destroyed) {
       clearInterval(interval)
@@ -86,9 +56,22 @@ export default defineEventHandler((event) => {
     }
 
     const country = getRandomItem(COUNTRIES)
-    const severity = getRandomItem(SEVERITIES)
     const attackType = getRandomItem(ATTACK_TYPES)
-    const action = severity === 'CRITICAL' ? 'IP_BANNED' : getRandomItem(ACTIONS)
+    
+    // Logica di gravità dinamica
+    let severity = 'MEDIUM'
+    let riskScore = Math.floor(Math.random() * 30) + 40
+    let action = 'RATE_LIMITED_429'
+
+    if (attackType.includes('SQL') || attackType.includes('RCE')) {
+      severity = 'CRITICAL'
+      riskScore = Math.floor(Math.random() * 10) + 90
+      action = 'IP_BANNED'
+    } else if (attackType.includes('XSS') || attackType.includes('Vault')) {
+      severity = 'HIGH'
+      riskScore = Math.floor(Math.random() * 20) + 70
+      action = 'BLOCKED_403'
+    }
 
     const threatLog = {
       id: `th_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -99,18 +82,17 @@ export default defineEventHandler((event) => {
       countryName: country.name,
       attackType,
       severity,
+      riskScore, // Nuovo campo inviato allo stream per il frontend
       action,
-      endpoint: getRandomItem(['/api/v1/auth/token', '/api/vault/decrypt', '/admin/login', '/api/blog/posts', '/.env'])
+      region: 'europe-west4',
+      endpoint: getRandomItem(['/api/admin', '/api/vault/decrypt', '/api/users', '/_nuxt/payload.js'])
     }
 
     res.write(`event: threat\ndata: ${JSON.stringify(threatLog)}\n\n`)
   }, Math.floor(Math.random() * 2000) + 1500)
 
-  // 3. Chiusura e pulizia automatica quando l'utente lascia la pagina o chiude il browser
   req.on('close', () => {
     clearInterval(interval)
-    if (!res.writableEnded) {
-      res.end()
-    }
+    if (!res.writableEnded) res.end()
   })
 })

@@ -395,3 +395,4 @@ export const blogCategories = pgTable("blog_categories", {
 }, (table) => [
 	unique("blog_categories_slug_key").on(table.slug),
 ]);
+

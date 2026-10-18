@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     const username = event.context.user?.username?.toLowerCase() || ''
 
     // -------------------------------------------------------------
-    // 👑 GOD MODE: BYPASS COMPLETO RATE LIMIT PER ADMIN
+    // 👑 GOD MODE: BYPASS COMPLETO RATE LIMIT PER ADMIN (v2.5-GOLD)
     // -------------------------------------------------------------
     if (userRole === 'admin' || username === 'alexdpl') {
       setResponseHeaders(event, {
@@ -38,7 +38,8 @@ export default defineEventHandler(async (event) => {
         'X-RateLimit-Remaining': 'Unlimited',
         'X-RateLimit-Reset': '0',
         'X-RateLimit-Bypass': 'true-god-mode',
-        'X-DKP-Version': 'v2.4-GOLD'
+        'X-Cloud-Region': 'europe-west4',
+        'X-DKP-Version': 'v2.5-GOLD'
       })
       return // L'admin passa all'istante senza interrogare il DB!
     }
@@ -76,7 +77,9 @@ export default defineEventHandler(async (event) => {
         setResponseHeaders(event, {
           'X-RateLimit-Limit': String(limit),
           'X-RateLimit-Remaining': '0',
-          'Retry-After': '3600'
+          'Retry-After': '3600',
+          'X-Cloud-Region': 'europe-west4',
+          'X-DKP-Version': 'v2.5-GOLD'
         })
 
         throw createError({
@@ -96,13 +99,14 @@ export default defineEventHandler(async (event) => {
         'X-RateLimit-Limit': String(limit),
         'X-RateLimit-Remaining': String(remaining),
         'X-DKP-Client-IP': clientIp,
-        'X-DKP-Version': 'v2.4-GOLD'
+        'X-Cloud-Region': 'europe-west4',
+        'X-DKP-Version': 'v2.5-GOLD'
       })
     }
   } catch (error: any) {
     if (error.statusCode) {
       throw error
     }
-    console.error('❌ Errore durante la verifica del Rate Limit API:', error)
+    console.error('❌ Errore critico in v2.5-GOLD Rate Limit API:', error)
   }
 })

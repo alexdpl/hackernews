@@ -253,3 +253,29 @@ export const bountiesRelations = relations(bounties, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+// -------------------------------------------------------------
+// 6. DKP SENTINEL AI - BLACKLIST IP (v2.5-GOLD)
+// -------------------------------------------------------------
+export const ipBlacklist = pgTable('ip_blacklist', {
+  id: serial('id').primaryKey(),
+  ip: text('ip').notNull().unique(),
+  reason: text('reason').notNull(),
+  severity: text('severity').notNull(),
+  bannedAt: timestamp('banned_at').defaultNow().notNull()
+})
+
+// -------------------------------------------------------------
+// 7. API GATEWAY & CRAWLER LICENSES 
+// -------------------------------------------------------------
+export const dkpCrawlerLicenses = pgTable('dkp_crawler_licenses', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  licenseKey: varchar('license_key', { length: 255 }).notNull().unique(),
+  tier: varchar('tier', { length: 50 }).default('basic'),
+  requestsLimit: integer('requests_limit').default(1000),
+  requestsUsed: integer('requests_used').default(0),
+  isActive: boolean('is_active').default(true),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow()
+})
