@@ -2,13 +2,15 @@ name: DKP Dependency Security Audit
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+  schedule:
+    - cron: '0 3 * * 1'   # Ogni lunedì alle 03:00 UTC
 
 jobs:
   audit:
-    name: Scansione Dipendenze npm
+    name: Scansione Dipendenze
     runs-on: ubuntu-latest
 
     steps:
@@ -31,4 +33,4 @@ jobs:
 
       - name: Run security audit
         run: pnpm audit --prod
-        continue-on-error: true   # ← toglie la X rossa anche se trova vulnerabilità
+        continue-on-error: true
