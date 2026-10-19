@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
         categoryId: 1, // Fallback su categoria ID 1
         status: 'published',
         isVerified: true,
-        vaultCertificateId: `DKP-REPAIR-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        vaultCertificateId: `DKP-REPAIR-CERT-${crypto.randomBytes(4).toString('hex').toUpperCase().substring(0, 6)}`,
         vaultHash: vaultHash,
         views: 0,
         likes: oldPost.points || 0
