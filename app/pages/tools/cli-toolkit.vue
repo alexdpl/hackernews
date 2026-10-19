@@ -83,7 +83,19 @@ async function handleCommand() {
   // AI SCAN REALE (Chiama l'endpoint del tool AI-Repo-Scanner)
   if (cmd.startsWith('dkp ai scan')) {
     const url = raw.split(' ').pop()
-    if (!url || !url.includes('github.com')) {
+   let isValidGithubUrl = false
+   
+   if (url) {
+      try {
+        const parsed = new URL(url)
+        const host = parsed.hostname.toLowerCase()
+        isValidGithubUrl = host === 'github.com' || host.endsWith('.github.com')
+      } catch {
+        isValidGithubUrl = false
+      }
+    }
+
+    if (!isValidGithubUrl) {
       terminalLogs.value.push({ type: 'error', text: `Errore: Specifica un URL GitHub valido. Esempio: dkp ai scan https://github.com/nuxt/nuxt` })
       isLoading.value = false
       return
