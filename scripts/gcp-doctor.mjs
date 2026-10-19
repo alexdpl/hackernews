@@ -3,6 +3,21 @@ import { execSync } from 'child_process';
 import path from 'path';
 
 console.log("🔥 INIZIO DIAGNOSTICA KERNEL GCP 🔥\n");
+function isFlaggedEnvLine(line) {
+    const eqIndex = line.indexOf('=');
+    if (eqIndex === -1) return false;
+
+    const rawValue = line.slice(eqIndex + 1).trim();
+    const value = rawValue.replace(/^['"]|['"]$/g, '');
+
+    try {
+        const parsed = new URL(value);
+        const host = parsed.hostname.toLowerCase();
+        return host === 'duck.dns.org' || host.endsWith('.duck.dns.org') || host === 'localhost';
+    } catch {
+        return value.toLowerCase().includes('localhost:') || value.toLowerCase() === 'localhost';
+    }
+}
 
 try {
     // 1. Controllo Git e Sincronizzazione
@@ -40,7 +55,7 @@ try {
         const envContent = fs.readFileSync(envPath, 'utf-8');
         if (envContent.includes('duck.dns.org') || envContent.includes('localhost:3000')) {
             console.log("🚨 ALLARME ROSSO: Trovato 'duck.dns.org' o 'localhost' nel .env di produzione!");
-            const lines = envContent.split('\n').filter(l => l.includes('duck.dns.org') || l.includes('localhost'));
+             const lines = envContent.split('\n').filter(l => isFlaggedEnvLine(l));
             console.log("👉 Righe incriminate da correggere:", lines);
         } else {
             console.log("✅ Nessun dominio vecchio trovato nel .env.");
