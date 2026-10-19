@@ -2,7 +2,7 @@
   "name": "@devkernelpulse/nuxt-mail-nexus",
   "version": "2.4.0",
   "description": "Enterprise Webmail, Autoresponder & Newsletter Engine for Nuxt 4 & Nitro",
-  "author": "Alessandro De Paola & DKP Core Team",
+  "author": "Alessandro De Paola & DKP Lead Core Arcitect Team",
   "license": "Commercial",
   "main": "./dist/module.mjs",
   "types": "./dist/module.d.ts",
