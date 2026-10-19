@@ -28,6 +28,12 @@ function triggerToast(msg: string) {
   setTimeout(() => showToast.value = false, 3500)
 }
 
+function secureFallbackId(maxExclusive = 1000): number {
+  const array = new Uint32Array(1)
+  crypto.getRandomValues(array)
+  return array[0] % maxExclusive
+}
+
 // 2. Chiamata al VERO endpoint API del Vault
 async function notarizeCode() {
   errorMessage.value = ''
@@ -58,7 +64,7 @@ async function notarizeCode() {
       notarizationResult.value = {
         sha256: res.data?.hash || 'Generazione...',
         timestamp: res.data?.createdAt || new Date().toISOString(),
-        certificateId: `DKP-VAULT-${res.data?.id || Math.floor(Math.random()*1000)}`
+        certificateId: `DKP-VAULT-${res.data?.id || secureFallbackId(1000)}`
       }
       triggerToast('🛡️ Codice notarizzato e salvato nel Vault di produzione! (+100 XP)')
       
