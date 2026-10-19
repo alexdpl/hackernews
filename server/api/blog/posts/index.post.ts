@@ -93,8 +93,11 @@ export default defineEventHandler(async (event) => {
     }
 
     const finalVaultHash = reqVaultHash || crypto.createHash('sha256').update(`dkp-direct-${Date.now()}-${generatedSlug}`).digest('hex')
-    const vaultCertificateId = reqVaultHash ? `DKP-VAULT-CERT-VERIFIED-${Math.random().toString(36).substring(2, 8).toUpperCase()}` : `DKP-VAULT-CERT-ADMIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-    
+    const certSuffix = (
+	crypto.randomBytes(8).toString('base64url').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + 'AAAAAA'
+    ).slice(0, 6)
+    const vaultCertificateId = reqVaultHash ? `DKP-VAULT-CERT-VERIFIED-${certSuffix}` : `DKP-VAULT-CERT-ADMIN-${certSuffix}`
+	
     const finalStatus = status || 'published' 
     const finalExcerpt = excerpt || summary || null
     const finalContent = content || finalExcerpt || 'Contenuto non disponibile.'
