@@ -16,8 +16,21 @@ export default defineEventHandler(async (event) => {
   const db = await getDb()
 
   // 1. Generazione dati dinamici basati sull'URL per non avere sempre lo stesso risultato
-  const isGithub = url.includes('github.com')
-  const repoName = isGithub ? url.replace(/https?:\/\/github\.com\//, '') : 'Progetto Custom'
+  let isGithub = false
+let repoName = 'Progetto Custom'
+
+try {
+  const parsedUrl = new URL(url)
+  const hostname = parsedUrl.hostname.toLowerCase()
+
+  isGithub = hostname === 'github.com' || hostname === 'www.github.com'
+
+  if (isGithub) {
+    repoName = parsedUrl.pathname.replace(/^\/+/, '') || 'Progetto Custom'
+  }
+} catch {
+  // URL non valido: manteniamo il fallback non-GitHub
+}
   const randomFactor = url.length % 20
   const score = 75 + randomFactor // Punteggio dinamico tra 75 e 94
   
