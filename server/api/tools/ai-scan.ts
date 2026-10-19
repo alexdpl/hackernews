@@ -20,41 +20,44 @@ export default defineEventHandler(async (event) => {
   const targetUrl = body?.url || ''
   const targetUserId = body?.userId ? Number(body.userId) : 1
 
-  // sostituire la validazione e la derivazione di repoPath con questo
-let repoPath = ''
-try {
-  // Normalizza input vuoto o non stringa
-  const rawUrl = String(targetUrl || '').trim()
-  const parsedUrl = new URL(rawUrl)
+  // Deriva repoPath in modo sicuro usando URL parsing
+  let repoPath = ''
+  try {
+    const rawUrl = String(targetUrl || '').trim()
+    const parsedUrl = new URL(rawUrl)
 
-  // Protocollo consentito
-  const isHttp = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
-  if (!isHttp) {
+    // Protocollo consentito
+    const isHttp = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+    if (!isHttp) {
+      return { success: false, error: 'Inserisci un URL GitHub valido.' }
+    }
+
+    // Host consentito (solo github.com e www.github.com)
+    const host = parsedUrl.hostname.toLowerCase()
+    const isGithubHost = host === 'github.com' || host === 'www.github.com'
+    if (!isGithubHost) {
+      return { success: false, error: 'Inserisci un URL GitHub valido.' }
+    }
+
+    // Estrai owner e repo dai segmenti del pathname
+    const segments = parsedUrl.pathname.split('/').filter(Boolean) // rimuove segmenti vuoti
+    if (segments.length < 2) {
+      return { success: false, error: 'Inserisci un URL GitHub valido.' }
+    }
+
+    const owner = segments[0]
+    const repo = segments[1].replace(/\.git$/i, '')
+    repoPath = `${owner}/${repo}`
+  } catch (e) {
     return { success: false, error: 'Inserisci un URL GitHub valido.' }
   }
 
-  // Host consentito (solo github.com e www.github.com)
-  const host = parsedUrl.hostname.toLowerCase()
-  const isGithubHost = host === 'github.com' || host === 'www.github.com'
-  if (!isGithubHost) {
-    return { success: false, error: 'Inserisci un URL GitHub valido.' }
-  }
-
-  // Estrai owner e repo dai segmenti del pathname
-  const segments = parsedUrl.pathname.split('/').filter(Boolean) // rimuove segmenti vuoti
-  // ci aspettiamo almeno [owner, repo]
-  if (segments.length < 2) {
-    return { success: false, error: 'Inserisci un URL GitHub valido.' }
-  }
-
-  // rimuovi eventuale .git dal repo
-  const owner = segments[0]
-  const repo = segments[1].replace(/\.git$/i, '')
-  repoPath = `${owner}/${repo}`
-} catch (e) {
-  // URL non valido o parsing fallito
-  return { success: false, error: 'Inserisci un URL GitHub valido.' }
-}
+  try {
+    // 1. Rileva il branch predefinito (main, master, ecc.)
+    const repoInfo: any = await $fetch(`https://api.github.com/repos/${repoPath}`, {
+      headers: { 'User-Agent': 'DKP-AI-Repo-Scanner-v2.5' }
+    })
+    const defaultBranch = repoInfo?.default_branch || 'main'
 
     // 2. Recupera l'albero completo dei file
     const response: any = await $fetch(`https://api.github.com/repos/${repoPath}/git/trees/${defaultBranch}?recursive=1`, {
@@ -65,7 +68,7 @@ try {
     const paths = tree.map((item: any) => item.path.toLowerCase())
 
     // 3. ANALISI DINAMICA DEL TECH STACK
-    const detectedStack = []
+    const detectedStack: string[] = []
     if (paths.some((p: string) => p.includes('nuxt.config'))) detectedStack.push('Nuxt')
     else if (paths.some((p: string) => p.includes('next.config'))) detectedStack.push('Next.js')
     else if (paths.some((p: string) => p.includes('vue'))) detectedStack.push('Vue.js')
@@ -101,7 +104,7 @@ try {
     const earnedXp = Math.round(score / 2)
 
     // 6. GENERAZIONE PIANO D'AZIONE DINAMICO
-    const dynamicActionPlan = []
+    const dynamicActionPlan: any[] = []
     
     if (!hasTests) {
       dynamicActionPlan.push({ priority: 'ALTA', task: `La repo ${repoPath.split('/')[1]} non ha una suite di test (es. Vitest/Jest). Aggiungila per evitare regressioni.`, xpGain: '+60 XP', done: false, color: 'text-red-400 border-red-400/30 bg-red-400/10' })
