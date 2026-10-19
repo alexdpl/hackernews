@@ -20,18 +20,41 @@ export default defineEventHandler(async (event) => {
   const targetUrl = body?.url || ''
   const targetUserId = body?.userId ? Number(body.userId) : 1
 
-  if (!targetUrl.includes('github.com')) {
+  // sostituire la validazione e la derivazione di repoPath con questo
+let repoPath = ''
+try {
+  // Normalizza input vuoto o non stringa
+  const rawUrl = String(targetUrl || '').trim()
+  const parsedUrl = new URL(rawUrl)
+
+  // Protocollo consentito
+  const isHttp = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+  if (!isHttp) {
     return { success: false, error: 'Inserisci un URL GitHub valido.' }
   }
 
-  const repoPath = targetUrl.replace(/https?:\/\/github\.com\//, '').replace(/\/$/, '')
+  // Host consentito (solo github.com e www.github.com)
+  const host = parsedUrl.hostname.toLowerCase()
+  const isGithubHost = host === 'github.com' || host === 'www.github.com'
+  if (!isGithubHost) {
+    return { success: false, error: 'Inserisci un URL GitHub valido.' }
+  }
 
-  try {
-    // 1. Rileva il branch predefinito (main, master, ecc.)
-    const repoInfo: any = await $fetch(`https://api.github.com/repos/${repoPath}`, {
-      headers: { 'User-Agent': 'DKP-AI-Repo-Scanner-v2.5' }
-    })
-    const defaultBranch = repoInfo?.default_branch || 'main'
+  // Estrai owner e repo dai segmenti del pathname
+  const segments = parsedUrl.pathname.split('/').filter(Boolean) // rimuove segmenti vuoti
+  // ci aspettiamo almeno [owner, repo]
+  if (segments.length < 2) {
+    return { success: false, error: 'Inserisci un URL GitHub valido.' }
+  }
+
+  // rimuovi eventuale .git dal repo
+  const owner = segments[0]
+  const repo = segments[1].replace(/\.git$/i, '')
+  repoPath = `${owner}/${repo}`
+} catch (e) {
+  // URL non valido o parsing fallito
+  return { success: false, error: 'Inserisci un URL GitHub valido.' }
+}
 
     // 2. Recupera l'albero completo dei file
     const response: any = await $fetch(`https://api.github.com/repos/${repoPath}/git/trees/${defaultBranch}?recursive=1`, {
