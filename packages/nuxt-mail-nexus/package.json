@@ -18,7 +18,7 @@
     "nodemailer": "^10.0.6"
   },
    "devDependencies": {
-  "nodemailer": "=^10.0.6"
+  "nodemailer": "^10.0.6",
   "drizzle-orm": "^0.45.2"   
 }
 }
