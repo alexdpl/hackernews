@@ -1,8 +1,6 @@
 <!-- app/pages/admin/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import AdminCliAnalytics from '~~/components/admin/AdminCliAnalytics.vue'
-import AdminWhitelistManager from '~~/components/admin/AdminWhitelistManager.vue'
 
 useHead({
   title: 'Admin Control Center — DKP Sentinel AI v2.5-GOLD',

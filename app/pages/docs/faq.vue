@@ -178,7 +178,7 @@ const faqData: FaqCategory[] = [
           <p>La nostra community è sempre pronta ad aiutarti. Apri una issue pubblica, fai una domanda o contribuisci al nostro repository open source.</p>
         </div>
         <div class="cta-actions">
-          <a href="https://github.com/alexdpl" target="_blank" class="dkp-btn-outline">🐙 GitHub Repository</a>
+          <a href="https://github.com/alexdpl/hackernews" target="_blank" class="dkp-btn-outline">🐙 GitHub Repository</a>
           <NuxtLink to="/bounties" class="dkp-btn-solid">🎯 Esplora Bounty Board</NuxtLink>
         </div>
       </div>
