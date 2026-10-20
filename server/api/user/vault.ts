@@ -1,12 +1,13 @@
 // server/api/user/vault.ts
+import { createHash } from 'node:crypto'
 import { defineEventHandler, readBody, getQuery, createError } from 'h3'
 import { eq, desc, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { vaultCerts, users, xpTransactions } from '~~/drizzle/schema'
+import { vaultCerts, users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const method = event.node.req.method
-  const db = await getDb()
+  const db = getDb()
 
   // 📥 GET: Recupera i certificati Vault dell'utente
   if (method === 'GET') {
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // 📤 POST: Notarizza, salva nel Vault e assegna XP (+100 XP)
+  // 📤 POST: Notarizza con SHA-256 reale, salva nel Vault e assegna +100 XP
   if (method === 'POST') {
     try {
       const body = await readBody(event)
@@ -37,16 +38,20 @@ export default defineEventHandler(async (event) => {
       }
 
       const targetUserId = userId ? Number(userId) : 1
-      const hash = 'dkp_vlt_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+
+      // 🔐 Generazione Hash SHA-256 reale e deterministico del codice sorgente
+      const sha256 = createHash('sha256').update(String(code).trim()).digest('hex')
 
       const [newCert] = await db.insert(vaultCerts).values({
         userId: targetUserId,
         toolType: 'proof-of-code',
         title: title.trim(),
-        hash,
+        hash: sha256,
         metadata: { 
           sastStatus: sastStatus || 'PASSED', 
-          snippet: code.substring(0, 120) 
+          snippet: code.substring(0, 120),
+          codeLength: String(code).length,
+          engineVersion: 'DKP-Vault-v2.5-GOLD'
         }
       }).returning()
 
@@ -64,7 +69,7 @@ export default defineEventHandler(async (event) => {
       return { 
         success: true, 
         data: newCert, 
-        message: 'Codice notarizzato nel Vault e +100 XP accreditati!' 
+        message: 'Codice notarizzato nel Vault con Hash SHA-256 e +100 XP accreditati!' 
       }
 
     } catch (err: any) {

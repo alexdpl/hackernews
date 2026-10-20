@@ -3,13 +3,13 @@
 import { ref, computed, onMounted } from 'vue'
 
 useHead({
-  title: 'DKP API Console v2.4-GOLD — DevKernelPulse',
+  title: 'DKP API Console v2.5-GOLD — DevKernelPulse',
   meta: [
-    { name: 'description', content: 'Console di controllo API, metriche di traffico, latenza Nitro v2.4 e gestione chiavi di accesso.' }
+    { name: 'description', content: 'Console di controllo API, metriche di traffico, latenza Nitro v2.5 e gestione chiavi di accesso.' }
   ]
 })
 
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+const { getMainUrl } = useDomain()
 
 // 👑 GOD MODE & Stato Utente / Admin
 const user = ref({
@@ -26,13 +26,16 @@ const usagePercentage = computed(() => {
   return Math.min(100, Math.round((user.value.requestsUsed / user.value.requestsLimit) * 100))
 })
 
-// 🔑 Gestione Chiavi API con Persistenza e Generatore
-const apiKeys = ref([
-  { id: 1, name: 'Production Server Key', key: 'dkp_live_9f8a37b12c4e88a', created: '2026-08-12', status: 'ACTIVE' },
-  { id: 2, name: 'CLI Toolkit Dev Key', key: 'dkp_dev_11c9a87d4e2199f', created: '2026-09-01', status: 'ACTIVE' }
-])
+// 🔑 Gestione Chiavi API Reali da Neon DB
+const { data: keysResponse, refresh: refreshKeys, pending: isLoadingKeys } = await useFetch<any>('/api/user/keys', {
+  key: 'user-api-keys-console',
+  server: true
+})
+
+const apiKeys = computed(() => keysResponse.value?.data || [])
 
 const copiedKeyId = ref<number | null>(null)
+const newlyCreatedSecret = ref<{ id: number; key: string } | null>(null)
 const realLatency = ref<number | string>(22)
 const memoryMb = ref<number>(45)
 const uptimeSec = ref<number>(48)
@@ -58,78 +61,62 @@ async function fetchTelemetryData() {
   }
 }
 
-// ➕ Genera Nuova API Key Reale
-function createNewApiKey() {
-  const keyName = prompt('Inserisci il nome identificativo per la nuova API Key:', 'My App API Key')
+// ➕ Genera Nuova API Key Reale nel DB Neon
+async function createNewApiKey() {
+  const keyName = prompt('Inserisci il nome identificativo per la nuova API Key:', 'My App Production Key')
   if (!keyName || !keyName.trim()) return
 
-  const randomHash = Array.from(crypto.getRandomValues(new Uint8Array(12)))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-  
-  const isDev = keyName.toLowerCase().includes('dev') || keyName.toLowerCase().includes('test')
-  const newKey = {
-    id: Date.now(),
-    name: keyName.trim(),
-    key: `dkp_${isDev ? 'dev' : 'live'}_${randomHash}`,
-    created: new Date().toISOString().split('T')[0],
-    status: 'ACTIVE'
-  }
+  try {
+    const res = await $fetch<any>('/api/user/keys/generate', {
+      method: 'POST',
+      body: {
+        name: keyName.trim(),
+        role: isAdmin.value ? 'ENTERPRISE' : 'PRO'
+      }
+    })
 
-  apiKeys.value.unshift(newKey)
-  saveKeysToStorage()
+    if (res?.success && res?.rawApiKey) {
+      newlyCreatedSecret.value = {
+        id: res.keyData?.id || Date.now(),
+        key: res.rawApiKey
+      }
+      await refreshKeys()
+    }
+  } catch (err: any) {
+    alert(`Errore generazione chiave: ${err.data?.statusMessage || err.message}`)
+  }
 }
 
-// 🚫 Revoca API Key
-function revokeApiKey(id: number) {
-  const target = apiKeys.value.find(k => k.id === id)
+// 🚫 Revoca API Key su DB Neon
+async function revokeApiKey(id: number) {
+  const target = apiKeys.value.find((k: any) => k.id === id)
   if (!target) return
   if (confirm(`Sei sicuro di voler revocare la chiave "${target.name}"?`)) {
-    target.status = 'REVOKED'
-    saveKeysToStorage()
+    try {
+      const res = await $fetch<any>('/api/user/keys/revoke', {
+        method: 'POST',
+        body: { id }
+      })
+      if (res?.success) {
+        await refreshKeys()
+      }
+    } catch (err: any) {
+      alert(`Errore revoca chiave: ${err.data?.statusMessage || err.message}`)
+    }
   }
 }
 
 // 📋 Copia Chiave con 1-Click
-function copyToClipboard(keyItem: { id: number; key: string }) {
+function copyToClipboard(keyId: number, textToCopy: string) {
   if (import.meta.server) return
-  navigator.clipboard.writeText(keyItem.key)
-  copiedKeyId.value = keyItem.id
+  navigator.clipboard.writeText(textToCopy)
+  copiedKeyId.value = keyId
   setTimeout(() => {
     copiedKeyId.value = null
   }, 2000)
 }
 
-function saveKeysToStorage() {
-  if (import.meta.client) {
-     const safeKeys = apiKeys.value.map(({ id, name, created, status }) => ({
-	id, name, created, status }))
-    localStorage.setItem('dkp_api_keys_v2', JSON.stringify(safeKeys))	 
-  }
-}
-
-function loadKeysFromStorage() {
-  if (import.meta.client) {
-    const saved = localStorage.getItem('dkp_api_keys_v2')
-    if (saved) {
-      try {
-    const parsed = JSON.parse(saved)
-     if (Array.isArray(parsed)) {
-          apiKeys.value = parsed.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            key: 'REDACTED',
-            created: item.created,
-            status: item.status
-          }))
-        }
-      } catch {}
-    }
-  }
-}
-
 onMounted(() => {
-  loadKeysFromStorage()
   fetchTelemetryData()
 })
 </script>
@@ -144,10 +131,10 @@ onMounted(() => {
           <div class="console-badge-row">
             <span class="badge-icon">🔌</span>
             <h1>DKP API Console</h1>
-            <span class="version-tag">v2.4-GOLD</span>
+            <span class="version-tag">v2.5-GOLD</span>
           </div>
           <p class="subtitle">
-            Pannello isolato per il controllo delle API, gestione delle chiavi di accesso e metriche di consumo.
+            Pannello isolato per il controllo delle API, gestione delle chiavi di accesso e metriche di consumo collegate a Neon DB.
           </p>
         </div>
 
@@ -220,7 +207,7 @@ onMounted(() => {
           <div class="metric-card green-border">
             <span class="card-label">Latenza Media API</span>
             <div class="card-value green-text">{{ realLatency }} ms</div>
-            <span class="card-sub engine">⚡ Nitro Engine v2.4 Optimal</span>
+            <span class="card-sub engine">⚡ Nitro Engine v2.5 Optimal</span>
           </div>
 
           <!-- CARD 3: VIOLETTO -->
@@ -257,20 +244,46 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- GESTIONE CHIAVI API -->
+      <!-- AVVISO NUOVA CHIAVE GENERATA IN CHIARO -->
+      <div v-if="newlyCreatedSecret" class="new-key-modal-banner">
+        <div class="banner-content">
+          <span class="banner-icon">⚠️</span>
+          <div>
+            <strong>Nuova API Key Generata con successo!</strong>
+            <p>Salvala subito in un posto sicuro. Non verrà più mostrata per intero.</p>
+            <code class="raw-key-code" @click="copyToClipboard(newlyCreatedSecret.id, newlyCreatedSecret.key)">
+              {{ newlyCreatedSecret.key }}
+            </code>
+          </div>
+        </div>
+        <button class="close-banner-btn" @click="newlyCreatedSecret = null">Ho salvato la chiave ✓</button>
+      </div>
+
+      <!-- GESTIONE CHIAVI API REALI -->
       <section class="keys-section">
         <div class="section-title-row">
-          <h3>🔑 Le Tue Chiavi API {{ isAdmin ? '(Admin System Keys)' : '' }}</h3>
-          <button class="create-key-btn" @click="createNewApiKey">+ Genera Nuova API Key</button>
+          <h3>🔑 Le Tue Chiavi API Reali (Neon DB) {{ isAdmin ? '(Admin System Keys)' : '' }}</h3>
+          <div class="actions-group">
+            <button class="refresh-keys-btn" @click="refreshKeys()">🔄 Aggiorna</button>
+            <button class="create-key-btn" @click="createNewApiKey">+ Genera Nuova API Key</button>
+          </div>
         </div>
 
         <div class="keys-table-container">
-          <table class="keys-table">
+          <div v-if="isLoadingKeys" class="loading-state">
+            Caricamento chiavi API dal database Neon...
+          </div>
+          <div v-else-if="apiKeys.length === 0" class="empty-keys-state">
+            Nessuna API Key registrata nel database. Clicca su "+ Genera Nuova API Key" per crearne una.
+          </div>
+          <table v-else class="keys-table">
             <thead>
               <tr>
                 <th>Nome Chiave</th>
-                <th>API Key Token</th>
+                <th>API Key Token (Mascherato)</th>
                 <th>Data Creazione</th>
+                <th>Tier / Ruolo</th>
+                <th>Utilizzo</th>
                 <th>Stato</th>
                 <th>Azione</th>
               </tr>
@@ -281,13 +294,17 @@ onMounted(() => {
                 <td>
                   <code 
                     class="key-code clickable" 
-                    @click="copyToClipboard(key)"
+                    @click="copyToClipboard(key.id, key.keyMasked || key.keyPrefix || 'dkp_live_...')"
                     :title="'Clicca per copiare'"
                   >
-                    {{ copiedKeyId === key.id ? 'Copiata! ✓' : key.key }}
+                    {{ copiedKeyId === key.id ? 'Copiata! ✓' : (key.keyMasked || key.keyPrefix || 'dkp_live_...') }}
                   </code>
                 </td>
-                <td>{{ key.created }}</td>
+                <td>{{ new Date(key.createdAt).toLocaleDateString() }}</td>
+                <td>
+                  <span class="tier-pill">{{ key.role || 'PRO' }}</span>
+                </td>
+                <td class="usage-col">{{ key.usageCount || 0 }} req</td>
                 <td>
                   <span 
                     class="status-badge" 
@@ -317,7 +334,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-
 /* CLASSI CROMATICHE METRICHE */
 .metric-card.cyan-border {
   border-color: rgba(56, 189, 248, 0.3);
@@ -679,6 +695,51 @@ onMounted(() => {
   color: #64748b;
 }
 
+/* BANNER MODALE SEGRETO */
+.new-key-modal-banner {
+  background: #090d16;
+  border: 1px solid #00dc82;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 0 20px rgba(0, 220, 130, 0.2);
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.banner-icon { font-size: 1.5rem; }
+
+.raw-key-code {
+  display: inline-block;
+  background: #020420;
+  color: #00dc82;
+  border: 1px solid rgba(0, 220, 130, 0.4);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  cursor: pointer;
+}
+
+.close-banner-btn {
+  background: #00dc82;
+  color: #020420;
+  border: none;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 /* TABLE KEYS */
 .keys-section {
   background: #090d16;
@@ -700,6 +761,23 @@ onMounted(() => {
   font-size: 1.05rem;
 }
 
+.actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.refresh-keys-btn {
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
 .create-key-btn {
   background: rgba(56, 189, 248, 0.15);
   color: #38bdf8;
@@ -719,6 +797,14 @@ onMounted(() => {
 
 .keys-table-container {
   overflow-x: auto;
+}
+
+.loading-state, .empty-keys-state {
+  padding: 2.5rem;
+  text-align: center;
+  color: #64748b;
+  font-family: monospace;
+  font-size: 0.85rem;
 }
 
 .keys-table {
@@ -752,6 +838,21 @@ onMounted(() => {
 
 .key-code.clickable:hover {
   background: rgba(0, 220, 130, 0.2);
+}
+
+.tier-pill {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.usage-col {
+  font-family: monospace;
+  color: #94a3b8;
 }
 
 .status-badge {

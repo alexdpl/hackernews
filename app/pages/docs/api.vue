@@ -1,11 +1,12 @@
+Snippet di codice
 <!-- pages/docs/api.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
 useHead({
-  title: 'API Reference v2.4 Interattiva — DKP Docs',
+  title: 'API Reference v2.5 Interattiva — DKP Docs',
   meta: [
-    { name: 'description', content: 'Documentazione tecnica interattiva delle API REST di DevKernelPulse v2.4. Endpoints, autenticazione e code snippet.' }
+    { name: 'description', content: 'Documentazione tecnica interattiva ed OpenAPI delle API REST di DevKernelPulse v2.5-GOLD. Endpoints commerciali, rate limit, autenticazione e code snippets.' }
   ]
 })
 
@@ -31,13 +32,41 @@ interface Endpoint {
 
 const endpoints: Endpoint[] = [
   {
+    id: 'get-commercial-data',
+    method: 'GET',
+    path: '/api/v1/data',
+    title: 'Commercial Suite Data Stream',
+    description: 'Endpoint ad alte prestazioni protetto da API Gateway per l\'integrazione e l\'estrazione dei dati in tempo reale.',
+    protected: true,
+    rateLimit: '1.000 req/mese (Free) | 50.000 req/mese (Pro) | 1.000.000 req/mese (Enterprise)',
+    params: [
+      { name: 'format', type: 'string', required: false, desc: 'Formato di output dei dati (json | xml, default: json)' }
+    ],
+    responseExample: `{
+  "success": true,
+  "message": "Accesso autorizzato alle API commerciali DevKernelPulse v2.5-GOLD",
+  "clientContext": {
+    "keyId": 42,
+    "keyName": "App Produzione Mobile",
+    "roleTier": "PRO",
+    "requestsUsed": 128,
+    "requestsMax": 50000
+  },
+  "data": {
+    "status": "OPERATIONAL",
+    "service": "DKP Commercial Suite v1",
+    "timestamp": "2026-10-20T10:00:00.000Z"
+  }
+}`
+  },
+  {
     id: 'get-news',
     method: 'GET',
     path: '/api/v2/news',
     title: 'Lista Feed Tech News',
-    description: 'Restituisce l\'elenco paginato delle notizie e risorse inviate e crawlate.',
+    description: 'Restituisce l\'elenco paginato delle notizie, pubblicazioni ed elementi catturati dal Crawler.',
     protected: false,
-    rateLimit: '60 req/min (Free) | 1000 req/min (Pro)',
+    rateLimit: '60 req/min (Free) | 1.000 req/min (Pro)',
     params: [
       { name: 'page', type: 'integer', required: false, desc: 'Numero pagina (default: 1)' },
       { name: 'category', type: 'string', required: false, desc: 'Filtra per categoria (es. ai, devops, security)' }
@@ -49,9 +78,9 @@ const endpoints: Endpoint[] = [
       "id": "item_9921",
       "title": "Claude Opus 5.5 is now available on Google Cloud",
       "url": "https://dev.to/...",
-      "author": "pugsandprincesses",
+      "author": "alexdpl",
       "xp_awarded": 15,
-      "created_at": "2026-09-29T13:30:00Z"
+      "created_at": "2026-10-18T13:30:00Z"
     }
   ],
   "meta": { "total": 128, "page": 1, "pages": 4 }
@@ -62,20 +91,20 @@ const endpoints: Endpoint[] = [
     method: 'POST',
     path: '/api/v2/vault/notarize',
     title: 'Notarizzazione Proof of Code',
-    description: 'Genera un hash SHA-256 e un certificato crittografico immutabile per un frammento di codice.',
+    description: 'Calcola l\'hash SHA-256 e genera un certificato crittografico immutabile per un frammento di codice o script.',
     protected: true,
     rateLimit: '10 req/min (Free) | 200 req/min (Pro)',
     bodyExample: `{
-  "title": "Algoritmo DKP Matcher v2",
+  "title": "SmartContract_Auth_v2.sol",
   "source_code": "function verifyHash(code) { return sha256(code); }",
-  "language": "typescript"
+  "language": "solidity"
 }`,
     responseExample: `{
   "status": "notarized",
   "vault_id": "vlt_88120491",
   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "timestamp": "2026-09-29T15:45:00Z",
-  "verification_url": "https://devkernelpulse.org/tools/proof-of-code?v=vlt_88120491"
+  "timestamp": "2026-10-19T15:45:00Z",
+  "verification_url": "https://devkernelpulse.org/user/dashboard?tab=vault"
 }`
   },
   {
@@ -83,7 +112,7 @@ const endpoints: Endpoint[] = [
     method: 'POST',
     path: '/api/v2/ai/scan',
     title: 'AI Code Security Audit',
-    description: 'Sottopone il frammento di codice all\'AI Scanner v2.3 per rilevare falle e problemi di sicurezza.',
+    description: 'Sottopone il codice sorgente al motore euristico Sentinel AI per la scansione SAST e l\'individuazione di vulnerabilità.',
     protected: true,
     rateLimit: '5 req/min (Free) | 100 req/min (Pro)',
     bodyExample: `{
@@ -126,14 +155,14 @@ function getSnippet(endpoint: Endpoint, lang: string) {
   
   if (lang === 'curl') {
     return `curl -X ${endpoint.method} "${baseUrl}${endpoint.path}" \\
-  -H "Content-Type: application/json" ${endpoint.protected ? '\\\n  -H "Authorization: Bearer YOUR_DKP_API_KEY"' : ''} ${endpoint.bodyExample ? `\\\n  -d '${endpoint.bodyExample.replace(/\n/g, '')}'` : ''}`
+  -H "Content-Type: application/json" ${endpoint.protected ? '\\\n  -H "X-API-Key: YOUR_DKP_API_KEY"' : ''} ${endpoint.bodyExample ? `\\\n  -d '${endpoint.bodyExample.replace(/\n/g, '')}'` : ''}`
   }
   
   if (lang === 'javascript') {
     return `const response = await fetch('${baseUrl}${endpoint.path}', {
   method: '${endpoint.method}',
   headers: {
-    'Content-Type': 'application/json'${endpoint.protected ? ',\n    \'Authorization\': \'Bearer YOUR_DKP_API_KEY\'' : ''}
+    'Content-Type': 'application/json'${endpoint.protected ? ',\n    \'X-API-Key\': \'YOUR_DKP_API_KEY\'' : ''}
   }${endpoint.bodyExample ? `,\n  body: JSON.stringify(${endpoint.bodyExample})` : ''}
 });
 const data = await response.json();
@@ -145,7 +174,7 @@ console.log(data);`
 
 url = "${baseUrl}${endpoint.path}"
 headers = {
-    "Content-Type": "application/json"${endpoint.protected ? ',\n    "Authorization": "Bearer YOUR_DKP_API_KEY"' : ''}
+    "Content-Type": "application/json"${endpoint.protected ? ',\n    "X-API-Key": "YOUR_DKP_API_KEY"' : ''}
 }
 ${endpoint.bodyExample ? `payload = ${endpoint.bodyExample}\nresponse = requests.${endpoint.method.toLowerCase()}(url, json=payload, headers=headers)` : `response = requests.${endpoint.method.toLowerCase()}(url, headers=headers)`}
 
@@ -165,7 +194,7 @@ func main() {
     url := "${baseUrl}${endpoint.path}"
     req, _ := http.NewRequest("${endpoint.method}", url, nil)
     req.Header.Add("Content-Type", "application/json")
-    ${endpoint.protected ? 'req.Header.Add("Authorization", "Bearer YOUR_DKP_API_KEY")' : ''}
+    ${endpoint.protected ? 'req.Header.Add("X-API-Key", "YOUR_DKP_API_KEY")' : ''}
 
     res, _ := http.DefaultClient.Do(req)
     defer res.Body.Close()
@@ -186,7 +215,7 @@ func main() {
       <aside class="api-sidebar">
         <div class="sidebar-top">
           <h3>🔌 DKP API Console</h3>
-          <span class="version">v2.4-OpenAPI</span>
+          <span class="version">v2.5-GOLD</span>
         </div>
 
         <input 
@@ -222,14 +251,15 @@ func main() {
         <!-- HEADER OVERVIEW RATE LIMITS & AUTH -->
         <div class="auth-card">
           <div class="auth-info">
-            <h4>🔑 Autenticazione Bearer Token</h4>
-            <p>Tutti gli endpoint protetti richiedono l'header <code>Authorization: Bearer &lt;DKP_API_KEY&gt;</code> generabile dal tuo <NuxtLink to="/user/dashboard">Pannello Dashboard</NuxtLink>.</p>
+            <h4>🔑 Autenticazione API Gateway</h4>
+            <p>Tutti gli endpoint commerciali e protetti richiedono l'header <code>X-API-Key: &lt;DKP_API_KEY&gt;</code> oppure <code>Authorization: Bearer &lt;DKP_API_KEY&gt;</code> generabile dal tuo <NuxtLink to="/user/dashboard?tab=api" class="text-emerald font-bold">Pannello Dashboard</NuxtLink>.</p>
           </div>
           <div class="rate-info">
-            <strong>Limiti di Chiamata:</strong>
+            <strong>Tier e Quote Mensili:</strong>
             <ul>
-              <li><span class="free">FREE</span> 60 req/min</li>
-              <li><span class="pro">PRO</span> 1,000 req/min</li>
+              <li><span class="free">FREE</span> 1.000 req/mese</li>
+              <li><span class="pro">PRO</span> 50.000 req/mese</li>
+              <li><span class="enterprise">ENTERPRISE</span> 1.000.000 req/mese</li>
             </ul>
           </div>
         </div>
@@ -249,7 +279,7 @@ func main() {
           <p class="ep-desc">{{ activeEndpoint.description }}</p>
 
           <div class="meta-row">
-            <span><strong>Rate Limit:</strong> {{ activeEndpoint.rateLimit }}</span>
+            <span><strong>Allocazione / Limit:</strong> {{ activeEndpoint.rateLimit }}</span>
           </div>
 
           <!-- PARAMETRI QUERY / URL -->
@@ -454,10 +484,13 @@ func main() {
 .auth-info p { margin: 0; font-size: 0.85rem; color: #94a3b8; }
 .auth-info code { color: #38bdf8; background: #020420; padding: 0.1rem 0.3rem; border-radius: 4px; }
 
+.text-emerald { color: #00dc82; }
+
 .rate-info { font-size: 0.8rem; color: #94a3b8; }
-.rate-info ul { list-style: none; padding: 0; margin: 0.3rem 0 0; display: flex; gap: 0.8rem; }
+.rate-info ul { list-style: none; padding: 0; margin: 0.3rem 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
 .rate-info .free { color: #cbd5e1; font-weight: 800; }
 .rate-info .pro { color: #00dc82; font-weight: 800; }
+.rate-info .enterprise { color: #f59e0b; font-weight: 800; }
 
 .endpoint-detail-card {
   background: #090d16;

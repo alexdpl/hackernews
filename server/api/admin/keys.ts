@@ -1,120 +1,132 @@
 // server/api/admin/keys.ts
-import { defineEventHandler, readBody, createError, getMethod, setResponseHeaders } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { licenses, dkpCrawlerLicenses } from '~~/server/db/schema'
+import { apiKeys, licenses, users } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
-  const method = getMethod(event)
+  const method = event.node.req.method
   const db = getDb()
-
+  
   setResponseHeaders(event, {
     'X-Cloud-Region': 'europe-west4',
     'X-DKP-Version': 'v2.5-GOLD'
   })
 
-  // 1. GET: Recupera sia le licenze dello Shop che le chiavi API del Gateway
+  // 1. GET: Recupero unificato delle API Keys commerciali e delle Licenze dal DB Neon
   if (method === 'GET') {
     try {
-      const shopLicenses = await db
+      // Recupero chiavi dall'API Gateway
+      const gatewayKeys = await db
+        .select({
+          id: apiKeys.id,
+          name: apiKeys.name,
+          keyMasked: apiKeys.keyMasked,
+          keyPrefix: apiKeys.keyPrefix,
+          role: apiKeys.role,
+          status: apiKeys.status,
+          usageCount: apiKeys.usageCount,
+          createdAt: apiKeys.createdAt,
+          userEmail: users.email
+        })
+        .from(apiKeys)
+        .leftJoin(users, eq(apiKeys.userId, users.id))
+        .orderBy(desc(apiKeys.createdAt))
+
+      // Mappatura per il pannello Admin Control Center
+      const formattedGatewayKeys = gatewayKeys.map((k) => ({
+        id: `gw_${k.id}`,
+        rawId: k.id,
+        source: 'API GATEWAY',
+        email: k.userEmail || 'utente@devkernelpulse.com',
+        username: k.userEmail || 'utente@devkernelpulse.com',
+        licenseKey: k.keyMasked || k.keyPrefix || 'dkp_live_...',
+        role: k.role || 'PRO',
+        usage: k.usageCount || 0,
+        status: (k.status || 'ACTIVE').toUpperCase(),
+        joined: k.createdAt ? new Date(k.createdAt).toLocaleDateString() : '2026-10-20'
+      }))
+
+      // Recupero licenze d'acquisto
+      const storeLicenses = await db
         .select()
         .from(licenses)
         .orderBy(desc(licenses.createdAt))
 
-      const apiGatewayKeys = await db
-        .select()
-        .from(dkpCrawlerLicenses)
-        .orderBy(desc(dkpCrawlerLicenses.createdAt))
-
-      const formattedShop = shopLicenses.map(l => ({
-        id: `shop_${l.id}`,
+      const formattedLicenses = storeLicenses.map((l) => ({
+        id: `lic_${l.id}`,
         rawId: l.id,
-        source: 'SHOP',
-        email: l.customerEmail || 'Client Shop',
+        source: 'STORE LICENSE',
+        email: l.customerEmail,
+        username: l.customerEmail,
         licenseKey: l.licenseKey,
-        role: l.productId || 'Shop License',
-        downloadsCount: l.downloadsCount,
-        maxDownloads: l.maxDownloads,
-        usage: `${l.downloadsCount} / ${l.maxDownloads} dls`,
-        status: l.status ? l.status.toUpperCase() : 'ACTIVE',
-        joined: l.createdAt ? new Date(l.createdAt).toISOString().split('T')[0] : '2026-10-18'
+        role: l.productName || 'PRO',
+        usage: `${l.downloadsCount} / ${l.maxDownloads}`,
+        status: (l.status || 'ACTIVE').toUpperCase(),
+        joined: l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '2026-10-20'
       }))
 
-      const formattedApi = apiGatewayKeys.map(k => ({
-        id: `api_${k.id}`,
-        rawId: k.id,
-        source: 'API GATEWAY',
-        email: `User ID #${k.userId}`,
-        licenseKey: k.licenseKey,
-        role: k.tier ? k.tier.toUpperCase() : 'API KEY',
-        downloadsCount: k.requestsUsed || 0,
-        maxDownloads: k.requestsLimit || 1000,
-        usage: `${k.requestsUsed || 0} / ${k.requestsLimit || 1000} req`,
-        status: k.isActive ? 'ACTIVE' : 'SUSPENDED',
-        joined: k.createdAt ? new Date(k.createdAt).toISOString().split('T')[0] : '2026-10-18'
-      }))
+      const allKeys = [...formattedGatewayKeys, ...formattedLicenses]
 
-      return { 
-        success: true, 
-        version: 'v2.5-GOLD',
-        region: 'europe-west4',
-        data: [...formattedShop, ...formattedApi]
+      return {
+        success: true,
+        data: allKeys
       }
-    } catch (error: any) {
-      console.error('❌ Errore recupero chiavi unificate:', error)
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Errore server recupero chiavi: ${error.message}`
-      })
+    } catch (err: any) {
+      console.error('Errore recupero chiavi/licenze da Neon DB:', err)
+      return {
+        success: false,
+        message: 'Impossibile recuperare le chiavi dal database.',
+        error: err.message
+      }
     }
   }
 
-  // 2. POST: Gestisce Sospendi/Riattiva sia per Shop che per API Gateway
+  // 2. POST: Aggiornamento stato della chiave/licenza
   if (method === 'POST') {
+    const body = await readBody(event)
+    const { id, status } = body
+
+    if (!id || !status) {
+      setResponseStatus(event, 400)
+      return { success: false, message: 'Parametri id e status obbligatori.' }
+    }
+
     try {
-      const body = (await readBody(event)) || {}
-      const { id, status } = body
+      const idStr = String(id)
+      const targetStatus = String(status).toUpperCase()
 
-      if (!id) {
-        throw createError({ statusCode: 400, statusMessage: 'ID chiave/licenza mancante.' })
-      }
-
-      const strId = String(id)
-
-      if (strId.startsWith('shop_')) {
-        const rawId = strId.replace('shop_', '')
-        const newStatus = status === 'ACTIVE' ? 'active' : 'suspended'
+      if (idStr.startsWith('gw_')) {
+        const numericId = parseInt(idStr.replace('gw_', ''), 10)
+        await db
+          .update(apiKeys)
+          .set({ status: targetStatus })
+          .where(eq(apiKeys.id, numericId))
+      } else if (idStr.startsWith('lic_')) {
+        const rawUuid = idStr.replace('lic_', '')
+        const licStatus = targetStatus.toLowerCase() as any
         await db
           .update(licenses)
-          .set({ status: newStatus as any })
-          .where(eq(licenses.id, rawId))
-
-        return { success: true, message: `Stato licenza Shop aggiornato in: ${status}` }
-      } else if (strId.startsWith('api_')) {
-        const rawId = Number(strId.replace('api_', ''))
-        const isActive = status === 'ACTIVE'
-        await db
-          .update(dkpCrawlerLicenses)
-          .set({ isActive })
-          .where(eq(dkpCrawlerLicenses.id, rawId))
-
-        return { success: true, message: `Stato API Key Gateway aggiornato in: ${status}` }
+          .set({ status: licStatus })
+          .where(eq(licenses.id, rawUuid))
       } else {
-        const numId = Number(id)
-        if (!isNaN(numId)) {
+        // Fallback per ID numerico diretto
+        const numericId = parseInt(idStr, 10)
+        if (!isNaN(numericId)) {
           await db
-            .update(dkpCrawlerLicenses)
-            .set({ isActive: status === 'ACTIVE' })
-            .where(eq(dkpCrawlerLicenses.id, numId))
+            .update(apiKeys)
+            .set({ status: targetStatus })
+            .where(eq(apiKeys.id, numericId))
         }
-        return { success: true, message: `Stato chiave aggiornato in: ${status}` }
       }
-    } catch (error: any) {
-      console.error('❌ Errore modifica stato chiave:', error)
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Errore durante l'aggiornamento: ${error.message}`
-      })
+
+      return {
+        success: true,
+        message: `Stato della chiave aggiornato con successo in ${targetStatus}.`
+      }
+    } catch (err: any) {
+      console.error('Errore aggiornamento stato chiave:', err)
+      setResponseStatus(event, 500)
+      return { success: false, message: 'Errore durante l\'aggiornamento dello stato.' }
     }
   }
 })

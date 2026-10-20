@@ -134,6 +134,11 @@ const { getMainUrl } = useDomain()
               ⚙️ SDK & Guida Integrazione
             </NuxtLink>
           </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/docs/faq')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              📖 Domande Frequenti (FAQ)
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink :to="getMainUrl('/status')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
               🟢 API Status & Latency

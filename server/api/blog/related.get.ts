@@ -1,7 +1,8 @@
 // server/api/blog/related.get.ts
+import { defineEventHandler, getQuery, createError } from 'h3'
 import { and, desc, eq, ne, or, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { blogPosts, blogCategories } from '~~/drizzle/schema'
+import { blogPosts, blogCategories, users } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -81,10 +82,12 @@ export default defineEventHandler(async (event) => {
         title: blogPosts.title,
         excerpt: blogPosts.excerpt,
         category: blogCategories.name,
-        date: blogPosts.createdAt
+        date: blogPosts.createdAt,
+        userEmail: users.email
       })
       .from(blogPosts)
       .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
+      .leftJoin(users, eq(blogPosts.authorId, users.id))
       .where(whereClause)
       .orderBy(...orderExpressions)
       .limit(limit)
@@ -95,6 +98,7 @@ export default defineEventHandler(async (event) => {
       title: post.title,
       excerpt: post.excerpt,
       category: post.category || 'Senza categoria',
+      author: post.userEmail ? post.userEmail.split('@')[0] : 'alexdpl',
       date: post.date ? new Date(post.date).toISOString().split('T')[0] : null
     }))
   } catch (error: any) {

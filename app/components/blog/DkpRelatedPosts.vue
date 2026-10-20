@@ -1,6 +1,6 @@
 <!-- components/blog/DkpRelatedPosts.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{
   currentPostId: number
@@ -12,9 +12,10 @@ const relatedPosts = ref<any[]>([])
 const isLoading = ref(true)
 
 async function fetchRelated() {
+  if (!props.currentPostId) return
   isLoading.value = true
   try {
-    relatedPosts.value = await $fetch('/api/blog/related', {
+    relatedPosts.value = await $fetch<any[]>('/api/blog/related', {
       query: {
         id: props.currentPostId,
         cat: props.category,
@@ -30,9 +31,10 @@ async function fetchRelated() {
   }
 }
 
-onMounted(() => {
+// Sincronizza i correlati anche quando l'utente naviga da un post correlato all'altro
+watch(() => props.currentPostId, () => {
   fetchRelated()
-})
+}, { immediate: true })
 </script>
 
 <template>
@@ -187,6 +189,17 @@ onMounted(() => {
 
 .related-card:hover .read-more {
   color: #00dc82;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-family: monospace;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
 }
 
 /* Skeletons */

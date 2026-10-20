@@ -42,11 +42,9 @@ function changePage(page: number) {
   }
 }
 
-// Resetta la pagina a 1 quando si effettua una nuova ricerca
 watch(searchQuery, () => {
   currentPage.value = 1
 })
-// ------------------------------------------------
 
 // TOAST SYSTEM
 const showToast = ref(false)
@@ -151,11 +149,99 @@ async function fetchGamificationData() {
     const statsRes: any = await $fetch('/api/user/xp-stats')
     if (statsRes && statsRes.success) {
        if (statsRes.history && Array.isArray(statsRes.history)) {
-         xpHistoryList.value = statsRes.history
+          xpHistoryList.value = statsRes.history
        }
     }
   } catch (err) {
     console.warn("Impossibile caricare i dati di gamification dal DB", err)
+  }
+}
+
+// 🔑 GESTIONE REALE API KEYS DA NEON DB
+const { data: userKeysData, refresh: refreshApiKeys, pending: isLoadingApiKeys } = await useFetch<any>('/api/user/keys', {
+  key: 'dashboard-user-api-keys',
+  server: true
+})
+
+const apiKeysList = computed(() => userKeysData.value?.data || [])
+
+const newKeyName = ref('')
+const generatedKeyModal = ref<string | null>(null)
+const copiedKey = ref(false)
+
+async function generateApiKey() {
+  if (!newKeyName.value.trim()) {
+    triggerToast('❌ Inserisci un nome identificativo per la chiave API.')
+    return
+  }
+
+  try {
+    const res = await $fetch<any>('/api/user/keys/generate', {
+      method: 'POST',
+      body: {
+        name: newKeyName.value.trim(),
+        role: 'PRO'
+      }
+    })
+
+    if (res?.success && res?.rawApiKey) {
+      generatedKeyModal.value = res.rawApiKey
+      newKeyName.value = ''
+      triggerToast('🔑 Nuova API Key creata con successo sul DB Neon!')
+      await refreshApiKeys()
+    }
+  } catch (err: any) {
+    triggerToast('❌ Errore durante la generazione della chiave: ' + (err.data?.statusMessage || err.message))
+  }
+}
+
+async function revokeApiKey(id: number | string) {
+  if (!confirm('Sei sicuro di voler revocare questa API Key? Le chiamate esterne verranno bloccate.')) return
+
+  try {
+    const res = await $fetch<any>('/api/user/keys/revoke', {
+      method: 'POST',
+      body: { id }
+    })
+
+    if (res?.success) {
+      triggerToast('🗑️ API Key revocata permanentemente dal DB.')
+      await refreshApiKeys()
+    }
+  } catch (err: any) {
+    triggerToast('❌ Errore durante la revoca: ' + (err.data?.statusMessage || err.message))
+  }
+}
+
+function copyToClipboard(text: string) {
+  navigator.clipboard.writeText(text)
+  copiedKey.value = true
+  triggerToast('📋 Copiato negli appunti!')
+  setTimeout(() => copiedKey.value = false, 2000)
+}
+
+// TELEMETRIA API
+const realLatency = ref<number | string>(22)
+const memoryMb = ref<number>(45)
+const uptimeSec = ref<number>(48)
+const serverStatus = ref<string>('HEALTHY')
+const totalCallsCount = ref<string>('14,290')
+const errorRate = ref<string>('0.02%')
+
+async function fetchTelemetryData() {
+  if (import.meta.server) return
+  const startTime = performance.now()
+  try {
+    const healthData: any = await $fetch('/api/public/health')
+    const elapsed = Math.round(performance.now() - startTime)
+    realLatency.value = elapsed > 0 ? elapsed : 12
+    if (healthData?.status) serverStatus.value = healthData.status
+
+    const metricsData: any = await $fetch('/api/public/metrics')
+    if (metricsData?.memoryUsageMb) memoryMb.value = metricsData.memoryUsageMb
+    if (metricsData?.uptimeSeconds) uptimeSec.value = metricsData.uptimeSeconds
+  } catch {
+    realLatency.value = 18
   }
 }
 
@@ -174,13 +260,13 @@ onMounted(() => {
   fetchGamificationData()
 })
 
-// 1. TABS
+// TABS
 const activeTab = computed({
   get: () => (route.query.tab as string) || 'profile',
   set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-// 2. PROFILO
+// PROFILO
 const profileForm = ref({
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
   bio: currentUser.value?.bio || 'Lead Engineer Architect & Core Creator of DevKernelPulse',
@@ -197,7 +283,7 @@ function saveProfile() {
   setTimeout(() => profileSaved.value = false, 3000)
 }
 
-// 3. CATEGORIE DA NEON DB
+// CATEGORIE DA NEON DB
 interface CategoryItem {
   id: string | number
   name: string
@@ -250,7 +336,7 @@ function populateCategoriesFallback() {
   ]
 }
 
-// 4. ARTICOLI E MODALE UNIFICATA
+// ARTICOLI E MODALE UNIFICATA
 const articles = ref<any[]>([])
 const isEditingArticle = ref(false)
 const useAdvancedEditor = ref(false)
@@ -313,7 +399,7 @@ function submitWithStatus(status: 'draft' | 'published') {
   saveArticle()
 }
 
-// 🟢 CARICAMENTO ARTICOLI DAL DB NEON
+// CARICAMENTO ARTICOLI DAL DB NEON
 async function fetchUserArticles() {
   try {
     const res: any = await $fetch('/api/blog/posts')
@@ -334,14 +420,13 @@ async function fetchUserArticles() {
   }
 }
 
-// 🟢 SALVATAGGIO INTELLIGENTE (UNICA FUNZIONE DEFINITIVA)
+// SALVATAGGIO POST
 async function saveArticle() {
   if (!articleForm.value.title.trim() || !articleForm.value.category) {
     triggerToast('❌ Compila Titolo e Categoria prima di salvare.')
     return
   }
 
-  // FIX: Clona l'array dei tags per evitare problemi di reattività
   const payload = {
     title: articleForm.value.title,
     category: articleForm.value.category,
@@ -363,15 +448,11 @@ async function saveArticle() {
     })
     
     if (res && res.success) {
-        // 🟢 FIX DEL TOAST: Ora distingue tra Nuovo Post e Aggiornamento!
-        let msg = '';
-        if (isUpdate) {
-          msg = articleForm.value.status === 'published' ? '✅ Articolo aggiornato con successo!' : '💾 Bozza aggiornata!';
-        } else {
-          msg = articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!';
-        }
-        triggerToast(msg)
+        let msg = isUpdate
+          ? (articleForm.value.status === 'published' ? '✅ Articolo aggiornato con successo!' : '💾 Bozza aggiornata!')
+          : (articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!');
         
+        triggerToast(msg)
         isEditingArticle.value = false
         await fetchUserArticles()
     } else {
@@ -410,11 +491,8 @@ async function quickUpdateStatus(art: any, newStatus: 'published' | 'draft') {
 async function deleteArticle(id: number) {
   if (!confirm('Sei sicuro di voler eliminare permanentemente questo post dal Vault?')) return
   try {
-    // Aggiungi /api/blog/posts/[id] per l'eliminazione
     await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' })
-    // Aggiorna l'elenco locale
     articles.value = articles.value.filter(a => a.id !== id)
-    // Se stavamo cercando qualcosa, resetta la pagina
     if (filteredAndPaginatedPosts.value.items.length === 0 && currentPage.value > 1) {
         currentPage.value--
     }
@@ -422,66 +500,6 @@ async function deleteArticle(id: number) {
   } catch (err) {
     triggerToast('❌ Impossibile eliminare l\'articolo dal DB.')
   }
-}
-
-// 5. API TELEMETRIA
-const apiKeys = ref([
-  { id: 'key_01', name: 'Server Produzione', key: 'dkp_live_9f8a...3b21', rawKey: 'dkp_live_9f8a7c2b1d0e3b21', created: '2026-08-10', lastUsed: 'Oggi 14:20' }
-])
-const newKeyName = ref('')
-const generatedKeyModal = ref<string | null>(null)
-const copiedKey = ref(false)
-
-const realLatency = ref<number | string>(22)
-const memoryMb = ref<number>(45)
-const uptimeSec = ref<number>(48)
-const serverStatus = ref<string>('HEALTHY')
-const totalCallsCount = ref<string>('14,290')
-const errorRate = ref<string>('0.02%')
-
-async function fetchTelemetryData() {
-  if (import.meta.server) return
-  const startTime = performance.now()
-  try {
-    const healthData: any = await $fetch('/api/public/health')
-    const elapsed = Math.round(performance.now() - startTime)
-    realLatency.value = elapsed > 0 ? elapsed : 12
-    if (healthData?.status) serverStatus.value = healthData.status
-
-    const metricsData: any = await $fetch('/api/public/metrics')
-    if (metricsData?.memoryUsageMb) memoryMb.value = metricsData.memoryUsageMb
-    if (metricsData?.uptimeSeconds) uptimeSec.value = metricsData.uptimeSeconds
-  } catch {
-    realLatency.value = 18
-  }
-}
-
-function generateApiKey() {
-  if (!newKeyName.value.trim()) return
-  const rawKey = `dkp_live_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`
-  apiKeys.value.unshift({
-    id: `key_${Date.now()}`,
-    name: newKeyName.value.trim(),
-    key: `${rawKey.substring(0, 12)}...${rawKey.slice(-4)}`,
-    rawKey: rawKey,
-    created: new Date().toISOString().split('T')[0],
-    lastUsed: 'Mai'
-  })
-  generatedKeyModal.value = rawKey
-  newKeyName.value = ''
-  triggerToast('🔑 Nuova API Key generata!')
-}
-
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text)
-  copiedKey.value = true
-  triggerToast('📋 Copiato negli appunti!')
-  setTimeout(() => copiedKey.value = false, 2000)
-}
-
-function revokeApiKey(id: string) {
-  apiKeys.value = apiKeys.value.filter(k => k.id !== id)
-  triggerToast('🗑️ API Key revocata.')
 }
 </script>
 
@@ -594,8 +612,6 @@ function revokeApiKey(id: string) {
 
       <!-- PANNELLO 2: GESTIONE POST BLOG -->
       <section v-if="activeTab === 'content'" class="tab-panel">
-        
-        <!-- 🟢 GUIDA ALL'EDITOR COLLASSABILE -->
         <div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-4 mb-6">
           <details class="group cursor-pointer">
             <summary class="text-emerald-400 font-bold flex justify-between items-center list-none outline-none">
@@ -691,7 +707,6 @@ function revokeApiKey(id: string) {
             </table>
           </div>
 
-          <!-- 🟢 CONTROLLI PAGINAZIONE -->
           <div v-if="filteredAndPaginatedPosts.totalPages > 1" class="flex justify-between items-center mt-6 pt-4 border-t border-gray-800 text-sm">
             <button 
                 @click="changePage(currentPage - 1)" 
@@ -714,13 +729,11 @@ function revokeApiKey(id: string) {
             </button>
           </div>
 
-          <!-- MODALE EDITOR UNIFICATA CON HEADER & FOOTER FISSI -->
+          <!-- MODALE EDITOR -->
           <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
             <div class="dkp-modal editor-modal">
-              
               <div class="modal-header-row">
                 <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
-                
                 <button 
                   type="button"
                   @click="useAdvancedEditor = !useAdvancedEditor" 
@@ -783,16 +796,17 @@ function revokeApiKey(id: string) {
         </div>
       </section>
 
-      <!-- PANNELLO 3: API CONSOLE -->
+      <!-- PANNELLO 3: API CONSOLE REALE DA NEON DB -->
       <section v-if="activeTab === 'api'" class="tab-panel">
         <div class="panel-card">
           <h2 class="section-title">🔑 DKP API Console &amp; Keys Manager</h2>  
-          <p class="section-sub">Genera e gestisci le chiavi API per integrare l'ecosistema DKP nelle tue applicazioni esterne.</p>
+          <p class="section-sub">Genera e gestisci le tue chiavi API memorizzate in modo sicuro nel database Neon PostgreSQL.</p>
           
-          <div class="api-action-header">
+          <div class="api-action-header flex justify-between items-center">
             <NuxtLink :to="getApiUrl('/api-console')" class="dkp-api-link-btn" external>
               <span>⚡ Consumo delle API (Interactive Playground) ↗</span>
             </NuxtLink>
+            <button @click="refreshApiKeys()" class="btn-secondary-sm cursor-pointer">🔄 Aggiorna Lista</button>
           </div>
 
           <div class="metrics-grid-2x2">
@@ -805,7 +819,7 @@ function revokeApiKey(id: string) {
             <div class="metric-card green-border">
               <span class="card-label">Latenza Media API</span>
               <div class="card-value green-text">{{ realLatency }} ms</div>
-              <span class="card-sub engine">⚡ Nitro Engine v2.4 Optimal</span>
+              <span class="card-sub engine">⚡ Nitro Engine v2.5 Optimal</span>
             </div>
 
             <div class="metric-card purple-border">
@@ -822,7 +836,7 @@ function revokeApiKey(id: string) {
           </div>
 
           <div class="api-generate-box mt-6">
-            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. App Produzione)" class="dkp-input" />
+            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. App Produzione Mobile)" class="dkp-input flex-grow" />
             <button @click="generateApiKey" class="dkp-btn-success">Genera Nuova API Key</button>
           </div>
 
@@ -834,28 +848,47 @@ function revokeApiKey(id: string) {
                 {{ copiedKey ? 'Copiato!' : 'Copia' }}
               </button>
             </div>
-            <button @click="generatedKeyModal = null" class="btn-secondary-sm">Ho salvato la chiave</button>
+            <button @click="generatedKeyModal = null" class="btn-secondary-sm mt-2">Ho salvato la chiave</button>
           </div>
 
           <div class="table-container">
-            <table class="dkp-table">
+            <div v-if="isLoadingApiKeys" class="py-8 text-center text-gray-500 font-mono text-sm">
+              Caricamento chiavi API dal database Neon...
+            </div>
+            <div v-else-if="apiKeysList.length === 0" class="py-8 text-center text-gray-500 font-mono text-sm">
+              Nessuna API Key creata. Inserisci un nome in alto per generare la prima chiave.
+            </div>
+            <table v-else class="dkp-table">
               <thead>
                 <tr>
                   <th>Nome Token</th>
-                  <th>Chiave API</th>
+                  <th>Chiave API (Mascherata)</th>
                   <th>Creata Il</th>
-                  <th>Ultimo Uso</th>
+                  <th>Tier / Ruolo</th>
+                  <th>Utilizzo Reale</th>
+                  <th>Stato</th>
                   <th>Azione</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="key in apiKeys" :key="key.id">
+                <tr v-for="key in apiKeysList" :key="key.id">
                   <td class="font-bold">{{ key.name }}</td>
-                  <td><code class="code-badge clickable" @click="copyToClipboard(key.rawKey || key.key)">{{ key.key }}</code></td>
-                  <td>{{ key.created }}</td>
-                  <td>{{ key.lastUsed }}</td>
                   <td>
-                    <button @click="revokeApiKey(key.id)" class="btn-danger-sm">Revoca</button>
+                    <code class="code-badge clickable" @click="copyToClipboard(key.keyMasked || key.keyPrefix || 'dkp_live_...')">
+                      {{ key.keyMasked || key.keyPrefix || 'dkp_live_...' }}
+                    </code>
+                  </td>
+                  <td>{{ new Date(key.createdAt).toLocaleDateString() }}</td>
+                  <td><span class="role-badge">{{ key.role || 'PRO' }}</span></td>
+                  <td>{{ key.usageCount || 0 }} req</td>
+                  <td>
+                    <span :class="['status-pill', key.status === 'ACTIVE' ? 'published' : 'critical']">
+                      {{ key.status }}
+                    </span>
+                  </td>
+                  <td>
+                    <button v-if="key.status === 'ACTIVE'" @click="revokeApiKey(key.id)" class="btn-danger-sm">Revoca</button>
+                    <span v-else class="text-disabled">Revocata</span>
                   </td>
                 </tr>
               </tbody>
@@ -864,7 +897,7 @@ function revokeApiKey(id: string) {
         </div>
       </section>
 
-     <!-- PANNELLO 4: PROOF OF CODE VAULT -->
+      <!-- PANNELLO 4: PROOF OF CODE VAULT -->
       <section v-if="activeTab === 'vault'" class="tab-panel">
         <div class="panel-card vault-card">
           <div class="vault-header">
@@ -874,7 +907,7 @@ function revokeApiKey(id: string) {
               <p class="section-sub">Genera hash crittografici SHA-256 dei tuoi script e repository, notarizzandoli ufficialmente sulla rete DevKernelPulse.</p>
             </div>
             <div class="vault-stats-pill">
-              <span>Certificati Attivi: <strong>3</strong></span>
+              <span>Certificati Attivi: <strong>{{ vaultCertificates.length }}</strong></span>
               <span>Stato Rete: <strong class="text-emerald">🟢 SECURE</strong></span>
             </div>
           </div>
@@ -1083,6 +1116,16 @@ function revokeApiKey(id: string) {
 
 details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
+
+.btn-secondary-sm {
+  background: #020420;
+  border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
 
 .dkp-toast-success {
   position: fixed;

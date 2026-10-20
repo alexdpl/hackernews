@@ -1,12 +1,23 @@
 // server/api/public/health.ts
-export default defineEventHandler((event) => {
+import { sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+
+export default defineEventHandler(async () => {
+  let dbStatus = 'UNKNOWN'
+  try {
+    const db = getDb()
+    await db.execute(sql`SELECT 1`)
+    dbStatus = 'CONNECTED'
+  } catch (err) {
+    dbStatus = 'DISCONNECTED'
+  }
+
   return {
     status: 'HEALTHY',
-    service: 'DevKernelPulse Gateway',
+    service: 'DevKernelPulse-API-Gateway',
     version: 'v2.5-GOLD',
-    timestamp: new Date().toISOString(),
-    nodeEnv: process.env.NODE_ENV || 'production',
-    sentinelAI: 'ACTIVE',
-    vaultEngine: 'SECURE'
+    region: 'europe-west4',
+    database: dbStatus,
+    timestamp: new Date().toISOString()
   }
 })

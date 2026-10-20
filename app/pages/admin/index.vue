@@ -2,9 +2,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-useDkpSeo({
-  title: 'Admin Control Center - DKP Sentinel AI v2.5-GOLD',
-  description: 'Pannello di controllo centrale, telemetria reale e monitoraggio difensivo con Pulse Sentinel AI in europe-west4.'
+useHead({
+  title: 'Admin Control Center — DKP Sentinel AI v2.5-GOLD',
+  meta: [
+    { name: 'description', content: 'Pannello di controllo centrale, telemetria reale e monitoraggio difensivo con Pulse Sentinel AI in europe-west4.' }
+  ]
 })
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
@@ -15,7 +17,19 @@ const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('u
 const searchQuery = ref('')
 const manualIpToBan = ref('')
 
-const users = ref<any[]>([])
+export interface AdminUserKeyItem {
+  id: string | number
+  source: string
+  username: string
+  email: string
+  licenseKey: string
+  role: string
+  usage: string | number
+  status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | string
+  joined: string
+}
+
+const users = ref<AdminUserKeyItem[]>([])
 const isLoadingUsers = ref(false)
 
 const sentinelData = ref<any>({
@@ -33,14 +47,19 @@ const sentinelData = ref<any>({
 const isActionLoading = ref(false)
 const notificationMsg = ref('')
 
-function toggleAutoDefend() {
-  sentinelData.value.autoDefendEnabled = !sentinelData.value.autoDefendEnabled
-  toastMessage.value = sentinelData.value.autoDefendEnabled
-    ? '🤖 Auto-Defend AI (v2.5-GOLD): Protezione euristica in europe-west4 ATTIVATA!'
-    : '⚠️ Auto-Defend AI: Protezione euristica DISATTIVATA.'
-  
+function triggerToast(msg: string) {
+  toastMessage.value = msg
   showToast.value = true
   setTimeout(() => { showToast.value = false }, 3500)
+}
+
+function toggleAutoDefend() {
+  sentinelData.value.autoDefendEnabled = !sentinelData.value.autoDefendEnabled
+  triggerToast(
+    sentinelData.value.autoDefendEnabled
+      ? '🤖 Auto-Defend AI (v2.5-GOLD): Protezione euristica in europe-west4 ATTIVATA!'
+      : '⚠️ Auto-Defend AI: Protezione euristica DISATTIVATA.'
+  )
 
   triggerAction('toggle_autodefend', { enabled: sentinelData.value.autoDefendEnabled })
 }
@@ -49,7 +68,7 @@ async function fetchSentinel() {
   try {
     const res = await $fetch<any>('/api/admin/sentinel')
     if (res?.success && res?.sentinelState) {
-      sentinelData.value = res.sentinelState
+      sentinelData.value = { ...sentinelData.value, ...res.sentinelState }
     }
   } catch (err) {
     console.warn('Impossibile recuperare lo stato live di Sentinel AI:', err)
@@ -60,17 +79,17 @@ async function fetchUsers() {
   isLoadingUsers.value = true
   try {
     const res = await $fetch<any>('/api/admin/keys')
-    if (res?.success && res?.data) {
+    if (res?.success && Array.isArray(res?.data)) {
       users.value = res.data.map((item: any) => ({
         id: item.id,
-        source: item.source,
-        username: item.email,
-        email: item.email,
-        licenseKey: item.licenseKey,
-        role: item.role,
-        usage: item.usage,
-        status: item.status,
-        joined: item.joined
+        source: item.source || 'API GATEWAY',
+        username: item.email || item.username || 'utente@devkernelpulse.com',
+        email: item.email || item.username || 'utente@devkernelpulse.com',
+        licenseKey: item.licenseKey || item.keyMasked || item.keyPrefix || 'dkp_live_...',
+        role: item.role || 'PRO',
+        usage: item.usage ?? item.usageCount ?? 0,
+        status: (item.status || 'ACTIVE').toUpperCase(),
+        joined: item.joined || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '2026-10-15')
       }))
     }
   } catch (err) {
@@ -84,10 +103,10 @@ const filteredUsers = computed(() => {
   if (!searchQuery.value.trim()) return users.value
   const q = searchQuery.value.toLowerCase()
   return users.value.filter(u => 
-    u.username.toLowerCase().includes(q) || 
-    u.email.toLowerCase().includes(q) ||
-    u.licenseKey.toLowerCase().includes(q) ||
-    u.source.toLowerCase().includes(q)
+    (u.username || '').toLowerCase().includes(q) || 
+    (u.email || '').toLowerCase().includes(q) ||
+    (u.licenseKey || '').toLowerCase().includes(q) ||
+    (u.source || '').toLowerCase().includes(q)
   )
 })
 
@@ -99,9 +118,8 @@ async function triggerAction(actionName: string, payload: any = {}) {
       body: { action: actionName, ...payload }
     })
     if (res?.success) {
-      notificationMsg.value = res.message
+      notificationMsg.value = res.message || 'Azione eseguita con successo'
       setTimeout(() => { notificationMsg.value = '' }, 4000)
-      // Forziamo il ricaricamento pulito dello stato da DB
       await fetchSentinel()
     }
   } catch (err: any) {
@@ -119,8 +137,9 @@ async function submitManualBan() {
   manualIpToBan.value = ''
 }
 
-async function toggleUserStatus(user: any) {
-  const newStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+async function toggleUserStatus(user: AdminUserKeyItem) {
+  const isCurrentlyActive = user.status === 'ACTIVE'
+  const newStatus = isCurrentlyActive ? 'SUSPENDED' : 'ACTIVE'
   try {
     const res = await $fetch<any>('/api/admin/keys', {
       method: 'POST',
@@ -239,20 +258,20 @@ onMounted(() => {
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GLOBAL THREAT INDEX</span>
           <div class="flex items-center gap-3">
             <div class="flex-grow h-2.5 bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-300" :style="{ width: sentinelData.globalThreatIndex + '%' }"></div>
+              <div class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-300" :style="{ width: (sentinelData.globalThreatIndex || 8) + '%' }"></div>
             </div>
-            <span class="text-sky-400 font-black text-sm">{{ sentinelData.globalThreatIndex }}%</span>
+            <span class="text-sky-400 font-black text-sm">{{ sentinelData.globalThreatIndex || 8 }}%</span>
           </div>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">MALEVOLE BLOCCATE (24H)</span>
-          <span class="text-2xl font-black text-purple-400">{{ sentinelData.blockedRequests24h || 1845 }}</span>
+          <span class="text-2xl font-black text-purple-400">{{ (sentinelData.blockedRequests24h || 1845).toLocaleString() }}</span>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GCP ARMOR / REGION</span>
-          <span class="text-lg font-black text-emerald-400">OPTIMAL (NL)</span>
+          <span class="text-lg font-black text-emerald-400">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }} (NL)</span>
         </div>
 
         <div class="flex flex-col gap-1">
@@ -332,44 +351,46 @@ onMounted(() => {
       <div class="bg-[#090d16] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div v-if="isLoadingUsers" class="p-8 text-center text-slate-400 font-mono text-sm">Caricamento chiavi dal database Neon...</div>
         <div v-else-if="users.length === 0" class="p-8 text-center text-slate-400 font-mono text-sm">Nessuna licenza o API Key registrata nel database Neon.</div>
-        <table v-else class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-[#020420] text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
-              <th class="p-4">SORGENTE</th>
-              <th class="p-4">PROPRIETARIO / USER</th>
-              <th class="p-4">API KEY / LICENSE KEY</th>
-              <th class="p-4">TIER / PRODOTTO</th>
-              <th class="p-4">UTILIZZO</th>
-              <th class="p-4">STATO</th>
-              <th class="p-4">CREATO IL</th>
-              <th class="p-4">AZIONI</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in filteredUsers" :key="user.id" class="border-b border-slate-800/80 hover:bg-slate-900/50 transition-colors">
-              <td class="p-4">
-                <span :class="['px-2 py-0.5 rounded text-[10px] font-black', user.source === 'API GATEWAY' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-purple-500/20 text-purple-400 border border-purple-500/40']">
-                  {{ user.source }}
-                </span>
-              </td>
-              <td class="p-4 font-bold text-white">{{ user.email }}</td>
-              <td class="p-4 font-mono text-xs text-sky-400">{{ user.licenseKey }}</td>
-              <td class="p-4"><span class="bg-slate-800 text-purple-400 px-2.5 py-1 rounded-md text-xs font-bold">{{ user.role }}</span></td>
-              <td class="p-4 text-xs font-mono text-slate-300">{{ user.usage }}</td>
-              <td class="p-4">
-                <span :class="['px-2.5 py-1 rounded-md text-xs font-black uppercase', user.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30']">
-                  {{ user.status }}
-                </span>
-              </td>
-              <td class="p-4 text-slate-400 text-xs font-mono">{{ user.joined }}</td>
-              <td class="p-4">
-                <button @click="toggleUserStatus(user)" :class="['px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer', user.status === 'ACTIVE' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-[#020420]']">
-                  {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-[#020420] text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
+                <th class="p-4">SORGENTE</th>
+                <th class="p-4">PROPRIETARIO / USER</th>
+                <th class="p-4">API KEY / LICENSE KEY</th>
+                <th class="p-4">TIER / PRODOTTO</th>
+                <th class="p-4">UTILIZZO</th>
+                <th class="p-4">STATO</th>
+                <th class="p-4">CREATO IL</th>
+                <th class="p-4">AZIONI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredUsers" :key="user.id" class="border-b border-slate-800/80 hover:bg-slate-900/50 transition-colors">
+                <td class="p-4">
+                  <span :class="['px-2 py-0.5 rounded text-[10px] font-black', user.source === 'API GATEWAY' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-purple-500/20 text-purple-400 border border-purple-500/40']">
+                    {{ user.source }}
+                  </span>
+                </td>
+                <td class="p-4 font-bold text-white">{{ user.email }}</td>
+                <td class="p-4 font-mono text-xs text-sky-400">{{ user.licenseKey }}</td>
+                <td class="p-4"><span class="bg-slate-800 text-purple-400 px-2.5 py-1 rounded-md text-xs font-bold">{{ user.role }}</span></td>
+                <td class="p-4 text-xs font-mono text-slate-300">{{ user.usage }}</td>
+                <td class="p-4">
+                  <span :class="['px-2.5 py-1 rounded-md text-xs font-black uppercase', user.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30']">
+                    {{ user.status }}
+                  </span>
+                </td>
+                <td class="p-4 text-slate-400 text-xs font-mono">{{ user.joined }}</td>
+                <td class="p-4">
+                  <button @click="toggleUserStatus(user)" :class="['px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer', user.status === 'ACTIVE' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-[#020420]']">
+                    {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -394,7 +415,8 @@ onMounted(() => {
         </div>
       </div>
     </div>
-<!-- TAB 4: SENTINEL LOGS & FIREWALL REALE -->
+
+    <!-- TAB 4: SENTINEL LOGS & FIREWALL REALE -->
     <div v-else-if="activeTab === 'sentinel'" class="flex flex-col gap-6">
       <!-- COMPONENTE TABELLA BLACKLIST DB -->
       <AdminSentinelBlacklistTable />

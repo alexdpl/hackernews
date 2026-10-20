@@ -2,16 +2,16 @@
 import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core'
 import { sql, relations } from 'drizzle-orm'
 
-// -------------------------------------------------------------
-// ENUMS
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* ENUMS                                                         */
+/* ------------------------------------------------------------- */
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'completed', 'failed', 'refunded'])
 export const licenseStatusEnum = pgEnum('license_status', ['active', 'suspended', 'revoked', 'expired'])
 export const paymentProviderEnum = pgEnum('payment_provider', ['stripe', 'paypal'])
 
-// -------------------------------------------------------------
-// 1. TABELLA UTENTI (Users + Gamification & $PULSE Wallet)
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 1. TABELLA UTENTI (Users + Gamification & $PULSE Wallet)      */
+/* ------------------------------------------------------------- */
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: varchar('username', { length: 50 }).notNull().unique(),
@@ -25,16 +25,13 @@ export const users = pgTable('users', {
   level: integer('level').default(1).notNull(),
   badges: jsonb('badges').$type<string[]>().default([]),
   githubHandle: varchar('github_handle', { length: 100 }),
-  
-  // 🔥 AGGIUNTO: Portafoglio Token nativo DKP per la Bounty Board
   pulseBalance: integer('pulse_balance').default(0).notNull(),
-  
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// -------------------------------------------------------------
-// 2. CATEGORIE & BLOG v2.4-GOLD
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 2. CATEGORIE & BLOG v2.4-GOLD                                 */
+/* ------------------------------------------------------------- */
 export const blogCategories = pgTable('blog_categories', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -77,7 +74,6 @@ export const blogPosts = pgTable('blog_posts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// Relazioni Drizzle per Query annidate del Blog
 export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
   subcategories: many(blogSubcategories),
   posts: many(blogPosts),
@@ -106,9 +102,9 @@ export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
   }),
 }))
 
-// -------------------------------------------------------------
-// 3. POSTS, COMMENTI, VOTI, JOBS, VAULT CERTS, STORIES & CHAT
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 3. POSTS, COMMENTI, VOTI, JOBS, VAULT CERTS, STORIES & CHAT   */
+/* ------------------------------------------------------------- */
 export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
@@ -189,9 +185,9 @@ export const pulseUserXp = pgTable('pulse_user_xp', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// -------------------------------------------------------------
-// 4. ORDINI, LICENZE & GAMIFICATION TRANSACTIONS
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 4. ORDINI, LICENZE & GAMIFICATION TRANSACTIONS                */
+/* ------------------------------------------------------------- */
 export const orders = pgTable('orders', {
   id: text('id').default(sql`gen_random_uuid()`).primaryKey().notNull(),
   customerEmail: varchar('customer_email', { length: 255 }).notNull(),
@@ -229,24 +225,22 @@ export const xpTransactions = pgTable('xp_transactions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-
-// -------------------------------------------------------------
-// 5. DKP BOUNTY BOARD (Novità v2.5)
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 5. DKP BOUNTY BOARD (Novità v2.5)                             */
+/* ------------------------------------------------------------- */
 export const bounties = pgTable('bounties', {
   id: serial('id').primaryKey(),
   githubIssueId: varchar('github_issue_id', { length: 100 }).unique(),
   repoName: varchar('repo_name', { length: 255 }).notNull(),
   title: text('title').notNull(),
   url: text('url').notNull(),
-  rewardPulse: integer('reward_pulse').default(100).notNull(), // Taglia in $PULSE
-  status: varchar('status', { length: 20 }).default('open').notNull(), // 'open', 'claimed', 'resolved'
-  claimedBy: integer('claimed_by').references(() => users.id, { onDelete: 'set null' }), // Utente che ha preso in carico la task
+  rewardPulse: integer('reward_pulse').default(100).notNull(),
+  status: varchar('status', { length: 20 }).default('open').notNull(),
+  claimedBy: integer('claimed_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// Relazioni per la Bounty Board
 export const bountiesRelations = relations(bounties, ({ one }) => ({
   claimer: one(users, {
     fields: [bounties.claimedBy],
@@ -254,9 +248,9 @@ export const bountiesRelations = relations(bounties, ({ one }) => ({
   }),
 }))
 
-// -------------------------------------------------------------
-// 6. DKP SENTINEL AI - BLACKLIST IP (v2.5-GOLD)
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 6. DKP SENTINEL AI - BLACKLIST IP (v2.5-GOLD)                 */
+/* ------------------------------------------------------------- */
 export const ipBlacklist = pgTable('ip_blacklist', {
   id: serial('id').primaryKey(),
   ip: text('ip').notNull().unique(),
@@ -265,9 +259,9 @@ export const ipBlacklist = pgTable('ip_blacklist', {
   bannedAt: timestamp('banned_at').defaultNow().notNull()
 })
 
-// -------------------------------------------------------------
-// 7. API GATEWAY & CRAWLER LICENSES 
-// -------------------------------------------------------------
+/* ------------------------------------------------------------- */
+/* 7. API GATEWAY & CRAWLER LICENSES                             */
+/* ------------------------------------------------------------- */
 export const dkpCrawlerLicenses = pgTable('dkp_crawler_licenses', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
@@ -279,3 +273,49 @@ export const dkpCrawlerLicenses = pgTable('dkp_crawler_licenses', {
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow()
 })
+
+/* ------------------------------------------------------------- */
+/* 8. DKP API KEYS                                               */
+/* ------------------------------------------------------------- */
+export const apiKeys = pgTable('api_keys', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  keyHash: text('key_hash').notNull().unique(),
+  keyPrefix: varchar('key_prefix', { length: 50 }).notNull(),
+  keyMasked: varchar('key_masked', { length: 100 }),
+  role: varchar('role', { length: 50 }).default('PRO').notNull(),
+  status: varchar('status', { length: 20 }).default('ACTIVE').notNull(),
+  usageCount: integer('usage_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastUsedAt: timestamp('last_used_at'),
+})
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
+}))
+
+/* ------------------------------------------------------------- */
+/* 9. LOGS TELEMETRIA API GATEWAY                                */
+/* ------------------------------------------------------------- */
+export const apiLogs = pgTable('api_logs', {
+  id: serial('id').primaryKey(),
+  apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  method: varchar('method', { length: 10 }).notNull(),
+  statusCode: integer('status_code').notNull(),
+  ipAddress: varchar('ip_address', { length: 45 }),
+  latencyMs: integer('latency_ms'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+})
+
+export const apiLogsRelations = relations(apiLogs, ({ one }) => ({
+  apiKey: one(apiKeys, {
+    fields: [apiLogs.apiKeyId],
+    references: [apiKeys.id],
+  }),
+}))

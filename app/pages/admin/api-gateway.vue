@@ -3,23 +3,21 @@
 import { ref, computed, onMounted } from 'vue'
 
 useHead({
-  title: 'API Gateway Management — DKP Admin v2.4-GOLD',
+  title: 'API Gateway Management — DKP Admin v2.5-GOLD',
   meta: [
     { name: 'description', content: 'Pannello Admin per la gestione dei Rate Limit, allocazione quote e controllo licenze API DKP.' }
   ]
 })
 
-// 1. Inizializziamo il runtimeConfig dinamico (localhost vs GCP)
-const config = useRuntimeConfig()
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+const { getMainUrl, getApiUrl } = useDomain()
 
-interface LicenseItem {
-  id: string
-  userId: number | null
+export interface LicenseItem {
+  id: string | number
+  userId?: number | null
   customerEmail: string
   productName: string
   licenseKey: string
-  status: 'active' | 'suspended' | 'revoked' | 'expired'
+  status: 'active' | 'suspended' | 'revoked' | 'expired' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | 'EXPIRED'
   downloadsCount: number
   maxDownloads: number
   createdAt: string
@@ -30,22 +28,37 @@ const isLoading = ref(true)
 const searchQuery = ref('')
 const selectedStatusFilter = ref('all')
 
+// Toast System per feedback istantaneo
+const showToast = ref(false)
+const toastMessage = ref('')
+function triggerToast(msg: string) {
+  toastMessage.value = msg
+  showToast.value = true
+  setTimeout(() => showToast.value = false, 3500)
+}
+
 // Modal Stato ed Editing Quota
 const isEditModalOpen = ref(false)
 const editingLicense = ref<LicenseItem | null>(null)
 const newMaxDownloads = ref<number>(1000)
-const newStatus = ref<'active' | 'suspended' | 'revoked' | 'expired'>('active')
+const newStatus = ref<'active' | 'suspended' | 'revoked'>('active')
 
-// Carica la lista licenze dal backend API Gateway
+// Normalizza lo stato per confronti omogenei
+function normalizeStatus(status: string): string {
+  return (status || '').toLowerCase()
+}
+
+// Carica la lista licenze/chiavi dal backend API Gateway
 async function fetchGatewayData() {
   isLoading.value = true
   try {
-    const res = await $fetch<{ success: boolean; data: LicenseItem[] }>(`${config.public.apiUrl}/api/admin/api-gateway`)
-    if (res.success) {
-      licenses.value = res.data
+    const res = await $fetch<{ success: boolean; data: LicenseItem[] }>('/api/admin/api-gateway')
+    if (res && res.success) {
+      licenses.value = res.data || []
     }
-  } catch (err) {
-    console.error('Errore durante il caricamento licenze:', err)
+  } catch (err: any) {
+    console.error('Errore durante il caricamento licenze dal Gateway:', err)
+    triggerToast('❌ Errore durante il caricamento dati dal DB Neon.')
   } finally {
     isLoading.value = false
   }
@@ -55,12 +68,17 @@ onMounted(() => {
   fetchGatewayData()
 })
 
-// Filtraggio real-time
+// Filtraggio real-time per Email, API Key e Stato
 const filteredLicenses = computed(() => {
   return licenses.value.filter(item => {
-    const matchQuery = item.customerEmail.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                       item.licenseKey.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchStatus = selectedStatusFilter.value === 'all' || item.status === selectedStatusFilter.value
+    const emailMatch = (item.customerEmail || '').toLowerCase().includes(searchQuery.value.toLowerCase())
+    const keyMatch = (item.licenseKey || '').toLowerCase().includes(searchQuery.value.toLowerCase())
+    const matchQuery = emailMatch || keyMatch
+    
+    const currentNormStatus = normalizeStatus(item.status)
+    const filterNormStatus = normalizeStatus(selectedStatusFilter.value)
+    
+    const matchStatus = selectedStatusFilter.value === 'all' || currentNormStatus === filterNormStatus
     return matchQuery && matchStatus
   })
 })
@@ -68,17 +86,18 @@ const filteredLicenses = computed(() => {
 // Modale Dettaglio
 function openEditModal(license: LicenseItem) {
   editingLicense.value = { ...license }
-  newMaxDownloads.value = license.maxDownloads
-  newStatus.value = license.status
+  newMaxDownloads.value = license.maxDownloads || 1000
+  const norm = normalizeStatus(license.status)
+  newStatus.value = (norm === 'suspended' || norm === 'revoked') ? norm : 'active'
   isEditModalOpen.value = true
 }
 
-// Salvataggio modifiche quota/stato tramite API Gateway
+// Salvataggio modifiche quota e stato sul DB Neon
 async function saveLicenseChanges() {
   if (!editingLicense.value) return
 
   try {
-    await $fetch(`${config.public.apiUrl}/api/admin/api-gateway`, {
+    const res = await $fetch<{ success: boolean; message?: string }>('/api/admin/api-gateway', {
       method: 'POST',
       body: {
         id: editingLicense.value.id,
@@ -87,58 +106,76 @@ async function saveLicenseChanges() {
       }
     })
     
-    isEditModalOpen.value = false
-    await fetchGatewayData()
+    if (res?.success) {
+      triggerToast('✅ Limiti e stato aggiornati con successo!')
+      isEditModalOpen.value = false
+      await fetchGatewayData()
+    } else {
+      triggerToast('❌ Impossibile aggiornare i limiti.')
+    }
   } catch (err: any) {
-    alert(`Errore durante l'aggiornamento: ${err.message}`)
+    triggerToast(`❌ Errore aggiornamento: ${err.data?.statusMessage || err.message}`)
   }
 }
 
-// Reset Istantaneo Quota Consumata tramite API Gateway
-async function resetQuotaUsage(id: string) {
+// Reset Istantaneo Quota Consumata
+async function resetQuotaUsage(id: string | number) {
   if (!confirm('Vuoi davvero azzerare le chiamate effettuate da questo utente per il mese corrente?')) return
 
   try {
-    await $fetch(`${config.public.apiUrl}/api/admin/api-gateway`, {
+    const res = await $fetch<{ success: boolean }>('/api/admin/api-gateway', {
       method: 'POST',
       body: { id, resetUsage: true }
     })
-    await fetchGatewayData()
+
+    if (res?.success) {
+      triggerToast('🔄 Quota azzerata con successo!')
+      await fetchGatewayData()
+    }
   } catch (err: any) {
-    alert(`Errore durante il reset: ${err.message}`)
+    triggerToast(`❌ Errore durante il reset: ${err.data?.statusMessage || err.message}`)
   }
 }
 </script>
+
 <template>
   <div class="gateway-admin-page">
+    <!-- TOAST NOTIFICATION -->
+    <Transition name="toast-fade">
+      <div v-if="showToast" class="dkp-toast-success">
+        <div class="toast-content">
+          <span class="toast-text">{{ toastMessage }}</span>
+        </div>
+      </div>
+    </Transition>
+
     <div class="admin-container">
       
-      <!-- BREADCRUMB & HEADER AGGIORNATO v2.4-GOLD -->
-<header class="page-header">
-  <div class="header-main">
-    <!-- BARRA BREADCRUMB CON PULSANTI UNIFORMATI -->
-    <div class="breadcrumb-nav">
-      <NuxtLink :to="getApiUrl('/api-console')" external class="btn-breadcrumb api">
-        🔌 Torna alla API Console
-      </NuxtLink>
-      
-      <span class="breadcrumb-separator">|</span>
-      
-      <NuxtLink :to="getMainUrl('/admin')" external class="btn-breadcrumb admin">
-        📊 Torna alla Dashboard
-      </NuxtLink>
-    </div>
-	<p class="subtitle">
-      Gestisci le allocazioni di traffico, assegna quote personalizzate e controlla lo stato operativo delle API Key utenti.
-    </p>
-  </div>
-</header>
+      <!-- BREADCRUMB & HEADER -->
+      <header class="page-header">
+        <div class="header-main">
+          <div class="breadcrumb-nav">
+            <NuxtLink :to="getApiUrl('/api-console')" external class="btn-breadcrumb api">
+              🔌 Torna alla API Console
+            </NuxtLink>
+            
+            <span class="breadcrumb-separator">|</span>
+            
+            <NuxtLink :to="getMainUrl('/admin')" external class="btn-breadcrumb admin">
+              📊 Torna alla Dashboard
+            </NuxtLink>
+          </div>
 
-    <!-- TITOLO E SUBTITLE -->
-    <div class="title-row">
-      <h1>⚙️ API Gateway & Rate Limit Management</h1>
-      <span class="badge-gold">v2.4-GOLD ADMIN</span>
-    </div>
+          <div class="title-row">
+            <h1>⚙️ API Gateway &amp; Rate Limit Management</h1>
+            <span class="badge-gold">v2.5-GOLD ADMIN</span>
+          </div>
+
+          <p class="subtitle">
+            Gestisci le allocazioni di traffico, assegna quote personalizzate e controlla lo stato operativo delle API Key utenti.
+          </p>
+        </div>
+      </header>
 
       <!-- BARRA FILTRI & SEARCH -->
       <section class="controls-bar">
@@ -165,7 +202,7 @@ async function resetQuotaUsage(id: string) {
       <!-- TABELLA LICENZE & RATE LIMITS -->
       <section class="table-section">
         <div v-if="isLoading" class="loading-state">
-          <span>⚡ Caricamento licenze dal database Neon...</span>
+          <span>⚡ Caricamento licenze dal database Neon PostgreSQL...</span>
         </div>
 
         <table v-else-if="filteredLicenses.length" class="gateway-table">
@@ -183,28 +220,30 @@ async function resetQuotaUsage(id: string) {
             <tr v-for="item in filteredLicenses" :key="item.id">
               <td>
                 <div class="user-cell">
-                  <strong>{{ item.customerEmail }}</strong>
-                  <span class="sub-text">ID: {{ item.id.substring(0, 8) }}...</span>
+                  <strong>{{ item.customerEmail || 'utente@devkernelpulse.com' }}</strong>
+                  <span class="sub-text">ID: {{ String(item.id).substring(0, 8) }}...</span>
                 </div>
               </td>
-              <td><span class="product-tag">{{ item.productName }}</span></td>
-              <td><code class="key-preview">{{ item.licenseKey.substring(0, 16) }}...</code></td>
+              <td><span class="product-tag">{{ item.productName || 'DKP Core Suite' }}</span></td>
+              <td><code class="key-preview">{{ (item.licenseKey || '').substring(0, 16) }}...</code></td>
               <td>
                 <div class="usage-cell">
                   <div class="usage-text">
-                    <strong>{{ item.downloadsCount.toLocaleString() }}</strong> / {{ item.maxDownloads.toLocaleString() }}
+                    <strong>{{ (item.downloadsCount || 0).toLocaleString() }}</strong> / {{ (item.maxDownloads || 0).toLocaleString() }}
                   </div>
                   <div class="mini-progress-bar">
                     <div 
                       class="mini-fill" 
-                      :style="{ width: `${Math.min(100, (item.downloadsCount / item.maxDownloads) * 100)}%` }"
-                      :class="{ warning: (item.downloadsCount / item.maxDownloads) >= 0.8 }"
+                      :style="{ width: `${Math.min(100, item.maxDownloads > 0 ? (item.downloadsCount / item.maxDownloads) * 100 : 0)}%` }"
+                      :class="{ warning: item.maxDownloads > 0 && (item.downloadsCount / item.maxDownloads) >= 0.8 }"
                     ></div>
                   </div>
                 </div>
               </td>
               <td>
-                <span class="status-pill" :class="item.status">{{ item.status.toUpperCase() }}</span>
+                <span class="status-pill" :class="normalizeStatus(item.status)">
+                  {{ normalizeStatus(item.status).toUpperCase() }}
+                </span>
               </td>
               <td>
                 <div class="actions-cell">
@@ -264,12 +303,27 @@ async function resetQuotaUsage(id: string) {
 </template>
 
 <style scoped>
+/* TOAST NOTIFICATION */
+.dkp-toast-success {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 999999;
+  background: #061811;
+  border: 1px solid #00dc82;
+  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35);
+  padding: 0.8rem 1.2rem;
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  max-width: 420px;
+}
+.toast-content { display: flex; align-items: center; gap: 0.65rem; color: #f8fafc; font-family: monospace; font-size: 0.85rem; font-weight: 600; }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
 
-/* -------------------------------------------------------------
-   🎨 BREADCRUMB & HEADER STYLES (api-gateway.vue)
-------------------------------------------------------------- */
+/* HEADER & BREADCRUMB */
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
   padding: 16px 20px;
   background: #090d16;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -288,7 +342,6 @@ async function resetQuotaUsage(id: string) {
   font-weight: 700;
 }
 
-/* TASTI BREADCRUMB STILE CHIP */
 .btn-breadcrumb {
   display: inline-flex;
   align-items: center;
@@ -301,7 +354,6 @@ async function resetQuotaUsage(id: string) {
   transition: all 0.2s ease;
 }
 
-/* TORNA ALLA API CONSOLE (BLU/CIANO) */
 .btn-breadcrumb.api {
   color: #00f0ff;
   background: rgba(0, 240, 255, 0.08);
@@ -314,7 +366,6 @@ async function resetQuotaUsage(id: string) {
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
 }
 
-/* TORNA ALLA DASHBOARD (VERDE EMERALD) */
 .btn-breadcrumb.admin {
   color: #00ff87;
   background: rgba(0, 255, 135, 0.08);
@@ -370,44 +421,7 @@ async function resetQuotaUsage(id: string) {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-}
-
-.back-link {
-  color: #38bdf8;
-  font-size: 0.85rem;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin-top: 0.4rem;
-}
-
-.title-row h1 {
-  font-size: 1.8rem;
-  color: #ffffff;
-  margin: 0;
-  font-weight: 900;
-}
-
-.badge-gold {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
-
-.subtitle {
-  color: #94a3b8;
-  margin: 0.4rem 0 0;
-  font-size: 0.92rem;
+  gap: 1.5rem;
 }
 
 /* CONTROLS BAR */
@@ -462,7 +476,7 @@ async function resetQuotaUsage(id: string) {
   background: #090d16;
   border: 1px solid #1e293b;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .gateway-table {
@@ -527,6 +541,7 @@ async function resetQuotaUsage(id: string) {
 .mini-fill {
   height: 100%;
   background: #00dc82;
+  transition: width 0.3s ease;
 }
 
 .mini-fill.warning { background: #f59e0b; }

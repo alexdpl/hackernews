@@ -75,11 +75,13 @@ export function sanitizeEmailHtml(rawHtml: string): string {
   if (!rawHtml) return ''
 
   let clean = rawHtml
-
-  clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*>[\s\S]*?<\/\1>/gi, '')
-  clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*\/>/gi, '')
-  clean = clean.replace(/\s+on[a-z]+\s*=\s*(['"])(.*?)\1/gi, '')
   let previous: string
+  do {
+	  previous = clean
+   clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*>[\s\S]*?<\/\1>/gi, '')
+   clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*\/>/gi, '')
+  } while (clean !== previous)
+  clean = clean.replace(/\s+on[a-z]+\s*=\s*(['"])(.*?)\1/gi, '')
   do {
     previous = clean
     clean = clean.replace(/\s+on[a-z]+\s*=\s*[^"'\s>]+/gi, '')
