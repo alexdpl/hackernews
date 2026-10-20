@@ -102,7 +102,9 @@ function copyToClipboard(keyItem: { id: number; key: string }) {
 
 function saveKeysToStorage() {
   if (import.meta.client) {
-    localStorage.setItem('dkp_api_keys_v2', JSON.stringify(apiKeys.value))
+     const safeKeys = apiKeys.value.map(({ id, name, created, status }) => ({
+	id, name, created, status }))
+    localStorage.setItem('dkp_api_keys_v2', JSON.stringify(safeKeys))	 
   }
 }
 
@@ -111,7 +113,16 @@ function loadKeysFromStorage() {
     const saved = localStorage.getItem('dkp_api_keys_v2')
     if (saved) {
       try {
-        apiKeys.value = JSON.parse(saved)
+    const parsed = JSON.parse(saved)
+     if (Array.isArray(parsed)) {
+          apiKeys.value = parsed.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            key: 'REDACTED',
+            created: item.created,
+            status: item.status
+          }))
+        }
       } catch {}
     }
   }

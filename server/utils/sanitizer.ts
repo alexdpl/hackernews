@@ -1,7 +1,7 @@
 // server/utils/sanitizer.ts
 
 /**
- * 1. Sanitizzatore Supremo per URL (v2.4-GOLD - Bulletproof Edition)
+ * 1. Sanitizzatore Supremo per URL (v2.5-GOLD - Bulletproof Edition)
  * Garantisce che nessun URL malformato, vuoto o anomalo faccia mai crashare il server.
  * Intercetta link relativi di HackerNews, stringhe sporche e applica fallback interni sicuri.
  */
@@ -79,7 +79,11 @@ export function sanitizeEmailHtml(rawHtml: string): string {
   clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*>[\s\S]*?<\/\1>/gi, '')
   clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*\/>/gi, '')
   clean = clean.replace(/\s+on[a-z]+\s*=\s*(['"])(.*?)\1/gi, '')
-  clean = clean.replace(/\s+on[a-z]+\s*=\s*[^"'\s>]+/gi, '')
+  let previous: string
+  do {
+    previous = clean
+    clean = clean.replace(/\s+on[a-z]+\s*=\s*[^"'\s>]+/gi, '')
+  } while (clean !== previous)
   clean = clean.replace(/(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi, '$1="#"')
   clean = clean.replace(/(href|src)\s*=\s*(['"])\s*data:text\/html[^'"]*\2/gi, '$1="#"')
   clean = clean.replace(/<a\s+(?:[^>]*?\s+)?href=/gi, '<a target="_blank" rel="noopener noreferrer" href=')

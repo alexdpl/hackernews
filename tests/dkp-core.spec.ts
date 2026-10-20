@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 
 const BASE_URL = 'http://localhost:3000'; // Cambia porta se usi una diversa in locale
 
-test.describe('DevKernelPulse v2.4-GOLD - Core Navigation', () => {
+test.describe('DevKernelPulse v2.5-GOLD - Core Navigation', () => {
   
   test('La homepage si carica correttamente e mostra la navbar', async ({ page }) => {
     await page.goto(BASE_URL);
@@ -26,7 +26,7 @@ test.describe('DevKernelPulse v2.4-GOLD - Core Navigation', () => {
     // Verifica che il campo URL sia presente
     const urlInput = page.locator('input[type="url"]');
     await expect(urlInput).toBeVisible();
-    await expect(urlInput).toHaveAttribute('placeholder', /github\.com/);
+    await expect(urlInput).toHaveAttribute('placeholder', /^.*github\.com.*$/);
   });
 
   test('La Roadmap 2026 è accessibile', async ({ page }) => {

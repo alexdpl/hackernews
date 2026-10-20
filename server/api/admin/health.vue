@@ -16,20 +16,11 @@ const authed = ref(false)
 function handleLogin() {
   if (secret.value) {
     authed.value = true
-    if (import.meta.client) {
-      sessionStorage.setItem('dkp_admin_secret', secret.value)
-    }
   }
 }
 
 onMounted(() => {
-  if (import.meta.client) {
-    const saved = sessionStorage.getItem('dkp_admin_secret')
-    if (saved) {
-      secret.value = saved
-      authed.value = true
-    }
-  }
+ 
 })
 </script>
 

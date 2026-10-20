@@ -40,9 +40,6 @@ async function fetchJobs() {
     const rawData = res?.data || res
     jobs.value = Array.isArray(rawData) ? rawData : (rawData?.data || [])
 
-    if (import.meta.client) {
-      sessionStorage.setItem('dkp_admin_secret', adminSecret.value)
-    }
   } catch (err: any) {
     jobs.value = []
     errorMessage.value = err.data?.statusMessage || err.statusMessage || 'Errore nel caricamento delle offerte.'
@@ -96,10 +93,6 @@ async function deleteJob(id: number) {
 
 onMounted(() => {
   if (import.meta.client) {
-    const saved = sessionStorage.getItem('dkp_admin_secret')
-    if (saved) {
-      adminSecret.value = saved
-    }
     fetchJobs()
   }
 })

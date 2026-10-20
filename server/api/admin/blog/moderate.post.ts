@@ -24,8 +24,9 @@ export default defineEventHandler(async (event) => {
     if (action === 'approve') {
       // 1. Generazione Certificato di Verifica DKP Vault
       const vaultHash = crypto.createHash('sha256').update(`dkp-vault-${numericPostId}-${Date.now()}`).digest('hex')
-      const vaultCertificateId = `DKP-VAULT-CERT-${Math.random().toString(36).substring(2, 8).toUpperCase()}-2026`
-
+      const certAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+      const certRandomPart = Array.from(crypto.randomBytes(6), (byte) => certAlphabet[byte % certAlphabet.length]).join('')
+      const vaultCertificateId = `DKP-VAULT-CERT-${certRandomPart}-2026`
       const nowIso = new Date().toISOString()
 
       const [updatedPost] = await db

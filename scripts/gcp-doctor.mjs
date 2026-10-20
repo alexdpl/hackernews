@@ -13,7 +13,7 @@ function isFlaggedEnvLine(line) {
     try {
         const parsed = new URL(value);
         const host = parsed.hostname.toLowerCase();
-        return host === 'duck.dns.org' || host.endsWith('.duck.dns.org') || host === 'localhost';
+        return host === 'devkernelpulse.org' || host.endsWith('.devkernelpulse.org') || host === 'localhost';
     } catch {
         return value.toLowerCase().includes('localhost:') || value.toLowerCase() === 'localhost';
     }
@@ -53,9 +53,8 @@ try {
     const envPath = path.resolve(process.cwd(), '.env');
     if (fs.existsSync(envPath)) {
         const envContent = fs.readFileSync(envPath, 'utf-8');
-        if (envContent.includes('duck.dns.org') || envContent.includes('localhost:3000')) {
-            console.log("🚨 ALLARME ROSSO: Trovato 'duck.dns.org' o 'localhost' nel .env di produzione!");
-             const lines = envContent.split('\n').filter(l => isFlaggedEnvLine(l));
+        const lines = envContent.split('\n').filter(l => isFlaggedEnvLine(l));
+            console.log("🚨 ALLARME ROSSO: Trovato 'devkernelpulse.org' o 'localhost' nel .env di produzione!");
             console.log("👉 Righe incriminate da correggere:", lines);
         } else {
             console.log("✅ Nessun dominio vecchio trovato nel .env.");
