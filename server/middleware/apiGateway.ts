@@ -1,18 +1,8 @@
 // server/middleware/apiGateway.ts
-import { pbkdf2Sync } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { apiKeys, apiLogs } from '~~/server/db/schema'
-
-// Parametri KDF per derivare un hash API key con sforzo computazionale adeguato
-const API_KEY_HASH_ITERATIONS = 210000
-const API_KEY_HASH_KEYLEN = 32
-const API_KEY_HASH_DIGEST = 'sha512'
-const API_KEY_HASH_PEPPER = process.env.API_KEY_HASH_PEPPER
-
-if (!API_KEY_HASH_PEPPER) {
-  throw new Error('Missing required environment variable: API_KEY_HASH_PEPPER')
-}
 
 // Limiti di Quota Mensile configurati per ciascun Tier
 const TIER_QUOTAS: Record<string, number> = {
@@ -56,14 +46,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-// 2. Derivazione hash PBKDF2 della chiave ricevuta (deterministica per lookup DB)
-  const keyHash = createHash('sha256').update(rawApiKey.trim()).digest('hex')	  const keyHash = pbkdf2Sync(
-  rawApiKey.trim(),
-    API_KEY_HASH_PEPPER,
-    API_KEY_HASH_ITERATIONS,
-    API_KEY_HASH_KEYLEN,
-    API_KEY_HASH_DIGEST
-  ).toString('hex')
+  // 2. Calcolo Hash SHA-256 della chiave ricevuta
+  const keyHash = createHash('sha256').update(rawApiKey.trim()).digest('hex')
 
   const db = getDb()
 
@@ -173,3 +157,4 @@ export default defineEventHandler(async (event) => {
     }
   }
 })
+       
