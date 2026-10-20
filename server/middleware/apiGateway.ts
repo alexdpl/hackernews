@@ -1,5 +1,5 @@
 // server/middleware/apiGateway.ts
-import { createHash } from 'node:crypto'
+import { scryptSync } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { apiKeys, apiLogs } from '~~/server/db/schema'
@@ -46,16 +46,30 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // 2. Calcolo Hash SHA-256 della chiave ricevuta
-  const keyHash = createHash('sha256').update(rawApiKey.trim()).digest('hex')
-
   const db = getDb()
 
   try {
-    // 3. Verifica esistenza e recupero record su Neon DB
-    const keyRecords = await db.select().from(apiKeys).where(eq(apiKeys.keyHash, keyHash)).limit(1)
+    // 2. Recuperiamo tutte le chiavi attive per confrontare il hash scrypt (che include il sale univoco)
+    const keyRecords = await db.select().from(apiKeys).where(eq(apiKeys.status, 'ACTIVE'))
 
-    if (!keyRecords || keyRecords.length === 0) {
+    let matchedKeyRecord = null
+
+    for (const record of keyRecords) {
+      if (!record.keyHash) continue
+      
+      const parts = record.keyHash.split(':')
+      if (parts.length !== 2) continue
+
+      const [salt, storedHash] = parts
+      const computedHash = scryptSync(rawApiKey.trim(), salt, 64).toString('hex')
+
+      if (computedHash === storedHash) {
+        matchedKeyRecord = record
+        break
+      }
+    }
+
+    if (!matchedKeyRecord) {
       setResponseStatus(event, 401)
       return {
         success: false,
@@ -64,9 +78,9 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const keyRecord = keyRecords[0]
+    const keyRecord = matchedKeyRecord
 
-    // 4. Controllo Stato Operativo della Chiave
+    // 3. Controllo Stato Operativo della Chiave
     const statusUpper = (keyRecord.status || 'ACTIVE').toUpperCase()
     if (statusUpper !== 'ACTIVE') {
       setResponseStatus(event, 403)
@@ -77,7 +91,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 5. Verifica dei Limiti e Quota (Rate Limiting)
+    // 4. Verifica dei Limiti e Quota (Rate Limiting)
     const roleTier = (keyRecord.role || 'FREE').toUpperCase()
     const maxQuota = TIER_QUOTAS[roleTier] || TIER_QUOTAS.FREE
     const currentUsage = keyRecord.usageCount || 0
@@ -94,7 +108,6 @@ export default defineEventHandler(async (event) => {
       const latencyMs = Math.round(performance.now() - startTime)
       const clientIp = (getRequestHeader(event, 'x-forwarded-for') || event.node.req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim()
 
-      // Traccia l'errore 429 nei log
       db.insert(apiLogs).values({
         apiKeyId: keyRecord.id,
         endpoint: url.pathname,
@@ -112,7 +125,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 6. Incremento atomico del conteggio chiamate su Neon DB
+    // 5. Incremento atomico del conteggio chiamate su Neon DB
     await db.update(apiKeys)
       .set({
         usageCount: sql`${apiKeys.usageCount} + 1`,
@@ -120,7 +133,7 @@ export default defineEventHandler(async (event) => {
       })
       .where(eq(apiKeys.id, keyRecord.id))
 
-    // 7. Salva il contesto dell'utente/chiave autenticata per la rotta gestita
+    // 6. Salva il contesto dell'utente/chiave autenticata
     event.context.apiKey = {
       id: keyRecord.id,
       name: keyRecord.name,
@@ -130,7 +143,7 @@ export default defineEventHandler(async (event) => {
       maxQuota
     }
 
-    // 8. Log di audit asincrono al completamento della risposta
+    // 7. Log di audit asincrono al completamento della risposta
     event.node.res.on('finish', () => {
       const latencyMs = Math.round(performance.now() - startTime)
       const statusCode = event.node.res.statusCode
@@ -157,4 +170,3 @@ export default defineEventHandler(async (event) => {
     }
   }
 })
-       
