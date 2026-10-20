@@ -74,21 +74,14 @@ export function sanitizeUrl(rawUrl: string | null | undefined, fallbackTitle?: s
 export function sanitizeEmailHtml(rawHtml: string): string {
   if (!rawHtml) return ''
 
-  let clean = rawHtml
-  let previous: string
-  do {
-	  previous = clean
-   clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*>[\s\S]*?<\/\1>/gi, '')
-   clean = clean.replace(/<(script|iframe|object|embed|form|base|link)[^>]*\/>/gi, '')
-  } while (clean !== previous)
-  clean = clean.replace(/\s+on[a-z]+\s*=\s*(['"])(.*?)\1/gi, '')
-  do {
-    previous = clean
-    clean = clean.replace(/\s+on[a-z]+\s*=\s*[^"'\s>]+/gi, '')
-  } while (clean !== previous)
-  clean = clean.replace(/(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi, '$1="#"')
-  clean = clean.replace(/(href|src)\s*=\s*(['"])\s*data:text\/html[^'"]*\2/gi, '$1="#"')
-  clean = clean.replace(/<a\s+(?:[^>]*?\s+)?href=/gi, '<a target="_blank" rel="noopener noreferrer" href=')
-
-  return clean
+  return sanitizeHtml(rawHtml, {
+	  disallowedTagsMode: 'discard',
+	  allowedSchemes: ['http', 'https', 'mailto'],
+	  allowedSchemesAppliedToAttributes: ['href', 'src'],
+	  allowProtocolRelative: false,
+	  transformTags: {
+  a: sanitizeHtml.simpleTransform('a', { target: '_blank',
+  rel: 'noopener noreferrer' }, true) }
+  })
+  
 }

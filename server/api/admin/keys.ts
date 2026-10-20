@@ -1,7 +1,7 @@
 // server/api/admin/keys.ts
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { apiKeys, licenses, users } from '~~/server/db/schema'
+import { apiKeys, licenses } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const method = event.node.req.method
@@ -15,30 +15,18 @@ export default defineEventHandler(async (event) => {
   // 1. GET: Recupero unificato delle API Keys commerciali e delle Licenze dal DB Neon
   if (method === 'GET') {
     try {
-      // Recupero chiavi dall'API Gateway
+      // 👈 FIX: Query diretta senza leftJoin per evitare "Cannot convert undefined to object"
       const gatewayKeys = await db
-        .select({
-          id: apiKeys.id,
-          name: apiKeys.name,
-          keyMasked: apiKeys.keyMasked,
-          keyPrefix: apiKeys.keyPrefix,
-          role: apiKeys.role,
-          status: apiKeys.status,
-          usageCount: apiKeys.usageCount,
-          createdAt: apiKeys.createdAt,
-          userEmail: users.email
-        })
+        .select()
         .from(apiKeys)
-        .leftJoin(users, eq(apiKeys.userId, users.id))
         .orderBy(desc(apiKeys.createdAt))
 
-      // Mappatura per il pannello Admin Control Center
       const formattedGatewayKeys = gatewayKeys.map((k) => ({
         id: `gw_${k.id}`,
         rawId: k.id,
         source: 'API GATEWAY',
-        email: k.userEmail || 'utente@devkernelpulse.com',
-        username: k.userEmail || 'utente@devkernelpulse.com',
+        email: 'admin@devkernelpulse.com', // Placeholder sicuro in assenza di join
+        username: 'Admin',
         licenseKey: k.keyMasked || k.keyPrefix || 'dkp_live_...',
         role: k.role || 'PRO',
         usage: k.usageCount || 0,
@@ -65,14 +53,12 @@ export default defineEventHandler(async (event) => {
         joined: l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '2026-10-20'
       }))
 
-      const allKeys = [...formattedGatewayKeys, ...formattedLicenses]
-
       return {
         success: true,
-        data: allKeys
+        data: [...formattedGatewayKeys, ...formattedLicenses]
       }
     } catch (err: any) {
-      console.error('Errore recupero chiavi/licenze da Neon DB:', err)
+      console.error('❌ Errore recupero chiavi/licenze da Neon DB:', err)
       return {
         success: false,
         message: 'Impossibile recuperare le chiavi dal database.',
@@ -97,25 +83,14 @@ export default defineEventHandler(async (event) => {
 
       if (idStr.startsWith('gw_')) {
         const numericId = parseInt(idStr.replace('gw_', ''), 10)
-        await db
-          .update(apiKeys)
-          .set({ status: targetStatus })
-          .where(eq(apiKeys.id, numericId))
+        await db.update(apiKeys).set({ status: targetStatus }).where(eq(apiKeys.id, numericId))
       } else if (idStr.startsWith('lic_')) {
         const rawUuid = idStr.replace('lic_', '')
-        const licStatus = targetStatus.toLowerCase() as any
-        await db
-          .update(licenses)
-          .set({ status: licStatus })
-          .where(eq(licenses.id, rawUuid))
+        await db.update(licenses).set({ status: targetStatus.toLowerCase() as any }).where(eq(licenses.id, rawUuid))
       } else {
-        // Fallback per ID numerico diretto
         const numericId = parseInt(idStr, 10)
         if (!isNaN(numericId)) {
-          await db
-            .update(apiKeys)
-            .set({ status: targetStatus })
-            .where(eq(apiKeys.id, numericId))
+          await db.update(apiKeys).set({ status: targetStatus }).where(eq(apiKeys.id, numericId))
         }
       }
 
@@ -124,7 +99,7 @@ export default defineEventHandler(async (event) => {
         message: `Stato della chiave aggiornato con successo in ${targetStatus}.`
       }
     } catch (err: any) {
-      console.error('Errore aggiornamento stato chiave:', err)
+      console.error('❌ Errore aggiornamento stato chiave:', err)
       setResponseStatus(event, 500)
       return { success: false, message: 'Errore durante l\'aggiornamento dello stato.' }
     }
