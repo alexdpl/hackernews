@@ -5,7 +5,7 @@ const currentYear = new Date().getFullYear()
 
 useDkpSeo({
   title: 'Roadmap Ecosistema 2026-2027 v2.5-GOLD - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell ecosistema DKP: Firewall Live SSE, Code Vault, Proof of Code, AI Tools e Visione Futura 2027.'
+  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP: Firewall Live SSE, Code Vault, Proof of Code, AI Tools, Security Hardening e Visione Futura 2027.'
 })
 
 interface RoadmapMilestone {
@@ -27,7 +27,7 @@ const milestones = ref<RoadmapMilestone[]>([
     version: 'v2.4-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Consolidamento completo dell area riservata Admin su moduli unificati con rotte relative, eliminazione dei redirect e gestione dei cookie di sessione.',
+    description: 'Consolidamento completo dell\'area riservata Admin su moduli unificati con rotte relative, eliminazione dei redirect e gestione dei cookie di sessione.',
     features: [
       'Standardizzazione Navbar Admin Grid a 8 Moduli',
       'Persistenza Sessione Admin & Cookie dkp_session',
@@ -71,17 +71,18 @@ const milestones = ref<RoadmapMilestone[]>([
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'Reingegnerizzazione Totale Tools v2.5 & Gamification Core',
+    phaseTitle: 'Security Hardening, Admin Telemetry & Proof of Code Vault',
     version: 'v2.5-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Aggiornamento massiccio di tutti i tool della suite (AI Scanner, Neural Playground, Proof of Code Vault e Web Terminal) con integrazione Neon DB e Tailwind CSS.',
+    description: 'Upgrade massiccio di sicurezza con scrypt KDF, notarizzazione crittografica Vault con XP (+100 XP), IP Whitelist Manager, Webhook Alerting e Telemetria CLI.',
     features: [
-      'Upgrade completo di tutti i tool alla v2.5-GOLD',
-      'Connessione nativa Proof of Code Vault con generazione hash SHA-256',
-      'Terminal Web Shell con comandi dinamici ed easter egg XP',
-      'Neural Playground multi-modello con risposte live',
-      'Pulizia completa e unificazione dei namespace API al singolare (/api/user/)'
+      'Hardening API Key: migrazione da SHA-256 a scrypt KDF con salt e pepper (CodeQL compliant)',
+      'Proof of Code Vault con hash SHA-256 deterministico, SAST audit e +100 XP automatici',
+      'Modulo Whitelist IP & Exemption Manager per runner CI/CD e sviluppatori fidati',
+      'Webhook & Instant Alerting System per notifiche push critiche su Telegram e Discord',
+      'CLI Telemetry & Analytics dashboard con tracciamento chiamate dkp-cli e latenze',
+      'Nuova pagina FAQ interattiva v2.5-GOLD (/docs/faq.vue) e probe /health & /metrics GCP'
     ]
   },
   {
@@ -90,58 +91,58 @@ const milestones = ref<RoadmapMilestone[]>([
     phaseTitle: 'DKP Public SDK & Developer Ecosystem Expansion',
     version: 'v3.0-BETA',
     status: 'in-progress',
-    progress: 45,
-    description: ' Apertura dell ecosistema agli sviluppatori terzi con il rilascio del pacchetto npm ufficiale e librerie SDK per integrare i servizi DKP ovunque.',
+    progress: 50,
+    description: 'Apertura dell\'ecosistema agli sviluppatori terzi con il rilascio del pacchetto npm ufficiale e librerie SDK per integrare i servizi DKP ovunque.',
     features: [
       'Rilascio pacchetto npm ufficiale @devkernelpulse/sdk',
       'Documentazione interattiva API Hub v3 con playground live',
-      'Sistema di Webhook personalizzati per notifiche eventi Vault e Firewall',
-      'CLI Toolkit avanzata con comandi di sincronizzazione Cloud bidirezionale'
+      'Sistema di Webhook ed Eventi personalizzati per Vault, Sentinel AI & Firewall',
+      'CLI Toolkit v3.0 con comandi di sincronizzazione Cloud bidirezionale'
     ]
   },
   {
     id: 'q2-2027',
     quarter: 'Q2 2027',
-    phaseTitle: 'Autonomous Neural Agents & Custom LLM Fine-Tuning',
+    phaseTitle: 'Autonomous Neural Agents & Auto-Patching PR Engine',
     version: 'v3.2',
     status: 'upcoming',
     progress: 10,
     description: 'Evoluzione del Neural Playground in un agente autonomo in grado di correggere e applicare patch di sicurezza direttamente via pull request GitHub.',
     features: [
-      'Integrazione di Agentic AI per fix automatici delle vulnerabilità SAST',
+      'Agentic AI per auto-remediation delle vulnerabilità SAST via PR automatica su GitHub',
+      'Canary & Honeypot Endpoints trappola per ban istantaneo degli scanner malevoli',
       'Fine-tuning di modelli custom focalizzati su architetture Nuxt e Neon DB',
-      'Sandbox isolata in container WASM per l esecuzione sicura di codice untrusted',
-      'Dashboard predittiva per la stima del debito tecnico aziendale'
+      'Sandbox isolata in container WASM per l\'esecuzione sicura di codice untrusted'
     ]
   },
   {
     id: 'q3-2027',
     quarter: 'Q3 2027',
-    phaseTitle: 'Multi-Tenant Enterprise Cloud & On-Premise Federation',
+    phaseTitle: 'Multi-Tenant Enterprise Cloud & Ephemeral CI/CD Keys',
     version: 'v3.5-ENTERPRISE',
     status: 'upcoming',
     progress: 0,
-    description: 'Soluzione enterprise per grandi aziende che necessitano di installazioni isolate On-Premise o in Cloud privato con federazione dei dati.',
+    description: 'Soluzione enterprise per grandi aziende con chiavi API effimere a tempo, federazione multi-tenant e supporto On-Premise.',
     features: [
-      'Federazione Multi-Tenant per cluster Kubernetes isolati',
+      'Chiavi API Effimere a tempo (15m - 1h) per pipeline CI/CD GitHub Actions e GitLab CI',
+      'Federazione Multi-Tenant per cluster Kubernetes isolati in GCP europe-west4',
       'Supporto a SSO Enterprise (SAML, Okta, Active Directory)',
-      'Storage di Vault crittografato con HSM (Hardware Security Module) dedicati',
-      'Compliance avanzata (GDPR, SOC2, ISO 27001)'
+      'Storage di Vault crittografato con HSM (Hardware Security Module) dedicati'
     ]
   },
   {
     id: 'q4-2027',
     quarter: 'Q4 2027',
-    phaseTitle: 'Global VIP Developers Guild & Decentralized Reputation',
+    phaseTitle: 'Global VIP Developers Guild & Smart Contract Settlement',
     version: 'v4.0-VISION',
     status: 'upcoming',
     progress: 0,
-    description: 'Lancio della Leaderboard globale gamificata con premi in token di reputazione e community DAO per il governo delle future release di DevKernelPulse.',
+    description: 'Lancio della Leaderboard globale gamificata con regolamento automatico Web3 per le Bounty e governance DAO della community.',
     features: [
+      'Web3 / Smart Contract Settlement automatico per il pagamento delle Bounty in $PULSE su PR merged',
       'Classifica globale VIP Developers basata su XP verificati nel Vault',
       'Rilascio di badge NFT crittografati per i contributori Open Source',
-      'Governance decentralizzata della community per votare le nuove feature',
-      'Hackathon globali annuali integrati nell ecosistema DKP'
+      'Governance decentralizzata DAO per votare le nuove feature dell\'ecosistema DKP'
     ]
   }
 ])
@@ -169,9 +170,9 @@ const overallCompletion = computed(() => {
       <div class="hero-badge">
         <span class="badge-status gold">🚀 DKP ECOSYSTEM ROADMAP 2026-2027</span>
       </div>
-      <h1>Piano di Sviluppo & <span class="highlight">Vision v2.5-GOLD</span></h1>
+      <h1>Piano di Sviluppo &amp; <span class="highlight">Vision v2.5-GOLD</span></h1>
       <p class="subtitle">
-        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, rilasci dell ecosistema DevKernelPulse e la nuova visione strategica per il 2027.
+        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, rilasci dell'ecosistema DevKernelPulse e la nuova visione strategica per il 2027.
       </p>
 
       <!-- PROGRESS OVERALL METRIC -->
@@ -224,7 +225,7 @@ const overallCompletion = computed(() => {
           <p class="milestone-desc">{{ item.description }}</p>
 
           <div class="features-box">
-            <h4>📋 Deliverables & Moduli:</h4>
+            <h4>📋 Deliverables &amp; Moduli:</h4>
             <ul class="features-list">
               <li v-for="(feat, idx) in item.features" :key="idx">
                 <span class="check-icon">▹</span> {{ feat }}

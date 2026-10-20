@@ -1,6 +1,8 @@
 <!-- app/pages/admin/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import AdminCliAnalytics from '~~/components/admin/AdminCliAnalytics.vue'
+import AdminWhitelistManager from '~~/components/admin/AdminWhitelistManager.vue'
 
 useHead({
   title: 'Admin Control Center — DKP Sentinel AI v2.5-GOLD',
@@ -163,6 +165,11 @@ onMounted(() => {
 })
 </script>
 
+Ecco il template aggiornato e ottimizzato per pages/admin/index.vue.
+
+Ho integrato in modo modulare i nuovi componenti per la Telemetria CLI e la Whitelist IP, aggiungendo anche le tab dedicate per non appesantire il rendering e mantenere la dashboard fluida, veloce e ben organizzata.
+
+Snippet di codice
 <template>
   <div class="admin-container max-w-7xl mx-auto flex flex-col gap-6 pb-16 px-4 sm:px-6">
     <!-- TOAST NOTIFICATION -->
@@ -328,14 +335,17 @@ onMounted(() => {
       <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'users' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'users'">
         🔑 API Keys &amp; Licenze Attive ({{ users.length }})
       </button>
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'moderation' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'moderation'">
-        🛡️ Coda Moderazione
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'whitelist' ? 'bg-[#090d16] border border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'whitelist'">
+        🛡️ Whitelist IP &amp; Esenzioni
       </button>
       <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'infrastructure' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'infrastructure'">
-        📊 Monitoraggio Cloud Run
+        📊 Telemetria CLI &amp; Cloud Run
       </button>
       <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'sentinel' ? 'bg-[#090d16] border border-purple-500 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'sentinel'">
         🤖 Log Minacce &amp; Terminale SSE ({{ sentinelData.recentThreats?.length || 0 }})
+      </button>
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'moderation' ? 'bg-[#090d16] border border-amber-500 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'moderation'">
+        ⚖️ Coda Moderazione
       </button>
     </div>
 
@@ -394,19 +404,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- TAB 2: CODA MODERAZIONE -->
-    <div v-else-if="activeTab === 'moderation'" class="flex flex-col gap-4">
-      <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex items-start gap-4">
-        <span class="text-3xl">🛡️</span>
-        <div>
-          <h4 class="text-amber-400 font-bold text-lg mb-1">Coda Moderazione Contenuti &amp; Post</h4>
-          <p class="text-slate-300 text-sm">Tutti gli articoli e i commenti segnalati dagli utenti vengono memorizzati qui per l'approvazione in tempo reale.</p>
-        </div>
-      </div>
+    <!-- TAB 2: WHITELIST IP & EXEMPTION MANAGER -->
+    <div v-else-if="activeTab === 'whitelist'" class="flex flex-col gap-6">
+      <AdminWhitelistManager />
     </div>
 
-    <!-- TAB 3: MONITORAGGIO INFRASTRUTTURA CLOUD RUN -->
-    <div v-else-if="activeTab === 'infrastructure'" class="flex flex-col gap-4">
+    <!-- TAB 3: MONITORAGGIO INFRASTRUTTURA CLOUD RUN & CLI TELEMETRIA -->
+    <div v-else-if="activeTab === 'infrastructure'" class="flex flex-col gap-6">
       <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex items-start gap-4">
         <span class="text-3xl">📊</span>
         <div>
@@ -414,6 +418,9 @@ onMounted(() => {
           <p class="text-slate-300 text-sm">Stato del servizio attivo in <strong class="text-white">europe-west4 (Paesi Bassi)</strong>, database Neon PostgreSQL e pipeline CI/CD perfettamente allineate.</p>
         </div>
       </div>
+
+      <!-- COMPONENTE TELEMETRIA CLI -->
+      <AdminCliAnalytics />
     </div>
 
     <!-- TAB 4: SENTINEL LOGS & FIREWALL REALE -->
@@ -423,6 +430,17 @@ onMounted(() => {
 
       <!-- COMPONENTE TERMINALE STREAMING TELEMETRIA -->
       <AdminSentinelLiveStream />
+    </div>
+
+    <!-- TAB 5: CODA MODERAZIONE -->
+    <div v-else-if="activeTab === 'moderation'" class="flex flex-col gap-4">
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex items-start gap-4">
+        <span class="text-3xl">🛡️</span>
+        <div>
+          <h4 class="text-amber-400 font-bold text-lg mb-1">Coda Moderazione Contenuti &amp; Post</h4>
+          <p class="text-slate-300 text-sm">Tutti gli articoli e i commenti segnalati dagli utenti vengono memorizzati qui per l'approvazione in tempo reale.</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>

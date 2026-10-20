@@ -319,3 +319,23 @@ export const apiLogsRelations = relations(apiLogs, ({ one }) => ({
     references: [apiKeys.id],
   }),
 }))
+
+/* ------------------------------------------------------------- */
+/* IP WHITELIST & ALERT LOGS (v2.6 Security)                     */
+/* ------------------------------------------------------------- */
+export const ipWhitelist = pgTable('ip_whitelist', {
+  id: serial('id').primaryKey(),
+  ip: varchar('ip', { length: 45 }).notNull().unique(),
+  description: text('description').notNull(),
+  addedBy: varchar('added_by', { length: 100 }).default('Admin'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+})
+
+export const alertLogs = pgTable('alert_logs', {
+  id: serial('id').primaryKey(),
+  severity: varchar('severity', { length: 20 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  metadata: jsonb('metadata'),
+  sentAt: timestamp('sent_at').defaultNow().notNull()
+})
