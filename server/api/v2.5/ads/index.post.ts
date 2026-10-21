@@ -1,3 +1,4 @@
+// server/api/v2.5/ads/index.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 
 export default defineEventHandler(async (event) => {
@@ -11,13 +12,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Qui integreremo la scrittura su Neon DB per salvare la campagna sponsorizzata
-  // Validazione preliminare con Sentinel AI (simulata o attiva)
-  
+  // Corretto l'errore di sintassi della stringa random
+  const campaignId = 'dkp-ad-' + Math.random().toString(36).substring(2, 9)
+
   return {
     success: true,
     message: 'Campagna DKP Ads creata con successo e in attesa di approvazione Vault.',
-    campaignId: 'dkp-ad-' + Math.random().toString(36.substring(2, 9)),
+    campaignId,
     status: 'ACTIVE'
   }
 })

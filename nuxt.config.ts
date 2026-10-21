@@ -66,7 +66,6 @@ export default defineNuxtConfig({
   alias: {
     '~~/drizzle': fileURLToPath(new URL('./drizzle', import.meta.url)),
     '@core': fileURLToPath(new URL('./devkernelpulse-core', import.meta.url)),
-    '@plugins': fileURLToPath(new URL('./dkp-proprietary-plugins', import.meta.url))
   },
 
   imports: {
