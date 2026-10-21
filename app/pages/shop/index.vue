@@ -1,11 +1,132 @@
 <!-- app/pages/shop/index.vue -->
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const showModal = ref(false)
+const selectedProduct = ref<any>(null)
+const customerEmail = ref('')
+const paymentProvider = ref<'stripe' | 'paypal'>('stripe')
+const isLoading = ref(false)
+const errorMessage = ref('')
+
+// Le 4 Feature API Intelligenti dell'Ecosistema v2.5-Gold
+const products = ref([
+  {
+    id: 'dkp-api-core-pass',
+    title: 'DKP Core Kernel API Pass',
+    category: 'DEVELOPER API',
+    categoryClass: 'badge-core',
+    price: 19.00,
+    rateLimit: '10.000 req/mo',
+    endpoint: '/api/v2.5/core',
+    description: 'Accesso diretto agli endpoint di utilità del Kernel, validazioni e gestione sessioni crittografate.',
+    isFeatured: false
+  },
+  {
+    id: 'dkp-api-neural-ai',
+    title: 'DKP Neural Playground API Pro',
+    category: 'AI & LLM ENGINE',
+    categoryClass: 'badge-ai',
+    price: 49.00,
+    rateLimit: '50.000 req/mo',
+    endpoint: '/api/v2.5/neural',
+    description: 'Integrazione diretta con gli agenti IA di Pulse Nexus, analisi del codice e generazione prompt automatica.',
+    isFeatured: true
+  },
+  {
+  id: 'dkp_ads_starter_100',
+  name: 'DKP Ads Starter Pack',
+  description: 'Metti il tuo prodotto davanti agli occhi di migliaia di sviluppatori. 100 Click reali garantiti sul nostro network.',
+  price: 9.00,
+  currency: 'EUR',
+  category: 'ADVERTISING',
+  categoryClass: 'badge-ads',
+  features: [
+    '100 Click Scalabili Garantiti',
+    'Rotazione in NewsRoom & Blog',
+    'Posizionamento 100% Privacy Safe',
+    'Nessun ad-blocker: integrato nativamente'
+  ],
+  isPopular: true,
+  badge: 'MONETIZATION'
+},
+  {
+    id: 'dkp-api-ads-network',
+    title: 'DKP Ads Network Publisher API',
+    category: 'MONETIZATION ADS',
+    categoryClass: 'badge-ads',
+    price: 29.00,
+    rateLimit: 'Illimitato (Publisher)',
+    endpoint: '/api/v2.5/ads',
+    description: 'Il nostro motore di inserzioni DKP Ads per monetizzare il tuo traffico tech con banner mirati e payout istantanei.',
+    isFeatured: false
+  },
+  {
+    id: 'dkp-api-enterprise-cluster',
+    title: 'DKP Enterprise Dedicated Cluster',
+    category: 'ENTERPRISE SLA',
+    categoryClass: 'badge-flagship',
+    price: 149.00,
+    rateLimit: 'Req. Illimitate / SLA 99.99%',
+    endpoint: '/api/v2.5/enterprise',
+    description: 'Infrastruttura GCP dedicata con bilanciamento di carico, webhooks custom e supporto architetturale prioritario.',
+    isFeatured: false
+  }
+])
+
+const openCheckoutModal = (product: any) => {
+  selectedProduct.value = product
+  errorMessage.value = ''
+  showModal.value = true
+}
+
+const closeModal = () => {
+  if (isLoading.value) return
+  showModal.value = false
+  selectedProduct.value = null
+}
+
+const executeCheckout = async () => {
+  if (!customerEmail.value || !selectedProduct.value) return
+
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const payload = {
+      productId: selectedProduct.value.id,
+      productName: selectedProduct.value.title,
+      amount: selectedProduct.value.price,
+      customerEmail: customerEmail.value
+    }
+
+    const endpoint = paymentProvider.value === 'stripe' ? '/api/checkout/stripe' : '/api/checkout/paypal'
+    const res: any = await $fetch(endpoint, {
+      method: 'POST',
+      body: payload
+    })
+
+    const redirectUrl = res?.checkoutUrl || res?.approveUrl
+    if (redirectUrl) {
+      window.location.href = redirectUrl
+    } else {
+      throw new Error('URL di reindirizzamento pagamento non generato')
+    }
+  } catch (err: any) {
+    console.error('[CHECKOUT ERROR]:', err)
+    errorMessage.value = err?.data?.statusMessage || err?.message || 'Errore durante la creazione del checkout.'
+    isLoading.value = false
+  }
+}
+</script>
+
 <template>
   <div class="shop-container">
     <!-- Header dello Shop -->
     <div class="shop-header">
       <span class="badge-gold">DKP v2.5-GOLD API ECOSYSTEM</span>
       <h1 class="shop-title">DKP Developer <span class="highlight">API Gateway</span></h1>
-      <p class="shop-subtitle">Accedi alle API proprietarie ad alte prestazioni per Nuxt 3, automazioni IA e il nuovo network pubblicitario DKP Ads.</p>
+      <p class="shop-subtitle">Accedi alle API proprietarie ad alte prestazioni per Nuxt 4, automazioni IA e il nuovo network pubblicitario DKP Ads.</p>
     </div>
 
     <!-- Griglia API Prodotti (3-5 Feature Intelligenti) -->
@@ -98,110 +219,6 @@
     </Teleport>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-
-const showModal = ref(false)
-const selectedProduct = ref<any>(null)
-const customerEmail = ref('')
-const paymentProvider = ref<'stripe' | 'paypal'>('stripe')
-const isLoading = ref(false)
-const errorMessage = ref('')
-
-// Le 4 Feature API Intelligenti dell'Ecosistema v2.5-Gold
-const products = ref([
-  {
-    id: 'dkp-api-core-pass',
-    title: 'DKP Core Kernel API Pass',
-    category: 'DEVELOPER API',
-    categoryClass: 'badge-core',
-    price: 19.00,
-    rateLimit: '10.000 req/mo',
-    endpoint: '/api/v2.5/core',
-    description: 'Accesso diretto agli endpoint di utilità del Kernel, validazioni e gestione sessioni crittografate.',
-    isFeatured: false
-  },
-  {
-    id: 'dkp-api-neural-ai',
-    title: 'DKP Neural Playground API Pro',
-    category: 'AI & LLM ENGINE',
-    categoryClass: 'badge-ai',
-    price: 49.00,
-    rateLimit: '50.000 req/mo',
-    endpoint: '/api/v2.5/neural',
-    description: 'Integrazione diretta con gli agenti IA di Pulse Nexus, analisi del codice e generazione prompt automatica.',
-    isFeatured: true
-  },
-  {
-    id: 'dkp-api-ads-network',
-    title: 'DKP Ads Network Publisher API',
-    category: 'MONETIZATION ADS',
-    categoryClass: 'badge-ads',
-    price: 29.00,
-    rateLimit: 'Illimitato (Publisher)',
-    endpoint: '/api/v2.5/ads',
-    description: 'Il motore di inserzioni stile Google per monetizzare il tuo traffico tech con banner mirati e payout istantanei.',
-    isFeatured: false
-  },
-  {
-    id: 'dkp-api-enterprise-cluster',
-    title: 'DKP Enterprise Dedicated Cluster',
-    category: 'ENTERPRISE SLA',
-    categoryClass: 'badge-flagship',
-    price: 149.00,
-    rateLimit: 'Req. Illimitate / SLA 99.99%',
-    endpoint: '/api/v2.5/enterprise',
-    description: 'Infrastruttura GCP dedicata con bilanciamento di carico, webhooks custom e supporto architetturale prioritario.',
-    isFeatured: false
-  }
-])
-
-const openCheckoutModal = (product: any) => {
-  selectedProduct.value = product
-  errorMessage.value = ''
-  showModal.value = true
-}
-
-const closeModal = () => {
-  if (isLoading.value) return
-  showModal.value = false
-  selectedProduct.value = null
-}
-
-const executeCheckout = async () => {
-  if (!customerEmail.value || !selectedProduct.value) return
-
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    const payload = {
-      productId: selectedProduct.value.id,
-      productName: selectedProduct.value.title,
-      amount: selectedProduct.value.price,
-      customerEmail: customerEmail.value
-    }
-
-    const endpoint = paymentProvider.value === 'stripe' ? '/api/checkout/stripe' : '/api/checkout/paypal'
-    const res: any = await $fetch(endpoint, {
-      method: 'POST',
-      body: payload
-    })
-
-    const redirectUrl = res?.checkoutUrl || res?.approveUrl
-    if (redirectUrl) {
-      window.location.href = redirectUrl
-    } else {
-      throw new Error('URL di reindirizzamento pagamento non generato')
-    }
-  } catch (err: any) {
-    console.error('[CHECKOUT ERROR]:', err)
-    errorMessage.value = err?.data?.statusMessage || err?.message || 'Errore durante la creazione del checkout.'
-    isLoading.value = false
-  }
-}
-</script>
 
 <style scoped>
 .shop-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #f8fafc; font-family: system-ui, sans-serif; }

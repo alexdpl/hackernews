@@ -327,9 +327,13 @@ async function handleLogout() {
               <NuxtLink :to="getMainUrl('/user/dashboard?tab=vault')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
                 <span>🛡️</span> I Miei Certificati Vault
               </NuxtLink>
-              
+			  
+			  <NuxtLink :to="getMainUrl('/user/ads')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
+			  <span>📢</span>Gestione Ads<span class="ml-auto text-[0.65rem] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">PRO</span>
+              </NuxtLink>
+			  
               <NuxtLink :to="getMainUrl('/bounties')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
-                <span>🎯</span> Bounty Board & $PULSE
+                <span>🎯</span> Bounty Board & $PULSE<span class="ml-auto text-[0.65rem] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">NEW</span>
               </NuxtLink>
 
               <NuxtLink :to="getMainUrl('/user/dashboard?tab=api')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-sky-400 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">

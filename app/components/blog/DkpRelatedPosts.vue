@@ -1,6 +1,7 @@
 <!-- components/blog/DkpRelatedPosts.vue -->
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const props = defineProps<{
   currentPostId: number
@@ -49,7 +50,8 @@ watch(() => props.currentPostId, () => {
       <div class="skeleton-card hidden-mobile"></div>
     </div>
 
-    <div v-else-if="relatedPosts.length > 0" class="related-grid">
+    <!-- Griglia pulita dei correlati + Banner DKP Ads Strip a tutta larghezza -->
+    <div v-else class="related-grid">
       <NuxtLink 
         v-for="post in relatedPosts" 
         :key="post.id" 
@@ -66,10 +68,9 @@ watch(() => props.currentPostId, () => {
           <span class="read-more">Leggi Articolo ➔</span>
         </div>
       </NuxtLink>
-    </div>
 
-    <div v-else class="empty-state">
-      Nessun articolo correlato trovato per questa categoria.
+      <!-- Banner orizzontale a 3 slot del DKP Ads Network -->
+      <DkpAdStrip />
     </div>
   </div>
 </template>
@@ -111,6 +112,7 @@ watch(() => props.currentPostId, () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
+  align-items: stretch;
 }
 
 .related-card {
@@ -189,17 +191,6 @@ watch(() => props.currentPostId, () => {
 
 .related-card:hover .read-more {
   color: #00dc82;
-}
-
-.empty-state {
-  padding: 2rem;
-  text-align: center;
-  color: #64748b;
-  font-size: 0.85rem;
-  font-family: monospace;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
 }
 
 /* Skeletons */

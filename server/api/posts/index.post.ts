@@ -1,4 +1,4 @@
-// server/api/posts.post.ts
+// server/api/index.post.ts
 import { neon } from '@neondatabase/serverless'
 
 export default defineEventHandler(async (event) => {

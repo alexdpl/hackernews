@@ -24,8 +24,31 @@ const claimBounty = async (id: string, reward: number) => {
 </script>
 
 <template>
-  <div class="bounty-view cyberpunk-container p-4 max-w-5xl mx-auto min-h-screen">
+  <div class="bounty-view p-4 max-w-5xl mx-auto min-h-screen">
     
+    <!-- NAVBAR DI NAVIGAZIONE (Importata dalla Dashboard) -->
+    <nav class="tabs-navigation grid-nav mb-8 mt-2">
+      <NuxtLink to="/user/dashboard?tab=profile" class="tab-item">
+        ⚙️ Profilo &amp; Social
+      </NuxtLink>
+      <NuxtLink to="/user/dashboard?tab=content" class="tab-item">
+        📰 I Miei Contenuti
+      </NuxtLink>
+      <NuxtLink to="/user/dashboard?tab=vault" class="tab-item">
+        🛡️ Proof of Code Vault
+      </NuxtLink>
+      <NuxtLink to="/user/dashboard?tab=api" class="tab-item">
+        🔑 DKP API Console
+      </NuxtLink>
+      <NuxtLink to="/user/dashboard?tab=gamification" class="tab-item">
+        🏆 Gamification &amp; XP
+      </NuxtLink>
+      <!-- TAB ATTIVA STATICA -->
+      <div class="tab-item bounty-link active-tab">
+        🎯 Bounty Board &amp; $PULSE
+      </div>
+    </nav>
+
     <!-- HEADER BOUNTY BOARD -->
     <div class="bounty-header flex justify-between items-center pb-4 mb-6 border-b border-gray-800 flex-wrap gap-4">
       <div>
@@ -107,9 +130,65 @@ const claimBounty = async (id: string, reward: number) => {
 
 <style scoped>
 .bounty-view {
-  background-color: #0d1117;
-}
-.bounty-card {
+  background-color: #020420; /* Uniformato al colore di sfondo della dashboard */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* STILI DELLA NAVBAR (Importati e adattati dalla Dashboard) */
+.tabs-navigation { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 0.5rem; 
+  border-bottom: 1px solid #1e293b; 
+  padding-bottom: 0.75rem; 
+}
+
+.tab-item { 
+  background: #090d16; 
+  border: 1px solid #1e293b; 
+  color: #94a3b8; 
+  padding: 0.6rem 1rem; 
+  border-radius: 8px; 
+  font-weight: 700; 
+  font-size: 0.88rem; 
+  cursor: pointer; 
+  flex: 1 1 auto; 
+  text-align: center; 
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.tab-item:hover:not(.active-tab) {
+  border-color: #334155;
+  color: #ffffff;
+}
+
+.grid-nav { 
+  display: grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 0.5rem; 
+} 
+
+@media (max-width: 768px) { 
+  .grid-nav { grid-template-columns: repeat(2, 1fr); } 
+} 
+
+@media (max-width: 480px) { 
+  .grid-nav { grid-template-columns: 1fr; } 
+} 
+
+.bounty-link { 
+  background: rgba(245, 158, 11, 0.1); 
+  border-color: rgba(245, 158, 11, 0.4); 
+  color: #f59e0b; 
+  font-weight: 800; 
+} 
+
+.active-tab {
+  cursor: default;
+  box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.1);
 }
 </style>

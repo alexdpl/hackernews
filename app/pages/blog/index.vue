@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useBlog } from '~/composables/useBlog'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useDkpSeo({
   title: 'DKP Technical Blog & Vault Articles NewsRoom - DevKernelPulse — v2.5',
@@ -186,7 +187,8 @@ function changePage(page: number) {
           <button v-if="searchQuery" @click="searchQuery = ''; currentPage = 1" class="clear-search-btn" type="button">×</button>
         </div>
       </div>
-
+<!-- 🟢 BANNER DKP ADS STRIP (Fuso con le info estese e link funzionanti) -->
+      <DkpAdStrip />
       <!-- BARRA CATEGORIE DINAMICHE -->
       <nav class="categories-bar">
         <button 
@@ -315,7 +317,8 @@ function changePage(page: number) {
           </div>
         </article>
       </div>
-
+<!-- 🟢 BANNER DKP ADS STRIP (Fuso con le info estese e link funzionanti) -->
+      <DkpAdStrip />
       <!-- 🟢 CONTROLLI PAGINAZIONE NUMERATA -->
       <div v-if="totalPages > 1" class="pagination-container">
         <button 
@@ -398,7 +401,7 @@ function changePage(page: number) {
 .fade-sub-enter-active, .fade-sub-leave-active { transition: all 0.25s ease; }
 .fade-sub-enter-from, .fade-sub-leave-to { opacity: 0; transform: translateY(-6px); }
 
-.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+.blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 .post-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; color: #ffffff; display: flex; flex-direction: column; justify-content: space-between; }
 
 .cat-badge { color: #00dc82; font-weight: 800; background: rgba(0, 220, 130, 0.12); border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; display: inline-block; }
@@ -494,6 +497,14 @@ function changePage(page: number) {
 
 @media (max-width: 640px) {
   .hero-title { font-size: 2rem; }
+  .blog-grid { grid-template-columns: 1fr; }
+}
+
+/* Gestione responsive per schermi medi e piccoli */
+@media (max-width: 1024px) {
+  .blog-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
   .blog-grid { grid-template-columns: 1fr; }
 }
 </style>

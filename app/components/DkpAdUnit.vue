@@ -26,7 +26,7 @@ const ad = ref({
     </div>
     <a :href="ad.url" class="ad-body-link" target="_blank">
       <h4 class="ad-title">{{ ad.title }}</h4>
-      <p class="ad-snippet">{{ ad.snippet }}</h4>
+      <p class="ad-snippet">{{ ad.snippet }}</p>
     </a>
     <div class="ad-footer">
       <span class="ad-cta">Visita sponsor →</span>

@@ -1,5 +1,5 @@
 // server/db/schema.ts
-import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, boolean, timestamp, varchar, jsonb, unique, numeric, pgEnum, uuid } from 'drizzle-orm/pg-core'
 import { sql, relations } from 'drizzle-orm'
 
 /* ------------------------------------------------------------- */
@@ -338,4 +338,20 @@ export const alertLogs = pgTable('alert_logs', {
   message: text('message').notNull(),
   metadata: jsonb('metadata'),
   sentAt: timestamp('sent_at').defaultNow().notNull()
+})
+
+// Tabella DKP Ads Network per Neon DB
+export const dkpAds = pgTable('dkp_ads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  advertiserEmail: varchar('advertiser_email', { length: 255 }).notNull(),
+  title: varchar('title', { length: 120 }).notNull(),
+  snippet: varchar('snippet', { length: 255 }),
+  targetUrl: text('target_url').notNull(),
+  categoryTag: varchar('category_tag', { length: 50 }).default('SPONSORIZZATO DKP'),
+  budgetCredits: integer('budget_credits').notNull().default(100),
+  status: varchar('status', { length: 20 }).notNull().default('ACTIVE'), // ACTIVE, PAUSED, EXHAUSTED
+  impressionsCount: integer('impressions_count').default(0),
+  clicksCount: integer('clicks_count').default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow()
 })

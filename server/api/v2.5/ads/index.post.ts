@@ -1,24 +1,41 @@
 // server/api/v2.5/ads/index.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
+import { getDb } from '~~/server/utils/db'
+import { sql } from 'drizzle-orm'
+import { dkpAds } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { title, targetUrl, advertiserEmail, budgetCredits } = body
+  const { title, snippet, targetUrl, advertiserEmail, budgetCredits } = body
 
   if (!title || !targetUrl || !advertiserEmail) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Campi obbligatori mancanti per la campagna DKP Ads.'
+      statusMessage: 'Campi obbligatori mancanti (title, targetUrl, advertiserEmail).'
     })
   }
 
-  // Corretto l'errore di sintassi della stringa random
-  const campaignId = 'dkp-ad-' + Math.random().toString(36).substring(2, 9)
+  try {
+    // Inserimento reale nel database tramite Drizzle ORM
+    const [newAd] = await db.insert(dkpAds).values({
+      advertiserEmail,
+      title,
+      snippet: snippet || '',
+      targetUrl,
+      budgetCredits: budgetCredits || 100,
+      status: 'ACTIVE'
+    }).returning({ id: dkpAds.id, status: dkpAds.status })
 
-  return {
-    success: true,
-    message: 'Campagna DKP Ads creata con successo e in attesa di approvazione Vault.',
-    campaignId,
-    status: 'ACTIVE'
+    return {
+      success: true,
+      message: 'Campagna DKP Ads registrata con successo su Neon DB.',
+      campaignId: newAd.id,
+      status: newAd.status
+    }
+  } catch (err: any) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Errore durante il salvataggio della campagna su Neon DB: ' + err.message
+    })
   }
 })
