@@ -1,6 +1,9 @@
 <!-- app/components/DkpCaptcha.vue -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useDkpTranslator } from '~/composables/useDkpTranslator'
+
+const { t } = useDkpTranslator()
 
 const emit = defineEmits(['verify'])
 const num1 = ref(0)
@@ -19,13 +22,18 @@ function generateChallenge() {
 }
 
 function checkAnswer() {
-  if (parseInt(userAnswer.value, 10) === num1.value + num2.value) {
+  const parsed = parseInt(userAnswer.value, 10)
+  if (!isNaN(parsed) && parsed === num1.value + num2.value) {
     isVerified.value = true
     errorMessage.value = ''
     emit('verify', true)
   } else {
     isVerified.value = false
-    errorMessage.value = 'Risposta errata. Riprova.'
+    if (userAnswer.value.length > 0) {
+      errorMessage.value = '⚠️ Risposta errata. Riprova.'
+    } else {
+      errorMessage.value = ''
+    }
     emit('verify', false)
   }
 }
@@ -37,9 +45,13 @@ onMounted(() => {
 
 <template>
   <div class="kernel-captcha">
-    <div class="captcha-box">
-      <span class="captcha-title">🔒 Kernel Captcha Sicurezza</span>
-      <p class="captcha-text">Risolvi l'equazione: <strong>{{ num1 }} + {{ num2 }} = ?</strong></p>
+    <div class="captcha-box" :class="{ 'verified-box': isVerified }">
+      <div class="captcha-header">
+        <span class="captcha-title">🔒 DKP Kernel Captcha v2.5</span>
+        <button type="button" @click="generateChallenge" class="refresh-btn" title="Nuova sfida">🔄</button>
+      </div>
+      <p class="captcha-text">Risolvi il calcolo di sicurezza: <strong>{{ num1 }} + {{ num2 }} = ?</strong></p>
+      
       <div class="captcha-input-group">
         <input 
           v-model="userAnswer" 
@@ -48,10 +60,14 @@ onMounted(() => {
           @input="checkAnswer"
           class="captcha-input"
         />
-        <button type="button" @click="generateChallenge" class="refresh-btn" title="Nuova sfida">🔄</button>
       </div>
-      <p v-if="isVerified" class="success-msg">✅ Verificato con successo</p>
-      <p v-if="errorMessage" class="error-msg">{{ errorMessage }}</p>
+
+      <transition name="fade">
+        <p v-if="isVerified" class="success-msg">✅ Sistema verificato (Anti-Bot OK)</p>
+      </transition>
+      <transition name="fade">
+        <p v-if="errorMessage && !isVerified" class="error-msg">{{ errorMessage }}</p>
+      </transition>
     </div>
   </div>
 </template>
@@ -64,14 +80,26 @@ onMounted(() => {
 .captcha-box {
   background: #0f172a;
   border: 1px solid #1e293b;
-  padding: 1rem;
-  border-radius: 8px;
+  padding: 1.2rem;
+  border-radius: 10px;
   color: #ffffff;
-  max-width: 320px;
+  max-width: 340px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+.verified-box {
+  border-color: #00dc82;
+  box-shadow: 0 0 15px rgba(0, 220, 130, 0.2);
+}
+.captcha-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
 .captcha-title {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 800;
   color: #38bdf8;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -84,40 +112,51 @@ onMounted(() => {
 .captcha-input-group {
   display: flex;
   gap: 0.5rem;
+  margin-top: 0.8rem;
 }
 .captcha-input {
   background: #020420;
   border: 1px solid #334155;
   color: #fff;
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
-  width: 100px;
-  font-size: 0.9rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  width: 120px;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 .captcha-input:focus {
   outline: none;
   border-color: #00dc82;
+  box-shadow: 0 0 0 2px rgba(0, 220, 130, 0.2);
 }
 .refresh-btn {
   background: transparent;
   border: 1px solid #334155;
   color: #cbd5e1;
-  padding: 0.4rem 0.6rem;
+  padding: 0.3rem 0.5rem;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 .refresh-btn:hover {
   background: #1e293b;
+  color: #38bdf8;
 }
 .success-msg {
   color: #00dc82;
   font-size: 0.85rem;
-  margin-top: 0.5rem;
+  margin-top: 0.7rem;
   font-weight: 600;
 }
 .error-msg {
   color: #ef4444;
   font-size: 0.85rem;
-  margin-top: 0.5rem;
+  margin-top: 0.7rem;
+}
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

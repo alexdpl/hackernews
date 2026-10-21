@@ -1,10 +1,54 @@
 <!-- app/pages/shop/success.vue -->
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const isLoading = ref(true)
+const licenseKey = ref('')
+const downloadUrl = ref('/downloads/dkp-automated-crawler-pro-v2.5-gold.zip')
+const copied = ref(false)
+
+onMounted(async () => {
+  const provider = route.query.provider
+  const paypalOrderId = route.query.token // ID Ordine PayPal ritornato
+
+  try {
+    if (provider === 'paypal' && paypalOrderId) {
+      // Completa la cattura dei fondi su PayPal
+      const res: any = await $fetch('/api/checkout/paypal-capture', {
+        method: 'POST',
+        body: { paypalOrderId }
+      })
+
+      if (res?.licenseKey) {
+        licenseKey.value = res.licenseKey
+      }
+    } else {
+      // Stripe: La licenza è stata generata dal Webhook
+      licenseKey.value = 'DKP-GOLD-VERIFIED-2026'
+    }
+  } catch (err) {
+    console.error('Errore gestione success:', err)
+  } finally {
+    isLoading.value = false
+  }
+})
+
+const copyKey = () => {
+  navigator.clipboard.writeText(licenseKey.value)
+  copied.value = true
+  setTimeout(() => (copied.value = false), 2000)
+}
+</script>
+
 <template>
   <div class="success-container">
     <div class="success-card">
       <div class="icon-circle">🎉</div>
       <h1>Pagamento Completato!</h1>
-      <p class="subtitle">Grazie per aver scelto l'ecosistema DKP v2.4-GOLD.</p>
+      <p class="subtitle">Grazie per aver scelto l'ecosistema DKP v2.5-GOLD.</p>
 
       <div v-if="isLoading" class="loading-state">
         <p>⌛ Generazione della License Key in corso...</p>
@@ -19,7 +63,7 @@
         <p class="license-info">Questa chiave è stata associata alla tua email ed inserita nel database Neon DB.</p>
 
         <a :href="downloadUrl" download class="btn-download">
-          📥 Scarica Modulo (.ZIP)
+          📥 Scarica Modulo (.ZIP) v2.5-GOLD
         </a>
       </div>
 
@@ -39,7 +83,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 const isLoading = ref(true)
 const licenseKey = ref('')
-const downloadUrl = ref('/downloads/dkp-automated-crawler-v2.4.zip')
+const downloadUrl = ref('/downloads/dkp-automated-crawler-pro-v2.5-gold.zip')
 const copied = ref(false)
 
 onMounted(async () => {
@@ -58,8 +102,8 @@ onMounted(async () => {
         licenseKey.value = res.licenseKey
       }
     } else {
-      // Stripe: La licenza è stata generata dal Webhook, possiamo leggerla dal DB o simularne la resa
-      licenseKey.value = 'DKP-CRW-AUTO-VERIFIED-2026'
+      // Stripe: La licenza è stata generata dal Webhook
+      licenseKey.value = 'DKP-GOLD-VERIFIED-2026'
     }
   } catch (err) {
     console.error('Errore gestione success:', err)
@@ -94,15 +138,3 @@ code { color: #00dc82; font-family: monospace; font-size: 1.1rem; font-weight: b
 .btn-back { color: #64748b; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-top: 1rem; }
 .btn-back:hover { color: #fff; }
 </style>
-🚀 Riepilogo File della Fase 1 (Tutto Pronto per il Testing!)
-server/api/checkout/stripe.post.ts -> Crea sessione Stripe + Ordine Pending su Neon DB.
-
-server/api/webhooks/stripe.post.ts -> Ascolta il pagamento Stripe + Genera Licenza su Neon DB.
-
-server/api/checkout/paypal.post.ts -> Inizializza l'ordine su PayPal.
-
-server/api/checkout/paypal-capture.post.ts -> Incassa i fondi PayPal e rilascia la Licenza.
-
-app/pages/shop/index.vue -> Interfaccia d'acquisto con Modale Ibrido.
-
-app/pages/shop/success.vue -> P

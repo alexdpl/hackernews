@@ -1,5 +1,5 @@
 // app/composables/useDkpTranslator.ts
-import { useState, onMounted } from '#imports'
+import { useState, onMounted, computed } from '#imports'
 
 export interface DkpLanguage {
   code: string
@@ -19,13 +19,14 @@ export const OFFICIAL_LANGUAGES: DkpLanguage[] = [
   { code: 'PL', label: 'Polski', flag: '🇵🇱' }
 ]
 
-// Dizionario Core DKP Kernel v2.3
+// Dizionario Core DKP Kernel v2.5-Gold (Shop & Ecosystem Updated)
 const translations: Record<string, Record<string, string>> = {
   IT: {
     news: 'news',
     tools: 'DKP Tools',
     submit: 'submit',
     blog: 'Blog',
+    shop: 'DKP Shop',
     login: 'Accedi',
     logout: 'Disconnetti',
     dashboard: 'Dashboard Personale',
@@ -34,13 +35,17 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: 'Control Center Admin',
     crawlerEngine: 'DKP Crawler Engine',
     shopManagement: 'Gestione DKP Shop',
-    jobsManagement: 'Gestione Job Hub'
+    jobsManagement: 'Gestione Job Hub',
+    cartTitle: 'Carrello Ecosistema',
+    downloadPackage: 'Scarica Pacchetto v2.5',
+    xpPrice: 'Prezzo XP'
   },
   EN: {
     news: 'news',
     tools: 'DKP Tools',
     submit: 'submit',
     blog: 'Blog',
+    shop: 'DKP Shop',
     login: 'Sign In',
     logout: 'Disconnect',
     dashboard: 'Personal Dashboard',
@@ -49,13 +54,17 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: 'Admin Control Center',
     crawlerEngine: 'DKP Crawler Engine',
     shopManagement: 'DKP Shop Management',
-    jobsManagement: 'Job Hub Management'
+    jobsManagement: 'Job Hub Management',
+    cartTitle: 'Ecosystem Cart',
+    downloadPackage: 'Download v2.5 Package',
+    xpPrice: 'XP Price'
   },
   ES: {
     news: 'noticias',
     tools: 'Herramientas DKP',
     submit: 'enviar',
     blog: 'Blog',
+    shop: 'Tienda DKP',
     login: 'Acceder',
     logout: 'Desconectar',
     dashboard: 'Panel Personal',
@@ -64,28 +73,36 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: 'Centro de Control Admin',
     crawlerEngine: 'Motor Crawler DKP',
     shopManagement: 'Gestión Tienda DKP',
-    jobsManagement: 'Gestión Empleos'
+    jobsManagement: 'Gestión Empleos',
+    cartTitle: 'Carrito del Ecosistema',
+    downloadPackage: 'Descargar Paquete v2.5',
+    xpPrice: 'Precio XP'
   },
   FR: {
     news: 'nouvelles',
     tools: 'Outils DKP',
     submit: 'soumettre',
     blog: 'Blog',
+    shop: 'Boutique DKP',
     login: 'Connexion',
     logout: 'Déconnexion',
     dashboard: 'Tableau de Bord',
     vault: 'Mes Certificats Vault',
-    settings: 'Paramètres del Compte',
+    settings: 'Paramètres du Compte',
     adminControl: 'Centre Admin',
     crawlerEngine: 'Moteur Crawler DKP',
     shopManagement: 'Gestion Boutique DKP',
-    jobsManagement: 'Gestion Emplois'
+    jobsManagement: 'Gestion Emplois',
+    cartTitle: 'Panier Écosystème',
+    downloadPackage: 'Télécharger Package v2.5',
+    xpPrice: 'Prix XP'
   },
   DE: {
     news: 'News',
     tools: 'DKP Tools',
     submit: 'einreichen',
     blog: 'Blog',
+    shop: 'DKP Shop',
     login: 'Anmelden',
     logout: 'Abmelden',
     dashboard: 'Persönliches Dashboard',
@@ -94,13 +111,17 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: 'Admin-Kontrollzentrum',
     crawlerEngine: 'DKP Crawler-Engine',
     shopManagement: 'DKP Shop-Verwaltung',
-    jobsManagement: 'Job-Hub Verwaltung'
+    jobsManagement: 'Job-Hub Verwaltung',
+    cartTitle: 'Ökosystem-Warenkorb',
+    downloadPackage: 'v2.5 Paket herunterladen',
+    xpPrice: 'XP-Preis'
   },
   JA: {
     news: 'ニュース',
     tools: 'DKP ツール',
     submit: '投稿する',
     blog: 'ブログ',
+    shop: 'DKP ショップ',
     login: 'ログイン',
     logout: 'ログアウト',
     dashboard: '個人ダッシュボード',
@@ -109,13 +130,17 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: '管理者コントロール',
     crawlerEngine: 'DKP クローラーエンジン',
     shopManagement: 'DKP ショップ管理',
-    jobsManagement: '求人ハブ管理'
+    jobsManagement: '求人ハブ管理',
+    cartTitle: 'エコシステムカート',
+    downloadPackage: 'v2.5 パッケージをダウンロード',
+    xpPrice: 'XP 価格'
   },
   ZH: {
     news: '新闻',
     tools: 'DKP 工具',
     submit: '提交',
     blog: '博客',
+    shop: 'DKP 商店',
     login: '登录',
     logout: '退出登录',
     dashboard: '个人控制面板',
@@ -124,13 +149,17 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: '管理员控制中心',
     crawlerEngine: 'DKP 爬虫引擎',
     shopManagement: 'DKP 商店管理',
-    jobsManagement: '招聘中心管理'
+    jobsManagement: '招聘中心管理',
+    cartTitle: '生态系统购物车',
+    downloadPackage: '下载 v2.5 软件包',
+    xpPrice: 'XP 价格'
   },
   PT: {
     news: 'notícias',
     tools: 'Ferramentas DKP',
     submit: 'submeter',
     blog: 'Blog',
+    shop: 'Loja DKP',
     login: 'Entrar',
     logout: 'Sair',
     dashboard: 'Painel Pessoal',
@@ -139,13 +168,17 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: 'Painel de Controlo Admin',
     crawlerEngine: 'Motor Crawler DKP',
     shopManagement: 'Gestão Loja DKP',
-    jobsManagement: 'Gestão de Empregos'
+    jobsManagement: 'Gestão de Empregos',
+    cartTitle: 'Carrinho do Ecossistema',
+    downloadPackage: 'Descarregar Pacote v2.5',
+    xpPrice: 'Preço XP'
   },
   PL: {
     news: 'wiadomości',
     tools: 'Narzędzia DKP',
     submit: 'wyślij',
     blog: 'Blog',
+    shop: 'Sklep DKP',
     login: 'Zaloguj',
     logout: 'Wyloguj',
     dashboard: 'Osobisty Pulpit',
@@ -154,7 +187,10 @@ const translations: Record<string, Record<string, string>> = {
     adminControl: 'Centrum Admina',
     crawlerEngine: 'Silnik Crawler DKP',
     shopManagement: 'Zarządzanie Sklepem',
-    jobsManagement: 'Zarządzanie Ofertami'
+    jobsManagement: 'Zarządzanie Ofertami',
+    cartTitle: 'Koszyk Ekosystemu',
+    downloadPackage: 'Pobierz Pakiet v2.5',
+    xpPrice: 'Cena XP'
   }
 }
 
