@@ -1,48 +1,4 @@
 <!-- app/pages/shop/success.vue -->
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-
-const route = useRoute()
-const isLoading = ref(true)
-const licenseKey = ref('')
-const downloadUrl = ref('/downloads/dkp-automated-crawler-pro-v2.5-gold.zip')
-const copied = ref(false)
-
-onMounted(async () => {
-  const provider = route.query.provider
-  const paypalOrderId = route.query.token // ID Ordine PayPal ritornato
-
-  try {
-    if (provider === 'paypal' && paypalOrderId) {
-      // Completa la cattura dei fondi su PayPal
-      const res: any = await $fetch('/api/checkout/paypal-capture', {
-        method: 'POST',
-        body: { paypalOrderId }
-      })
-
-      if (res?.licenseKey) {
-        licenseKey.value = res.licenseKey
-      }
-    } else {
-      // Stripe: La licenza è stata generata dal Webhook
-      licenseKey.value = 'DKP-GOLD-VERIFIED-2026'
-    }
-  } catch (err) {
-    console.error('Errore gestione success:', err)
-  } finally {
-    isLoading.value = false
-  }
-})
-
-const copyKey = () => {
-  navigator.clipboard.writeText(licenseKey.value)
-  copied.value = true
-  setTimeout(() => (copied.value = false), 2000)
-}
-</script>
-
 <template>
   <div class="success-container">
     <div class="success-card">
