@@ -3,29 +3,45 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 useHead({
-  title: 'API Status & Latency — DevKernelPulse v2.4-GOLD',
+  title: 'API Status & Latency — DevKernelPulse v2.5-GOLD',
   meta: [
-    { name: 'description', content: 'Monitoraggio in tempo reale dello stato dei microservizi, latenza edge e uptime dell\'infrastruttura DevKernelPulse 2.4-GOLD.' }
+    { name: 'description', content: 'Monitoraggio in tempo reale dello stato dei microservizi, latenza GCP europe-west4 e uptime dell\'infrastruttura DevKernelPulse 2.5-GOLD.' }
   ]
 })
 
-// Metriche Allineate allo Standard v2.4-GOLD
+// Metriche Allineate all'Architettura v2.5-GOLD
 const services = ref([
-  { name: 'Core Nitro Gateway v2.4', status: 'operational', baseLatency: 18, latency: '18ms', uptime: '99.99%', desc: 'Routing API REST & GraphQL' },
-  { name: 'Proof of Code Vault Engine', status: 'operational', baseLatency: 32, latency: '32ms', uptime: '99.95%', desc: 'Notarizzazione & Crittografia' },
-  { name: 'AI Neural Scanner Gateway', status: 'operational', baseLatency: 138, latency: '138ms', uptime: '99.92%', desc: 'Inference LLM e AI Agents' },
-  { name: 'Neon DB Global Replica', status: 'operational', baseLatency: 14, latency: '14ms', uptime: '100.0%', desc: 'PostgreSQL Serverless' },
-  { name: 'Edge News Crawler v2.4', status: 'operational', baseLatency: 42, latency: '42ms', uptime: '99.98%', desc: 'Data Ingestion Bot Network' },
-  { name: 'Auth Bearer & Session Vault', status: 'operational', baseLatency: 12, latency: '12ms', uptime: '100.0%', desc: 'Autenticazione & JWT Token' }
+  { name: 'DKP API Gateway v2.5', status: 'operational', baseLatency: 18, latency: '18ms', uptime: '99.99%', desc: 'Rate Limiting & KDF Auth' },
+  { name: 'Pulse Sentinel AI WAF', status: 'operational', baseLatency: 8, latency: '8ms', uptime: '100.0%', desc: 'Heuristic Firewall & IP Ban' },
+  { name: 'Neon PostgreSQL Serverless', status: 'operational', baseLatency: 14, latency: '14ms', uptime: '99.98%', desc: 'Database Principale (Pure SQL)' },
+  { name: 'Proof of Code Vault Engine', status: 'operational', baseLatency: 32, latency: '32ms', uptime: '99.95%', desc: 'Notarizzazione SHA-256' },
+  { name: 'Pulse Nexus Protocol', status: 'operational', baseLatency: 138, latency: '138ms', uptime: '99.92%', desc: 'Inference LLM & AI Chat' },
+  { name: 'GCP Cloud Run (europe-west4)', status: 'operational', baseLatency: 22, latency: '22ms', uptime: '100.0%', desc: 'Execution Runtime Container' }
 ])
 
-// Simulazione "Heartbeat" (Jitter sulle Latenze) per effetto Dashboard Live
+// Variabili Gamification Centralizzata (Preparazione Fase 2)
+const xpData = ref({ level: 1, totalXp: 0, title: 'Newbie Developer' })
+const isLoadingXp = ref(true)
+
+// Simulazione "Heartbeat" (Jitter sulle Latenze)
 let heartbeat: ReturnType<typeof setInterval> | null = null
 
+async function fetchRealtimeXp() {
+  // Nella Fase 2 chiameremo l'API vera: await $fetch('/api/user/xp/sync')
+  // Per ora simuliamo il recupero dal DB centrale per testare l'UI
+  setTimeout(() => {
+    xpData.value = { level: 3, totalXp: 850, title: 'Core Pioneer' }
+    isLoadingXp.value = false
+  }, 800)
+}
+
 onMounted(() => {
+  fetchRealtimeXp()
+  
   heartbeat = setInterval(() => {
     services.value.forEach(s => {
-      const jitter = Math.floor(Math.random() * 5) - 2 // Fluttuazione ±2ms
+      // Fluttuazione ±2ms per effetto dashboard live
+      const jitter = Math.floor(Math.random() * 5) - 2 
       s.latency = `${s.baseLatency + jitter}ms`
     })
   }, 3000)
@@ -37,67 +53,101 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="status-page">
-    <div class="status-container">
+  <div class="relative min-h-screen bg-[#020412] text-slate-300 font-sans p-6 sm:p-10 overflow-hidden">
+    <!-- Griglia Tech in Background -->
+    <div class="absolute inset-0 pointer-events-none opacity-40" style="background-image: linear-gradient(rgba(30, 41, 59, 0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.4) 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+    <div class="relative z-10 max-w-6xl mx-auto flex flex-col gap-8">
       
-      <!-- HERO & OPERATIONAL BANNER v2.4-GOLD -->
-      <header class="status-hero">
-        <div class="breadcrumb">
-          <span class="version-badge">v2.4-GOLD</span>
+      <!-- HERO & OPERATIONAL BANNER v2.5-GOLD -->
+      <header class="flex flex-col gap-4">
+        <div class="flex items-center gap-3 text-sky-400 font-bold text-xs sm:text-sm tracking-wider uppercase">
+          <span class="bg-gradient-to-r from-amber-500 to-yellow-600 text-[#020412] px-2.5 py-0.5 rounded shadow-[0_0_10px_rgba(234,179,8,0.3)]">v2.5-GOLD</span>
           System Health / Realtime Metrics
         </div>
-        <h1><span class="glow-icon">🟢</span> API Status & System Latency</h1>
-        <p class="subtitle">Monitoraggio live dell'infrastruttura globale e dei microservizi DKP 2.4-GOLD.</p>
+        <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3">
+          <span class="drop-shadow-[0_0_15px_rgba(0,220,130,0.6)]">🟢</span> API Status & Latency
+        </h1>
+        <p class="text-slate-400 text-lg">Monitoraggio live infrastruttura GCP, Neon DB e stato Gamification.</p>
 
-        <div class="overall-banner glass-panel">
-          <div class="status-indicator">
-            <span class="dot-pulse"></span>
-            <span class="status-text">Tutti i Sistemi Operativi</span>
+        <!-- Banner Uptime -->
+        <div class="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#090d16]/80 backdrop-blur-md border-l-4 border-[#00dc82] border-y border-r border-slate-800 p-6 rounded-xl shadow-2xl">
+          <div class="flex items-center gap-4">
+            <!-- Pulsing Dot -->
+            <div class="relative flex h-4 w-4">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+            </div>
+            <span class="text-white font-extrabold text-xl tracking-wide">Tutti i Sistemi Operativi</span>
           </div>
-          <span class="global-uptime">Uptime Medio: <strong>99.97%</strong></span>
+          <span class="text-slate-400 font-medium mt-4 sm:mt-0">
+            Uptime Medio Globale: <strong class="text-emerald-400 text-lg ml-1">99.98%</strong>
+          </span>
         </div>
       </header>
 
-      <!-- METRICHE LATENZA GLOBALE -->
-      <div class="metrics-grid">
-        <div class="metric-card glass-panel hover-lift">
-          <span class="metric-label">Latenza Media Global</span>
-          <span class="metric-val green">22ms</span>
-          <span class="metric-sub">Edge Nodes (EU-Central)</span>
+      <!-- METRICHE VITALI (GRID) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Latency GCP -->
+        <div class="bg-[#090d16]/80 backdrop-blur-md border border-slate-800 p-6 rounded-xl shadow-xl hover:-translate-y-1 hover:border-emerald-500/40 transition-all duration-300 flex flex-col">
+          <span class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">GCP Cloud Run</span>
+          <span class="text-4xl font-black text-emerald-400 font-mono drop-shadow-[0_0_12px_rgba(0,220,130,0.3)]">22ms</span>
+          <span class="text-sm text-slate-500 font-medium mt-auto">Region europe-west4 (NL)</span>
         </div>
-        <div class="metric-card glass-panel hover-lift">
-          <span class="metric-label">AI Inference Response</span>
-          <span class="metric-val cyan">138ms</span>
-          <span class="metric-sub">Neural Gateway v2.4-GOLD</span>
+
+        <!-- Latency Neon DB -->
+        <div class="bg-[#090d16]/80 backdrop-blur-md border border-slate-800 p-6 rounded-xl shadow-xl hover:-translate-y-1 hover:border-sky-500/40 transition-all duration-300 flex flex-col">
+          <span class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">Neon PostgreSQL</span>
+          <span class="text-4xl font-black text-sky-400 font-mono drop-shadow-[0_0_12px_rgba(56,189,248,0.3)]">14ms</span>
+          <span class="text-sm text-slate-500 font-medium mt-auto">Serverless DB Query Time</span>
         </div>
-        <div class="metric-card glass-panel hover-lift">
-          <span class="metric-label">Vault Hash Execution</span>
-          <span class="metric-val purple">32ms</span>
-          <span class="metric-sub">In-Memory Cryptography</span>
+
+        <!-- Pulse Sentinel AI -->
+        <div class="bg-[#090d16]/80 backdrop-blur-md border border-slate-800 p-6 rounded-xl shadow-xl hover:-translate-y-1 hover:border-purple-500/40 transition-all duration-300 flex flex-col">
+          <span class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">Sentinel WAF</span>
+          <span class="text-3xl font-black text-purple-400 mt-1 drop-shadow-[0_0_12px_rgba(168,85,247,0.3)]">🛡️ ACTIVE</span>
+          <span class="text-sm text-slate-500 font-medium mt-auto">Cloud Armor Sync On</span>
+        </div>
+
+        <!-- Gamification Sync -->
+        <div class="bg-gradient-to-br from-[#090d16] to-[#020412] border border-amber-500/30 p-6 rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.05)] hover:-translate-y-1 hover:border-amber-500/60 transition-all duration-300 flex flex-col relative overflow-hidden">
+          <div class="absolute top-0 right-0 p-3 opacity-20 text-5xl">🎮</div>
+          <span class="text-xs text-amber-500 font-bold uppercase tracking-widest mb-2 relative z-10">Gamification Sync DB</span>
+          
+          <div v-if="isLoadingXp" class="animate-pulse flex flex-col gap-2 mt-2 relative z-10">
+            <div class="h-8 bg-slate-800 rounded w-24"></div>
+            <div class="h-4 bg-slate-800 rounded w-32"></div>
+          </div>
+          <div v-else class="flex flex-col relative z-10">
+            <span class="text-3xl font-black text-amber-400 font-mono drop-shadow-[0_0_12px_rgba(245,158,11,0.3)]">{{ xpData.totalXp }} XP</span>
+            <span class="text-sm font-bold text-slate-300 mt-1">Livello {{ xpData.level }} - {{ xpData.title }}</span>
+          </div>
         </div>
       </div>
 
-      <!-- TABELLA SERVIZI & MICROSERVIZI -->
-      <section class="services-section glass-panel">
-        <div class="section-header">
-          <h2>Stato dei Microservizi</h2>
-          <span class="gold-badge">v2.4-GOLD</span>
+      <!-- TABELLA MICROSERVIZI -->
+      <section class="bg-[#090d16]/80 backdrop-blur-md border border-slate-800 rounded-xl p-6 sm:p-8 shadow-xl">
+        <div class="flex justify-between items-center border-b border-slate-800/80 pb-4 mb-6">
+          <h2 class="text-xl font-extrabold text-white">Stato dei Microservizi</h2>
+          <span class="bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-black px-2 py-1 rounded tracking-wider">LIVE DATA</span>
         </div>
         
-        <div class="services-list">
-          <div v-for="s in services" :key="s.name" class="service-row">
-            <div class="service-info">
-              <span class="status-dot"></span>
+        <div class="flex flex-col gap-3">
+          <div v-for="s in services" :key="s.name" class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#020412]/50 border border-slate-800/60 p-4 rounded-lg hover:bg-slate-800/40 hover:border-emerald-500/30 transition-all">
+            <!-- Info Servizio -->
+            <div class="flex items-center gap-4 mb-3 sm:mb-0">
+              <div class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(0,220,130,0.6)] shrink-0"></div>
               <div>
-                <div class="service-name">{{ s.name }}</div>
-                <div class="service-desc">{{ s.desc }}</div>
+                <div class="text-slate-100 font-bold">{{ s.name }}</div>
+                <div class="text-slate-500 text-xs mt-0.5">{{ s.desc }}</div>
               </div>
             </div>
             
-            <div class="service-stats">
-              <span class="latency-tag">⚡ {{ s.latency }}</span>
-              <span class="uptime-tag">{{ s.uptime }} Uptime</span>
-              <span class="op-badge">Operativo</span>
+            <!-- Metriche Servizio -->
+            <div class="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end">
+              <span class="text-sky-400 font-mono font-bold text-sm w-16 text-right transition-colors">⚡ {{ s.latency }}</span>
+              <span class="text-slate-400 font-mono text-xs">{{ s.uptime }} Uptime</span>
+              <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider">Operativo</span>
             </div>
           </div>
         </div>
@@ -106,305 +156,3 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-/* BACKGROUND & LAYOUT 2.4-GOLD */
-.status-page {
-  background: radial-gradient(circle at 50% 0%, #0a1128 0%, #020412 60%);
-  color: #cbd5e1;
-  min-height: 100vh;
-  padding: 4rem 1.5rem 5rem;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Griglia Tech in Background */
-.status-page::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: linear-gradient(rgba(30, 41, 59, 0.2) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(30, 41, 59, 0.2) 1px, transparent 1px);
-  background-size: 30px 30px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.5;
-}
-
-.status-container {
-  max-width: 1050px;
-  margin: 0 auto;
-  position: relative;
-  z-index: 1;
-}
-
-/* GLASSMORPHISM UTILS */
-.glass-panel {
-  background: rgba(9, 13, 22, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(30, 41, 59, 0.8);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  border-radius: 12px;
-}
-
-.hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-4px);
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.1);
-}
-
-/* TYPOGRAPHY HERO */
-.breadcrumb { 
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.85rem; 
-  color: #38bdf8; 
-  font-weight: 600; 
-  margin-bottom: 1rem; 
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.version-badge {
-  background: linear-gradient(90deg, #eab308, #ca8a04);
-  color: #020412;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 900;
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-}
-
-.status-hero h1 { 
-  font-size: 2.5rem; 
-  color: #ffffff; 
-  font-weight: 900; 
-  margin: 0 0 0.5rem;
-  letter-spacing: -0.5px;
-}
-
-.glow-icon {
-  text-shadow: 0 0 20px rgba(0, 220, 130, 0.6);
-  font-size: 2rem;
-  margin-right: 0.2rem;
-}
-
-.subtitle { 
-  font-size: 1.1rem; 
-  color: #94a3b8; 
-  margin-bottom: 2.5rem; 
-}
-
-/* OVERALL BANNER */
-.overall-banner {
-  border-left: 4px solid #00dc82;
-  padding: 1.5rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2.5rem;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-/* ANIMATED PULSE DOT */
-.dot-pulse {
-  position: relative;
-  width: 14px;
-  height: 14px;
-  background: #00dc82;
-  border-radius: 50%;
-}
-
-.dot-pulse::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 50%;
-  border: 2px solid #00dc82;
-  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-}
-
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  50% { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
-
-.status-text {
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 1.2rem;
-  letter-spacing: 0.5px;
-}
-
-.global-uptime {
-  font-size: 0.95rem;
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.global-uptime strong { 
-  color: #00dc82; 
-  font-size: 1.1rem;
-}
-
-/* METRICS GRID */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-}
-
-.metric-card {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.metric-label { font-size: 0.85rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-.metric-val { font-size: 2.5rem; font-weight: 900; margin: 0.5rem 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-.metric-val.green { color: #00dc82; text-shadow: 0 0 15px rgba(0, 220, 130, 0.3); }
-.metric-val.cyan { color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
-.metric-val.purple { color: #a855f7; text-shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
-.metric-sub { font-size: 0.8rem; color: #64748b; font-weight: 500; }
-
-/* SERVICES TABLE */
-.services-section {
-  padding: 2rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(30, 41, 59, 0.8);
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.services-section h2 {
-  color: #ffffff;
-  font-size: 1.3rem;
-  font-weight: 800;
-  margin: 0;
-}
-
-.gold-badge {
-  background: rgba(234, 179, 8, 0.15);
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  color: #eab308;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  letter-spacing: 0.05em;
-}
-
-.services-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.service-row {
-  background: rgba(2, 4, 18, 0.4);
-  border: 1px solid rgba(30, 41, 59, 0.5);
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s ease;
-}
-
-.service-row:hover {
-  background: rgba(30, 41, 59, 0.3);
-  border-color: rgba(0, 220, 130, 0.3);
-}
-
-.service-info {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  background: #00dc82;
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(0, 220, 130, 0.6);
-  flex-shrink: 0;
-}
-
-.service-name {
-  color: #f1f5f9;
-  font-weight: 700;
-  font-size: 1rem;
-  margin-bottom: 0.15rem;
-}
-
-.service-desc {
-  color: #64748b;
-  font-size: 0.8rem;
-}
-
-.service-stats {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.latency-tag {
-  color: #38bdf8;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.9rem;
-  font-weight: 600;
-  width: 70px;
-  text-align: right;
-  transition: color 0.3s ease;
-}
-
-.uptime-tag {
-  color: #94a3b8;
-  font-size: 0.85rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.op-badge {
-  background: rgba(0, 220, 130, 0.12);
-  border: 1px solid rgba(0, 220, 130, 0.25);
-  color: #00dc82;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.3rem 0.75rem;
-  border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* RESPONSIVE */
-@media (max-width: 768px) {
-  .overall-banner { flex-direction: column; align-items: flex-start; gap: 1rem; }
-  .service-row { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
-  .service-stats { width: 100%; justify-content: space-between; }
-  .latency-tag { text-align: left; }
-  .status-hero h1 { font-size: 2rem; }
-}
-</style>

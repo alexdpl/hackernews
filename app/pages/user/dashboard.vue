@@ -4,6 +4,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import DkpEditor from '~/components/blog/DkpEditor.vue'
+import UserXpHistory from '~/components/UserXpHistory.vue'
 
 useHead({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.5-GOLD',
@@ -146,10 +147,11 @@ async function fetchGamificationData() {
       }
     }
     
-    const statsRes: any = await $fetch('/api/user/xp-stats')
+    // FETCH STORICO TRANSAZIONI GAMIFICATION
+    const statsRes: any = await $fetch('/api/user/xp/history')
     if (statsRes && statsRes.success) {
-       if (statsRes.history && Array.isArray(statsRes.history)) {
-          xpHistoryList.value = statsRes.history
+       if (statsRes.data && Array.isArray(statsRes.data)) {
+          xpHistoryList.value = statsRes.data
        }
     }
   } catch (err) {
@@ -258,6 +260,13 @@ onMounted(() => {
   fetchUserArticles()
   fetchVaultCertificates()
   fetchGamificationData()
+
+  // Ascolta per l'aggiornamento degli XP!
+  window.addEventListener('dkp:xp_updated', fetchGamificationData)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('dkp:xp_updated', fetchGamificationData)
 })
 
 // TABS
@@ -420,7 +429,7 @@ async function fetchUserArticles() {
   }
 }
 
-// SALVATAGGIO POST
+// SALVATAGGIO POST + GAMIFICATION EVENT
 async function saveArticle() {
   if (!articleForm.value.title.trim() || !articleForm.value.category) {
     triggerToast('❌ Compila Titolo e Categoria prima di salvare.')
@@ -453,6 +462,25 @@ async function saveArticle() {
           : (articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!');
         
         triggerToast(msg)
+
+        // 🚀 FASE 4: GAMIFICATION PER LA CREAZIONE
+        if (!isUpdate && articleForm.value.status === 'published') {
+          try {
+             await $fetch('/api/user/xp/award', {
+                method: 'POST',
+                body: {
+                  amount: 150,
+                  actionType: 'ARTICLE_PUBLISHED',
+                  description: `Pubblicazione articolo: ${articleForm.value.title.substring(0, 30)}...`
+                }
+             })
+             // Avvisa il resto dell'app
+             window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
+          } catch(e) {
+             console.warn('Errore gamification durante il salvataggio:', e)
+          }
+        }
+
         isEditingArticle.value = false
         await fetchUserArticles()
     } else {
@@ -1079,29 +1107,7 @@ async function deleteArticle(id: number) {
 
           <div class="game-sub-card full-width mt-4">
             <h4 class="sub-card-title">📜 Storico Attività &amp; Transazioni XP</h4>
-            <div class="table-container">
-              <table class="dkp-table">
-                <thead>
-                  <tr>
-                    <th>Attività / Azione Eseguita</th>
-                    <th>Punti XP</th>
-                    <th>Data e Ora</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="xpHistoryList.length === 0">
-                    <td colspan="3" class="text-center py-4 text-gray-500 italic">
-                      Nessuna attività registrata di recente. Inizia a pubblicare o notarizzare!
-                    </td>
-                  </tr>
-                  <tr v-for="item in xpHistoryList" :key="item.id">
-                    <td class="font-bold">{{ item.action }}</td>
-                    <td><span class="text-emerald font-bold">{{ item.points }}</span></td>
-                    <td class="text-gray-400">{{ item.date }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <UserXpHistory :history="xpHistoryList"/>
           </div>
 
         </div>

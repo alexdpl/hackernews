@@ -2,21 +2,20 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, watch } from 'vue'
 
+// (Opzionale: se hai un composable useAuthCore, assicurati che sia importato/auto-importato)
 const auth = useAuthCore() || {}
 
-// 🧠 1. Estrazione utente ultra-reattiva (gestisce sia ref che oggetti diretti)
+// 🧠 1. Estrazione utente ultra-reattiva
 const currentUser = computed(() => {
   if (isRef(auth.user)) return auth.user.value
   return auth.user || null
 })
 
-// 🧠 2. Controllo di login unificato (legge sia lo state che i cookie di sessione dkp_session)
+// 🧠 2. Controllo di login unificato
 const isLogged = computed(() => {
-  // Controlla se auth core dice che è autenticato
   if (auth.isAuthenticated?.value || auth.isAuthenticated) return true
   if (currentUser.value?.id || currentUser.value?.username || currentUser.value?.email) return true
 
-  // Fallback di controllo diretto sul cookie dkp_session (lo stesso che usa il backend)
   if (typeof document !== 'undefined') {
     const match = document.cookie.match(/(?:^|;\s*)dkp_session=([^;]*)/)
     if (match && match[1]) {
@@ -29,7 +28,7 @@ const isLogged = computed(() => {
   return false
 })
 
-// 🧠 3. Riconoscimento Username esatto (Prende @alexdpl o dal cookie)
+// 🧠 3. Riconoscimento Username esatto
 const userName = computed(() => {
   if (currentUser.value?.username) return currentUser.value.username
   if (typeof document !== 'undefined') {
@@ -44,23 +43,15 @@ const userName = computed(() => {
   return 'Socio'
 })
 
-// 👑 4. Riconoscimento Unico del Grado/Ruolo & Gamification Rank
+// 👑 4. Riconoscimento Unico del Grado/Ruolo
 const userRole = computed(() => {
   const role = currentUser.value?.role?.toLowerCase()
   if (role === 'admin' || userName.value.toLowerCase() === 'alexdpl') return 'ADMIN'
   return isLogged.value ? 'USER' : 'GUEST'
 })
 
-// Grado di gamification basato su ruolo e XP
-const userRank = computed(() => {
-  const xp = userXp.value
-  if (userRole.value === 'ADMIN') return 'GOLD KERNEL ARCHITECT 🛡️'
-  if (xp > 500) return 'ELITE DEVELOPER ⚡'
-  if (xp > 250) return 'SENIOR CODER 🚀'
-  return 'JUNIOR PULSE 💻'
-})
-
-const userXp = computed(() => currentUser.value?.xp || 850)
+// L'XP base per la UI della chat (verrà sovrascritto dall'evento di sync globale in futuro)
+const userXp = computed(() => currentUser.value?.xp || 0)
 
 const isOpen = ref(false)
 const inputQuery = ref('')
@@ -77,7 +68,7 @@ interface Message {
 
 const messages = ref<Message[]>([])
 
-// 🧠 4. Generazione Saluto Dinamico basato sul Ruolo
+// 🧠 5. Generazione Saluto Dinamico
 const initWelcomeMessage = () => {
   let welcomeText = `Benvenuto su DKP Pulse Nexus v2.5-GOLD! Effettua il login per accedere al Kernel.`
 
@@ -98,11 +89,9 @@ const initWelcomeMessage = () => {
   }]
 }
 
-// Intercetta quando i dati di useAuthCore() sono finalmente pronti e idratati
-watch(isLogged, (newVal) => {
+watch(isLogged, () => {
   initWelcomeMessage()
 }, { immediate: true })
-
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -112,7 +101,7 @@ const scrollToBottom = async () => {
 }
 
 const handleSend = async () => {
-  if (!inputQuery.value.trim() || isTyping.value) return // Rimosso !isLogged.value per consentire sempre l'invio
+  if (!inputQuery.value.trim() || isTyping.value) return 
 
   const userText = inputQuery.value.trim()
   const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
@@ -129,18 +118,21 @@ const handleSend = async () => {
   scrollToBottom()
 
   try {
+    // Chiamata all'Intelligenza Artificiale
     const res: any = await $fetch('/api/nexus/send', {
       method: 'POST',
       body: { 
         message: userText,
-        userId: currentUser.value?.id,
-        // Passiamo ruolo e username anche al backend se necessario!
+        userId: currentUser.value?.id || 1,
         username: userName.value,
         role: userRole.value
       }
-    })
+    }).catch(() => null)
 
     const aiResponse = res?.message?.text || "Non riesco a connettermi al Kernel neurale in questo momento. Riprova più tardi."
+    
+    // Per testare la gamification, se res.message.xpEarned non esiste, diamo 10 XP di default al login
+    const xpEarned = res?.message?.xpEarned || 10 
     
     messages.value.push({
       id: Date.now(),
@@ -149,20 +141,39 @@ const handleSend = async () => {
       time: res?.message?.timestamp || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
     })
 
-    if (isLogged.value && res?.message?.xpEarned > 0) {
-      messages.value.push({
-        id: Date.now() + 1,
-        text: `✨ Hai guadagnato +${res.message.xpEarned} DKP XP! Sei al livello ${res.level || 1}. (Totale: ${res.totalXp} XP)`,
-        sender: 'nexus',
-        time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-        isSystem: true
-      })
+    // 🚀 INTEGRAZIONE FASE 2: SCRITTURA XP SU DATABASE NEON
+    if (isLogged.value && xpEarned > 0) {
+      try {
+        await $fetch('/api/user/xp/award', {
+          method: 'POST',
+          body: { 
+            amount: xpEarned, 
+            actionType: 'CHAT_NEXUS', 
+            description: `Interazione con Pulse Nexus Companion` 
+          }
+        })
+        
+        // Spara l'evento globale per aggiornare Status Page e Badge!
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
+        }
+
+        messages.value.push({
+          id: Date.now() + 1,
+          text: `✨ Hai guadagnato +${xpEarned} DKP XP! Status globale aggiornato.`,
+          sender: 'nexus',
+          time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+          isSystem: true
+        })
+      } catch (err) {
+        console.error("Fallito salvataggio transazione XP:", err)
+      }
     }
 
   } catch (error) {
     messages.value.push({
       id: Date.now(),
-      text: "⚠️ Errore di connessione al DKP Nexus. Riprova tra poco.",
+      text: "⚠️ Errore critico di connessione al DKP Nexus.",
       sender: 'nexus',
       time: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
       isSystem: true
@@ -179,153 +190,149 @@ const clearChat = () => {
 </script>
 
 <template>
-  <!-- Rimosso il v-if root: la chat è visibile a tutti come esca marketing! -->
-  <div class="nexus-widget-wrapper">
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
     
     <!-- CHAT POPUP WINDOW -->
-    <Transition name="nexus-pop">
-      <div v-if="isOpen" class="nexus-chat-card glass-panel">
+    <Transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform scale-95 opacity-0 translate-y-8"
+      enter-to-class="transform scale-100 opacity-100 translate-y-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform scale-100 opacity-100 translate-y-0"
+      leave-to-class="transform scale-95 opacity-0 translate-y-8"
+    >
+      <div v-if="isOpen" class="w-[380px] max-w-[calc(100vw-3rem)] h-[550px] max-h-[calc(100vh-7rem)] mb-4 bg-[#090d16]/90 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_20px_rgba(0,220,130,0.1)] flex flex-col overflow-hidden relative">
         
         <!-- HEADER CHAT -->
-        <div class="nexus-header">
-          <div class="nexus-title-box">
-            <span class="nexus-status-dot"></span>
+        <div class="bg-gradient-to-r from-[#020412] to-[#090d16] border-b border-slate-800 p-4 flex justify-between items-center">
+          <div class="flex items-center gap-3">
+            <div class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_#00dc82]"></span>
+            </div>
             <div>
-              <h3 class="nexus-title">DKP Pulse Nexus <span class="badge-v">v2.5</span></h3>
-              <p class="nexus-subtitle text-sky-400">Assistente AI & Code Companion</p>
+              <h3 class="text-white font-extrabold text-sm flex items-center gap-2">
+                DKP Pulse Nexus 
+                <span class="bg-amber-500/15 border border-amber-500/30 text-amber-500 text-[10px] px-1.5 py-0.5 rounded tracking-wide">v2.5</span>
+              </h3>
+              <p class="text-sky-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Assistente AI & Code Companion</p>
             </div>
           </div>
-          <div class="nexus-actions">
-            <span v-if="isLogged" class="xp-badge mr-2" title="I tuoi XP">⚡ {{ userXp }} XP</span>
-            <button type="button" @click="clearChat" class="btn-action" title="Reset Conversazione">
+          <div class="flex items-center gap-2">
+            <!-- XP Indicator (Optional placeholder if not synced here) -->
+            <button @click="clearChat" class="text-slate-400 hover:text-emerald-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors" title="Reset Conversazione">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </button>
-            <button type="button" @click="isOpen = false" class="btn-action btn-close" title="Riduci a icona">✕</button>
+            <button @click="isOpen = false" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors" title="Chiudi">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
           </div>
         </div>
 
         <!-- FEED MESSAGGI -->
-        <div class="nexus-body" ref="chatBody">
+        <div ref="chatBody" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[#020412]/40 custom-scrollbar flex flex-col">
           
           <!-- OVERLAY PER I GUEST (Marketing Tactic) -->
-          <div v-if="!isLogged" class="msg-wrapper system-msg mx-auto my-4 w-full">
-            <div class="msg-bubble border-amber-500/50 bg-amber-500/10 text-amber-400">
+          <div v-if="!isLogged" class="mx-auto my-2 w-full">
+            <div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-3.5 rounded-xl text-center text-sm font-medium shadow-lg">
               🔒 <strong>Accesso Rifiutato.</strong><br/>
               Il Kernel Neurale è riservato. Effettua il login per sbloccare l'AI Companion.
             </div>
           </div>
 
-          <div 
-            v-for="msg in messages" 
-            :key="msg.id" 
-            class="msg-wrapper" 
-            :class="[msg.sender === 'user' ? 'user' : 'nexus', { 'system-msg': msg.isSystem }]"
-          >
-            <div class="msg-bubble shadow-lg">
-              <div class="msg-sender-tag flex items-center justify-between">
-                <span>{{ msg.sender === 'user' ? userName : '⚡ Pulse Nexus' }}</span>
-                
-                <span 
-                  v-if="msg.sender === 'user'" 
-                  class="text-[0.55rem] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                  :class="userRole === 'ADMIN' ? 'text-amber-950 bg-amber-400' : 'text-emerald-950 bg-emerald-500/50'"
-                >
+          <!-- LISTA MESSAGGI -->
+          <div v-for="msg in messages" :key="msg.id" :class="['flex w-full', msg.sender === 'user' ? 'justify-end' : 'justify-start']">
+            
+            <!-- Messaggio Utente -->
+            <div v-if="msg.sender === 'user'" class="bg-emerald-500/20 border border-emerald-500/30 text-emerald-50 px-4 py-3 rounded-2xl rounded-tr-sm max-w-[85%] shadow-lg">
+              <div class="flex items-center justify-between gap-4 mb-1.5">
+                <span class="text-[10px] font-bold opacity-80 uppercase tracking-wider text-emerald-200">{{ userName }}</span>
+                <span :class="userRole === 'ADMIN' ? 'bg-amber-400 text-amber-950' : 'bg-emerald-500/50 text-emerald-950'" class="text-[9px] font-black px-1.5 py-0.5 rounded tracking-wider">
                   {{ userRole }}
                 </span>
-                <span v-else class="text-[0.55rem] text-sky-400 border border-sky-500/30 px-1 rounded">AI</span>
               </div>
-              <div class="msg-text text-[0.87rem]">{{ msg.text }}</div>
-              <div class="msg-time">{{ msg.time }}</div>
+              <p class="text-sm leading-relaxed">{{ msg.text }}</p>
+              <span class="text-[10px] text-emerald-400/60 mt-1.5 block text-right font-mono">{{ msg.time }}</span>
+            </div>
+
+            <!-- Messaggio Sistema (XP) -->
+            <div v-else-if="msg.isSystem" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-4 py-2.5 rounded-xl w-full text-center shadow-lg">
+              <p class="text-[13px] font-bold">{{ msg.text }}</p>
+              <span class="text-[10px] text-amber-500/50 mt-1 block font-mono">{{ msg.time }}</span>
+            </div>
+
+            <!-- Messaggio Nexus AI -->
+            <div v-else class="bg-slate-800/60 border border-slate-700 text-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm max-w-[85%] shadow-lg">
+              <div class="flex items-center justify-between gap-4 mb-1.5">
+                <span class="text-[10px] font-bold opacity-80 uppercase tracking-wider text-sky-200">⚡ Pulse Nexus</span>
+                <span class="text-[9px] font-black text-sky-400 border border-sky-500/30 px-1.5 py-0.5 rounded">AI</span>
+              </div>
+              <p class="text-sm leading-relaxed">{{ msg.text }}</p>
+              <span class="text-[10px] text-slate-500 mt-1.5 block font-mono">{{ msg.time }}</span>
             </div>
           </div>
 
-          <div v-if="isTyping" class="msg-wrapper nexus typing">
-            <div class="msg-bubble flex items-center gap-2">
-              <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
-              <span class="typing-dots font-mono text-emerald-400 text-xs">Nexus sta elaborando...</span>
+          <!-- Indicatore Typing -->
+          <div v-if="isTyping" class="flex justify-start">
+            <div class="bg-slate-800/60 border border-slate-700 px-4 py-3 rounded-2xl rounded-tl-sm flex gap-2 items-center shadow-lg">
+              <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce"></div>
+              <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+              <div class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+              <span class="text-xs font-mono text-emerald-400/70 ml-2">Elaborazione...</span>
             </div>
           </div>
         </div>
 
         <!-- FORM DI INVIO -->
-        <form @submit.prevent="handleSend" class="nexus-footer relative">
+        <form @submit.prevent="handleSend" class="p-4 border-t border-slate-800 bg-[#090d16] relative">
           <div class="absolute inset-0 bg-emerald-500/5 blur-xl pointer-events-none transition-opacity duration-300" :class="inputQuery ? 'opacity-100' : 'opacity-0'"></div>
-          
-          <input 
-            v-model="inputQuery" 
-            type="text" 
-            :placeholder="isLogged ? `Comunica col Kernel, ${userName}...` : 'Fai il login per interagire...'" 
-            :disabled="isTyping || !isLogged"
-            class="nexus-input relative z-10"
-          />
-          <button type="submit" class="nexus-send-btn relative z-10" :disabled="!inputQuery.trim() || isTyping || !isLogged">
-            <svg class="w-4 h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
-          </button>
+          <div class="flex gap-2 relative z-10">
+            <input 
+              v-model="inputQuery" 
+              type="text" 
+              :placeholder="isLogged ? `Comunica col Kernel, ${userName}...` : 'Fai il login per interagire...'" 
+              :disabled="isTyping || !isLogged"
+              class="flex-1 bg-[#020412] border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 outline-none focus:border-emerald-500 focus:shadow-[0_0_15px_rgba(0,220,130,0.15)] transition-all disabled:opacity-50"
+            />
+            <button 
+              type="submit" 
+              :disabled="!inputQuery.trim() || isTyping || !isLogged"
+              class="bg-emerald-500 text-[#020412] w-12 rounded-xl flex items-center justify-center hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-all shadow-[0_4px_15px_rgba(0,220,130,0.2)] hover:shadow-[0_6px_20px_rgba(0,220,130,0.4)]"
+            >
+              <svg class="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+            </button>
+          </div>
         </form>
       </div>
     </Transition>
 
     <!-- FLOATING LAUNCHER BUTTON -->
     <button 
-      type="button" 
       @click="isOpen = !isOpen" 
-      class="nexus-launcher-btn group"
-      :class="{ 'is-active': isOpen }"
+      class="group flex items-center gap-3 bg-[#090d16]/90 backdrop-blur-md border border-slate-700 text-white px-5 py-3.5 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(0,220,130,0.1)] hover:border-emerald-500 hover:-translate-y-1 transition-all duration-300 relative z-50"
+      :class="{ 'border-emerald-500 bg-[#020420] scale-95': isOpen }"
       title="Apri DKP Pulse Nexus AI"
     >
-      <div class="absolute inset-0 bg-emerald-500/20 rounded-full blur group-hover:bg-emerald-500/40 transition-all"></div>
-      <span class="launcher-pulse-dot relative z-10"></span>
-      <span class="launcher-icon relative z-10">🤖</span>
-      <span class="launcher-text relative z-10 flex items-center gap-1.5">
-        Nexus <span class="launcher-badge">v2.5</span>
+      <div class="absolute inset-0 bg-emerald-500/10 rounded-full blur-md group-hover:bg-emerald-500/30 transition-all opacity-0 group-hover:opacity-100"></div>
+      
+      <!-- Punto di notifica lampeggiante -->
+      <span class="absolute top-0 right-0 -mt-1 -mr-1 flex h-3.5 w-3.5">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-[#090d16]"></span>
+      </span>
+
+      <span class="relative z-10 text-xl">🤖</span>
+      <span class="relative z-10 font-extrabold text-sm tracking-wide text-slate-200 group-hover:text-emerald-400 transition-colors hidden sm:flex items-center gap-2">
+        Nexus <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider">v2.5</span>
       </span>
     </button>
   </div>
 </template>
+
 <style scoped>
-.nexus-widget-wrapper { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
-.nexus-launcher-btn { display: flex; align-items: center; gap: 0.6rem; background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 220, 130, 0.5); color: #fff; padding: 0.8rem 1.4rem; border-radius: 50px; cursor: pointer; position: relative; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 220, 130, 0.15); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.nexus-launcher-btn:hover { transform: translateY(-4px) scale(1.02); border-color: #00dc82; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 220, 130, 0.3); }
-.nexus-launcher-btn.is-active { background: rgba(2, 4, 32, 0.95); border-color: #00dc82; transform: scale(0.95); }
-.launcher-pulse-dot { width: 8px; height: 8px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 10px #00dc82; animation: pulse-glow 2s infinite; }
-.launcher-text { font-weight: 800; font-size: 0.9rem; color: #f8fafc; letter-spacing: 0.5px; }
-.launcher-badge { background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid rgba(0, 220, 130, 0.3); }
-.glass-panel { background: rgba(9, 13, 22, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-.nexus-chat-card { position: absolute; bottom: 5rem; right: 0; width: 380px; max-width: calc(100vw - 3rem); height: 550px; max-height: calc(100vh - 7rem); border: 1px solid rgba(30, 41, 59, 0.9); border-radius: 20px; display: flex; flex-direction: column; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 220, 130, 0.1); overflow: hidden; transform-origin: bottom right; }
-.nexus-header { padding: 1rem 1.2rem; background: rgba(2, 4, 32, 0.85); border-bottom: 1px solid rgba(30, 41, 59, 0.8); display: flex; justify-content: space-between; align-items: center; }
-.nexus-title-box { display: flex; align-items: center; gap: 0.7rem; }
-.nexus-status-dot { width: 10px; height: 10px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 10px #00dc82; }
-.nexus-title { margin: 0; font-size: 1rem; color: #fff; font-weight: 800; }
-.badge-v { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.65rem; padding: 0.1rem 0.35rem; border-radius: 4px; margin-left: 0.2rem;}
-.nexus-subtitle { margin: 0; font-size: 0.75rem; font-family: monospace; }
-.nexus-actions { display: flex; align-items: center; gap: 0.4rem; }
-.xp-badge { font-size: 0.7rem; font-weight: 800; color: #00dc82; font-family: monospace; border-right: 1px solid #1e293b; padding-right: 0.5rem;}
-.btn-action { background: transparent; color: #64748b; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-.btn-action:hover { background: rgba(255, 255, 255, 0.05); color: #00dc82; }
-.btn-close:hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
-.nexus-body { flex: 1; padding: 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; background: rgba(2, 4, 32, 0.4); }
-.nexus-body::-webkit-scrollbar { width: 6px; }
-.nexus-body::-webkit-scrollbar-track { background: transparent; }
-.nexus-body::-webkit-scrollbar-thumb { background: rgba(30, 41, 59, 0.8); border-radius: 3px; }
-.msg-wrapper { display: flex; flex-direction: column; max-width: 88%; }
-.msg-wrapper.user { align-self: flex-end; }
-.msg-wrapper.nexus { align-self: flex-start; }
-.msg-bubble { padding: 0.75rem 1rem; border-radius: 12px; line-height: 1.5; word-break: break-word; }
-.user .msg-bubble { background: linear-gradient(135deg, #00dc82 0%, #00a863 100%); color: #020420; font-weight: 500; border-bottom-right-radius: 2px; }
-.nexus .msg-bubble { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); color: #e2e8f0; border-bottom-left-radius: 2px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-.msg-wrapper.system-msg .msg-bubble { background: rgba(0, 220, 130, 0.1); border: 1px dashed rgba(0, 220, 130, 0.4); color: #00dc82; font-family: monospace; font-size: 0.75rem; text-align: center; border-radius: 8px;}
-.msg-wrapper.system-msg .msg-sender-tag { display: none; }
-.msg-sender-tag { font-size: 0.65rem; opacity: 0.8; margin-bottom: 0.3rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;}
-.user .msg-sender-tag { color: #020420; }
-.msg-time { font-size: 0.6rem; opacity: 0.5; text-align: right; margin-top: 0.4rem; font-family: monospace; }
-.nexus-footer { padding: 1rem; background: rgba(2, 4, 32, 0.95); border-top: 1px solid rgba(30, 41, 59, 0.8); display: flex; gap: 0.5rem; align-items: center;}
-.nexus-input { flex: 1; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); color: #fff; padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.9rem; outline: none; transition: all 0.3s; }
-.nexus-input:focus { border-color: #00dc82; box-shadow: 0 0 10px rgba(0, 220, 130, 0.2); background: rgba(15, 23, 42, 0.95);}
-.nexus-input::placeholder { color: #475569; }
-.nexus-send-btn { background: #00dc82; color: #020420; border: none; width: 42px; height: 42px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0, 220, 130, 0.3); }
-.nexus-send-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 15px rgba(0, 220, 130, 0.4); }
-.nexus-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; background: #334155;}
-.nexus-pop-enter-active, .nexus-pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.nexus-pop-enter-from, .nexus-pop-leave-to { opacity: 0; transform: translateY(30px) scale(0.9) rotate(2deg); }
-@keyframes pulse-glow { 0%, 100% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.3); opacity: 0.6; box-shadow: 0 0 15px #00dc82;} }
+/* Unico CSS rimasto per la scrollbar custom che Tailwind non gestisce nativamente bene su tutti i browser */
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(30, 41, 59, 0.8); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(51, 65, 85, 0.9); }
 </style>

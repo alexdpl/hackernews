@@ -13,6 +13,11 @@ const navbarRef = ref<HTMLElement | null>(null)
 const activeDropdown = ref<string | null>(null)
 const isMobileMenuOpen = ref(false)
 
+// 🚀 FASE 3: Reattività Gamification in Navbar
+const globalXp = ref(0)
+const globalLevel = ref(1)
+const isXpAnimating = ref(false)
+
 function toggleDropdown(name: string) {
   activeDropdown.value = activeDropdown.value === name ? null : name
 }
@@ -37,15 +42,55 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+// 🚀 FASE 3: Funzione di ricarica XP
+const refreshXpData = async () => {
+  if (!isAuthenticated.value && !currentUser.value?.id) return
+  try {
+    const res: any = await $fetch('/api/user/xp/sync')
+    if (res && res.success) {
+      // Se il valore è aumentato, esegui l'animazione e il suono
+      if (res.data.totalXp > globalXp.value && globalXp.value > 0) {
+        isXpAnimating.value = true
+        playXpSound()
+        setTimeout(() => { isXpAnimating.value = false }, 1500)
+      }
+      globalXp.value = res.data.totalXp
+      globalLevel.value = res.data.level
+    }
+  } catch (e) {
+    console.warn('Errore sync XP Navbar:', e)
+  }
+}
+
+const playXpSound = () => {
+  try {
+    // Opzionale: aggiungi un file coin-up.mp3 in public/sounds/
+    const audio = new Audio('/sounds/coin-up.mp3')
+    audio.volume = 0.3
+    audio.play().catch(() => {})
+  } catch (e) {}
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  if (typeof initTranslator === 'function') {
-    initTranslator()
+  if (typeof initTranslator === 'function') initTranslator()
+  
+  // Inizializza XP se loggato
+  if (isAuthenticated.value || currentUser.value?.id) {
+    refreshXpData()
   }
+
+  // Ascolta l'evento globale lanciato da Chat e Editor!
+  window.addEventListener('dkp:xp_updated', refreshXpData)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('dkp:xp_updated', refreshXpData)
+})
+
+watch(isAuthenticated, (newVal) => {
+  if (newVal) refreshXpData()
 })
 
 // 🟢 CATEGORIE E FEED CON L'AGGIUNTA DEL BLOG EDITORIALE
@@ -53,7 +98,7 @@ const newsCategories = [
   { name: 'News Feed', description: 'Ultimi aggiornamenti tech & ecosistema', icon: '📰', route: '/news' },
   { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
   { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },
-  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }, // 👈 Aggiunta la virgola mancante qui!
+  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }, 
   { name: 'Blog Editorial Hub', description: 'Articoli e guide della community', icon: '✍️', route: '/blog' }
 ]
 
@@ -203,6 +248,19 @@ async function handleLogout() {
 
       <!-- SEZIONE DESTRA DROPDOWN UTENTE & LINGUA -->
       <div class="hidden md:flex items-center gap-3">
+        
+        <!-- 🚀 FASE 3: BADGE GAMIFICATION (Sempre visibile se loggato) -->
+        <div 
+          v-if="isAuthenticated || currentUser?.id"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 cursor-default"
+          :class="isXpAnimating ? 'bg-amber-500/20 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-110' : 'bg-[#090d16] border-slate-700 hover:border-amber-500/50'"
+          title="Punteggio DKP Gamification"
+        >
+          <span class="text-amber-400 text-sm">⚡</span>
+          <span class="font-black font-mono text-white text-xs">{{ globalXp }}</span>
+          <span class="text-[9px] text-amber-500/80 font-bold uppercase ml-0.5 mt-0.5">Lv.{{ globalLevel }}</span>
+        </div>
+
         <!-- LINGUA -->
         <div class="relative">
           <button 
@@ -228,7 +286,7 @@ async function handleLogout() {
         </div>
 
         <!-- AUTH BUTTON / USER PILL -->
-        <button v-if="!isAuthenticated" @click="handleLogin" class="bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold text-xs px-4 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+        <button v-if="!isAuthenticated && !currentUser?.id" @click="handleLogin" class="bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold text-xs px-4 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)]">
           {{ t('login') }}
         </button>
 
@@ -269,8 +327,8 @@ async function handleLogout() {
               <NuxtLink :to="getMainUrl('/user/dashboard?tab=vault')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
                 <span>🛡️</span> I Miei Certificati Vault
               </NuxtLink>
-			  
-			  <NuxtLink :to="getMainUrl('/bounties')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
+              
+              <NuxtLink :to="getMainUrl('/bounties')" external class="flex items-center gap-2 p-1.5 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition-colors no-underline" @click="closeAllDropdowns">
                 <span>🎯</span> Bounty Board & $PULSE
               </NuxtLink>
 
@@ -314,57 +372,6 @@ async function handleLogout() {
 </template>
 
 <style scoped>
-.navbar-wrapper {
-  background: #020420;
-  border-bottom: 2px solid #00dc82;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  padding: 0.6rem 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 220, 130, 0.08);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-.navbar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.brand-section { display: flex; align-items: center; gap: 0.6rem; }
-.brand-link { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: #ffffff; font-weight: 800; font-size: 1.15rem; }
-.dk-badge { background: #00dc82; color: #020420; font-size: 0.85rem; font-weight: 900; padding: 0.15rem 0.45rem; border-radius: 4px; }
-.brand-name { letter-spacing: -0.3px; }
-.pulse-highlight { color: #00dc82; }
-.version-tag { font-size: 0.65rem; font-weight: 800; color: #00dc82; background: rgba(0, 220, 130, 0.1); border: 1px solid rgba(0, 220, 130, 0.3); padding: 0.15rem 0.4rem; border-radius: 4px; }
-.nav-links { display: flex; align-items: center; gap: 0.6rem; font-size: 0.92rem; font-weight: 600; }
-.submit-highlight { color: #00dc82 !important; font-weight: 700; text-decoration: none; }
-.slash { color: #334155; font-weight: 400; }
-.dropdown-wrapper { position: relative; display: inline-block; }
-.tools-btn { background: transparent; border: none; color: #38bdf8; font-weight: 700; font-size: 0.9rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 6px; display: flex; align-items: center; gap: 0.35rem; }
-.tools-btn:hover, .tools-btn.active { color: #7dd3fc; background: rgba(56, 189, 248, 0.12); }
-.arrow { font-size: 0.65rem; transition: transform 0.2s ease; color: #64748b; }
-.arrow.rotated { transform: rotate(180deg); color: #00dc82; }
-.right-actions { display: flex; align-items: center; gap: 1rem; }
-.lang-btn { background: #090d16; border: 1px solid #1e293b; color: #cbd5e1; padding: 0.35rem 0.7rem; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; }
-.btn-accedi { background: #00dc82; color: #020420; font-weight: 800; font-size: 0.85rem; border: none; padding: 0.45rem 1.1rem; border-radius: 6px; cursor: pointer; }
-.user-pill-btn { display: flex; align-items: center; gap: 0.55rem; background: #090d16; border: 1px solid #1e293b; padding: 0.3rem 0.75rem; border-radius: 9999px; color: #ffffff; cursor: pointer; }
-.pill-avatar { width: 24px; height: 24px; border-radius: 50%; background: rgba(0, 220, 130, 0.15); color: #00dc82; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; overflow: hidden; }
-.pill-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.pill-username { font-size: 0.85rem; font-weight: 700; color: #cbd5e1; }
-.menu-dropdown { position: absolute; top: calc(100% + 0.5rem); background: #090d16; border: 1px solid #1e293b; border-radius: 12px; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem; z-index: 100; }
-.tools-menu { left: 0; width: 270px; }
-.lang-menu { right: 0; width: 180px; }
-.profile-menu { right: 0; width: 250px; }
-.profile-header { padding: 0.4rem 0.6rem; display: flex; flex-direction: column; gap: 0.15rem; }
-.user-display-name { font-weight: 800; font-size: 0.92rem; color: #ffffff; }
-.user-role-badge { font-size: 0.72rem; color: #38bdf8; font-weight: 700; }
-.user-role-badge.admin { color: #00dc82; }
-.dropdown-divider { height: 1px; background: #1e293b; margin: 0.35rem 0; }
-.dropdown-group { display: flex; flex-direction: column; gap: 0.2rem; }
-.dropdown-label { font-size: 0.65rem; font-weight: 800; color: #00dc82; padding: 0.35rem 0.6rem 0.15rem; letter-spacing: 0.05em; text-transform: uppercase; }
-.menu-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.65rem; color: #cbd5e1; text-decoration: none; font-size: 0.85rem; font-weight: 600; border-radius: 6px; background: transparent; border: none; width: 100%; text-align: left; cursor: pointer; }
-.menu-item:hover { background: rgba(255, 255, 255, 0.05); color: #ffffff; }
-.menu-item.api-console-item { color: #38bdf8; }
-.menu-item.admin-control-item { color: #00dc82; font-weight: 700; }
-.item-text strong { display: block; font-size: 0.85rem; color: #f8fafc; }
-.item-text small { display: block; font-size: 0.7rem; color: #64748b; }
-.logout-item { color: #ef4444; }
-.logout-item:hover { background: rgba(239, 68, 68, 0.1); color: #f87171; }
 .fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.15s ease-out; }
 .fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; transform: translateY(-6px); }
 </style>

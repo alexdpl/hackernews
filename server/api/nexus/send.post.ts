@@ -2,11 +2,13 @@
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { pulseChatMessages, users, xpTransactions } from '~~/drizzle/schema'
+import { parseCookies, defineEventHandler, readBody } from 'h3'
 
 const PULSE_SYSTEM_PROMPT = `
 Sei "Pulse Nexus v2.5-GOLD", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse (DKP).
 Il tuo ruolo è fare da mentore tech, assistente ed entità di gamification per la community dei dev.
 Rispondi in modo professionale, carismatico, cyberpunk, conciso (max 3-4 frasi) e in italiano.
+Non usare formattazione Markdown complessa.
 `
 
 export default defineEventHandler(async (event) => {
@@ -38,6 +40,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 🔥 LOGICA XP DINAMICA
     let xpEarned = 10
     const lowerText = userText.toLowerCase()
     if (lowerText.includes('crawler') || lowerText.includes('auth') || lowerText.includes('neon') || lowerText.includes('drizzle')) xpEarned += 15
@@ -48,9 +51,9 @@ export default defineEventHandler(async (event) => {
     let currentLevel = 1
     let dbInstance: any = null
 
+    // 💾 1. SALVATAGGIO SU NEON DB
     try {
       dbInstance = await getDb()
-      
       if (dbInstance) {
         await dbInstance.insert(pulseChatMessages).values({
           username: username,
@@ -75,7 +78,7 @@ export default defineEventHandler(async (event) => {
 
           await dbInstance.insert(xpTransactions).values({
             userId: updatedUser.id,
-            action: `Nexus Send Message: ${userText.substring(0, 25)}...`,
+            action: `Nexus Chat: ${userText.substring(0, 25)}...`,
             points: xpEarned
           }).catch(() => {})
         }
@@ -84,27 +87,52 @@ export default defineEventHandler(async (event) => {
       console.warn('⚠️ [NEXUS DB WARN]:', dbErr?.message)
     }
 
+    // 🧠 2. CHIAMATA A GEMINI CON MODELLO MULTI-FALLBACK (Evita i blocchi per alto traffico)
     let aiResponseText = ''
-    try {
-      const config = useRuntimeConfig(event)
-      const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY
+    const modelsToTry = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-pro-latest']
 
-      if (geminiApiKey) {
-        const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`
-        const response: any = await $fetch(geminiEndpoint, {
-          method: 'POST',
-          body: {
-            contents: [{ role: 'user', parts: [{ text: `${PULSE_SYSTEM_PROMPT}\n\nUtente (${username}): ${userText}` }] }]
-          }
-        }).catch(() => null)
-        aiResponseText = response?.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      }
-    } catch (aiErr: any) {}
+    const config = useRuntimeConfig(event)
+    const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY
 
-    if (!aiResponseText) {
-      aiResponseText = `Elaborato dal Kernel 🧠 Ricevuto: "${userText}". Il modulo Nexus v2.5-GOLD è attivo. +${xpEarned} XP assegnati al tuo profilo!`
+    if (!geminiApiKey) {
+      throw new Error("API Key mancante nel runtime config o .env")
     }
 
+    for (const modelName of modelsToTry) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: `${PULSE_SYSTEM_PROMPT}\n\nUtente (${username}): ${userText}` }
+                ]
+              }
+            ]
+          })
+        })
+
+        const data: any = await response.json()
+
+        if (data && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+          aiResponseText = data.candidates[0].content.parts[0].text
+          break // Usciamo dal ciclo appena un modello risponde con successo!
+        }
+      } catch (err) {
+        console.warn(`⚠️ Tentativo fallito con il modello ${modelName}, passo al successivo...`)
+      }
+    }
+
+    // 🔄 3. FALLBACK DI EMERGENZA FINALE
+    if (!aiResponseText) {
+      aiResponseText = `⚡ [Nexus Core]: I server di Google sono momentaneamente sovraccarichi (High Demand). Ho comunque registrato il tuo messaggio e ti ho accreditato +${xpEarned} XP!`
+    }
+
+    // 💾 4. SALVATAGGIO RISPOSTA AI SU NEON DB
     try {
       if (dbInstance) {
         await dbInstance.insert(pulseChatMessages).values({
@@ -117,6 +145,7 @@ export default defineEventHandler(async (event) => {
       }
     } catch (_) {}
 
+    // 🚀 5. RISPOSTA AL FRONTEND VUE
     return {
       success: true,
       reply: aiResponseText,
@@ -134,7 +163,7 @@ export default defineEventHandler(async (event) => {
     
   } catch (fatalErr: any) {
     console.error('💥 [NEXUS FATAL ERROR]:', fatalErr)
-    const fallbackText = '⚡ [Nexus Engine]: Messaggio ricevuto con successo. Sistema v2.5-GOLD operativo.'
+    const fallbackText = '⚡ [Nexus Engine]: Messaggio ricevuto con successo. Sistema v2.5-GOLD operativo (Safe Mode).'
     return { 
       success: true, 
       reply: fallbackText,

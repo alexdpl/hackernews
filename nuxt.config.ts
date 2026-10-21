@@ -4,6 +4,15 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-09-25',
   devtools: { enabled: true },
   
+  runtimeConfig: {
+    // Le chiavi qui dentro sono disponibili SOLO lato server (nella cartella server/api)
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    
+    public: {
+      // Le chiavi qui sono visibili anche lato client (browser) - NON METTERE GEMINI QUI
+    }
+  },
+  
   app: {
     head: {
       link: [

@@ -1,6 +1,6 @@
-// app/components/DKPKernelBadge.vue
+<!-- app/components/DKPKernelBadge.vue -->
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, isRef } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed, isRef } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -9,7 +9,11 @@ const dbLatency = ref<number>(18)
 const isOpen = ref<boolean>(false)
 const isMeasuring = ref<boolean>(false)
 
-// Recupero dati utente reali tramite useFetch o useAuthCore
+// 🚀 FASE 3: Reattività Gamification per il Badge Floating
+const syncedXp = ref(0)
+const syncedLevel = ref(1)
+
+// Inizializza auth 
 const auth = useAuthCore() || {}
 
 const currentUser = computed(() => {
@@ -17,19 +21,31 @@ const currentUser = computed(() => {
   return auth.user || null
 })
 
-// Chiamata di fallback sicura all'API utente se l'auth store locale non ha ancora gli XP in chiaro
+// Chiamata di fallback sicura all'API utente
 const { data: userProfile } = await useFetch('/api/user/profile', {
-  // Esegue il fetch solo se l'utente loggato non ha già gli XP valorizzati
   immediate: !currentUser.value?.xp
 })
 
-// Valori reali dinamici con fallback a 0 se l'utente non è autenticato o è nuovo
-const userXp = computed(() => {
-  return currentUser.value?.xp ?? userProfile.value?.user?.xp ?? 0
+// 🚀 FASE 3: Funzione di sincronizzazione (Ascolta l'evento)
+const syncBadgeXp = async () => {
+  try {
+    const res: any = await $fetch('/api/user/xp/sync')
+    if (res && res.success) {
+      syncedXp.value = res.data.totalXp
+      syncedLevel.value = res.data.level
+    }
+  } catch (e) {
+    console.warn('Errore sync XP Kernel Badge:', e)
+  }
+}
+
+// Computiamo i valori mixando lo stato iniziale con quello sincronizzato
+const displayXp = computed(() => {
+  return syncedXp.value > 0 ? syncedXp.value : (currentUser.value?.xp ?? userProfile.value?.user?.xp ?? 0)
 })
 
-const userLevel = computed(() => {
-  return currentUser.value?.level ?? userProfile.value?.user?.level ?? 1
+const displayLevel = computed(() => {
+  return syncedLevel.value > 1 ? syncedLevel.value : (currentUser.value?.level ?? userProfile.value?.user?.level ?? 1)
 })
 
 // Calcolo tempo di idratazione e rendering pagina
@@ -56,6 +72,14 @@ watch(() => route.fullPath, () => {
 
 onMounted(() => {
   measurePerformance()
+  // 🚀 Ascolta l'evento globale lanciato da Chat e Editor!
+  window.addEventListener('dkp:xp_updated', syncBadgeXp)
+  // Eseguiamo un primo sync silente
+  if (currentUser.value?.id) syncBadgeXp()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('dkp:xp_updated', syncBadgeXp)
 })
 </script>
 
@@ -68,7 +92,7 @@ onMounted(() => {
       :class="{ active: isOpen, measuring: isMeasuring }"
       title="DKP Kernel Telemetry v2.5-GOLD — Clicca per espandere"
     >
-      <!-- LOGO DKP 3 FOGLI VERDI NEON (SVG NATIVO) -->
+      <!-- LOGO DKP 3 FOGLI VERDI NEON -->
       <svg class="dkp-logo-svg w-4 h-4 filter drop-shadow-[0_0_4px_rgba(0,220,130,0.6)] transition-all" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M6 10L16 4L26 10L16 16L6 10Z" fill="#00DC82" fill-opacity="0.9" />
         <path d="M6 16L16 10L26 16L16 22L6 16Z" fill="#00DC82" fill-opacity="0.6" />
@@ -104,7 +128,7 @@ onMounted(() => {
           <!-- WIDGET LIVE XP & GAMIFICATION -->
           <div class="metric-row flex justify-between items-center p-2.5 bg-emerald-950/30 border border-emerald-500/30 rounded-lg">
             <span class="label text-emerald-300 font-semibold flex items-center gap-1.5">🎮 DKP Gamification:</span>
-            <span class="value text-emerald-400 font-bold font-mono">{{ userXp }} XP <span class="text-[10px] text-slate-400">(Lv. {{ userLevel }})</span></span>
+            <span class="value text-emerald-400 font-bold font-mono">{{ displayXp }} XP <span class="text-[10px] text-slate-400">(Lv. {{ displayLevel }})</span></span>
           </div>
 
           <div class="metric-row flex justify-between items-center">
