@@ -51,7 +51,6 @@ async function quickLoginAdmin() {
 
 async function quickLoginUser() {
   isLoading.value = true
-  // Utente di test: assicurati che esista nel db o gestiscilo in api/auth/login.post.ts se vuoi un mock
   await login('dev_demo', 'demo123')
   isLoading.value = false
 }
@@ -109,7 +108,7 @@ function handleSocialLogin(provider: string) {
           </div>
         </div>
 
-        <!-- Form Autenticazione Credenziali (Fix Nomi per Password Manager) -->
+        <!-- Form Autenticazione Credenziali -->
         <form @submit.prevent="handleFormSubmit" class="auth-form">
           <div v-if="errorMessage" class="error-banner">
             ⚠️ {{ errorMessage }}
@@ -162,7 +161,7 @@ function handleSocialLogin(provider: string) {
         <!-- Divisore Sezione Social -->
         <div class="divider"><span>OPPURE CONTINUA CON</span></div>
 
-        <!-- Griglia Social Provider 2x2 -->
+        <!-- Griglia Social Provider (6 Attivi) -->
         <div class="social-grid">
           <button @click="handleSocialLogin('github')" type="button" class="social-btn github-btn">
             <span>🐙</span> GitHub
@@ -175,6 +174,12 @@ function handleSocialLogin(provider: string) {
           </button>
           <button @click="handleSocialLogin('linkedin')" type="button" class="social-btn linkedin-btn">
             <span>💼</span> LinkedIn
+          </button>
+          <button @click="handleSocialLogin('discord')" type="button" class="social-btn discord-btn">
+            <span>💬</span> Discord
+          </button>
+          <button @click="handleSocialLogin('bitbucket')" type="button" class="social-btn bitbucket-btn">
+            <span>🪣</span> Bitbucket
           </button>
         </div>
 
@@ -212,7 +217,6 @@ function handleSocialLogin(provider: string) {
   overflow: hidden;
 }
 
-/* Stile v2.5: Sottile bagliore in cima alla modale */
 .modal-box::before {
   content: '';
   position: absolute;
@@ -389,12 +393,21 @@ function handleSocialLogin(provider: string) {
 }
 .github-btn { background: rgba(2, 4, 32, 0.6); color: #00dc82; border-color: rgba(0, 220, 130, 0.3); }
 .github-btn:hover { background: rgba(0, 220, 130, 0.1); border-color: #00dc82; transform: translateY(-1px); }
+
 .google-btn { background: rgba(2, 4, 32, 0.6); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
 .google-btn:hover { background: rgba(56, 189, 248, 0.1); border-color: #38bdf8; transform: translateY(-1px); }
+
 .gitlab-btn { background: rgba(252, 109, 38, 0.05); color: #fc6d26; border-color: rgba(252, 109, 38, 0.3); }
 .gitlab-btn:hover { background: rgba(252, 109, 38, 0.15); transform: translateY(-1px); }
+
 .linkedin-btn { background: rgba(10, 102, 194, 0.05); color: #38bdf8; border-color: rgba(10, 102, 194, 0.3); }
 .linkedin-btn:hover { background: rgba(10, 102, 194, 0.15); transform: translateY(-1px); }
+
+.discord-btn { background: rgba(88, 101, 242, 0.05); color: #5865f2; border-color: rgba(88, 101, 242, 0.3); }
+.discord-btn:hover { background: rgba(88, 101, 242, 0.15); transform: translateY(-1px); }
+
+.bitbucket-btn { background: rgba(0, 82, 204, 0.05); color: #2684ff; border-color: rgba(0, 82, 204, 0.3); }
+.bitbucket-btn:hover { background: rgba(0, 82, 204, 0.15); transform: translateY(-1px); }
 
 .modal-fade-enter-active, .modal-fade-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: scale(0.95) translateY(10px); }

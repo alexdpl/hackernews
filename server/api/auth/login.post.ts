@@ -37,11 +37,12 @@ export default defineEventHandler(async (event) => {
       username: 'alexdpl',
       email: 'alex@devkernelpulse.org',
       role: 'admin',
+      avatar: 'https://github.com/alexdpl.png', // 🖼️ RIPRISTINATA IMMAGINE ADMIN!
       xp: 9999,
       level: 99
     }
 
-    // Settiamo il cookie lato server! Infallibile.
+    // Settiamo il cookie lato server
     setCookie(event, 'dkp_session', encodeURIComponent(JSON.stringify(adminUser)), {
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 1 settimana
@@ -58,7 +59,10 @@ export default defineEventHandler(async (event) => {
 
   // 👥 2. LOGIN NORMALE SU NEON DB (Per tutti gli altri utenti)
   try {
-    const db = getDb()
+    const db = await getDb()
+    if (!db) {
+      return { success: false, message: 'Database Neon non disponibile.' }
+    }
     
     // Cerca l'utente per email O username
     const result = await db.select().from(users).where(
@@ -70,7 +74,7 @@ export default defineEventHandler(async (event) => {
 
     const dbUser = result[0]
 
-    // NOTA: Check della password (se le hai criptate nel DB dovrai usare bcrypt)
+    // Check della password
     if (!dbUser || dbUser.passwordHash !== password) {
       return { success: false, message: 'Credenziali non valide.' }
     }
@@ -80,6 +84,7 @@ export default defineEventHandler(async (event) => {
       username: dbUser.username,
       email: dbUser.email,
       role: dbUser.role,
+      avatar: (dbUser as any).avatar || (dbUser.username === 'alexdpl' ? 'https://github.com/alexdpl.png' : undefined), // 🖼️ AVATAR DA DB O FALLBACK
       xp: dbUser.xp || 150,
       level: dbUser.level || 1
     }

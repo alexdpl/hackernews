@@ -2,15 +2,14 @@
 import { defineEventHandler, readBody, getCookie, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { users, xpTransactions } from '~~/drizzle/schema'
+import { xpTransactions } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event) || {}
+  const body = (await readBody(event)) || {}
   const { postId, text, userId } = body
   const numericPostId = Number(postId)
-  
-  // Estrazione sicura dell'autore (cookie di sessione o fallback)
-  let author = body.author || 'alexdpl'
+
+  let author = body.author || 'community'
   let targetUserId = userId ? Number(userId) : 1
 
   const sessionCookie = getCookie(event, 'dkp_session')
@@ -30,44 +29,43 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // Correzione v2.5-GOLD: getDb() è asincrono
     const db = await getDb()
     if (!db) {
       throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
     }
 
-    // 1. Assicura l'esistenza della tabella
+    // 1. Assicura tabella 'comments' unificata
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         post_id INT NOT NULL,
-        author VARCHAR(255) NOT NULL,
+        author VARCHAR(255) NOT NULL DEFAULT 'community',
         text TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
-      )
-    `)
+      );
+    `).catch(() => {})
 
     // 2. Inserimento del nuovo commento
     const result: any = await db.execute(sql`
       INSERT INTO comments (post_id, author, text)
       VALUES (${numericPostId}, ${author}, ${text.trim()})
-      RETURNING id, post_id AS "postId", author, text, created_at AS "createdAt"
+      RETURNING id, post_id AS "postId", author, text, created_at AS "createdAt";
     `)
 
     const newComment = Array.isArray(result) ? result[0] : (result?.rows?.[0] || null)
 
-    // 3. Aggiornamento contatore dei commenti nella tabella 'posts'
+    // 3. Aggiornamento tollerante del contatore commenti
     await db.execute(sql`
       UPDATE posts
       SET comments_count = COALESCE(comments_count, 0) + 1
-      WHERE id = ${numericPostId}
-    `)
+      WHERE id = ${numericPostId};
+    `).catch(() => {})
 
-    // 4. GAMIFICATION v2.5-GOLD: Assegnazione +10 XP all'utente per il commento pubblicato
+    // 4. Gamification (+10 XP)
     const rewardXp = 10
     await db.execute(sql`
-      UPDATE users SET xp = COALESCE(xp, 0) + ${rewardXp} WHERE id = ${targetUserId}
-    `)
+      UPDATE users SET xp = COALESCE(xp, 0) + ${rewardXp} WHERE id = ${targetUserId};
+    `).catch(() => {})
 
     await db.insert(xpTransactions).values({
       userId: targetUserId,
@@ -82,6 +80,7 @@ export default defineEventHandler(async (event) => {
       xpAwarded: rewardXp
     }
   } catch (err: any) {
+    console.error('❌ [COMMENTS POST ERROR]:', err)
     if (err.statusCode) throw err
     throw createError({
       statusCode: 500,

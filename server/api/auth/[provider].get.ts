@@ -48,6 +48,28 @@ export default defineEventHandler(async (event) => {
       reputation: 500,
       xp: 500,
       authenticated: true
+    },
+    discord: {
+      id: 105,
+      username: 'alex_discord',
+      email: 'alexdpl@discord.gg',
+      role: 'user',
+      avatar: undefined,
+      bio: 'Discord Community Verified Developer',
+      reputation: 420,
+      xp: 420,
+      authenticated: true
+    },
+    bitbucket: {
+      id: 106,
+      username: 'alex_bitbucket',
+      email: 'alexdpl@atlassian.com',
+      role: 'user',
+      avatar: undefined,
+      bio: 'Bitbucket Enterprise Developer',
+      reputation: 480,
+      xp: 480,
+      authenticated: true
     }
   }
 
@@ -67,7 +89,7 @@ export default defineEventHandler(async (event) => {
     maxAge: 60 * 60 * 24 * 7 // 1 settimana
   })
 
-  // Reindirizzamento logico: Admin va alla dashboard Admin, User alla sua area.
+  // Reindirizzamento logico: Admin va alla dashboard Admin, User alla sua area
   const targetUrl = (user.role === 'admin' || user.username === 'alexdpl') ? '/admin' : '/user/dashboard'
   return sendRedirect(event, targetUrl)
 })

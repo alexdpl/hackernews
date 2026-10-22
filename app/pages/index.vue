@@ -1,63 +1,31 @@
 <!-- app/pages/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
-const route = useRoute()
-const router = useRouter()
-
-// 1. Riconoscimento Dinamico Categoria
-const currentCategory = computed(() => {
-  const qType = route.query.type?.toString().toLowerCase()
-  const path = route.path.toLowerCase()
-
-  if (qType?.includes('ask') || path.includes('/ask')) return 'ask'
-  if (qType?.includes('show') || path.includes('/show')) return 'show'
-  if (qType?.includes('job') || path.includes('/jobs')) return 'jobs'
-  return 'news'
+// Fetch dal feed crawler del Neon DB (15 notizie per pagina)
+const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
+  query: { type: 'news', page: 1, limit: 15 }
 })
 
-// 2. Intestazioni Dinamiche
-const headerInfo = computed(() => {
-  switch (currentCategory.value) {
-    case 'ask':
-      return { title: 'Ask DKP Community', badge: 'Q&A v2.5', subtitle: 'Domande architetturali, dubbi tecnici e discussioni della community.' }
-    case 'show':
-      return { title: 'Show DKP Projects', badge: 'Showcase v2.5', subtitle: 'Progetti Open Source, snippet e repository della community.' }
-    case 'jobs':
-      return { title: 'Tech Jobs Hub', badge: 'Remote v2.5', subtitle: 'Le migliori opportunità lavorative tech e posizioni da remoto.' }
-    default:
-      return { title: 'Global Tech Feed', badge: 'v2.5-GOLD', subtitle: 'Le migliori notizie, articoli e discussioni verificate dal DKP Vault.' }
-  }
+// Normalizzazione e sanitizzazione dei dati del crawler
+const feedList = computed(() => {
+  const raw = responseData.value?.stories || responseData.value?.data || []
+  return raw.map((item: any) => ({
+    ...item,
+    author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
+    url: item.url || `/item/${item.id}`,
+    domain: item.domain || (item.url && !item.url.startsWith('/') ? new URL(item.url).hostname.replace('www.', '') : 'devkernelpulse.org'),
+    points: item.points || 1,
+    comments_count: item.comments_count || item.commentsCount || 0,
+    xp_awarded: item.xp_awarded || 15
+  }))
 })
 
-useHead({
-  title: computed(() => `${headerInfo.value.title} | DevKernelPulse`),
-  meta: [ { name: 'description', content: headerInfo.value.subtitle } ]
-})
+const pagination = computed(() => responseData.value?.pagination || {})
+const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || pagination.value?.totalItems > 15)
 
-// Paginazione dalla query
-const currentPage = computed(() => {
-  const p = parseInt(route.query.page as string)
-  return isNaN(p) || p < 1 ? 1 : p
-})
-
-// 3. FETCH DAL NUOVO ENDPOINT PULSE STORIES (Tabella pulse_stories)
-const { data: apiResponse, pending, refresh } = await useFetch('/api/pulse/stories', {
-  query: {
-    type: currentCategory,
-    page: currentPage
-  },
-  watch: [currentCategory, currentPage]
-})
-
-const paginatedPosts = computed(() => (apiResponse.value as any)?.stories || [])
-const paginationMeta = computed(() => (apiResponse.value as any)?.pagination || { totalPages: 1 })
-const totalPages = computed(() => paginationMeta.value.totalPages || 1)
-const itemsPerPage = 15
-
-// 4. Recupero articoli interni in evidenza per la sezione Vault
+// Articoli consigliati dal Vault
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
@@ -66,157 +34,95 @@ onMounted(async () => {
     const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
     featuredArticles.value = raw.slice(0, 2)
   } catch (err) {
-    console.error('Errore recupero articoli in evidenza:', err)
+    console.error('Errore recupero articoli Vault:', err)
   }
 })
 
-// Cambio pagina con scroll
-function changePage(newPage: number) {
-  if (newPage >= 1 && newPage <= totalPages.value) {
-    router.push({ query: { ...route.query, page: newPage } })
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }
-}
-
-// Logica Voto Reattiva
-const voteStory = async (post: any) => {
-  try {
-    const res: any = await $fetch('/api/pulse/vote', {
-      method: 'POST',
-      body: { storyId: post.id, userId: 1 }
-    })
-    if (res?.success) {
-      refresh()
-    }
-  } catch {
-    // Gestione errore voto
-  }
-}
-
-// Helper Formattazione Tempo
-function formatTime(dateStr: string | undefined): string {
-  if (!dateStr) return 'di recente'
-  try {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-
-    if (diffHours < 1) return 'poco fa'
-    if (diffHours < 24) return `${diffHours}h fa`
-    const diffDays = Math.floor(diffHours / 24)
-    if (diffDays === 1) return 'ieri'
-    return `${diffDays}g fa`
-  } catch {
-    return 'di recente'
-  }
-}
+useHead({
+  title: 'Tech News Feed v2.5-GOLD - DevKernelPulse',
+  meta: [
+    { name: 'description', content: 'Ultime notizie e articoli dal web raccolti in tempo reale in ordine cronologico.' }
+  ]
+})
 </script>
 
 <template>
-  <div class="feed-container">
+  <div class="feed-page-container">
     
-    <!-- HEADER FEED DINAMICO -->
+    <!-- HEADER TECH NEWS FEED -->
     <div class="feed-header">
-      <div class="feed-title-section">
+      <div class="header-text">
+        <div class="feed-badge">
+          v2.5-GOLD
+        </div>
         <h1 class="feed-title">
-          {{ headerInfo.title }} 
-          <span class="highlight-badge">{{ headerInfo.badge }}</span>
+          Tech News <span class="highlight-text">Feed</span>
         </h1>
         <p class="feed-subtitle">
-          {{ headerInfo.subtitle }}
+          Ultime notizie e articoli dal web raccolti in tempo reale in ordine cronologico.
         </p>
       </div>
 
-      <div class="feed-actions">
-        <NuxtLink to="/user/dashboard?tab=content" class="submit-btn">
+      <div class="header-action">
+        <NuxtLink to="/submit" class="submit-btn">
           ⚡ Invia Post (+15 XP)
         </NuxtLink>
       </div>
     </div>
 
-    <!-- SPINNER CARICAMENTO NEON DB -->
-    <div v-if="pending" class="loading-feed">
-      <span class="spinner">⚡</span> Connessione al Vault Neon DB in corso...
+    <!-- CARICAMENTO FEED -->
+    <div v-if="pending" class="loading-state">
+      <span class="spinner">⚡</span> Caricamento Tech News dal DB Neon...
     </div>
 
-    <!-- LISTA NOTIZIE / POST REALI DA NEON DB -->
-    <div v-else-if="paginatedPosts && paginatedPosts.length > 0" class="story-list">
-      <article 
-        v-for="(post, index) in paginatedPosts" 
-        :key="post.id || index" 
-        class="story-card group hover:-translate-y-1 transition-all hover:shadow-[0_4px_20px_rgba(0,220,130,0.15)]"
-      >
-        <!-- BOTTONE VOTAZIONE / KARMA LIKES -->
-        <button 
-          @click="voteStory(post)" 
-          class="vote-btn" 
-          :class="{ voted: post.voted }"
-          title="Accendi Kernel (+5 XP)"
+    <!-- FEED NOTIZIE CRAWLER -->
+    <div v-else-if="feedList.length > 0">
+      <div class="feed-list">
+        <article 
+          v-for="(item, index) in feedList" 
+          :key="item.id || index" 
+          class="feed-card"
         >
-          <span class="vote-icon">▲</span>
-          <span class="vote-count">{{ post.points || 0 }}</span>
-        </button>
+          <div class="card-body">
+            <div class="title-row">
+              <span class="item-index">{{ index + 1 }}.</span>
+              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="item-title">
+                {{ item.title }}
+              </a>
+              <span v-if="item.domain" class="item-domain">({{ item.domain }})</span>
+            </div>
 
-        <!-- CONTENUTO NOTIZIA -->
-        <div class="story-content">
-          <div class="story-main">
-            <span class="story-index">{{ (currentPage - 1) * itemsPerPage + index + 1 }}.</span>
-            
-            <a :href="post.url" target="_blank" class="story-title group-hover:text-emerald-400 transition-colors">
-              {{ post.title }}
-            </a>
-
-            <span v-if="post.domain" class="story-category-badge">
-              {{ post.domain }}
-            </span>
+            <div class="item-meta">
+              <span class="source-pill">
+                📡 {{ item.domain }}
+              </span>
+              <span class="meta-dot">•</span>
+              <span class="author-tag">👤 @{{ item.author }}</span>
+              <span class="meta-dot">•</span>
+              <span class="points-tag">▲ {{ item.points }} pts</span>
+              <span class="meta-dot">•</span>
+              <span class="xp-tag">⭐ +{{ item.xp_awarded }} XP</span>
+              <span class="meta-dot">•</span>
+              <NuxtLink :to="`/item/${item.id}`" class="comments-link">
+                💬 {{ item.comments_count }} commenti
+              </NuxtLink>
+            </div>
           </div>
-
-          <!-- METADATI -->
-          <div class="story-meta mt-1">
-            <span>By <strong class="author-tag">@{{ post.author || 'community' }}</strong></span>
-            <span class="meta-dot">•</span>
-            <span class="time-tag">⏱️ {{ formatTime(post.created_at) }}</span>
-            <span class="meta-dot">•</span>
-            <span class="views-tag">⚡ {{ post.xp_awarded || 15 }} XP</span>
-          </div>
-        </div>
-      </article>
-
-      <!-- BARRA DI PAGINAZIONE NUMERATA -->
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          @click="changePage(currentPage - 1)" 
-          :disabled="currentPage <= 1"
-          class="page-btn"
-        >
-          ◀ Prec
-        </button>
-
-        <span class="page-info">
-          Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di <strong>{{ totalPages }}</strong>
-        </span>
-
-        <button 
-          @click="changePage(currentPage + 1)" 
-          :disabled="currentPage >= totalPages"
-          class="page-btn"
-        >
-          Succ ▶
-        </button>
+        </article>
+      </div>
+      
+      <!-- BOTTONE PAGINAZIONE: punta a /news/2 del feed crawler -->
+      <div v-if="hasMore" class="mt-6 flex justify-center">
+        <NuxtLink to="/news/2" class="more-btn">
+          Vedi altre notizie ➔
+        </NuxtLink>
       </div>
     </div>
 
-    <!-- EMPTY STATE FALLBACK -->
-    <div v-else class="empty-feed">
-      <div class="text-4xl mb-4">📭</div>
-      <p>Nessun contenuto trovato nel Vault per questa sezione. Esegui il Crawler dal pannello Admin!</p>
-      <NuxtLink to="/admin/crawler" class="submit-btn-inline mt-4 inline-block">Vai al Crawler Admin 🤖</NuxtLink>
+    <div v-else class="empty-state">
+      <p>📭 Nessuna notizia presente nel Tech News Feed.</p>
     </div>
 
-    <!-- 🟢 SEZIONE VAULT (Consigliati) -->
     <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
       <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
       <div class="recommended-grid">
@@ -233,56 +139,50 @@ function formatTime(dateStr: string | undefined): string {
       </div>
     </div>
 
-    <!-- 🟢 BANNER DKP ADS STRIP (Posizionato alla fine, perfetto) -->
-    <DkpAdStrip :categoryTag="`DKP ${currentCategory.toUpperCase()} SPONSORED FEED`" />
-
+    <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
   </div>
 </template>
 
 <style scoped>
-.feed-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
-.feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #1e293b; flex-wrap: wrap; gap: 1rem; }
-.feed-title { font-size: 1.75rem; font-weight: 900; margin: 0; color: #ffffff; }
-.highlight-badge { font-size: 0.75rem; background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); padding: 0.2rem 0.5rem; border-radius: 6px; vertical-align: middle; margin-left: 0.5rem; }
-.feed-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0.25rem 0 0 0; }
-.submit-btn { background: #00dc82; color: #020420; font-weight: 800; font-size: 0.85rem; padding: 0.6rem 1.1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; box-shadow: 0 0 15px rgba(0, 220, 130, 0.2); }
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); text-decoration: none; }
+.feed-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
 
-.story-list { display: flex; flex-direction: column; gap: 0.75rem; }
-.story-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 0.9rem 1.1rem; display: flex; align-items: center; gap: 1.25rem; }
-.story-card:hover { border-color: rgba(0, 220, 130, 0.4); }
+.feed-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.feed-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
+.feed-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.highlight-text { color: #00dc82; }
+.feed-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
 
-.vote-btn { background: #020420; border: 1px solid #1e293b; color: #94a3b8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 46px; transition: all 0.2s; }
-.vote-btn:hover { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.05); }
-.vote-btn.voted { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; color: #00dc82; }
-.vote-icon { font-size: 0.8rem; }
-.vote-count { font-size: 0.85rem; font-weight: 800; margin-top: 0.1rem; }
+.submit-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
+.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
-.story-content { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 0; }
-.story-main { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.story-index { font-size: 0.85rem; color: #64748b; font-weight: 700; }
-.story-title { color: #f8fafc; font-size: 1.05rem; font-weight: 700; text-decoration: none; line-height: 1.3; }
-.story-title:hover { color: #00dc82; }
-.story-category-badge { font-size: 0.65rem; text-transform: uppercase; font-weight: 800; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 0.15rem 0.4rem; border-radius: 4px; letter-spacing: 0.05em; }
+.feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
+.feed-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; transition: border-color 0.2s ease; }
+.feed-card:hover { border-color: rgba(0, 220, 130, 0.4); }
 
-.story-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.author-tag { color: #cbd5e1; font-weight: 600; }
+.card-body { display: flex; flex-direction: column; gap: 0.4rem; }
+.title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.item-index { font-size: 1rem; color: #00dc82; font-weight: 900; }
+.item-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
+.item-title:hover { color: #00dc82; text-decoration: underline; }
+.item-domain { font-size: 0.82rem; color: #64748b; font-weight: 500; }
+
+.item-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.source-pill { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; }
+.author-tag { color: #a78bfa; font-weight: 600; }
+.points-tag { color: #f59e0b; font-weight: 800; }
+.xp-tag { color: #00dc82; font-weight: 800; }
+.comments-link { color: #38bdf8; text-decoration: none; font-weight: 700; }
+.comments-link:hover { text-decoration: underline; color: #00dc82; }
 .meta-dot { color: #334155; }
-.views-tag { color: #94a3b8; }
 
-.pagination-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #1e293b; }
-.page-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 700; padding: 0.55rem 1.1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
-.page-btn:hover:not(:disabled) { border-color: #00dc82; box-shadow: 0 0 10px rgba(0, 220, 130, 0.25); }
-.page-btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: #1e293b; color: #64748b; }
-.page-info { font-size: 0.85rem; color: #94a3b8; }
+.mt-6 { margin-top: 1.5rem; }
+.flex { display: flex; }
+.justify-center { justify-content: center; }
+.more-btn { background: #090d16; color: #00dc82; border: 1px solid #1e293b; padding: 0.6rem 1.5rem; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.2s; }
+.more-btn:hover { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
 
-.loading-feed, .empty-feed { text-align: center; padding: 4rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; }
-.spinner { display: inline-block; animation: spin 1.5s linear infinite; font-size: 1.5rem; margin-right: 0.5rem; vertical-align: middle; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-.submit-btn-inline { color: #020420; background: #00dc82; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 700; transition: background 0.2s; }
-.submit-btn-inline:hover { background: #38bdf8; }
+.loading-state, .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
 
-/* Stili Vault Section */
 .vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
 .recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
 .recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }

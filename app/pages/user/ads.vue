@@ -1,11 +1,30 @@
 <!-- app/pages/user/ads.vue -->
 <script setup lang="ts">
 import DkpAdManager from '~/components/dashboard/DkpAdManager.vue'
+import { ref, computed } from 'vue'
 
 useDkpSeo({ title: 'Gestione Campagne DKP Ads - DevKernelPulse' })
 
-// Richiamiamo le campagne attive dal DB per le statistiche in tempo reale
-const { data: activeCampaigns, refresh, pending } = await useFetch('/api/v2.5/ads/active')
+// 1. Stato della paginazione
+const currentPage = ref(1)
+
+// 2. UNICO Fetch reattivo: osserva currentPage e rifà la chiamata quando cambia
+const { data: responseData, pending, refresh } = await useFetch('/api/v2.5/ads/manage', {
+  query: computed(() => ({ page: currentPage.value, limit: 5 })),
+  watch: [currentPage]
+})
+
+// 3. Estrazione sicura dei dati
+const activeCampaigns = computed(() => responseData.value?.data || [])
+const hasMore = computed(() => responseData.value?.pagination?.hasMore || false)
+
+// 4. Funzioni per cambiare pagina
+const nextPage = () => {
+  if (hasMore.value && !pending.value) currentPage.value++
+}
+const prevPage = () => {
+  if (currentPage.value > 1 && !pending.value) currentPage.value--
+}
 </script>
 
 <template>
@@ -35,27 +54,55 @@ const { data: activeCampaigns, refresh, pending } = await useFetch('/api/v2.5/ad
           Sincronizzazione col DB Neon in corso...
         </div>
 
-        <div v-else-if="activeCampaigns && activeCampaigns.length > 0" class="campaigns-list mt-4">
-          <div v-for="ad in activeCampaigns" :key="ad.id" class="campaign-card">
-            <div class="card-top">
-              <span class="status-dot"></span>
-              <span class="category-tag">{{ ad.categoryTag || 'SPONSOR' }}</span>
-            </div>
-            
-            <h4 class="campaign-title">{{ ad.title }}</h4>
-            <a :href="ad.targetUrl" target="_blank" class="campaign-url">🔗 Verifica Link Affiliato</a>
-            
-            <div class="stats-footer">
-              <div class="stat-box">
-                <span class="stat-label">Budget Residuo</span>
-                <span class="stat-value font-mono">{{ ad.budgetCredits }} <small>Click</small></span>
+        <div v-else-if="activeCampaigns && activeCampaigns.length > 0" class="mt-4">
+          
+          <!-- Lista Campagne -->
+          <div class="campaigns-list">
+            <div v-for="ad in activeCampaigns" :key="ad.id" class="campaign-card">
+              <div class="card-top">
+                <span class="status-dot"></span>
+                <span class="category-tag">{{ ad.categoryTag || 'SPONSOR' }}</span>
               </div>
-              <div class="stat-box right">
-                <span class="stat-label">Stato</span>
-                <span class="stat-value text-emerald-400">{{ ad.status }}</span>
+              
+              <h4 class="campaign-title">{{ ad.title }}</h4>
+              <a :href="ad.targetUrl" target="_blank" class="campaign-url">🔗 Verifica Link Affiliato</a>
+              
+              <div class="stats-footer">
+                <div class="stat-box">
+                  <span class="stat-label">Budget Residuo</span>
+                  <span class="stat-value font-mono">{{ ad.budgetCredits }} <small>Click</small></span>
+                </div>
+                <div class="stat-box right">
+                  <span class="stat-label">Stato</span>
+                  <span class="stat-value text-emerald-400">{{ ad.status }}</span>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- 🟢 Controlli Paginazione (5 per pagina) -->
+          <div class="flex justify-between items-center mt-6 p-4 border-t border-slate-800">
+            <button 
+              @click="prevPage" 
+              :disabled="currentPage === 1 || pending"
+              class="px-4 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-emerald-400 font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              &lt; Precedenti
+            </button>
+            
+            <span class="text-slate-400 text-sm font-mono font-bold">
+              Pagina {{ currentPage }}
+            </span>
+            
+            <button 
+              @click="nextPage" 
+              :disabled="!hasMore || pending"
+              class="px-4 py-2 bg-slate-900 border border-slate-700 rounded text-sm text-emerald-400 font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Successivi &gt;
+            </button>
+          </div>
+
         </div>
 
         <div v-else class="empty-stats mt-4">
@@ -71,7 +118,7 @@ const { data: activeCampaigns, refresh, pending } = await useFetch('/api/v2.5/ad
 <style scoped>
 .user-ads-page {
   padding: 2rem;
-  max-width: 1200px; /* Allargata per ospitare due colonne */
+  max-width: 1200px;
   margin: 0 auto;
   font-family: system-ui, sans-serif;
 }
@@ -86,7 +133,7 @@ const { data: activeCampaigns, refresh, pending } = await useFetch('/api/v2.5/ad
 
 @media (max-width: 768px) {
   .ads-dashboard-grid {
-    grid-template-columns: 1fr; /* Su mobile tornano impilate verticalmente */
+    grid-template-columns: 1fr;
   }
 }
 

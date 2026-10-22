@@ -16,7 +16,6 @@ async function handleLogin() {
   isLoading.value = true
 
   try {
-    // Chiamata all'endpoint Nitro /api/auth/login
     const res = await $fetch('/api/auth/login', {
       method: 'POST',
       body: { username: username.value, password: password.value }
@@ -33,7 +32,6 @@ async function handleLogin() {
       errorMessage.value = res?.message || 'Credenziali non valide.'
     }
   } catch (e: any) {
-    // Fallback reattivo per sviluppo e test locale
     if (username.value.trim()) {
       await login(username.value, password.value)
     } else {
@@ -101,7 +99,7 @@ function handleSocialLogin(provider: string) {
         <span>OPPURE CONTINUA CON</span>
       </div>
 
-      <!-- Griglia Social Provider 2x2 Attivi -->
+      <!-- Griglia Social Provider 6 Attivi -->
       <div class="social-grid">
         <button @click="handleSocialLogin('github')" class="social-btn github-btn">
           <span>🐙</span> GitHub
@@ -117,6 +115,14 @@ function handleSocialLogin(provider: string) {
 
         <button @click="handleSocialLogin('linkedin')" class="social-btn linkedin-btn">
           <span>💼</span> LinkedIn
+        </button>
+
+        <button @click="handleSocialLogin('discord')" class="social-btn discord-btn">
+          <span>💬</span> Discord
+        </button>
+
+        <button @click="handleSocialLogin('bitbucket')" class="social-btn bitbucket-btn">
+          <span>🪣</span> Bitbucket
         </button>
       </div>
 
@@ -140,7 +146,7 @@ function handleSocialLogin(provider: string) {
   border-radius: 14px;
   padding: 2.5rem;
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 220, 130, 0.08);
   text-align: center;
   color: #f8fafc;
@@ -294,7 +300,6 @@ function handleSocialLogin(provider: string) {
   color: #00dc82;
   border-color: rgba(0, 220, 130, 0.3);
 }
-
 .github-btn:hover {
   background: rgba(0, 220, 130, 0.1);
   border-color: #00dc82;
@@ -305,7 +310,6 @@ function handleSocialLogin(provider: string) {
   color: #38bdf8;
   border-color: rgba(56, 189, 248, 0.3);
 }
-
 .google-btn:hover {
   background: rgba(56, 189, 248, 0.1);
   border-color: #38bdf8;
@@ -316,7 +320,6 @@ function handleSocialLogin(provider: string) {
   color: #fc6d26;
   border-color: rgba(252, 109, 38, 0.3);
 }
-
 .gitlab-btn:hover {
   background: rgba(252, 109, 38, 0.2);
 }
@@ -326,8 +329,27 @@ function handleSocialLogin(provider: string) {
   color: #38bdf8;
   border-color: rgba(10, 102, 194, 0.3);
 }
-
 .linkedin-btn:hover {
   background: rgba(10, 102, 194, 0.2);
+}
+
+.discord-btn {
+  background: rgba(88, 101, 242, 0.1);
+  color: #5865f2;
+  border-color: rgba(88, 101, 242, 0.3);
+}
+.discord-btn:hover {
+  background: rgba(88, 101, 242, 0.25);
+  border-color: #5865f2;
+}
+
+.bitbucket-btn {
+  background: rgba(0, 82, 204, 0.1);
+  color: #2684ff;
+  border-color: rgba(0, 82, 204, 0.3);
+}
+.bitbucket-btn:hover {
+  background: rgba(0, 82, 204, 0.25);
+  border-color: #2684ff;
 }
 </style>

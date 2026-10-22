@@ -2,11 +2,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-defineProps({
-  categoryTag: {
-    type: String,
-    default: 'DKP ADS SPONSORED FEED'
-  }
+// Nel DkpAdStrip.vue
+const props = defineProps({ categoryTag: { type: String, default: 'DKP Ads Feed' } })
+
+const { data: adData } = await useFetch('/api/v2.5/ads/active', {
+  query: { tag: props.categoryTag },
+  transform: (res) => res?.ads || []
 })
 
 // 1. I nostri "House Ads" di riserva (fallback se il DB è vuoto o ha meno di 3 sponsor attivi)

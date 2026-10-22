@@ -7,7 +7,7 @@ export interface DkpUser {
   avatar?: string
   bio?: string
   reputation?: number
-  provider?: 'local' | 'github' | 'google' | 'linkedin' | 'gitlab'
+  provider?: 'local' | 'github' | 'google' | 'linkedin' | 'gitlab' | 'discord' | 'bitbucket' // 🟢 Tipi aggiornati
 }
 
 export function useAuthCore() {
@@ -20,10 +20,14 @@ export function useAuthCore() {
   // Inizializza la sessione (Server Cookie + LocalStorage Fallback)
   async function initAuth() {
     if (import.meta.client) {
-      // 1. Tenta prima di recuperare la sessione attiva impostata dal Server (es. Social OAuth Redirect)
+      // 1. Tenta prima di recuperare la sessione attiva dal Server
       try {
         const data = await $fetch<{ authenticated: boolean; user: DkpUser }>('/api/auth/me')
         if (data?.authenticated && data?.user) {
+          // 🟢 Assicura avatar per alexdpl se assente nel cookie
+          if (data.user.username?.toLowerCase() === 'alexdpl' && !data.user.avatar) {
+            data.user.avatar = 'https://github.com/alexdpl.png'
+          }
           currentUser.value = data.user
           localStorage.setItem('dkp_session_user', JSON.stringify(data.user))
           return
@@ -37,7 +41,11 @@ export function useAuthCore() {
         const savedUser = localStorage.getItem('dkp_session_user')
         if (savedUser) {
           try {
-            currentUser.value = JSON.parse(savedUser)
+            const parsed = JSON.parse(savedUser)
+            if (parsed.username?.toLowerCase() === 'alexdpl' && !parsed.avatar) {
+              parsed.avatar = 'https://github.com/alexdpl.png'
+            }
+            currentUser.value = parsed
           } catch {
             localStorage.removeItem('dkp_session_user')
           }
@@ -58,24 +66,29 @@ export function useAuthCore() {
   async function login(usernameOrEmail: string, password?: string) {
     let userData: DkpUser
 
+    const isAlexAdmin = 
+      usernameOrEmail.toLowerCase() === 'alexdpl' || 
+      usernameOrEmail.toLowerCase() === 'admin' ||
+      usernameOrEmail.toLowerCase().includes('alexdpl')
+
     try {
       // Tenta il login tramite API Server
       const res = await $fetch<{ success: boolean; user: DkpUser }>('/api/auth/login', {
         method: 'POST',
         body: { username: usernameOrEmail, password }
       })
+
       if (res?.success && res?.user) {
-        userData = res.user
+        userData = {
+          ...res.user,
+          // 🟢 Garantisce l'avatar dell'admin anche se il server non lo restituisce
+          avatar: res.user.avatar || (isAlexAdmin ? 'https://github.com/alexdpl.png' : undefined)
+        }
       } else {
         throw new Error('Autenticazione fallita')
       }
     } catch {
-      // Fallback locale in caso di assenza server
-      const isAlexAdmin = 
-        usernameOrEmail.toLowerCase() === 'alexdpl' || 
-        usernameOrEmail.toLowerCase() === 'admin' ||
-        usernameOrEmail.toLowerCase().includes('admin')
-
+      // Fallback locale in caso di assenza server o test offline
       userData = {
         id: isAlexAdmin ? 1 : Date.now(),
         username: isAlexAdmin ? 'alexdpl' : usernameOrEmail.split('@')[0],
@@ -92,15 +105,17 @@ export function useAuthCore() {
 
     if (import.meta.client) {
       localStorage.setItem('dkp_session_user', JSON.stringify(userData))
+      
+      // 🟢 Codifica corretta del cookie per allinearlo al server H3
       const cookie = useCookie('dkp_session')
-      cookie.value = JSON.stringify(userData)
+      cookie.value = encodeURIComponent(JSON.stringify(userData))
     }
 
     closeAuthModal()
 
     // Redirect intelligenti dopo il login
     const router = useRouter()
-    if (userData.role === 'admin') {
+    if (userData.role === 'admin' || userData.username === 'alexdpl') {
       await router.push('/admin')
     } else {
       await router.push('/user/dashboard')
