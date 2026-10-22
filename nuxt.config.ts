@@ -5,11 +5,20 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   
   runtimeConfig: {
-    // Le chiavi qui dentro sono disponibili SOLO lato server (nella cartella server/api)
+    // Credenziali e chiavi server-side protette
     geminiApiKey: process.env.GEMINI_API_KEY,
+    databaseUrl: process.env.DATABASE_URL || '',
+
+    smtpHost: process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com',
+    smtpPort: Number(process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587),
+    smtpUser: process.env.SMTP_USER || process.env.NUXT_SMTP_USER || '',
+    smtpPass: process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || '',
+    smtpFrom: process.env.SMTP_FROM || process.env.NUXT_SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>',
     
     public: {
-      // Le chiavi qui sono visibili anche lato client (browser) - NON METTERE GEMINI QUI
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org',
+      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
+      mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'
     }
   },
   
@@ -45,7 +54,6 @@ export default defineNuxtConfig({
     '~/assets/css/main.css'
   ],
 
-  // Forziamo Nuxt a non iniettare nesting automatico se non lo vogliamo
   postcss: {
     plugins: {
       'tailwindcss/nesting': false,
@@ -62,7 +70,7 @@ export default defineNuxtConfig({
     appManifest: false
   },
 
-  // 🟢 RISOLUZIONE ASSOLUTA ESM (IL SEGRETO PER NON FAR CRASHARE DRIZZLE/NITRO)
+  // 🟢 ALIAS ESSENZIALI (Drizzle & Core)
   alias: {
     '~~/drizzle': fileURLToPath(new URL('./drizzle', import.meta.url)),
     '@core': fileURLToPath(new URL('./devkernelpulse-core', import.meta.url)),
@@ -71,35 +79,13 @@ export default defineNuxtConfig({
   imports: {
     dirs: [
       '~/composables',
-      '~/utils',
-      '~~/dkp-proprietary-plugins/*/composables'
+      '~/utils'
     ]
   },
 
   components: {
     dirs: [
-      '~/components',
-      {
-        path: '~~/dkp-proprietary-plugins',
-        pathPrefix: false,
-        extensions: ['.vue']
-      }
+      '~/components'
     ]
-  },
-
-  runtimeConfig: {
-    databaseUrl: process.env.DATABASE_URL || '',
-
-    smtpHost: process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com',
-    smtpPort: Number(process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587),
-    smtpUser: process.env.SMTP_USER || process.env.NUXT_SMTP_USER || '',
-    smtpPass: process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || '',
-    smtpFrom: process.env.SMTP_FROM || process.env.NUXT_SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>',
-
-    public: {
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org',
-      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
-      mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'
-    }
   }
 })

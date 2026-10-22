@@ -1,11 +1,14 @@
 <!-- app/pages/[feed]/[page].vue -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const route = useRoute()
 
 const feedType = computed(() => (route.params.feed as string) || 'news')
 const pageNumber = computed(() => parseInt(route.params.page as string) || 1)
+const itemsPerPage = 15
 
 // Intestazione e metadati dinamici in base alla sezione
 const headerInfo = computed(() => {
@@ -49,12 +52,12 @@ useHead({
   title: computed(() => `${headerInfo.value.title} | DevKernelPulse`)
 })
 
-// Chiamata al nuovo endpoint multi-fonte /api/hn/items con paginazione
-const { data: response, error, refresh } = await useFetch('/api/hn/items', {
+// Chiamata all'endpoint multi-fonte /api/hn/items con limite 15
+const { data: response, error } = await useFetch('/api/hn/items', {
   query: {
     section: feedType,
     page: pageNumber,
-    limit: 12
+    limit: itemsPerPage
   },
   watch: [feedType, pageNumber]
 })
@@ -63,6 +66,19 @@ const items = computed(() => response.value?.data || [])
 const pagination = computed(() => ({
   totalPages: response.value?.totalPages || 1
 }))
+
+// Recupero articoli per il Vault
+const featuredArticles = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    featuredArticles.value = raw.slice(0, 2)
+  } catch (err) {
+    console.error('Errore recupero articoli in evidenza:', err)
+  }
+})
 
 // Utility per estrarre il dominio pulito dai link esterni
 const getDomain = (url: string) => {
@@ -120,7 +136,8 @@ const getDomain = (url: string) => {
           class="news-item flex items-center justify-between p-3.5 bg-gray-900/60 rounded-xl border border-gray-800 hover:border-emerald-500/40 transition"
         >
           <div class="flex items-start space-x-3">
-            <span class="index text-emerald-400 font-mono font-bold">{{ ((pageNumber - 1) * 12) + index + 1 }}.</span>
+            <!-- 🟢 Calcolo Indice aggiornato a 15 -->
+            <span class="index text-emerald-400 font-mono font-bold">{{ ((pageNumber - 1) * itemsPerPage) + index + 1 }}.</span>
             
             <div class="main-text">
               <a :href="item.link" target="_blank" class="title-link text-gray-100 font-semibold hover:text-emerald-400 transition">
@@ -165,6 +182,26 @@ const getDomain = (url: string) => {
         <span v-else></span>
       </div>
     </div>
+
+    <!-- 🟢 SEZIONE VAULT (Incrocio Dati) -->
+    <div v-if="featuredArticles.length > 0" class="vault-recommended-section mt-8 pt-6 border-t border-gray-800">
+      <h3 class="text-lg font-black text-white mb-4">🔗 Approfondimenti dal Vault</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <NuxtLink 
+          v-for="art in featuredArticles" 
+          :key="art.id" 
+          :to="`/blog/${art.slug || art.id}`"
+          class="p-4 bg-gray-900/60 border border-gray-800 rounded-xl hover:border-emerald-500/50 transition flex flex-col gap-2"
+        >
+          <span class="text-[0.65rem] font-bold text-emerald-400 uppercase">{{ art.categoryName || art.category || 'Tech' }}</span>
+          <h4 class="text-gray-100 font-bold text-sm">{{ art.title }}</h4>
+          <span class="text-sky-400 text-xs font-bold mt-1">Leggi articolo ➔</span>
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- 🟢 BANNER DKP ADS STRIP -->
+    <DkpAdStrip :categoryTag="`DKP ${feedType.toUpperCase()} SPONSORED FEED`" />
 
   </div>
 </template>

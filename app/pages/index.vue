@@ -1,111 +1,8 @@
 <!-- app/pages/index.vue -->
-<template>
-  <div class="feed-container">
-    
-    <!-- HEADER FEED DINAMICO -->
-    <div class="feed-header">
-      <div class="feed-title-section">
-        <h1 class="feed-title">
-          {{ headerInfo.title }} 
-          <span class="highlight-badge">{{ headerInfo.badge }}</span>
-        </h1>
-        <p class="feed-subtitle">
-          {{ headerInfo.subtitle }}
-        </p>
-      </div>
-
-      <div class="feed-actions">
-        <NuxtLink to="/user/dashboard?tab=content" class="submit-btn">
-          ⚡ Invia Post (+15 XP)
-        </NuxtLink>
-      </div>
-    </div>
-
-    <!-- SPINNER CARICAMENTO NEON DB -->
-    <div v-if="pending" class="loading-feed">
-      <span class="spinner">⚡</span> Connessione al Vault Neon DB in corso...
-    </div>
-
-    <!-- LISTA NOTIZIE / POST REALI DA NEON DB (v2.5-GOLD) -->
-    <div v-else-if="paginatedPosts && paginatedPosts.length > 0" class="story-list">
-      <article 
-        v-for="(post, index) in paginatedPosts" 
-        :key="post.id || index" 
-        class="story-card group hover:-translate-y-1 transition-all hover:shadow-[0_4px_20px_rgba(0,220,130,0.15)]"
-      >
-        <!-- BOTTONE VOTAZIONE / KARMA LIKES -->
-        <button 
-          @click="voteStory(post)" 
-          class="vote-btn" 
-          :class="{ voted: post.voted }"
-          title="Accendi Kernel (+5 XP)"
-        >
-          <span class="vote-icon">▲</span>
-          <span class="vote-count">{{ post.points || 0 }}</span>
-        </button>
-
-        <!-- CONTENUTO NOTIZIA -->
-        <div class="story-content">
-          <div class="story-main">
-            <span class="story-index">{{ (currentPage - 1) * itemsPerPage + index + 1 }}.</span>
-            
-            <a :href="post.url" target="_blank" class="story-title group-hover:text-emerald-400 transition-colors">
-              {{ post.title }}
-            </a>
-
-            <span v-if="post.domain" class="story-category-badge">
-              {{ post.domain }}
-            </span>
-          </div>
-
-          <!-- METADATI (Autore, tempo, verificabilità, XP) -->
-          <div class="story-meta mt-1">
-            <span>By <strong class="author-tag">@{{ post.author || 'community' }}</strong></span>
-            <span class="meta-dot">•</span>
-            <span class="time-tag">⏱️ {{ formatTime(post.created_at) }}</span>
-            <span class="meta-dot">•</span>
-            <span class="views-tag">⚡ {{ post.xp_awarded || 15 }} XP</span>
-          </div>
-        </div>
-      </article>
-
-      <!-- BARRA DI PAGINAZIONE NUMERATA -->
-      <div v-if="totalPages > 1" class="pagination-bar">
-        <button 
-          @click="changePage(currentPage - 1)" 
-          :disabled="currentPage <= 1"
-          class="page-btn"
-        >
-          ◀ Prec
-        </button>
-
-        <span class="page-info">
-          Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di <strong>{{ totalPages }}</strong>
-        </span>
-
-        <button 
-          @click="changePage(currentPage + 1)" 
-          :disabled="currentPage >= totalPages"
-          class="page-btn"
-        >
-          Succ ▶
-        </button>
-      </div>
-    </div>
-
-    <!-- EMPTY STATE FALLBACK -->
-    <div v-else class="empty-feed">
-      <div class="text-4xl mb-4">📭</div>
-      <p>Nessun contenuto trovato nel Vault per questa sezione. Esegui il Crawler dal pannello Admin!</p>
-      <NuxtLink to="/admin/crawler" class="submit-btn-inline mt-4 inline-block">Vai al Crawler Admin 🤖</NuxtLink>
-    </div>
-
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -146,7 +43,7 @@ const currentPage = computed(() => {
   return isNaN(p) || p < 1 ? 1 : p
 })
 
-// 3. 🟢 FETCH CORRETTO DAL NUOVO ENDPOINT PULSE STORIES (Tabella pulse_stories)
+// 3. FETCH DAL NUOVO ENDPOINT PULSE STORIES (Tabella pulse_stories)
 const { data: apiResponse, pending, refresh } = await useFetch('/api/pulse/stories', {
   query: {
     type: currentCategory,
@@ -159,6 +56,19 @@ const paginatedPosts = computed(() => (apiResponse.value as any)?.stories || [])
 const paginationMeta = computed(() => (apiResponse.value as any)?.pagination || { totalPages: 1 })
 const totalPages = computed(() => paginationMeta.value.totalPages || 1)
 const itemsPerPage = 15
+
+// 4. Recupero articoli interni in evidenza per la sezione Vault
+const featuredArticles = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    featuredArticles.value = raw.slice(0, 2)
+  } catch (err) {
+    console.error('Errore recupero articoli in evidenza:', err)
+  }
+})
 
 // Cambio pagina con scroll
 function changePage(newPage: number) {
@@ -205,6 +115,130 @@ function formatTime(dateStr: string | undefined): string {
 }
 </script>
 
+<template>
+  <div class="feed-container">
+    
+    <!-- HEADER FEED DINAMICO -->
+    <div class="feed-header">
+      <div class="feed-title-section">
+        <h1 class="feed-title">
+          {{ headerInfo.title }} 
+          <span class="highlight-badge">{{ headerInfo.badge }}</span>
+        </h1>
+        <p class="feed-subtitle">
+          {{ headerInfo.subtitle }}
+        </p>
+      </div>
+
+      <div class="feed-actions">
+        <NuxtLink to="/user/dashboard?tab=content" class="submit-btn">
+          ⚡ Invia Post (+15 XP)
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- SPINNER CARICAMENTO NEON DB -->
+    <div v-if="pending" class="loading-feed">
+      <span class="spinner">⚡</span> Connessione al Vault Neon DB in corso...
+    </div>
+
+    <!-- LISTA NOTIZIE / POST REALI DA NEON DB -->
+    <div v-else-if="paginatedPosts && paginatedPosts.length > 0" class="story-list">
+      <article 
+        v-for="(post, index) in paginatedPosts" 
+        :key="post.id || index" 
+        class="story-card group hover:-translate-y-1 transition-all hover:shadow-[0_4px_20px_rgba(0,220,130,0.15)]"
+      >
+        <!-- BOTTONE VOTAZIONE / KARMA LIKES -->
+        <button 
+          @click="voteStory(post)" 
+          class="vote-btn" 
+          :class="{ voted: post.voted }"
+          title="Accendi Kernel (+5 XP)"
+        >
+          <span class="vote-icon">▲</span>
+          <span class="vote-count">{{ post.points || 0 }}</span>
+        </button>
+
+        <!-- CONTENUTO NOTIZIA -->
+        <div class="story-content">
+          <div class="story-main">
+            <span class="story-index">{{ (currentPage - 1) * itemsPerPage + index + 1 }}.</span>
+            
+            <a :href="post.url" target="_blank" class="story-title group-hover:text-emerald-400 transition-colors">
+              {{ post.title }}
+            </a>
+
+            <span v-if="post.domain" class="story-category-badge">
+              {{ post.domain }}
+            </span>
+          </div>
+
+          <!-- METADATI -->
+          <div class="story-meta mt-1">
+            <span>By <strong class="author-tag">@{{ post.author || 'community' }}</strong></span>
+            <span class="meta-dot">•</span>
+            <span class="time-tag">⏱️ {{ formatTime(post.created_at) }}</span>
+            <span class="meta-dot">•</span>
+            <span class="views-tag">⚡ {{ post.xp_awarded || 15 }} XP</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- BARRA DI PAGINAZIONE NUMERATA -->
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <button 
+          @click="changePage(currentPage - 1)" 
+          :disabled="currentPage <= 1"
+          class="page-btn"
+        >
+          ◀ Prec
+        </button>
+
+        <span class="page-info">
+          Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di <strong>{{ totalPages }}</strong>
+        </span>
+
+        <button 
+          @click="changePage(currentPage + 1)" 
+          :disabled="currentPage >= totalPages"
+          class="page-btn"
+        >
+          Succ ▶
+        </button>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE FALLBACK -->
+    <div v-else class="empty-feed">
+      <div class="text-4xl mb-4">📭</div>
+      <p>Nessun contenuto trovato nel Vault per questa sezione. Esegui il Crawler dal pannello Admin!</p>
+      <NuxtLink to="/admin/crawler" class="submit-btn-inline mt-4 inline-block">Vai al Crawler Admin 🤖</NuxtLink>
+    </div>
+
+    <!-- 🟢 SEZIONE VAULT (Consigliati) -->
+    <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
+      <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
+      <div class="recommended-grid">
+        <NuxtLink 
+          v-for="art in featuredArticles" 
+          :key="art.id" 
+          :to="`/blog/${art.slug || art.id}`"
+          class="recommended-card"
+        >
+          <span class="rec-cat">{{ art.categoryName || art.category || 'Tech' }}</span>
+          <h4>{{ art.title }}</h4>
+          <span class="rec-read">Leggi articolo ➔</span>
+        </NuxtLink>
+      </div>
+    </div>
+
+    <!-- 🟢 BANNER DKP ADS STRIP (Posizionato alla fine, perfetto) -->
+    <DkpAdStrip :categoryTag="`DKP ${currentCategory.toUpperCase()} SPONSORED FEED`" />
+
+  </div>
+</template>
+
 <style scoped>
 .feed-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
 .feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #1e293b; flex-wrap: wrap; gap: 1rem; }
@@ -247,4 +281,14 @@ function formatTime(dateStr: string | undefined): string {
 @keyframes spin { 100% { transform: rotate(360deg); } }
 .submit-btn-inline { color: #020420; background: #00dc82; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 700; transition: background 0.2s; }
 .submit-btn-inline:hover { background: #38bdf8; }
+
+/* Stili Vault Section */
+.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
+.recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
+.recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
+.recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }
+.rec-cat { font-size: 0.65rem; font-weight: 800; color: #00dc82; text-transform: uppercase; }
+.recommended-card h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
+.rec-read { color: #38bdf8; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; }
 </style>

@@ -16,6 +16,9 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // 🟢 Inizializziamo correttamente l'istanza del database
+    const db = getDb()
+
     // Inserimento reale nel database tramite Drizzle ORM
     const [newAd] = await db.insert(dkpAds).values({
       advertiserEmail,

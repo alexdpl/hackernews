@@ -8,19 +8,18 @@ export default defineEventHandler(async (event) => {
   try {
     const query = getQuery(event)
     const page = Math.max(1, parseInt(query.page as string) || 1)
-    const limit = Math.max(1, parseInt(query.limit as string) || 30)
+    const limit = Math.max(1, parseInt(query.limit as string) || 15) // Uniformato a 15
     const offset = (page - 1) * limit
 
     const db = await getDb()
     if (!db) throw new Error('Database non disponibile')
 
-    // Estrae i job dal database con paginazione
     const dbJobs = await db
       .select()
       .from(pulseStories)
       .where(eq(pulseStories.type, 'jobs'))
       .orderBy(desc(pulseStories.createdAt))
-      .limit(limit + 1) // Prende uno in più per verificare se esiste una pagina successiva
+      .limit(limit + 1)
       .offset(offset)
 
     const hasMore = dbJobs.length > limit
@@ -29,11 +28,11 @@ export default defineEventHandler(async (event) => {
     const formattedJobs = items.map((j: any) => ({
       id: j.id,
       title: j.title,
-      company: j.author || j.domain || 'Remote Partner',
+      company: typeof j.author === 'object' ? j.author?.username : (j.author || j.domain || 'Remote Partner'),
       location: 'Remoto / Globale',
       salary: 'Meritocratico / $PULSE',
       tags: [j.domain || 'Tech', 'Remote'],
-      url: j.url,
+      url: j.url || '#',
       createdAt: j.createdAt || new Date()
     }))
 
@@ -48,8 +47,6 @@ export default defineEventHandler(async (event) => {
     }
   } catch (err) {
     console.warn('⚠️ [JOBS API WARN] Errore lettura DB, uso fallback:', err)
-    
-    // Fallback di sicurezza
     return {
       success: true,
       data: [
@@ -64,7 +61,7 @@ export default defineEventHandler(async (event) => {
           createdAt: new Date()
         }
       ],
-      pagination: { page: 1, limit: 30, hasMore: false }
+      pagination: { page: 1, limit: 15, hasMore: false }
     }
   }
 })
