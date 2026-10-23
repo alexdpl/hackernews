@@ -40,10 +40,15 @@ const { getMainUrl } = useDomain()
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink :to="getMainUrl('/news')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              ☁️ Tech News Feed
+            <NuxtLink :to="getMainUrl('/')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              🌍 Global Tech News Feed
             </NuxtLink>
           </li>
+		  
+		  <NuxtLink :to="getMainUrl('/newest')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              📚 Blog Vault News & Guide
+            </NuxtLink>
+		  
           <li>
             <NuxtLink :to="getMainUrl('/blog')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
               ✍️ DKP Blog Editorial Hub 

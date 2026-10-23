@@ -1,10 +1,12 @@
 <!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import DkpEditor from '~/components/blog/DkpEditor.vue'
 import UserXpHistory from '~/components/UserXpHistory.vue'
+import DkpPulseManager from '~/components/dashboard/DkpPulseManager.vue'
+import DkpCommentsManager from '~/components/dashboard/DkpCommentsManager.vue'
 
 useHead({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.5-GOLD',
@@ -15,7 +17,15 @@ const route = useRoute()
 const router = useRouter()
 const { currentUser } = useAuthCore()
 const { getMainUrl, getApiUrl } = useDomain()
-const currentUserId = computed(() => currentUser.value?.id || 1)
+
+// --- GESTIONE TABS PRINCIPALI ---
+const activeTab = computed({
+  get: () => (route.query.tab as string) || 'profile',
+  set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
+})
+
+// --- SOTTO-TABS GESTIONE CONTENUTI ---
+const contentTab = ref<'blog' | 'pulse' | 'comments'>('blog')
 
 // --- GESTIONE ARTICOLI: RICERCA E PAGINAZIONE ---
 const searchQuery = ref('')
@@ -23,12 +33,10 @@ const currentPage = ref(1)
 const itemsPerPage = 5
 
 const filteredAndPaginatedPosts = computed(() => {
-  // 1. Filtro di ricerca (titolo e tag)
   let filtered = articles.value.filter(post => 
     post.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     (post.tags && post.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.value.toLowerCase())))
   )
-  // 2. Calcolo paginazione
   const start = (currentPage.value - 1) * itemsPerPage
   return {
     items: filtered.slice(start, start + itemsPerPage),
@@ -63,7 +71,7 @@ const vaultCertificates = ref<any[]>([])
 
 async function fetchVaultCertificates() {
   try {
-    const res: any = await $fetch('/api/user/vault?userId=1')
+    const res: any = await $fetch(`/api/user/vault?userId=${currentUser.value?.id || 1}`)
     if (res && res.success) {
       vaultCertificates.value = (res.data || []).map((c: any) => ({
         id: c.id,
@@ -88,7 +96,7 @@ async function notarizeNewCode() {
     const res: any = await $fetch('/api/user/vault', {
       method: 'POST',
       body: {
-        userId: 1,
+        userId: currentUser.value?.id || 1,
         title: vaultNewTitle.value,
         code: vaultNewCode.value,
         sastStatus: 'PASSED'
@@ -129,7 +137,7 @@ async function activateEarlyPioneerBeta() {
   try {
     await $fetch('/api/user/beta-pioneer', {
       method: 'POST',
-      body: { userId: 1 }
+      body: { userId: currentUser.value?.id || 1 }
     })
   } catch (err: any) {
     console.warn("Sincronizzazione beta in background completata.", err)
@@ -138,7 +146,7 @@ async function activateEarlyPioneerBeta() {
 
 async function fetchGamificationData() {
   try {
-    const res: any = await $fetch('/api/user/gamification?userId=1')
+    const res: any = await $fetch(`/api/user/gamification?userId=${currentUser.value?.id || 1}`)
     if (res && res.success && res.data) {
       userProfileData.value.xp = res.data.xp
       userProfileData.value.level = res.data.level
@@ -151,7 +159,7 @@ async function fetchGamificationData() {
     const statsRes: any = await $fetch('/api/user/xp/history')
     if (statsRes && statsRes.success) {
        if (statsRes.data && Array.isArray(statsRes.data)) {
-          xpHistoryList.value = statsRes.data
+         xpHistoryList.value = statsRes.data
        }
     }
   } catch (err) {
@@ -166,7 +174,6 @@ const { data: userKeysData, refresh: refreshApiKeys, pending: isLoadingApiKeys }
 })
 
 const apiKeysList = computed(() => userKeysData.value?.data || [])
-
 const newKeyName = ref('')
 const generatedKeyModal = ref<string | null>(null)
 const copiedKey = ref(false)
@@ -247,7 +254,6 @@ async function fetchTelemetryData() {
   }
 }
 
-// UNICO onMounted PULITO
 onMounted(() => {
   if (currentUser.value) {
     userProfileData.value.username = currentUser.value.username || 'alexdpl'
@@ -261,7 +267,6 @@ onMounted(() => {
   fetchVaultCertificates()
   fetchGamificationData()
 
-  // Ascolta per l'aggiornamento degli XP!
   window.addEventListener('dkp:xp_updated', fetchGamificationData)
 })
 
@@ -269,13 +274,7 @@ onUnmounted(() => {
   window.removeEventListener('dkp:xp_updated', fetchGamificationData)
 })
 
-// TABS
-const activeTab = computed({
-  get: () => (route.query.tab as string) || 'profile',
-  set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
-})
-
-// PROFILO
+// PROFILO SOCIAL
 const profileForm = ref({
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
   bio: currentUser.value?.bio || 'Lead Engineer Architect & Core Creator of DevKernelPulse',
@@ -373,7 +372,6 @@ function onCategoryChange() {
 
 function openNewArticleModal() {
   const defaultCat = availableCategories.value.length > 0 ? availableCategories.value[0] : null
-  
   articleForm.value = {
     id: null,
     title: '',
@@ -463,7 +461,6 @@ async function saveArticle() {
         
         triggerToast(msg)
 
-        // 🚀 FASE 4: GAMIFICATION PER LA CREAZIONE
         if (!isUpdate && articleForm.value.status === 'published') {
           try {
              await $fetch('/api/user/xp/award', {
@@ -474,7 +471,6 @@ async function saveArticle() {
                   description: `Pubblicazione articolo: ${articleForm.value.title.substring(0, 30)}...`
                 }
              })
-             // Avvisa il resto dell'app
              window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
           } catch(e) {
              console.warn('Errore gamification durante il salvataggio:', e)
@@ -629,199 +625,219 @@ async function deleteArticle(id: number) {
               <span v-if="profileSaved" class="save-toast">✓ Profilo Aggiornato!</span>
             </div>
           </form>
-
-          <div class="nexus-badge-wrap">
-            <div class="pulse-nexus-badge">
-              <span class="dot"></span> ⚡ Pulse Nexus <span class="ver">v2.5</span>
-            </div>
-          </div>
         </div>
       </section>
 
-      <!-- PANNELLO 2: GESTIONE POST BLOG -->
+      <!-- PANNELLO 2: GESTIONE CONTENUTI (Blog, Feed, Commenti) -->
       <section v-if="activeTab === 'content'" class="tab-panel">
-        <div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-4 mb-6">
-          <details class="group cursor-pointer">
-            <summary class="text-emerald-400 font-bold flex justify-between items-center list-none outline-none">
-              <span>💡 Guida rapida all'Editor DKP &amp; Markdown</span>
-              <span class="group-open:rotate-180 transition-transform">▼</span>
-            </summary>
-            <div class="mt-4 text-sm text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <strong class="text-white">Formattazione Testo:</strong>
-                <ul class="list-disc pl-4 mt-2 space-y-1">
-                  <li><code>**grassetto**</code> per evidenziare</li>
-                  <li><code>*corsivo*</code> o <code>_corsivo_</code></li>
-                  <li><code>[Titolo Link](https://url...)</code> per i collegamenti esterni</li>
-                  <li><code># Titolo Principale</code>, <code>## Sottotitolo</code> per gerarchia</li>
-                  <li>Inizia la riga con <code>- </code> o <code>* </code> per gli elenchi puntati</li>
-                </ul>
-              </div>
-              <div>
-                <strong class="text-white">Blocchi di Codice &amp; Citazioni:</strong>
-                <p class="mt-2 text-xs leading-relaxed">
-                  Usa tre apici inversi (backtick) <code>```</code> seguiti dall'estensione (es. <code>ts</code>, <code>vue</code>, <code>go</code>) per inserire blocchi di codice nativi con syntax highlighting.<br><br>
-                  Per inserire una citazione in evidenza (Blockquote), usa il simbolo <code>> </code> all'inizio della riga.
-                </p>
-              </div>
-            </div>
-          </details>
+        
+        <!-- Sub-Tabs di Navigazione Contenuti -->
+        <div class="content-tabs-nav mb-6">
+          <button @click="contentTab = 'blog'" :class="['content-tab-btn', { active: contentTab === 'blog' }]">
+            📝 Articoli Blog
+          </button>
+          <button @click="contentTab = 'pulse'" :class="['content-tab-btn', { active: contentTab === 'pulse' }]">
+            🚀 Ask / Show / Jobs
+          </button>
+          <button @click="contentTab = 'comments'" :class="['content-tab-btn', { active: contentTab === 'comments' }]">
+            💬 I Miei Commenti
+          </button>
         </div>
 
-        <div class="panel-card">
-          <div class="panel-header-action flex-wrap gap-4">
-            <div>
-              <h2 class="section-title">Gestione Post &amp; Blog</h2>
-              <p class="section-sub">Crea, modifica e gestisci gli articoli pubblicati nell'ecosistema DevKernelPulse.</p>
+        <!-- 2A. TAB BLOG EDITORIALE (Il tuo codice originale intatto) -->
+        <div v-if="contentTab === 'blog'">
+          <div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-4 mb-6">
+            <details class="group cursor-pointer">
+              <summary class="text-emerald-400 font-bold flex justify-between items-center list-none outline-none">
+                <span>💡 Guida rapida all'Editor DKP &amp; Markdown</span>
+                <span class="group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div class="mt-4 text-sm text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <strong class="text-white">Formattazione Testo:</strong>
+                  <ul class="list-disc pl-4 mt-2 space-y-1">
+                    <li><code>**grassetto**</code> per evidenziare</li>
+                    <li><code>*corsivo*</code> o <code>_corsivo_</code></li>
+                    <li><code>[Titolo Link](https://url...)</code> per i collegamenti esterni</li>
+                    <li><code># Titolo Principale</code>, <code>## Sottotitolo</code> per gerarchia</li>
+                    <li>Inizia la riga con <code>- </code> o <code>* </code> per gli elenchi puntati</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong class="text-white">Blocchi di Codice &amp; Citazioni:</strong>
+                  <p class="mt-2 text-xs leading-relaxed">
+                    Usa tre apici inversi (backtick) <code>```</code> seguiti dall'estensione (es. <code>ts</code>, <code>vue</code>, <code>go</code>) per inserire blocchi di codice nativi con syntax highlighting.<br><br>
+                    Per inserire una citazione in evidenza (Blockquote), usa il simbolo <code>> </code> all'inizio della riga.
+                  </p>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="panel-card">
+            <div class="panel-header-action flex-wrap gap-4">
+              <div>
+                <h2 class="section-title">Gestione Post &amp; Blog</h2>
+                <p class="section-sub">Crea, modifica e gestisci gli articoli pubblicati nell'ecosistema DevKernelPulse.</p>
+              </div>
+              
+              <div class="flex items-center gap-3 w-full md:w-auto">
+                  <input 
+                      v-model="searchQuery" 
+                      type="text" 
+                      placeholder="Cerca per titolo o #tag..." 
+                      class="dkp-input text-sm w-full md:w-64"
+                  />
+                  <button @click="openNewArticleModal" class="dkp-btn-success whitespace-nowrap">+ Nuovo Post</button>
+              </div>
             </div>
-            
-            <div class="flex items-center gap-3 w-full md:w-auto">
-                <input 
-                    v-model="searchQuery" 
-                    type="text" 
-                    placeholder="Cerca per titolo o #tag..." 
-                    class="dkp-input text-sm w-full md:w-64"
-                />
-                <button @click="openNewArticleModal" class="dkp-btn-success whitespace-nowrap">+ Nuovo Post</button>
+
+            <div class="table-container">
+              <table class="dkp-table">
+                <thead>
+                  <tr>
+                    <th>Titolo Articolo</th>
+                    <th>Categoria &amp; Sottocategoria</th>
+                    <th>Tag</th>
+                    <th>Stato</th>
+                    <th>Data</th>
+                    <th>Gestione Rapida (2x2)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="filteredAndPaginatedPosts.items.length === 0">
+                    <td colspan="6" class="text-center py-6 text-gray-500 italic">
+                      <span v-if="searchQuery">Nessun articolo trovato per "{{ searchQuery }}".</span>
+                      <span v-else>Nessun articolo pubblicato. Clicca su "+ Nuovo Post" per iniziare.</span>
+                    </td>
+                  </tr>
+                  <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id">
+                    <td class="font-bold">{{ art.title }}</td>
+                    <td>
+                      <span class="text-emerald font-semibold">{{ art.category }}</span>
+                      <span v-if="art.subCategory" class="sub-label"> → {{ art.subCategory }}</span>
+                    </td>
+                    <td>
+                      <div class="tags-row">
+                        <span v-for="t in art.tags" :key="t" class="mini-tag">#{{ t }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span :class="['status-pill', art.status]">
+                        {{ art.status === 'published' ? 'Pubblicato' : 'Bozza' }}
+                      </span>
+                    </td>
+                    <td style="white-space: nowrap;">{{ art.date }}</td>
+                    <td class="actions-cell">
+                      <div class="action-grid-2x2">
+                        <button @click="editArticle(art)" class="btn-action edit" title="Apri Editor Avanzato">✏️ Edit</button>
+                        <button @click="deleteArticle(art.id)" class="btn-action delete" title="Elimina dal Vault">🗑️ Del</button>
+                        <button @click="quickUpdateStatus(art, 'published')" class="btn-action publish" title="Metti Online Ora">🚀 Pubblica</button>
+                        <button @click="quickUpdateStatus(art, 'draft')" class="btn-action draft" title="Nascondi e Metti in Bozza">📝 Bozza</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
 
-          <div class="table-container">
-            <table class="dkp-table">
-              <thead>
-                <tr>
-                  <th>Titolo Articolo</th>
-                  <th>Categoria &amp; Sottocategoria</th>
-                  <th>Tag</th>
-                  <th>Stato</th>
-                  <th>Data</th>
-                  <th>Gestione Rapida (2x2)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="filteredAndPaginatedPosts.items.length === 0">
-                  <td colspan="6" class="text-center py-6 text-gray-500 italic">
-                    <span v-if="searchQuery">Nessun articolo trovato per "{{ searchQuery }}".</span>
-                    <span v-else>Nessun articolo pubblicato. Clicca su "+ Nuovo Post" per iniziare.</span>
-                  </td>
-                </tr>
-                <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id">
-                  <td class="font-bold">{{ art.title }}</td>
-                  <td>
-                    <span class="text-emerald font-semibold">{{ art.category }}</span>
-                    <span v-if="art.subCategory" class="sub-label"> → {{ art.subCategory }}</span>
-                  </td>
-                  <td>
-                    <div class="tags-row">
-                      <span v-for="t in art.tags" :key="t" class="mini-tag">#{{ t }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span :class="['status-pill', art.status]">
-                      {{ art.status === 'published' ? 'Pubblicato' : 'Bozza' }}
-                    </span>
-                  </td>
-                  <td style="white-space: nowrap;">{{ art.date }}</td>
-                  <td class="actions-cell">
-                    <div class="action-grid-2x2">
-                      <button @click="editArticle(art)" class="btn-action edit" title="Apri Editor Avanzato">✏️ Edit</button>
-                      <button @click="deleteArticle(art.id)" class="btn-action delete" title="Elimina dal Vault">🗑️ Del</button>
-                      <button @click="quickUpdateStatus(art, 'published')" class="btn-action publish" title="Metti Online Ora">🚀 Pubblica</button>
-                      <button @click="quickUpdateStatus(art, 'draft')" class="btn-action draft" title="Nascondi e Metti in Bozza">📝 Bozza</button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div v-if="filteredAndPaginatedPosts.totalPages > 1" class="flex justify-between items-center mt-6 pt-4 border-t border-gray-800 text-sm">
-            <button 
-                @click="changePage(currentPage - 1)" 
-                :disabled="currentPage === 1"
-                class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                ← Precedente
-            </button>
-
-            <span class="text-gray-400 font-mono">
-                Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di {{ filteredAndPaginatedPosts.totalPages }}
-            </span>
-
-            <button 
-                @click="changePage(currentPage + 1)" 
-                :disabled="currentPage === filteredAndPaginatedPosts.totalPages"
-                class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Successiva →
-            </button>
-          </div>
-
-          <!-- MODALE EDITOR -->
-          <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
-            <div class="dkp-modal editor-modal">
-              <div class="modal-header-row">
-                <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
-                <button 
-                  type="button"
-                  @click="useAdvancedEditor = !useAdvancedEditor" 
-                  class="btn-switch-editor"
-                >
-                  {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato (Live Preview)' }}
-                </button>
-              </div>
-
-              <div v-if="useAdvancedEditor">
-               <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
-              </div>
-
-              <div v-else class="form-layout">
-                <div class="form-group">
-                  <label>TITOLO POST *</label>
-                  <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
-                </div>
-
-                <div class="grid-2-cols">
-                  <div class="form-group">
-                    <label>CATEGORIA *</label>
-                    <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
-                      <option value="" disabled>Seleziona una categoria</option>
-                      <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
-                        {{ cat.icon }} {{ cat.name }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div class="form-group">
-                    <label>SOTTOCATEGORIA</label>
-                    <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
-                      <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
-                      <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
-                        {{ sub }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
-                  <DkpTagInput v-model="articleForm.tags"/>
-                </div>
-
-                <div class="form-group">
-                  <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
-                  <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
-                </div>
-              </div>
-
-              <div class="modal-actions-row">
-                <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
-                <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
-                <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 {{ articleForm.id ? 'Aggiorna Articolo' : 'Pubblica Ora' }}</button>
-              </div>
+            <div v-if="filteredAndPaginatedPosts.totalPages > 1" class="flex justify-between items-center mt-6 pt-4 border-t border-gray-800 text-sm">
+              <button 
+                  @click="changePage(currentPage - 1)" 
+                  :disabled="currentPage === 1"
+                  class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                  ← Precedente
+              </button>
+              <span class="text-gray-400 font-mono">
+                  Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di {{ filteredAndPaginatedPosts.totalPages }}
+              </span>
+              <button 
+                  @click="changePage(currentPage + 1)" 
+                  :disabled="currentPage === filteredAndPaginatedPosts.totalPages"
+                  class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                  Successiva →
+              </button>
             </div>
           </div>
         </div>
+
+        <!-- 2B. TAB PULSE MANAGER (Nuovo) -->
+        <div v-if="contentTab === 'pulse'">
+          <DkpPulseManager/>
+        </div>
+
+        <!-- 2C. TAB COMMENTS MANAGER (Nuovo) -->
+        <div v-if="contentTab === 'comments'">
+          <DkpCommentsManager/>
+        </div>
+        
+        <!-- MODALE EDITOR POST BLOG -->
+        <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
+          <div class="dkp-modal editor-modal">
+            <div class="modal-header-row">
+              <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
+              <button 
+                type="button"
+                @click="useAdvancedEditor = !useAdvancedEditor" 
+                class="btn-switch-editor"
+              >
+                {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato (Live Preview)' }}
+              </button>
+            </div>
+
+            <div v-if="useAdvancedEditor">
+             <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
+            </div>
+
+            <div v-else class="form-layout">
+              <div class="form-group">
+                <label>TITOLO POST *</label>
+                <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
+              </div>
+
+              <div class="grid-2-cols">
+                <div class="form-group">
+                  <label>CATEGORIA *</label>
+                  <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
+                    <option value="" disabled>Seleziona una categoria</option>
+                    <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
+                      {{ cat.icon }} {{ cat.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>SOTTOCATEGORIA</label>
+                  <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
+                    <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
+                    <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
+                      {{ sub }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
+                <DkpTagInput v-model="articleForm.tags"/>
+              </div>
+
+              <div class="form-group">
+                <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
+                <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
+              </div>
+            </div>
+
+            <div class="modal-actions-row">
+              <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
+              <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
+              <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 {{ articleForm.id ? 'Aggiorna Articolo' : 'Pubblica Ora' }}</button>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- PANNELLO 3: API CONSOLE REALE DA NEON DB -->
@@ -1179,6 +1195,12 @@ details > summary::-webkit-details-marker { display: none; }
 .panel-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; position: relative; }
 .section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
 .section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
+
+/* 🟢 STILE SUB-TABS PER CONTENUTI */
+.content-tabs-nav { display: flex; gap: 0.5rem; background: rgba(2, 4, 32, 0.5); padding: 0.4rem; border-radius: 10px; border: 1px solid #1e293b; }
+.content-tab-btn { flex: 1; background: transparent; border: none; color: #64748b; font-weight: 800; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
+.content-tab-btn:hover { color: #f8fafc; }
+.content-tab-btn.active { background: #00dc82; color: #020420; }
 
 .api-action-header { margin-bottom: 1.25rem; }
 .dkp-api-link-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 800; font-size: 0.9rem; padding: 0.65rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.25s ease-in-out; box-shadow: 0 0 12px rgba(56, 189, 248, 0.15); }

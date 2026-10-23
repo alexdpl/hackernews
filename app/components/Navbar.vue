@@ -48,7 +48,6 @@ const refreshXpData = async () => {
   try {
     const res: any = await $fetch('/api/user/xp/sync')
     if (res && res.success) {
-      // Se il valore è aumentato, esegui l'animazione e il suono
       if (res.data.totalXp > globalXp.value && globalXp.value > 0) {
         isXpAnimating.value = true
         playXpSound()
@@ -64,7 +63,6 @@ const refreshXpData = async () => {
 
 const playXpSound = () => {
   try {
-    // Opzionale: aggiungi un file coin-up.mp3 in public/sounds/
     const audio = new Audio('/sounds/coin-up.mp3')
     audio.volume = 0.3
     audio.play().catch(() => {})
@@ -75,12 +73,10 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   if (typeof initTranslator === 'function') initTranslator()
   
-  // Inizializza XP se loggato
   if (isAuthenticated.value || currentUser.value?.id) {
     refreshXpData()
   }
 
-  // Ascolta l'evento globale lanciato da Chat e Editor!
   window.addEventListener('dkp:xp_updated', refreshXpData)
 })
 
@@ -93,13 +89,13 @@ watch(isAuthenticated, (newVal) => {
   if (newVal) refreshXpData()
 })
 
-// 🟢 CATEGORIE E FEED CON L'AGGIUNTA DEL BLOG EDITORIALE
+// 🟢 CATEGORIE E FEED CORRETTI CON ROTTE UNIFICATE v2.5-GOLD
 const newsCategories = [
-  { name: 'News Feed', description: 'Ultimi aggiornamenti tech & ecosistema', icon: '📰', route: '/news' },
+  { name: 'Global Tech Feed', description: 'Ultime notizie dal Web (Crawler)', icon: '🌍', route: '/' },
+  { name: 'Blog Vault & Guide', description: 'Articoli e approfondimenti editoriali', icon: '📚', route: '/newest' },
   { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
   { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },
-  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }, 
-  { name: 'Blog Editorial Hub', description: 'Articoli e guide della community', icon: '✍️', route: '/blog' }
+  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
 ]
 
 const dkpTools = [
