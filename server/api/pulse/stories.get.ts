@@ -1,10 +1,11 @@
 // server/api/pulse/stories.get.ts
+import { defineEventHandler, getQuery } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
   try {
-    // Estrazione protetta dei parametri query (previene crash su Invalid URL di H3)
+    // Estrazione protetta dei parametri query
     let query: Record<string, any> = {}
     try {
       query = getQuery(event) || {}
@@ -32,7 +33,6 @@ export default defineEventHandler(async (event) => {
     const limit = Math.min(50, Math.max(1, parseInt(query.limit as string) || 15))
     const offset = (page - 1) * limit
 
-    // Correzione v2.5-GOLD: getDb() è asincrono
     const db = await getDb()
     if (!db) {
       return { 
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 1. Conteggio totale elementi per la categoria
+    // 1. Conteggio totale
     const countResult: any = await db.execute(sql`
       SELECT COUNT(*)::int as total FROM pulse_stories WHERE type = ${type};
     `)
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     const totalItems = rowsCount[0]?.total ?? 0
     const totalPages = Math.ceil(totalItems / limit) || 1
 
-    // 2. Query Paginata per il Feed
+    // 2. Query Paginata
     const result: any = await db.execute(sql`
       SELECT id, title, url, domain, type, author, points, comments_count, xp_awarded, created_at
       FROM pulse_stories

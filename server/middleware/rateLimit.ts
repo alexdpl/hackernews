@@ -8,24 +8,28 @@ export default defineEventHandler(async (event) => {
   const path = event.path || event.node?.req?.url || ''
   const method = getMethod(event)
 
-  // 1. Bypass all'istante per chiamate non-API e per le richieste Preflight CORS (OPTIONS)
-  if (!path.startsWith('/api/') || path.startsWith('/_nuxt') || path.startsWith('/api/_') || method === 'OPTIONS') {
+  // 1. Bypass all'istante per chiamate non-API, Preflight CORS e rotte AI (gestite separatamente)
+  if (
+    !path.startsWith('/api/') || 
+    path.startsWith('/_nuxt') || 
+    path.startsWith('/api/_') || 
+    path.startsWith('/api/ai/') || // 🟢 BYPASS: Salta il controllo licenze per il Neural Playground
+    method === 'OPTIONS'
+  ) {
     return
   }
 
   try {
-    // 2. Estrazione sicura degli header tramite getSafeHeader (auto-importato da server/utils/headers.ts)
+    // 2. Estrazione sicura degli header tramite getSafeHeader
     const rawApiKey = getSafeHeader(event, 'x-api-key') || getSafeHeader(event, 'authorization') || ''
     const apiKey = rawApiKey.replace(/^Bearer\s+/i, '').trim()
 
-    // Estrazione dell'IP reale client tramite proxy GCP / Cloudflare / Node in totale sicurezza
     const clientIp =
       getSafeHeader(event, 'x-forwarded-for')?.split(',')[0]?.trim() ||
       getSafeHeader(event, 'x-real-ip') ||
       event.node?.req?.socket?.remoteAddress ||
       '127.0.0.1'
 
-    // Estrazione ruolo e username dalla sessione
     const userRole = event.context.user?.role?.toLowerCase() || ''
     const username = event.context.user?.username?.toLowerCase() || ''
 
@@ -41,11 +45,11 @@ export default defineEventHandler(async (event) => {
         'X-Cloud-Region': 'europe-west4',
         'X-DKP-Version': 'v2.5-GOLD'
       })
-      return // L'admin passa all'istante senza interrogare il DB!
+      return 
     }
 
     // -------------------------------------------------------------
-    // 🛡️ CONTROLLO RATE LIMIT UTENTI STANDARD / API KEYS
+    // 🛡️ CONTROLLO RATE LIMIT UTENTI STANDARD / API KEYS (Solo Licenze)
     // -------------------------------------------------------------
     if (apiKey) {
       const db = getDb()
@@ -88,7 +92,6 @@ export default defineEventHandler(async (event) => {
         })
       }
 
-      // Incremento atomico su Neon DB
       await db
         .update(licenses)
         .set({ downloadsCount: sql`${licenses.downloadsCount} + 1` })

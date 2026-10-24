@@ -11,9 +11,12 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.101",
+    "@ai-sdk/vue": "^4.0.150",
     "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^0.10.4",
     "@vueuse/core": "^11.1.0",
+    "ai": "^7.0.150",
     "cheerio": "^1.2.0",
     "dotenv": "^18.0.7",
     "drizzle-orm": "^0.45.3",

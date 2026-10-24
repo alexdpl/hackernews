@@ -5,7 +5,7 @@ const currentYear = new Date().getFullYear()
 
 useDkpSeo({
   title: 'Roadmap Ecosistema 2026-2027 v2.5-GOLD - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP: Firewall Live SSE, Code Vault, Proof of Code, AI Tools, Security Hardening e Visione Futura 2027.'
+  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP: Firewall Live SSE, OpenUI Studio, OpenRouter AI Gateway, Proof of Code e Visione Futura 2027.'
 })
 
 interface RoadmapMilestone {
@@ -71,18 +71,18 @@ const milestones = ref<RoadmapMilestone[]>([
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'Security Hardening, Admin Telemetry & Proof of Code Vault',
+    phaseTitle: 'Neural Gateway, OpenUI Studio & Security Hardening',
     version: 'v2.5-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Upgrade massiccio di sicurezza con scrypt KDF, notarizzazione crittografica Vault con XP (+100 XP), IP Whitelist Manager, Webhook Alerting e Telemetria CLI.',
+    description: 'Lancio dell\'infrastruttura AI decentralizzata tramite OpenRouter, live rendering visivo con OpenUI Studio e validazione crittografica (SHA-256) per l\'API Gateway.',
     features: [
-      'Hardening API Key: migrazione da SHA-256 a scrypt KDF con salt e pepper (CodeQL compliant)',
+      'OpenUI Studio: Sandbox interattiva per la generazione e rendering live di componenti Tailwind',
+      'DKP Trinity Models: Integrazione di Dots-3 (MoE), Flint v1.0 (Coder) e Nemotron-3',
+      'API Gateway H3 con crittografia token in volo e Bypass Rate Limit (God-Mode)',
+      'Vercel AI SDK Universal Streaming con retrocompatibilità architetturale per i client',
       'Proof of Code Vault con hash SHA-256 deterministico, SAST audit e +100 XP automatici',
-      'Modulo Whitelist IP & Exemption Manager per runner CI/CD e sviluppatori fidati',
-      'Webhook & Instant Alerting System per notifiche push critiche su Telegram e Discord',
-      'CLI Telemetry & Analytics dashboard con tracciamento chiamate dkp-cli e latenze',
-      'Nuova pagina FAQ interattiva v2.5-GOLD (/docs/faq.vue) e probe /health & /metrics GCP'
+      'CLI Telemetry & Analytics dashboard con tracciamento chiamate dkp-cli e latenze'
     ]
   },
   {

@@ -1,19 +1,15 @@
-Snippet di codice
-<!-- pages/docs/api.vue -->
+<!-- app/pages/docs/api.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
 useHead({
   title: 'API Reference v2.5 Interattiva — DKP Docs',
   meta: [
-    { name: 'description', content: 'Documentazione tecnica interattiva ed OpenAPI delle API REST di DevKernelPulse v2.5-GOLD. Endpoints commerciali, rate limit, autenticazione e code snippets.' }
+    { name: 'description', content: 'Documentazione tecnica interattiva ed OpenAPI delle API REST di DevKernelPulse v2.5-GOLD. Integrazione OpenRouter, rate limit, validazione crittografica e code snippets.' }
   ]
 })
 
-// Linguaggio Selezionato per i Code Snippet
 const selectedLang = ref<'curl' | 'javascript' | 'python' | 'go'>('curl')
-
-// Filtro di Ricerca Endpoints
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 
@@ -32,11 +28,36 @@ interface Endpoint {
 
 const endpoints: Endpoint[] = [
   {
+    id: 'post-ai-chat',
+    method: 'POST',
+    path: '/api/ai/chat',
+    title: 'Neural AI Chat & OpenUI Streaming',
+    description: 'Endpoint di routing dinamico verso OpenRouter (DKP Trinity). Gestisce la generazione in streaming di codice UI e componenti Tailwind. Il Bearer token viene validato crittograficamente in volo (SHA-256) contro il database Neon.',
+    protected: true,
+    rateLimit: 'Limitato in base al tier DKP (Bypass God-Mode attivo per gli Admin)',
+    params: [],
+    bodyExample: `{
+  "model": "dkp-coder",
+  "messages": [
+    { "role": "user", "content": "Crea una card profilo con Tailwind in dark mode" }
+  ],
+  "systemPrompt": "Sei un assistente esperto di programmazione OpenUI.",
+  "temperature": 0.7,
+  "maxTokens": 2048
+}`,
+    responseExample: `// Risposta HTTP 200 (Streaming text/plain compatibile con Vercel AI SDK)
+0:"Ecco la card profilo dark mode richiesta:"
+0:"\\n\`\`\`html"
+0:"\\n<div class=\\"bg-slate-900 rounded-xl p-8 border border-slate-800\\">"
+0:"\\n  <div class=\\"flex items-center gap-4\\">"
+0:"\\n..."`
+  },
+  {
     id: 'get-commercial-data',
     method: 'GET',
     path: '/api/v1/data',
     title: 'Commercial Suite Data Stream',
-    description: 'Endpoint ad alte prestazioni protetto da API Gateway per l\'integrazione e l\'estrazione dei dati in tempo reale.',
+    description: 'Endpoint ad alte prestazioni protetto da API Gateway per l\'estrazione dei dati. Applica Rate Limiting Nitro tramite il check del key_hash su Drizzle ORM.',
     protected: true,
     rateLimit: '1.000 req/mese (Free) | 50.000 req/mese (Pro) | 1.000.000 req/mese (Enterprise)',
     params: [
@@ -55,35 +76,8 @@ const endpoints: Endpoint[] = [
   "data": {
     "status": "OPERATIONAL",
     "service": "DKP Commercial Suite v1",
-    "timestamp": "2026-10-20T10:00:00.000Z"
+    "timestamp": "2026-10-24T10:00:00.000Z"
   }
-}`
-  },
-  {
-    id: 'get-news',
-    method: 'GET',
-    path: '/api/v2/news',
-    title: 'Lista Feed Tech News',
-    description: 'Restituisce l\'elenco paginato delle notizie, pubblicazioni ed elementi catturati dal Crawler.',
-    protected: false,
-    rateLimit: '60 req/min (Free) | 1.000 req/min (Pro)',
-    params: [
-      { name: 'page', type: 'integer', required: false, desc: 'Numero pagina (default: 1)' },
-      { name: 'category', type: 'string', required: false, desc: 'Filtra per categoria (es. ai, devops, security)' }
-    ],
-    responseExample: `{
-  "status": "success",
-  "data": [
-    {
-      "id": "item_9921",
-      "title": "Claude Opus 5.5 is now available on Google Cloud",
-      "url": "https://dev.to/...",
-      "author": "alexdpl",
-      "xp_awarded": 15,
-      "created_at": "2026-10-18T13:30:00Z"
-    }
-  ],
-  "meta": { "total": 128, "page": 1, "pages": 4 }
 }`
   },
   {
@@ -91,7 +85,7 @@ const endpoints: Endpoint[] = [
     method: 'POST',
     path: '/api/v2/vault/notarize',
     title: 'Notarizzazione Proof of Code',
-    description: 'Calcola l\'hash SHA-256 e genera un certificato crittografico immutabile per un frammento di codice o script.',
+    description: 'Calcola l\'hash SHA-256 e genera un certificato crittografico immutabile per un frammento di codice o script salvandolo su Neon DB.',
     protected: true,
     rateLimit: '10 req/min (Free) | 200 req/min (Pro)',
     bodyExample: `{
@@ -103,33 +97,8 @@ const endpoints: Endpoint[] = [
   "status": "notarized",
   "vault_id": "vlt_88120491",
   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "timestamp": "2026-10-19T15:45:00Z",
+  "timestamp": "2026-10-24T15:45:00Z",
   "verification_url": "https://devkernelpulse.org/user/dashboard?tab=vault"
-}`
-  },
-  {
-    id: 'post-ai-scan',
-    method: 'POST',
-    path: '/api/v2/ai/scan',
-    title: 'AI Code Security Audit',
-    description: 'Sottopone il codice sorgente al motore euristico Sentinel AI per la scansione SAST e l\'individuazione di vulnerabilità.',
-    protected: true,
-    rateLimit: '5 req/min (Free) | 100 req/min (Pro)',
-    bodyExample: `{
-  "code": "const query = 'SELECT * FROM users WHERE id = ' + req.query.id;",
-  "language": "javascript"
-}`,
-    responseExample: `{
-  "vulnerabilities_found": 1,
-  "risk_score": "HIGH",
-  "details": [
-    {
-      "severity": "CRITICAL",
-      "type": "SQL Injection (CWE-89)",
-      "line": 1,
-      "recommendation": "Utilizzare query parametrizzate per prevenire SQLi."
-    }
-  ]
 }`
   }
 ]
@@ -155,14 +124,14 @@ function getSnippet(endpoint: Endpoint, lang: string) {
   
   if (lang === 'curl') {
     return `curl -X ${endpoint.method} "${baseUrl}${endpoint.path}" \\
-  -H "Content-Type: application/json" ${endpoint.protected ? '\\\n  -H "X-API-Key: YOUR_DKP_API_KEY"' : ''} ${endpoint.bodyExample ? `\\\n  -d '${endpoint.bodyExample.replace(/\n/g, '')}'` : ''}`
+  -H "Content-Type: application/json" ${endpoint.protected ? '\\\n  -H "Authorization: Bearer YOUR_DKP_API_KEY"' : ''} ${endpoint.bodyExample ? `\\\n  -d '${endpoint.bodyExample.replace(/\n/g, '')}'` : ''}`
   }
   
   if (lang === 'javascript') {
     return `const response = await fetch('${baseUrl}${endpoint.path}', {
   method: '${endpoint.method}',
   headers: {
-    'Content-Type': 'application/json'${endpoint.protected ? ',\n    \'X-API-Key\': \'YOUR_DKP_API_KEY\'' : ''}
+    'Content-Type': 'application/json'${endpoint.protected ? ',\n    \'Authorization\': \'Bearer YOUR_DKP_API_KEY\'' : ''}
   }${endpoint.bodyExample ? `,\n  body: JSON.stringify(${endpoint.bodyExample})` : ''}
 });
 const data = await response.json();
@@ -174,7 +143,7 @@ console.log(data);`
 
 url = "${baseUrl}${endpoint.path}"
 headers = {
-    "Content-Type": "application/json"${endpoint.protected ? ',\n    "X-API-Key": "YOUR_DKP_API_KEY"' : ''}
+    "Content-Type": "application/json"${endpoint.protected ? ',\n    "Authorization": "Bearer YOUR_DKP_API_KEY"' : ''}
 }
 ${endpoint.bodyExample ? `payload = ${endpoint.bodyExample}\nresponse = requests.${endpoint.method.toLowerCase()}(url, json=payload, headers=headers)` : `response = requests.${endpoint.method.toLowerCase()}(url, headers=headers)`}
 
@@ -194,7 +163,7 @@ func main() {
     url := "${baseUrl}${endpoint.path}"
     req, _ := http.NewRequest("${endpoint.method}", url, nil)
     req.Header.Add("Content-Type", "application/json")
-    ${endpoint.protected ? 'req.Header.Add("X-API-Key", "YOUR_DKP_API_KEY")' : ''}
+    ${endpoint.protected ? 'req.Header.Add("Authorization", "Bearer YOUR_DKP_API_KEY")' : ''}
 
     res, _ := http.DefaultClient.Do(req)
     defer res.Body.Close()
@@ -251,8 +220,11 @@ func main() {
         <!-- HEADER OVERVIEW RATE LIMITS & AUTH -->
         <div class="auth-card">
           <div class="auth-info">
-            <h4>🔑 Autenticazione API Gateway</h4>
-            <p>Tutti gli endpoint commerciali e protetti richiedono l'header <code>X-API-Key: &lt;DKP_API_KEY&gt;</code> oppure <code>Authorization: Bearer &lt;DKP_API_KEY&gt;</code> generabile dal tuo <NuxtLink to="/user/dashboard?tab=api" class="text-emerald font-bold">Pannello Dashboard</NuxtLink>.</p>
+            <h4>🔑 Autenticazione & Sicurezza Crittografica</h4>
+            <p>
+              Tutti gli endpoint commerciali e IA richiedono l'header <code>Authorization: Bearer dkp_live_...</code>. 
+              Per massima sicurezza (Zero-Trust), <strong>le chiavi non sono mai salvate in chiaro</strong>: il Gateway H3 calcola un hash SHA-256 in volo e lo confronta con il <code>key_hash</code> nel Database Neon.
+            </p>
           </div>
           <div class="rate-info">
             <strong>Tier e Quote Mensili:</strong>
@@ -320,9 +292,9 @@ func main() {
             <pre class="code-block"><code>{{ getSnippet(activeEndpoint, selectedLang) }}</code></pre>
           </div>
 
-          <!-- ESEMPIO RISPOSTA JSON -->
+          <!-- ESEMPIO RISPOSTA JSON / STREAM -->
           <div class="response-section">
-            <h4>Esempio Risposta HTTP 200 OK</h4>
+            <h4>Esempio Risposta HTTP</h4>
             <pre class="code-block json-response"><code>{{ activeEndpoint.responseExample }}</code></pre>
           </div>
 
@@ -481,12 +453,12 @@ func main() {
 }
 
 .auth-info h4 { margin: 0 0 0.3rem; color: #fff; }
-.auth-info p { margin: 0; font-size: 0.85rem; color: #94a3b8; }
-.auth-info code { color: #38bdf8; background: #020420; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.auth-info p { margin: 0; font-size: 0.85rem; color: #94a3b8; line-height: 1.5; }
+.auth-info code { color: #38bdf8; background: #020420; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
 
 .text-emerald { color: #00dc82; }
 
-.rate-info { font-size: 0.8rem; color: #94a3b8; }
+.rate-info { font-size: 0.8rem; color: #94a3b8; min-width: 180px; }
 .rate-info ul { list-style: none; padding: 0; margin: 0.3rem 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
 .rate-info .free { color: #cbd5e1; font-weight: 800; }
 .rate-info .pro { color: #00dc82; font-weight: 800; }
@@ -538,7 +510,7 @@ func main() {
 }
 
 .endpoint-detail-card h3 { color: #fff; margin: 0 0 0.5rem; }
-.ep-desc { color: #94a3b8; font-size: 0.95rem; margin-bottom: 1rem; }
+.ep-desc { color: #94a3b8; font-size: 0.95rem; margin-bottom: 1rem; line-height: 1.6; }
 
 .meta-row {
   font-size: 0.85rem;

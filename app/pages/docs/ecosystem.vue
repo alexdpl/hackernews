@@ -4,13 +4,13 @@ import { ref } from 'vue'
 
 useDkpSeo({
   title: 'Guida Ecosistema & Architettura v2.5-GOLD — DKP Docs',
-  description: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.5-GOLD, moduli SaaS proprietari (API Management, Vault, CLI Toolkit) e Gamification XP.'
+  description: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.5-GOLD, moduli SaaS proprietari, Integrazione OpenRouter AI, OpenUI Studio e Gamification XP.'
 })
 
 const activeSection = ref('architettura')
 const sections = [
   { id: 'architettura', title: '🏗️ Architettura DKP', icon: '⚡' },
-  { id: 'moduli', title: '🛠️ Moduli & Strumenti SaaS', icon: '🧩' },
+  { id: 'moduli', title: '🛠️ Moduli & OpenUI', icon: '🧩' },
   { id: 'cli-toolkit', title: '⚡ DKP CLI Toolkit', icon: '💻' },
   { id: 'gamification', title: '🏆 Gamification & XP System', icon: '🎮' },
   { id: 'best-practices', title: '💡 Best Practices & Growth', icon: '🚀' }
@@ -63,7 +63,7 @@ function scrollToSection(id: string) {
           <div class="breadcrumb">Docs / Ecosistema & Architettura v2.5-GOLD</div>
           <h1>DevKernelPulse Knowledge Base</h1>
           <p class="subtitle">
-            Guida completa all'architettura modulare DKP v2.5-GOLD, dal motore Proof-of-Code Vault su Neon DB all'integrazione IA, il CLI Toolkit nativo e il sistema di reputazione XP.
+            Guida completa all'architettura modulare DKP v2.5-GOLD, dal motore Proof-of-Code Vault su Neon DB all'integrazione IA OpenRouter, OpenUI Studio e il sistema di reputazione XP.
           </p>
         </header>
 
@@ -71,25 +71,25 @@ function scrollToSection(id: string) {
         <section id="architettura" class="doc-section">
           <h2><span class="sec-icon">🏗</span> Architettura di Sistema DKP v2.5-GOLD</h2>
           <p>
-            <strong>DevKernelPulse (DKP)</strong> è costruito secondo un paradigma reattivo ad alte prestazioni, alimentato da <strong>Nuxt 4 (Vue 3, Nitro Engine)</strong>, database serverless <strong>Neon PostgreSQL</strong> con ORM <strong>Drizzle</strong>, e microservizi per l'analisi del codice e la notarizzazione crittografica.
+            <strong>DevKernelPulse (DKP)</strong> è costruito secondo un paradigma reattivo ad alte prestazioni, alimentato da <strong>Nuxt 4 (Vue 3, Nitro Engine)</strong>, database serverless <strong>Neon PostgreSQL</strong> con ORM <strong>Drizzle</strong>, e un'infrastruttura AI decentralizzata tramite OpenRouter.
           </p>
 
           <div class="architecture-grid">
             <div class="arch-card">
-              <h4>🌐 Edge Processing & Crawler</h4>
-              <p>Il sistema DKP estrae, analizza e scansiona in tempo reale repository GitHub e metriche di sviluppo.</p>
+              <h4>🌐 Edge Processing & AI Gateway</h4>
+              <p>Gateway Nitro H3 con crittografia SHA-256 nativa in-flight (Hash Check) e bypass God-Mode dinamico per l'amministratore.</p>
             </div>
             <div class="arch-card">
               <h4>🛡️ Proof-of-Code Vault</h4>
               <p>Hashing SHA-256 e archiviazione crittografica permanente su Neon DB per la certificazione della proprietà intellettuale.</p>
             </div>
             <div class="arch-card">
-              <h4>🧠 Neural Inference Gateway</h4>
-              <p>Pipeline multi-LLM che gestisce i prompt di testing nel Playground, l'analisi statica di sicurezza dei codici e l'AI Code Scanner.</p>
+              <h4>🧠 OpenRouter Neural Pipeline</h4>
+              <p>Integrazione multi-LLM (Vercel AI SDK compatibile universale) per l'elaborazione di stream testuali ed esecuzione zero-cost in tempo reale.</p>
             </div>
             <div class="arch-card">
               <h4>🗄️ Neon Serverless DB & Nitro</h4>
-              <p>Persistenza dati ultra-veloce, gestione delle transazioni di Gamification e rilascio automatico di punti XP utente.</p>
+              <p>Persistenza dati ultra-veloce, gestione delle transazioni di Gamification e validazione API con logica retro-compatibile.</p>
             </div>
           </div>
         </section>
@@ -97,7 +97,7 @@ function scrollToSection(id: string) {
         <!-- SEZIONE 2: MODULI & STRUMENTI -->
         <section id="moduli" class="doc-section">
           <h2><span class="sec-icon">🛠️</span> Moduli Proprietari DKP v2.5-GOLD</h2>
-          <p>La piattaforma offre una suite completa di strumenti integrati per la sicurezza, la produttività dello sviluppatore e la certificazione:</p>
+          <p>La piattaforma offre una suite completa di strumenti integrati per la sicurezza, la produttività dello sviluppatore e il rendering UI in tempo reale:</p>
 
           <div class="module-list">
             
@@ -106,39 +106,31 @@ function scrollToSection(id: string) {
                 <span class="mod-icon">🛡️</span>
                 <h3>Proof-of-Code Vault v2.5</h3>
               </div>
-              <p>Permette di generare un'impronta digitale immutabile del tuo sorgente. Dimostra la titolarità intellettuale registrando un certificato SHA-256 collegato direttamente al tuo profilo e visibile nella dashboard.</p>
+              <p>Permette di generare un'impronta digitale immutabile del tuo sorgente. Dimostra la titolarità intellettuale registrando un certificato collegato al tuo profilo utente.</p>
             </div>
 
             <div class="module-box keys">
               <div class="mod-header">
                 <span class="mod-icon">🔑</span>
-                <h3>API Key Enterprise Management v2.5</h3>
+                <h3>API Key Enterprise Management</h3>
               </div>
-              <p>Gestione granulare delle chiavi API personali con Rate Limiting Nitro integrato. Crea, revoca e monitora token in modo sicuro per interagire con i tool e la CLI.</p>
+              <p>Gestione chiavi crittografate (salvataggio tramite <code>key_hash</code>). Valida e traccia l'uso dell'ecosistema, collegato direttamente all'engine di Rate Limiting.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
-                <span class="mod-icon">📰</span>
-                <h3>Code Vault Blog Engine & Zen Mode v2.5</h3>
+                <span class="mod-icon">🎨</span>
+                <h3>OpenUI Studio & Live Rendering</h3>
               </div>
-              <p>Sistema editoriale avanzato con categorizzazione e supporto Markdown Pro. Include la modalità di scrittura immersiva (Zen Mode Fullscreen) e la pubblicazione integrata con XP reward.</p>
-            </div>
-
-            <div class="module-box">
-              <div class="mod-header">
-                <span class="mod-icon">🤖</span>
-                <h3>AI Repository & Code Scanner v2.5</h3>
-              </div>
-              <p>Analizzatore potenziato da modelli IA che rileva vulnerabilità (SAST), calcola il Reputation Score da 0 a 100 e accredita XP direttamente sul database Neon.</p>
+              <p>Motore visivo reattivo integrato. Genera componenti Tailwind CSS, interfacce e layout inviando prompt naturali tramite IA e li renderizza istantaneamente a schermo.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🧠</span>
-                <h3>Neural Playground & Terminal v2.5</h3>
+                <h3>Neural Playground & DKP Trinity</h3>
               </div>
-              <p>Ambiente In-Browser interattivo: una Sandbox per il testing dei prompt LLM e una Web Shell con comandi operativi ed easter egg sbloccabili.</p>
+              <p>Sandbox interattiva per l'accesso gratuito all'AI. Alimentata dai modelli: <strong>DKP-Flash</strong> (Dots-3 MoE 16B), <strong>DKP-Coder</strong> (Flint v1.0 2.5B), e <strong>DKP-Pro</strong> (Nemotron-3 55B).</p>
             </div>
 
           </div>
@@ -159,16 +151,16 @@ function scrollToSection(id: string) {
             <pre><code><span class="comment"># Installazione globale tramite NPM</span>
 npm install -g @devkernelpulse/cli
 
-<span class="comment"># Autenticazione con API Key</span>
+<span class="comment"># Autenticazione con API Key crittografata</span>
 dkp auth login --key dkp_live_xxx
 
-<span class="comment"># Scansione di sicurezza repo GitHub</span>
-dkp ai scan https://github.com/nuxt/nuxt
+<span class="comment"># Generazione UI da Terminale tramite OpenRouter</span>
+dkp ui generate "Dashboard Tailwind Dark"
 
 <span class="comment"># Notarizzazione istantanea sul Vault Cloud</span>
 dkp vault notarize https://miosito.com
 
-<span class="comment"># Verifica stato server e latenza reale</span>
+<span class="comment"># Verifica stato API Gateway</span>
 dkp status</code></pre>
           </div>
         </section>
@@ -177,7 +169,7 @@ dkp status</code></pre>
         <section id="gamification" class="doc-section">
           <h2><span class="sec-icon">🏆</span> Gamification & XP Reputation Engine</h2>
           <p>
-            Ogni interazione su DevKernelPulse genera <strong>Experience Points (XP)</strong> registrati in tempo reale nella tabella <code>xpTransactions</code> su Neon DB, incrementando il tuo rank sviluppatore.
+            Ogni interazione su DevKernelPulse genera <strong>Experience Points (XP)</strong> registrati in tempo reale nella tabella <code>api_keys</code> e <code>users</code> su Neon DB, incrementando il tuo rank sviluppatore.
           </p>
 
           <table class="xp-table">
@@ -200,19 +192,14 @@ dkp status</code></pre>
                 <td><code>/api/blog/posts</code></td>
               </tr>
               <tr>
-                <td><strong>AI Repository Audit</strong></td>
-                <td><span class="xp-badge">+50 XP</span></td>
-                <td><code>/api/tools/ai-scan</code></td>
-              </tr>
-              <tr>
-                <td><strong>AI Code Snippet Scan</strong></td>
+                <td><strong>Generazione OpenUI / Coder</strong></td>
                 <td><span class="xp-badge">+30 XP</span></td>
-                <td><code>/api/tools/ai-code-scan</code></td>
+                <td><code>/api/ai/chat.post.ts</code></td>
               </tr>
               <tr>
                 <td><strong>Esecuzione Neural Playground</strong></td>
                 <td><span class="xp-badge">+15 XP</span></td>
-                <td><code>/api/tools/neural-execute</code></td>
+                <td><code>streamText (Vercel SDK)</code></td>
               </tr>
               <tr>
                 <td><strong>Comandi Web Terminal Shell</strong></td>
@@ -227,16 +214,16 @@ dkp status</code></pre>
         <section id="best-practices" class="doc-section">
           <h2><span class="sec-icon">💡</span> Best Practices per gli Sviluppatori</h2>
           <div class="tip-box">
-            <h4>⚡ Integrazione Cloud Raccomandata</h4>
-            <p>Sfrutta la sincronizzazione istantanea tra i tool frontend in Tailwind CSS e le rotte Nitro backend per mantenere lo storico della dashboard sempre aggiornato.</p>
+            <h4>⚡ Model Routing Intelligente</h4>
+            <p>Usa DKP-Coder (Flint v1.0) per richieste specifiche sul codice, e DKP-Pro (Nemotron-3) per architetture di sistema o refactoring massivi nel Playground.</p>
           </div>
           <div class="tip-box green">
-            <h4>🔑 Sicurezza delle API Key</h4>
-            <p>Proteggi sempre i tuoi token d'accesso e sfrutta il sistema di rate limiting integrato per evitare usi non autorizzati delle risorse IA.</p>
+            <h4>🔑 Sicurezza e Crittografia API</h4>
+            <p>Le chiavi DKP (es. <code>dkp_live_...</code>) non vengono mai memorizzate in chiaro. Il sistema salva e confronta in tempo reale unicamente l'hash crittografato (SHA-256) per la massima sicurezza aziendale.</p>
           </div>
           <div class="tip-box purple">
             <h4>🛡️ Certificazione Proof-of-Code</h4>
-            <p>Notarizza regolarmente i tuoi snippet critici nel Vault per ottenere certificati crittografati verificabili in qualsiasi momento.</p>
+            <p>Notarizza regolarmente i tuoi snippet generati da OpenUI nel Vault per ottenere certificati crittografati verificabili in qualsiasi momento.</p>
           </div>
         </section>
 

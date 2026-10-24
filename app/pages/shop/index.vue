@@ -9,72 +9,84 @@ const paymentProvider = ref<'stripe' | 'paypal'>('stripe')
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-// Le 4 Feature API Intelligenti dell'Ecosistema v2.5-Gold
+// Pacchetti aggiornati con nuovi Tier API e Moduli ADS in Beta
 const products = ref([
   {
     id: 'dkp-api-core-pass',
-    title: 'DKP Core Kernel API Pass',
+    title: 'DKP Core API Starter',
     category: 'DEVELOPER API',
     categoryClass: 'badge-core',
     price: 19.00,
-    rateLimit: '10.000 req/mo',
+    rateLimit: '15.000 req/mo',
     endpoint: '/api/v2.5/core',
-    description: 'Accesso diretto agli endpoint di utilità del Kernel, validazioni e gestione sessioni crittografate.',
-    isFeatured: false
+    description: 'Accesso base al Kernel DKP, notarizzazione crittografica Vault e routing standard.',
+    isFeatured: false,
+    isBeta: false
   },
   {
-    id: 'dkp-api-neural-ai',
-    title: 'DKP Neural Playground API Pro',
+    id: 'dkp-api-neural-pro',
+    title: 'DKP Neural Trinity Pro',
     category: 'AI & LLM ENGINE',
     categoryClass: 'badge-ai',
     price: 49.00,
     rateLimit: '50.000 req/mo',
     endpoint: '/api/v2.5/neural',
-    description: 'Integrazione diretta con gli agenti IA di Pulse Nexus, analisi del codice e generazione prompt automatica.',
-    isFeatured: true
+    description: 'Accesso completo ai modelli DKP Trinity (MoE, Coder, Pro) e streaming in tempo reale su OpenUI Studio.',
+    isFeatured: true,
+    isBeta: false
   },
   {
-  id: 'dkp_ads_starter_100',
-  name: 'DKP Ads Starter Pack',
-  description: 'Metti il tuo prodotto davanti agli occhi di migliaia di sviluppatori. 100 Click reali garantiti sul nostro network.',
-  price: 9.00,
-  currency: 'EUR',
-  category: 'ADVERTISING',
-  categoryClass: 'badge-ads',
-  features: [
-    '100 Click Scalabili Garantiti',
-    'Rotazione in NewsRoom & Blog',
-    'Posizionamento 100% Privacy Safe',
-    'Nessun ad-blocker: integrato nativamente'
-  ],
-  isPopular: true,
-  badge: 'MONETIZATION'
-},
+    id: 'dkp-api-neural-ultra',
+    title: 'DKP Neural Trinity Ultra',
+    category: 'AI & POWER ENGINE',
+    categoryClass: 'badge-ai',
+    price: 99.00,
+    rateLimit: '250.000 req/mo',
+    endpoint: '/api/v2.5/neural',
+    description: 'Progettato per heavy user e team. Generazione UI intensiva, audit IA illimitati e priorità di calcolo sul Gateway.',
+    isFeatured: false,
+    isBeta: false
+  },
+  {
+    id: 'dkp_ads_starter_100',
+    title: 'DKP Ads Starter Pack',
+    category: 'ADVERTISING',
+    categoryClass: 'badge-ads',
+    price: 9.00,
+    rateLimit: '100 Click/mo',
+    endpoint: '/api/v2.5/ads',
+    description: 'Metti il tuo prodotto davanti agli occhi di migliaia di sviluppatori. 100 Click reali garantiti sul nostro network.',
+    isFeatured: false,
+    isBeta: true
+  },
   {
     id: 'dkp-api-ads-network',
-    title: 'DKP Ads Network Publisher API',
+    title: 'DKP Ads Publisher API',
     category: 'MONETIZATION ADS',
     categoryClass: 'badge-ads',
     price: 29.00,
     rateLimit: 'Illimitato (Publisher)',
-    endpoint: '/api/v2.5/ads',
+    endpoint: '/api/v2.5/ads/publisher',
     description: 'Il nostro motore di inserzioni DKP Ads per monetizzare il tuo traffico tech con banner mirati e payout istantanei.',
-    isFeatured: false
+    isFeatured: false,
+    isBeta: true
   },
   {
     id: 'dkp-api-enterprise-cluster',
-    title: 'DKP Enterprise Dedicated Cluster',
+    title: 'DKP Enterprise Cluster',
     category: 'ENTERPRISE SLA',
     categoryClass: 'badge-flagship',
-    price: 149.00,
+    price: 199.00,
     rateLimit: 'Req. Illimitate / SLA 99.99%',
     endpoint: '/api/v2.5/enterprise',
-    description: 'Infrastruttura GCP dedicata con bilanciamento di carico, webhooks custom e supporto architetturale prioritario.',
-    isFeatured: false
+    description: 'Infrastruttura GCP dedicata con bilanciamento di carico, HSM crittografato e supporto architetturale prioritario.',
+    isFeatured: false,
+    isBeta: false
   }
 ])
 
 const openCheckoutModal = (product: any) => {
+  if (product.isBeta) return
   selectedProduct.value = product
   errorMessage.value = ''
   showModal.value = true
@@ -126,10 +138,10 @@ const executeCheckout = async () => {
     <div class="shop-header">
       <span class="badge-gold">DKP v2.5-GOLD API ECOSYSTEM</span>
       <h1 class="shop-title">DKP Developer <span class="highlight">API Gateway</span></h1>
-      <p class="shop-subtitle">Accedi alle API proprietarie ad alte prestazioni per Nuxt 4, automazioni IA e il nuovo network pubblicitario DKP Ads.</p>
+      <p class="shop-subtitle">Accedi alle API proprietarie ad alte prestazioni per Nuxt 4, LLM Trinity e al programma Early Access del network DKP Ads.</p>
     </div>
 
-    <!-- Griglia API Prodotti (3-5 Feature Intelligenti) -->
+    <!-- Griglia API Prodotti -->
     <div class="products-grid">
       <article v-for="product in products" :key="product.id" class="product-card" :class="{ 'featured-card': product.isFeatured }">
         <div class="card-header">
@@ -143,15 +155,27 @@ const executeCheckout = async () => {
         <div class="file-meta">
           <div class="meta-row">
             <span>⚡ rate limit: <strong class="text-white">{{ product.rateLimit }}</strong></span>
-            <span>🔑 autenticazione: <strong class="text-white">Bearer Token</strong></span>
+            <span>🔑 auth: <strong class="text-white">Bearer Token</strong></span>
           </div>
           <div class="file-path">
-            📁 endpoint base: <span class="path-text">{{ product.endpoint }}</span>
+            📁 route base: <span class="path-text">{{ product.endpoint }}</span>
           </div>
         </div>
 
-        <button @click="openCheckoutModal(product)" class="btn-buy" :class="{ 'btn-gold': product.isFeatured }">
+        <button 
+          v-if="!product.isBeta"
+          @click="openCheckoutModal(product)" 
+          class="btn-buy" 
+          :class="{ 'btn-gold': product.isFeatured }"
+        >
           🚀 Attiva API Pass
+        </button>
+        <button 
+          v-else 
+          disabled 
+          class="btn-buy btn-disabled"
+        >
+          🚧 In Beta Test
         </button>
       </article>
     </div>
@@ -229,7 +253,7 @@ const executeCheckout = async () => {
 .shop-subtitle { color: #94a3b8; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
 
 /* Product Cards */
-.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
 .product-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; backdrop-filter: blur(10px); transition: all 0.25s ease; }
 .product-card:hover { border-color: #00dc82; box-shadow: 0 10px 30px rgba(0,220,130,0.15); }
 .product-card.featured-card { border-color: #eab308; box-shadow: 0 0 20px rgba(234, 179, 8, 0.15); }
@@ -252,10 +276,14 @@ const executeCheckout = async () => {
 .text-white { color: #f8fafc; }
 .path-text { color: #00dc82; font-family: monospace; }
 
+/* Pulsanti */
 .btn-buy { background: #00dc82; color: #020420; border: none; padding: 0.85rem; border-radius: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: 0.2s; width: 100%; }
-.btn-buy:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
+.btn-buy:hover:not(.btn-disabled) { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
 .btn-gold { background: #eab308; color: #020420; }
-.btn-gold:hover { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); }
+.btn-gold:hover:not(.btn-disabled) { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); }
+
+.btn-disabled { background: #1e293b; color: #64748b; cursor: not-allowed; opacity: 0.8; }
+.btn-disabled:hover { transform: none; box-shadow: none; }
 
 /* Modal Styling */
 .modal-overlay { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem; }
