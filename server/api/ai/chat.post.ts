@@ -1,7 +1,8 @@
 // server/api/ai/chat.post.ts
 import { defineEventHandler, readBody, getHeader, createError } from 'h3'
-import { sql } from 'drizzle-orm'
+import { sql, eq } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { apiKeys } from '~~/server/db/schema'
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 
@@ -14,19 +15,37 @@ const dkpProvider = createOpenAI({
   }
 })
 
+// Definizione delle quote mensili per ciascun Tier
+const TIER_QUOTAS: Record<string, number> = {
+  FREE: 1000,
+  PRO: 50000,
+  ENTERPRISE: 1000000
+}
+
 export default defineEventHandler(async (event) => {
+  // 1. Estrazione del Bearer Token
   const authHeader = getHeader(event, 'authorization')
   if (!authHeader || !authHeader.startsWith('Bearer dkp_live_')) {
-    throw createError({ statusCode: 401, statusMessage: 'Accesso negato: Token mancante' })
+    throw createError({ statusCode: 401, statusMessage: 'Accesso negato: API Key DKP mancante o formato errato' })
   }
 
+  const token = authHeader.replace('Bearer ', '').trim()
   const db = await getDb()
-  if (!db) throw createError({ statusCode: 500, statusMessage: 'Database non disponibile' })
+  if (!db) throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile' })
 
+  // 2. Lettura del payload dal Neural Playground prima di validare i limiti
+  const body = await readBody(event)
+  const { messages, model, systemPrompt, temperature, maxTokens } = body
+
+  if (!messages || !Array.isArray(messages)) {
+    throw createError({ statusCode: 400, statusMessage: 'Array messages richiesto' })
+  }
+
+  // 3. Controllo e Metering della Chiave su Database
   let apiKeyRecord: any = null
   try {
     const keyResult: any = await db.execute(sql`
-      SELECT id, user_id, role, status FROM api_keys 
+      SELECT id, user_id, role, status, usage_count FROM api_keys 
       WHERE status = 'ACTIVE' 
       LIMIT 1
     `)
@@ -35,22 +54,40 @@ export default defineEventHandler(async (event) => {
     console.error('Errore query DB api_keys:', e)
   }
 
+  // Fallback di sicurezza per Admin / Sviluppo locale
   if (!apiKeyRecord) {
-    apiKeyRecord = { id: 1, user_id: 1, role: 'admin' }
+    apiKeyRecord = { id: 1, user_id: 1, role: 'PRO', usageCount: 0 }
   }
 
-  const body = await readBody(event)
-  const { messages, model, systemPrompt, temperature, maxTokens } = body
+  // Verifica Quota Mensile (API Metering & Cost Control)
+  const roleTier = (apiKeyRecord.role || 'FREE').toUpperCase()
+  const maxQuota = TIER_QUOTAS[roleTier] || TIER_QUOTAS.FREE
+  const currentUsage = apiKeyRecord.usageCount || 0
 
-  if (!messages || !Array.isArray(messages)) {
-    throw createError({ statusCode: 400, statusMessage: 'Array messages richiesto' })
+  if (currentUsage >= maxQuota && roleTier !== 'ADMIN') {
+    throw createError({ 
+      statusCode: 429, 
+      statusMessage: `Quota mensile esaurita per il piano ${roleTier} (${currentUsage}/${maxQuota} chiamate). Effettua l'upgrade nello Shop DKP.` 
+    })
   }
 
+  // 4. 🛡️ PAYWALL DINAMICO (Controllo Accesso Modelli per Tier)
+  // Gli utenti FREE (Newbie) possono usare solo DKP-Flash (dots-3)
+  // Gli utenti PRO / ENTERPRISE / VIP sbloccano Coder e Pro
+  if (roleTier === 'FREE' && (model === 'dkp-coder' || model === 'dkp-pro')) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: '🔒 Paywall Dinamico: Il tuo piano Free include solo DKP-Flash. Passa a PRO o ENTERPRISE per sbloccare i modelli Coder e Pro!'
+    })
+  }
+
+  // 5. Routing sui modelli gratuiti di OpenRouter
   let targetModel = 'dots-studio/dots-3-note-preview:free'
   if (model === 'dkp-coder') targetModel = 'recursive/flint-v1.0:free'
   if (model === 'dkp-pro') targetModel = 'nvidia/nemotron-3-ultra-550b-a55b:free'
 
   try {
+    // 6. Esecuzione dello Streaming
     const result = await streamText({
       model: dkpProvider(targetModel),
       messages,
@@ -58,24 +95,30 @@ export default defineEventHandler(async (event) => {
       temperature: typeof temperature === 'number' ? temperature : 0.7,
       maxTokens: typeof maxTokens === 'number' ? maxTokens : 2048,
       onFinish: async () => {
+        // ⚡ Metering Atomico: Scala/Incrementa 1 richiesta dal contatore su Neon DB
         try {
-          await db.execute(sql`UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1 WHERE id = ${apiKeyRecord.id}`)
-        } catch(e) {}
+          await db.execute(sql`
+            UPDATE api_keys 
+            SET usage_count = COALESCE(usage_count, 0) + 1, last_used_at = NOW() 
+            WHERE id = ${apiKeyRecord.id}
+          `)
+        } catch(err) {
+          console.error('Errore aggiornamento usage_count su DB:', err)
+        }
       }
     })
 
-    // 🟢 AI SDK VERSION COMPATIBILITY FIX
+    // Retrocompatibilità Vercel AI SDK
     if (typeof (result as any).toDataStreamResponse === 'function') {
       return (result as any).toDataStreamResponse()
     } else if (typeof (result as any).toAIStreamResponse === 'function') {
       return (result as any).toAIStreamResponse()
-    } else if (typeof (result as any).toTextStreamResponse === 'function') {
-      return (result as any).toTextStreamResponse()
     } else {
-      throw new Error("Nessun metodo di stream compatibile trovato in questo pacchetto AI SDK.")
+      return (result as any).toTextStreamResponse()
     }
 
   } catch (error: any) {
+    if (error.statusCode) throw error
     console.error('[DKP AI GATEWAY ERROR]:', error?.message || error)
     throw createError({ 
       statusCode: 500, 
