@@ -1,3 +1,4 @@
+// nuxt.config.ts
 import { fileURLToPath } from 'node:url'
 
 export default defineNuxtConfig({
@@ -24,8 +25,29 @@ export default defineNuxtConfig({
   
   app: {
     head: {
+      htmlAttrs: { lang: 'it' },
+      title: 'DevKernelPulse — The Next-Gen Developer & AI Ecosystem',
+      meta: [
+        { name: 'author', content: 'Alexdpl - DevKernelPulse Architecture' },
+        { name: 'robots', content: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' },
+        { name: 'keywords', content: 'DevKernelPulse, Nuxt 4, OpenUI Studio, OpenRouter, Neon DB, Drizzle ORM, AI Gateway, API Key Management' },
+        { name: 'description', content: 'Piattaforma SaaS avanzata per Nuxt 4 con Neural Playground, OpenUI Studio, Proof-of-Code Vault e API Gateway protetto.' },
+        
+        // Open Graph per Social & AI Previews (ChatGPT Search, Perplexity, Discord, Telegram)
+        { property: 'og:type', content: 'website' },
+        { property: 'og:site_name', content: 'DevKernelPulse v2.5-GOLD' },
+        { property: 'og:title', content: 'DevKernelPulse — The Next-Gen Developer & AI Ecosystem' },
+        { property: 'og:description', content: 'Piattaforma SaaS avanzata per Nuxt 4 con Neural Playground, OpenUI Studio, Proof-of-Code Vault e API Gateway protetto.' },
+        { property: 'og:image', content: 'https://devkernelpulse.org/og-cover.png' },
+        
+        // Twitter Card / X
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'DevKernelPulse v2.5-GOLD' },
+        { name: 'twitter:description', content: 'Costruisci, proteggi e monetizza le tue app con Nuxt 4 e IA decentralizzata.' },
+        { name: 'twitter:image', content: 'https://devkernelpulse.org/og-cover.png' }
+      ],
       link: [
-        { rel: 'icon', type: 'image/svg+xml', href: '/dkp-logo.svg' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/dkp-logo.svg' }
       ]
     }
   },

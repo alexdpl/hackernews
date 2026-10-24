@@ -1,8 +1,52 @@
-User-agent: *
+# ==========================================================================
+# 🤖 AI CRAWLERS & LLM SEARCH ENGINES (OpenAI, Perplexity, Anthropic, Bing, Google)
+# ==========================================================================
+
+# ChatGPT & OpenAI Search Crawler
+User-agent: GPTBot
+Allow: /
+Disallow: /admin/
+Disallow: /user/
+Disallow: /shop/success
+
+# ChatGPT User Agent (per citazioni in tempo reale)
+User-agent: ChatGPT-User
+Allow: /
+
+# Perplexity AI Search Crawler
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin/
+Disallow: /user/
+
+# Anthropic Claude Crawler
+User-agent: ClaudeBot
+User-agent: Claude-Web
+Allow: /
+Disallow: /admin/
+Disallow: /user/
+
+# Microsoft Copilot & Bing AI Crawler
+User-agent: OAI-SearchBot
+Allow: /
+
+# Common Crawl (utilizzato per addestrare i modelli di fondazione)
+User-agent: CCBot
+Allow: /docs/
+Allow: /roadmap
+Allow: /features
+
+# Apple Intelligence Crawler
+User-agent: Applebot-Extended
+Allow: /docs/
+Allow: /roadmap
 
 # ==========================================================================
-# 🛑 ESCLUSIONI (DISALLOW) - Rotte Amministrative, Private e Dinamiche
+# 🌐 STANDARD SEARCH ENGINES & GENERAL BOT RULES
 # ==========================================================================
+User-agent: *
+
+# 🛑 ESCLUSIONI (DISALLOW) - Aree Riservate, Transazionali e Dinamiche
 Disallow: /admin/
 Disallow: /user/
 Disallow: /user/*
@@ -14,10 +58,9 @@ Disallow: /newest/*
 Disallow: /news/*
 Disallow: /*/feed/
 Disallow: /feed/
+Disallow: /shop/success
 
-# ==========================================================================
-# 🟢 INCLUSIONI (ALLOW) - Pagine Statiche e Rotte Principali
-# ==========================================================================
+# 🟢 INCLUSIONI (ALLOW) - Pagine Pubbliche, Docs, Tool e Shop
 Allow: /about
 Allow: /ask
 Allow: /contact
@@ -33,28 +76,25 @@ Allow: /show
 Allow: /status
 Allow: /submit
 
-# Documentazione
+# Documentazione Tecnica v2.5-GOLD
 Allow: /docs/api
 Allow: /docs/ecosystem
 Allow: /docs/sdk
+Allow: /docs/
+Allow: /docs/*
 
-# Legale
+# Pagine Legali
 Allow: /legal/cookies
 Allow: /legal/privacy
 Allow: /legal/terms
 
-# DKP Shop SaaS
+# DKP Shop SaaS & API Pass
 Allow: /shop/
-Allow: /shop/success
+Allow: /shop
 
-# DKP Tools Suite
+# DKP Tools Suite & OpenUI Playground
 Allow: /tools/
-Allow: /tools/ai-repo-scanner
-Allow: /tools/ai-scanner
-Allow: /tools/cli-toolkit
-Allow: /tools/neural-playground
-Allow: /tools/proof-of-code
-Allow: /tools/terminal
+Allow: /tools/*
 
 # ==========================================================================
 # 🗺️ SITEMAP REFERENCE

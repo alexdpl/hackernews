@@ -1,11 +1,11 @@
-<!-- pages/docs/faq.vue -->
+<!-- app/pages/docs/faq.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
 
 useHead({
-  title: 'Domande Frequenti (FAQ) — DKP v2.5-GOLD',
+  title: 'Domande Frequenti (FAQ) & Knowledge Base AI — DKP v2.5-GOLD',
   meta: [
-    { name: 'description', content: 'Tutte le risposte sull\'ecosistema DevKernelPulse: Open Source, API Gateway, Gamification, Vault e Sicurezza.' }
+    { name: 'description', content: 'Tutte le risposte sull\'ecosistema DevKernelPulse v2.5-GOLD: OpenUI Studio, DKP Trinity AI Models, API Gateway crittografato, Vault e Sicurezza.' }
   ]
 })
 
@@ -29,6 +29,28 @@ interface FaqCategory {
 }
 
 const faqData: FaqCategory[] = [
+  {
+    title: '🤖 AI Gateway, OpenUI Studio & DKP Trinity',
+    icon: '🧠',
+    colorClass: 'pink',
+    items: [
+      {
+        id: 'ai-1',
+        question: 'Come funziona l\'autenticazione API Gateway in DevKernelPulse v2.5-GOLD?',
+        answer: 'DevKernelPulse utilizza un sistema Zero-Trust basato su Bearer Token (es. dkp_live_...). Il server H3 in Nuxt 4 intercetta la richiesta, calcola in volo l\'hash crittografato (SHA-256 / scrypt KDF) e lo confronta con il campo key_hash salvato nel database serverless Neon PostgreSQL, azzerando i rischi di leak delle chiavi in chiaro.'
+      },
+      {
+        id: 'ai-2',
+        question: 'Quali modelli IA alimentano OpenUI Studio e il Neural Playground?',
+        answer: 'Il motore OpenUI Studio e il Neural Playground sfruttano l\'architettura DKP Trinity via OpenRouter: 1. DKP-Flash (dots-studio/dots-3-note-preview) ottimizzato per velocità e contesti ampi. 2. DKP-Coder (recursive/flint-v1.0) specializzato in logica di programmazione e refactoring Tailwind. 3. DKP-Pro (nvidia/nemotron-3-ultra-550b-a55b) modello Enterprise a elevate prestazioni per ragionamento multi-step.'
+      },
+      {
+        id: 'ai-3',
+        question: 'Cos\'è il Paywall Dinamico e come gestisce il Metering?',
+        answer: 'Il sistema di metering monitora in tempo reale le chiamate sul database Neon. Gli utenti FREE (Newbie) hanno accesso a quota base e al modello DKP-Flash, mentre i piani PRO, ENTERPRISE o i possessori di API Pass sbloccano i modelli avanzati Coder e Pro con limiti fino a 1.000.000 req/mese.'
+      }
+    ]
+  },
   {
     title: '🌐 Ecosistema & Open Source',
     icon: '🚀',
@@ -134,9 +156,9 @@ const faqData: FaqCategory[] = [
       <!-- HERO SECTION -->
       <header class="faq-hero">
         <span class="badge-version">DOCUMENTAZIONE UFFICIALE v2.5-GOLD</span>
-        <h1 class="hero-title">Domande Frequenti (FAQ)</h1>
+        <h1 class="hero-title">Domande Frequenti (FAQ) &amp; AI Knowledge</h1>
         <p class="hero-subtitle">
-          Tutto ciò che devi sapere sull'ecosistema <strong>DevKernelPulse</strong>. Dalle licenze open source all'utilizzo del Vault crittografico e dell'API Gateway.
+          Tutto ciò che devi sapere sull'ecosistema <strong>DevKernelPulse</strong>. Dalle specificità dell'OpenUI Studio e DKP Trinity AI all'API Gateway crittografato.
         </p>
       </header>
 
@@ -161,7 +183,7 @@ const faqData: FaqCategory[] = [
               </button>
               
               <!-- TRANSITION BODY -->
-              <div class="accordion-body" :style="{ maxHeight: activeId === item.id ? '300px' : '0' }">
+              <div class="accordion-body" :style="{ maxHeight: activeId === item.id ? '350px' : '0' }">
                 <div class="answer-content">
                   {{ item.answer }}
                 </div>
@@ -179,7 +201,7 @@ const faqData: FaqCategory[] = [
         </div>
         <div class="cta-actions">
           <a href="https://github.com/alexdpl/hackernews" target="_blank" class="dkp-btn-outline">🐙 GitHub Repository</a>
-          <NuxtLink to="/bounties" class="dkp-btn-solid">🎯 Esplora Bounty Board</NuxtLink>
+          <NuxtLink to="/shop" class="dkp-btn-solid">🚀 Esplora Shop API Pass</NuxtLink>
         </div>
       </div>
 
@@ -259,6 +281,7 @@ const faqData: FaqCategory[] = [
   border-bottom: 1px solid #1e293b;
 }
 
+.category-title.pink { color: #f472b6; border-bottom-color: rgba(244, 114, 182, 0.2); }
 .category-title.cyan { color: #38bdf8; border-bottom-color: rgba(56, 189, 248, 0.2); }
 .category-title.emerald { color: #00dc82; border-bottom-color: rgba(0, 220, 130, 0.2); }
 .category-title.purple { color: #a855f7; border-bottom-color: rgba(168, 85, 247, 0.2); }

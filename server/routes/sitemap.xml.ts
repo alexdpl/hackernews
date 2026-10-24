@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const baseUrl = 'https://devkernelpulse.org'
   const currentDate = new Date().toISOString()
 
-  // 2. Rotte statiche dell'Ecosistema DKP v2.4-GOLD
+  // 2. Rotte statiche dell'Ecosistema DKP v2.5-GOLD
   const staticRoutes = [
     '',
     '/about',
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
   staticRoutes.forEach((route) => {
     let priority = '0.8'
     if (route === '') priority = '1.0'
-    else if (route.startsWith('/tools') || route.startsWith('/shop')) priority = '0.9'
+    else if (route.startsWith('/tools') || route.startsWith('/shop') || route.startsWith('/docs')) priority = '0.9'
 
     allUrls.push({
       url: `${baseUrl}${route}`,
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
       })
     }
   } catch (err) {
-    // Fallback silente per non bloccare la generazione della sitemap
+    // Fallback silente
   }
 
   // 4. FETCH DINAMICO: Offerte di Lavoro (Jobs)
