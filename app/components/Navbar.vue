@@ -95,7 +95,8 @@ const newsCategories = [
   { name: 'Blog Vault & Guide', description: 'Articoli e approfondimenti editoriali', icon: '📚', route: '/newest' },
   { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
   { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },
-  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' }
+  { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' },
+  { name: 'Blog Editorial Hub', description: 'Articoli e approfondimenti editoriali', icon: '✍️', route: '/blog' }
 ]
 
 const dkpTools = [

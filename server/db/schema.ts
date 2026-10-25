@@ -26,6 +26,11 @@ export const users = pgTable('users', {
   badges: jsonb('badges').$type<string[]>().default([]),
   githubHandle: varchar('github_handle', { length: 100 }),
   pulseBalance: integer('pulse_balance').default(0).notNull(),
+  
+  // Perks estetici acquistabili con i $PULSE
+  profileBadge: varchar('profile_badge', { length: 50 }).default('default').notNull(), 
+  nameColor: varchar('name_color', { length: 20 }).default('#f8fafc').notNull(),
+  
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -224,6 +229,23 @@ export const xpTransactions = pgTable('xp_transactions', {
   points: integer('points').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// NUOVA TABELLA: Ledger dei $PULSE (Acquisti, Guadagni, Trasferimenti)
+export const pulseTransactions = pgTable('pulse_transactions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  amount: integer('amount').notNull(), // + o -
+  txType: varchar('tx_type', { length: 50 }).notNull(), // EARN_UPVOTE, SPEND_BADGE, ecc.
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const pulseTransactionsRelations = relations(pulseTransactions, ({ one }) => ({
+  user: one(users, {
+    fields: [pulseTransactions.userId],
+    references: [users.id],
+  }),
+}))
 
 /* ------------------------------------------------------------- */
 /* 5. DKP BOUNTY BOARD (Novità v2.5)                             */

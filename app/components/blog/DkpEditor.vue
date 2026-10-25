@@ -257,6 +257,7 @@ const parsedContent = computed(() => {
   let rawContent = content.value;
   const codeBlocks: string[] = [];
   
+  // 1. ISOLAMENTO BLOCCHI DI CODICE
   rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
     const index = codeBlocks.length;
     const cleanLang = lang ? lang.trim().toLowerCase() : '';
@@ -281,6 +282,7 @@ const parsedContent = computed(() => {
     return `__DKP_CODE_BLOCK_${index}__`;
   });
 
+  // 2. PARSING MARKDOWN SICURO
   let html = rawContent
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -323,32 +325,35 @@ const parsedContent = computed(() => {
   html = html.replace(/^ {0,1}-\s+(.*?)\r?$/gm, '<ul class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ul>')
   html = html.replace(/^ {0,1}[0-9]+\.\s+(.*?)\r?$/gm, '<ol class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ol>')
 
-  codeBlocks.forEach((block, index) => {
-    html = html.replace(`__DKP_CODE_BLOCK_${index}__`, block);
-  });
-
+  // 3. GESTIONE A CAPO E PARAGRAFI
   let lines = html.split(/\r?\n/);
   let parsedHtml = '';
-  let inCodeBlock = false;
   
   for (let i = 0; i < lines.length; i++) {
      let line = lines[i];
+     let trimmed = line.trim();
      
-     if (line.includes('<' + 'div class="dkp-code-wrapper">')) inCodeBlock = true;
-     if (line.includes('<' + '/div>') && inCodeBlock && !line.includes('<' + 'div class="dkp-code-header">')) inCodeBlock = false;
-
-     if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(line.trim())) {
+     // Ignoriamo i placeholder dei blocchi codice
+     if (trimmed.includes('__DKP_CODE_BLOCK_')) {
+        parsedHtml += line + '\n';
+     } else if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) || /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)) {
         parsedHtml += line + '\n'; 
-     } else if (line.trim() === '' || new RegExp('^<\\/(div|table|ul|ol|blockquote)>').test(line.trim())) {
-         parsedHtml += line + '\n';
+     } else if (trimmed === '') {
+        parsedHtml += '<br />\n';
      } else {
         parsedHtml += line + (i < lines.length - 1 ? '<br />' : '');
      }
   }
 
+  // 4. REINSERIMENTO SICURO DEI BLOCCHI DI CODICE 
+  // FIX: L'uso di "() => block" impedisce ai simboli del dollaro ($) nel codice di rompere i tag HTML!
+  codeBlocks.forEach((block, index) => {
+    parsedHtml = parsedHtml.replace(new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'), () => block);
+  });
+
+  // 5. CLEANUP FINALE
   parsedHtml = parsedHtml
       .replace(new RegExp('(<\\/h[1-6]>)<br \\/>', 'g'), '$1') 
-      .replace(new RegExp('(<\\/pre>)<br \\/>', 'g'), '$1')
       .replace(new RegExp('(<\\/div>)<br \\/>', 'g'), '$1');
 
   return parsedHtml
