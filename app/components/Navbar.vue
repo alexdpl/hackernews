@@ -94,11 +94,12 @@ watch(isAuthenticated, (newVal) => {
 // 🟢 CATEGORIE E FEED CORRETTI CON ROTTE UNIFICATE v2.5-GOLD
 const newsCategories = [
   { name: 'Global Tech Feed', description: 'Ultime notizie dal Web (Crawler)', icon: '🌍', route: '/' },
-  { name: 'Blog Vault & Guide', description: 'Articoli e approfondimenti editoriali', icon: '📚', route: '/newest' },
-  { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💬', route: '/ask' },
+  { name: 'Blog Vault & Guide', description: 'Ultimi Articoli editoriali', icon: '📚', route: '/newest' },
+  { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '🔗', route: '/ask' },
   { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },
   { name: 'Tech Jobs Hub', description: 'Offerte di lavoro per sviluppatori', icon: '💼', route: '/jobs' },
-  { name: 'Blog Editorial Hub', description: 'Articoli e approfondimenti editoriali', icon: '✍️', route: '/blog' }
+  { name: 'Blog Editorial Hub', description: 'Articoli e approfondimenti editoriali', icon: '✍️', route: '/blog' },
+  { name: 'Node Talks Hub', description: 'Discussioni e thread tecnici verticali', icon: '💬', route: '/nodes' }
 ]
 
 const dkpTools = [

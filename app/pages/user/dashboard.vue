@@ -1,4 +1,4 @@
-// app/pages/user/dashboard.vue
+<!-- app/pages/user/dashboard.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,6 +7,7 @@ import DkpEditor from '~/components/blog/DkpEditor.vue'
 import UserXpHistory from '~/components/UserXpHistory.vue'
 import DkpPulseManager from '~/components/dashboard/DkpPulseManager.vue'
 import DkpCommentsManager from '~/components/dashboard/DkpCommentsManager.vue'
+import DkpNodesManager from '~/components/dashboard/DkpNodesManager.vue'
 
 useHead({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.5-GOLD',
@@ -23,7 +24,8 @@ const activeTab = computed({
   set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-const contentTab = ref<'blog' | 'pulse' | 'comments'>('blog')
+// AGGIUNTO 'nodes' ALLE SUB-TABS DEI CONTENUTI
+const contentTab = ref<'blog' | 'pulse' | 'nodes' | 'comments'>('blog')
 
 // --- STATI CONTENUTI SEPARATI ---
 const articles = ref<any[]>([])
@@ -91,7 +93,7 @@ async function notarizeNewCode() {
   } catch (err: any) { triggerToast('❌ Errore Vault.') }
 }
 
-// Profilo utente con dati reali inizializzati a 0 o basati sull'utente corrente
+// Profilo utente
 const userProfileData = ref({
   username: currentUser.value?.username || 'alexdpl',
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
@@ -104,7 +106,6 @@ const userProfileData = ref({
 
 const xpHistoryList = ref<any[]>([])
 
-// 🟢 UNICA FUNZIONE UNIFICATA PER I PUNTI REALI DAL DB
 async function fetchGamificationData() {
   try {
     const userId = currentUser.value?.id || 1
@@ -138,7 +139,6 @@ async function activateEarlyPioneerBeta() {
       if (!userProfileData.value.badges.includes('Early Pioneer')) {
         userProfileData.value.badges.push('Early Pioneer')
       }
-      // Ricarica i punti reali aggiornati dal server (es. +500 XP bonus)
       await fetchGamificationData()
     } else {
       triggerToast('❌ ' + (res?.error || 'Errore attivazione Beta'))
@@ -461,15 +461,18 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
       <section v-if="activeTab === 'content'" class="tab-panel">
         
         <!-- Sub-Tabs di Navigazione Contenuti -->
-        <div class="content-tabs-nav mb-6">
+        <div class="content-tabs-nav mb-6 grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
           <button @click="contentTab = 'blog'" :class="['content-tab-btn', { active: contentTab === 'blog' }]">
             📝 Articoli Blog
           </button>
           <button @click="contentTab = 'pulse'" :class="['content-tab-btn', { active: contentTab === 'pulse' }]">
-            🚀 Ask / Show / Jobs
+            🚀 Condivisioni (HN)
+          </button>
+          <button @click="contentTab = 'nodes'" :class="['content-tab-btn', { active: contentTab === 'nodes' }]">
+            🌐 Forum (Nodes)
           </button>
           <button @click="contentTab = 'comments'" :class="['content-tab-btn', { active: contentTab === 'comments' }]">
-            💬 I Miei Commenti
+            💬 Commenti Articoli
           </button>
         </div>
 
@@ -644,7 +647,12 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
           <DkpPulseManager/>
         </div>
 
-        <!-- 2C. TAB COMMENTS MANAGER -->
+        <!-- 2C. TAB DKP NODES MANAGER (NUOVO) -->
+        <div v-if="contentTab === 'nodes'">
+          <DkpNodesManager/>
+        </div>
+
+        <!-- 2D. TAB COMMENTS MANAGER -->
         <div v-if="contentTab === 'comments'">
           <DkpCommentsManager/>
         </div>
@@ -1072,7 +1080,7 @@ details > summary::-webkit-details-marker { display: none; }
 .section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
 .section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
 
-/* 🟢 STILE SUB-TABS PER CONTENUTI */
+/* 🟢 STILE SUB-TABS PER CONTENUTI AGGIORNATO */
 .content-tabs-nav { display: flex; gap: 0.5rem; background: rgba(2, 4, 32, 0.5); padding: 0.4rem; border-radius: 10px; border: 1px solid #1e293b; }
 .content-tab-btn { flex: 1; background: transparent; border: none; color: #64748b; font-weight: 800; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
 .content-tab-btn:hover { color: #f8fafc; }

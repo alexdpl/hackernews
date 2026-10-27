@@ -377,3 +377,90 @@ export const dkpAds = pgTable('dkp_ads', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow()
 })
+
+/* ------------------------------------------------------------- */
+/* 10. DKP NODES (Reddit-Style Forum & Tech Discussions)         */
+/* ------------------------------------------------------------- */
+
+// Nodi / Subreddit (Es: n/javascript, n/devops)
+export const nodes = pgTable('nodes', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  slug: varchar('slug', { length: 120 }).notNull().unique(), // URL: n/javascript
+  description: text('description').notNull(),
+  icon: varchar('icon', { length: 50 }).default('i-heroicons-hashtag'),
+  color: varchar('color', { length: 30 }).default('#38bdf8'),
+  creatorId: integer('creator_id').references(() => users.id).notNull(),
+  subscribersCount: integer('subscribers_count').default(0).notNull(),
+  isPrivate: boolean('is_private').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Thread / Post all'interno di un Nodo
+export const nodePosts = pgTable('node_posts', {
+  id: serial('id').primaryKey(),
+  nodeId: integer('node_id').references(() => nodes.id, { onDelete: 'cascade' }).notNull(),
+  authorId: integer('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(), // DKP Markdown integrato
+  karmaScore: integer('karma_score').default(1).notNull(), // Upvotes - Downvotes
+  commentsCount: integer('comments_count').default(0).notNull(),
+  vaultHash: varchar('vault_hash', { length: 64 }), // Integrazione Sentinel / Proof-of-Code
+  isPinned: boolean('is_pinned').default(false).notNull(),
+  isLocked: boolean('is_locked').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Commenti nidificati per i Thread (Supporto albero Reddit-Style)
+export const nodeComments = pgTable('node_comments', {
+  id: serial('id').primaryKey(),
+  postId: integer('post_id').references(() => nodePosts.id, { onDelete: 'cascade' }).notNull(),
+  authorId: integer('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  parentId: integer('parent_id'), // Self-reference gestita in Drizzle per i commenti nidificati
+  content: text('content').notNull(),
+  karmaScore: integer('karma_score').default(1).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Tabella di tracciamento univoco dei voti (per evitare che un utente voti due volte)
+export const nodeVotes = pgTable('node_votes', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  postId: integer('post_id').references(() => nodePosts.id, { onDelete: 'cascade' }),
+  commentId: integer('comment_id').references(() => nodeComments.id, { onDelete: 'cascade' }),
+  voteValue: integer('vote_value').notNull(), // 1 per Upvote, -1 per Downvote
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  // Constraint unica per impedire il doppio voto sullo stesso post/commento
+  uniquePostVote: unique('unique_node_post_vote').on(table.userId, table.postId),
+  uniqueCommentVote: unique('unique_node_comment_vote').on(table.userId, table.commentId),
+}))
+
+// -------------------------------------------------------------
+// Relazioni Drizzle per i DKP Nodes
+// -------------------------------------------------------------
+export const nodesRelations = relations(nodes, ({ many, one }) => ({
+  posts: many(nodePosts),
+  creator: one(users, { fields: [nodes.creatorId], references: [users.id] }),
+}))
+
+export const nodePostsRelations = relations(nodePosts, ({ one, many }) => ({
+  node: one(nodes, { fields: [nodePosts.nodeId], references: [nodes.id] }),
+  author: one(users, { fields: [nodePosts.authorId], references: [users.id] }),
+  comments: many(nodeComments),
+  votes: many(nodeVotes),
+}))
+
+export const nodeCommentsRelations = relations(nodeComments, ({ one, many }) => ({
+  post: one(nodePosts, { fields: [nodeComments.postId], references: [nodePosts.id] }),
+  author: one(users, { fields: [nodeComments.authorId], references: [users.id] }),
+  votes: many(nodeVotes),
+}))
+
+export const nodeVotesRelations = relations(nodeVotes, ({ one }) => ({
+  user: one(users, { fields: [nodeVotes.userId], references: [users.id] }),
+  post: one(nodePosts, { fields: [nodeVotes.postId], references: [nodePosts.id] }),
+  comment: one(nodeComments, { fields: [nodeVotes.commentId], references: [nodeComments.id] }),
+}))
