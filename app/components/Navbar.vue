@@ -42,19 +42,21 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-// 🚀 FASE 3: Funzione di ricarica XP
+// 🚀 FASE 3: Funzione di ricarica XP corretta e allineata all'API unificata
 const refreshXpData = async () => {
-  if (!isAuthenticated.value && !currentUser.value?.id) return
   try {
-    const res: any = await $fetch('/api/user/xp/sync')
-    if (res && res.success) {
-      if (res.data.totalXp > globalXp.value && globalXp.value > 0) {
+    // Chiamata all'endpoint unificato della gamification
+    const res: any = await $fetch('/api/user/gamification')
+    if (res && res.success && res.data) {
+      const newXp = res.data.xp ?? 0
+      if (newXp > globalXp.value && globalXp.value > 0) {
         isXpAnimating.value = true
         playXpSound()
         setTimeout(() => { isXpAnimating.value = false }, 1500)
       }
-      globalXp.value = res.data.totalXp
-      globalLevel.value = res.data.level
+      globalXp.value = newXp
+      // Calcolo livello o lettura diretta
+      globalLevel.value = res.data.level ? (typeof res.data.level === 'number' ? res.data.level : 2) : 1
     }
   } catch (e) {
     console.warn('Errore sync XP Navbar:', e)

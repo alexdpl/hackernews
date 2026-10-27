@@ -1,10 +1,13 @@
+// server/api/user/xp/award.ts
 import { defineEventHandler, readBody, getCookie } from 'h3'
 import { getDb } from '~~/server/utils/db'
 import { sql } from 'drizzle-orm'
+import { users } from '~~/server/db/schema'
+import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
-  const sessionUserCookie = getCookie(event, 'dkp_user_id') || getCookie(event, 'user_id')
-  const userId = sessionUserCookie ? parseInt(sessionUserCookie, 10) : 1
+  const username = getCookie(event, 'dkp_user') || 'alexdpl'
+  const db = getDb()
 
   const body = await readBody(event)
   const { amount, actionType, description } = body
@@ -13,9 +16,11 @@ export default defineEventHandler(async (event) => {
     return { success: false, message: 'Dati mancanti per assegnare XP' }
   }
 
-  const db = getDb()
-
   try {
+    // Troviamo l'ID corretto dal database usando lo username
+    const userRecords = await db.select().from(users).where(eq(users.username, username)).limit(1)
+    const userId = userRecords.length > 0 ? userRecords[0].id : 1
+
     await db.execute(sql`
       INSERT INTO user_xp_transactions (user_id, amount, action_type, description)
       VALUES (${userId}, ${amount}, ${actionType}, ${description})

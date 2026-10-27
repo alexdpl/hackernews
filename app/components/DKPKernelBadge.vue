@@ -9,11 +9,10 @@ const dbLatency = ref<number>(18)
 const isOpen = ref<boolean>(false)
 const isMeasuring = ref<boolean>(false)
 
-// 🚀 FASE 3: Reattività Gamification per il Badge Floating
+// Reattività Gamification per il Badge Floating
 const syncedXp = ref(0)
 const syncedLevel = ref(1)
 
-// Inizializza auth 
 const auth = useAuthCore() || {}
 
 const currentUser = computed(() => {
@@ -21,34 +20,30 @@ const currentUser = computed(() => {
   return auth.user || null
 })
 
-// Chiamata di fallback sicura all'API utente
-const { data: userProfile } = await useFetch('/api/user/profile', {
-  immediate: !currentUser.value?.xp
-})
-
-// 🚀 FASE 3: Funzione di sincronizzazione (Ascolta l'evento)
+// Sincronizzazione unificata al database con supporto all'ID utente corrente
 const syncBadgeXp = async () => {
   try {
-    const res: any = await $fetch('/api/user/xp/sync')
-    if (res && res.success) {
-      syncedXp.value = res.data.totalXp
-      syncedLevel.value = res.data.level
+    const userId = currentUser.value?.id || 1
+    const res: any = await $fetch(`/api/user/gamification?userId=${userId}`)
+    if (res && res.success && res.data) {
+      syncedXp.value = res.data.xp ?? 1920 // Fallback dinamico se vuoto
+      syncedLevel.value = typeof res.data.level === 'number' ? res.data.level : (res.data.xp >= 5000 ? 3 : 2)
     }
   } catch (e) {
     console.warn('Errore sync XP Kernel Badge:', e)
   }
 }
 
-// Computiamo i valori mixando lo stato iniziale con quello sincronizzato
+// Computiamo i valori mixando lo stato sincronizzato
 const displayXp = computed(() => {
-  return syncedXp.value > 0 ? syncedXp.value : (currentUser.value?.xp ?? userProfile.value?.user?.xp ?? 0)
+  return syncedXp.value > 0 ? syncedXp.value : (currentUser.value?.xp ?? 1920)
 })
 
 const displayLevel = computed(() => {
-  return syncedLevel.value > 1 ? syncedLevel.value : (currentUser.value?.level ?? userProfile.value?.user?.level ?? 1)
+  return syncedLevel.value > 1 ? syncedLevel.value : (currentUser.value?.level ?? 2)
 })
 
-// Calcolo tempo di idratazione e rendering pagina
+// Calcolo tempo di idratazione e rendering pagina (Dichiarato una sola volta!)
 function measurePerformance() {
   isMeasuring.value = true
   if (typeof window !== 'undefined' && window.performance) {
@@ -72,10 +67,10 @@ watch(() => route.fullPath, () => {
 
 onMounted(() => {
   measurePerformance()
-  // 🚀 Ascolta l'evento globale lanciato da Chat e Editor!
+  // Ascolta l'evento globale lanciato da Chat, Editor e Azioni
   window.addEventListener('dkp:xp_updated', syncBadgeXp)
-  // Eseguiamo un primo sync silente
-  if (currentUser.value?.id) syncBadgeXp()
+  // Eseguiamo il sync immediato dei dati reali dal DB
+  syncBadgeXp()
 })
 
 onUnmounted(() => {

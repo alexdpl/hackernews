@@ -1,4 +1,4 @@
-<!-- app/pages/user/dashboard.vue -->
+// app/pages/user/dashboard.vue
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -18,16 +18,17 @@ const router = useRouter()
 const { currentUser } = useAuthCore()
 const { getMainUrl, getApiUrl } = useDomain()
 
-// --- GESTIONE TABS PRINCIPALI ---
 const activeTab = computed({
   get: () => (route.query.tab as string) || 'profile',
   set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-// --- SOTTO-TABS GESTIONE CONTENUTI ---
 const contentTab = ref<'blog' | 'pulse' | 'comments'>('blog')
 
-// --- GESTIONE ARTICOLI: RICERCA E PAGINAZIONE ---
+// --- STATI CONTENUTI SEPARATI ---
+const articles = ref<any[]>([])
+const hnArticles = ref<any[]>([])
+
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 5
@@ -51,11 +52,8 @@ function changePage(page: number) {
   }
 }
 
-watch(searchQuery, () => {
-  currentPage.value = 1
-})
+watch(searchQuery, () => { currentPage.value = 1 })
 
-// TOAST SYSTEM
 const showToast = ref(false)
 const toastMessage = ref('')
 function triggerToast(msg: string) {
@@ -64,7 +62,7 @@ function triggerToast(msg: string) {
   setTimeout(() => showToast.value = false, 3500)
 }
 
-// 🛡️ STATO VAULT INTERATTIVO & PERSISTENTE
+// 🛡️ VAULT & PROFILO
 const vaultNewTitle = ref('')
 const vaultNewCode = ref('')
 const vaultCertificates = ref<any[]>([])
@@ -74,162 +72,111 @@ async function fetchVaultCertificates() {
     const res: any = await $fetch(`/api/user/vault?userId=${currentUser.value?.id || 1}`)
     if (res && res.success) {
       vaultCertificates.value = (res.data || []).map((c: any) => ({
-        id: c.id,
-        title: c.title,
-        hash: c.hash,
-        sastStatus: c.metadata?.sastStatus || 'PASSED',
+        id: c.id, title: c.title, hash: c.hash, sastStatus: c.metadata?.sastStatus || 'PASSED',
         date: c.createdAt ? c.createdAt.split('T')[0] : '2026-10-15'
       }))
     }
-  } catch (err) {
-    console.warn("Impossibile caricare i certificati dal Vault", err)
-  }
+  } catch (err) {}
 }
 
 async function notarizeNewCode() {
-  if (!vaultNewTitle.value.trim() || !vaultNewCode.value.trim()) {
-    triggerToast('❌ Inserisci un titolo e il codice sorgente da notarizzare.')
-    return
-  }
-
+  if (!vaultNewTitle.value.trim() || !vaultNewCode.value.trim()) return triggerToast('❌ Dati mancanti.')
   try {
     const res: any = await $fetch('/api/user/vault', {
-      method: 'POST',
-      body: {
-        userId: currentUser.value?.id || 1,
-        title: vaultNewTitle.value,
-        code: vaultNewCode.value,
-        sastStatus: 'PASSED'
-      }
+      method: 'POST', body: { userId: currentUser.value?.id || 1, title: vaultNewTitle.value, code: vaultNewCode.value, sastStatus: 'PASSED' }
     })
-
     if (res && res.success) {
-      triggerToast('🛡️ Codice notarizzato e salvato nel Vault di produzione!')
-      vaultNewTitle.value = ''
-      vaultNewCode.value = ''
-      await fetchVaultCertificates()
+      triggerToast('🛡️ Codice notarizzato!'); vaultNewTitle.value = ''; vaultNewCode.value = ''; await fetchVaultCertificates()
     }
-  } catch (err: any) {
-    triggerToast('❌ Errore durante la notarizzazione nel DB.')
-  }
+  } catch (err: any) { triggerToast('❌ Errore Vault.') }
 }
 
-// 🛡️ Stato unificato utente, profilo e gamification dal DB
+// Profilo utente con dati reali inizializzati a 0 o basati sull'utente corrente
 const userProfileData = ref({
   username: currentUser.value?.username || 'alexdpl',
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
-  xp: 850,
-  level: 'VIP Developer',
-  nextLevelXp: 1000,
-  progress: 85,
+  xp: 0, 
+  level: 'Newbie Developer',
+  nextLevelXp: 500,
+  progress: 0,
   badges: ['Developer VIP Member']
 })
 
 const xpHistoryList = ref<any[]>([])
 
-async function activateEarlyPioneerBeta() {
-  triggerToast('🎉 Congratulazioni! Sei ufficialmente registrato nel Developer Beta Program (Pioniere #42)!')
-
-  if (!userProfileData.value.badges.includes('Early Pioneer')) {
-    userProfileData.value.badges.push('Early Pioneer')
-  }
-
-  try {
-    await $fetch('/api/user/beta-pioneer', {
-      method: 'POST',
-      body: { userId: currentUser.value?.id || 1 }
-    })
-  } catch (err: any) {
-    console.warn("Sincronizzazione beta in background completata.", err)
-  }
-}
-
+// 🟢 UNICA FUNZIONE UNIFICATA PER I PUNTI REALI DAL DB
 async function fetchGamificationData() {
   try {
-    const res: any = await $fetch(`/api/user/gamification?userId=${currentUser.value?.id || 1}`)
+    const userId = currentUser.value?.id || 1
+    const res: any = await $fetch(`/api/user/gamification?userId=${userId}`)
+    
     if (res && res.success && res.data) {
-      userProfileData.value.xp = res.data.xp
-      userProfileData.value.level = res.data.level
-      if (res.data.badges && res.data.badges.length > 0) {
+      userProfileData.value.xp = res.data.xp ?? 0
+      userProfileData.value.level = res.data.level ?? 'Newbie Developer'
+      if (res.data.badges?.length > 0) {
         userProfileData.value.badges = res.data.badges
       }
     }
-    
-    // FETCH STORICO TRANSAZIONI GAMIFICATION
+
     const statsRes: any = await $fetch('/api/user/xp/history')
-    if (statsRes && statsRes.success) {
-       if (statsRes.data && Array.isArray(statsRes.data)) {
-         xpHistoryList.value = statsRes.data
-       }
+    if (statsRes?.success && Array.isArray(statsRes.data)) {
+      xpHistoryList.value = statsRes.data
     }
   } catch (err) {
-    console.warn("Impossibile caricare i dati di gamification dal DB", err)
+    console.warn("Impossibile sincronizzare i dati gamification reali", err)
   }
 }
 
-// 🔑 GESTIONE REALE API KEYS DA NEON DB
-const { data: userKeysData, refresh: refreshApiKeys, pending: isLoadingApiKeys } = await useFetch<any>('/api/user/keys', {
-  key: 'dashboard-user-api-keys',
-  server: true
-})
+async function activateEarlyPioneerBeta() {
+  try {
+    const res: any = await $fetch('/api/user/beta-pioneer', { 
+      method: 'POST', 
+      body: { userId: currentUser.value?.id || 1 } 
+    })
+    if (res && res.success) {
+      triggerToast('🎉 Registrato nel Beta Program!')
+      if (!userProfileData.value.badges.includes('Early Pioneer')) {
+        userProfileData.value.badges.push('Early Pioneer')
+      }
+      // Ricarica i punti reali aggiornati dal server (es. +500 XP bonus)
+      await fetchGamificationData()
+    } else {
+      triggerToast('❌ ' + (res?.error || 'Errore attivazione Beta'))
+    }
+  } catch (err: any) { 
+    triggerToast('❌ Errore di rete durante la registrazione.') 
+  }
+}
 
+const { data: userKeysData, refresh: refreshApiKeys, pending: isLoadingApiKeys } = await useFetch<any>('/api/user/keys', { key: 'dashboard-user-api-keys', server: true })
 const apiKeysList = computed(() => userKeysData.value?.data || [])
 const newKeyName = ref('')
 const generatedKeyModal = ref<string | null>(null)
 const copiedKey = ref(false)
 
 async function generateApiKey() {
-  if (!newKeyName.value.trim()) {
-    triggerToast('❌ Inserisci un nome identificativo per la chiave API.')
-    return
-  }
-
+  if (!newKeyName.value.trim()) return triggerToast('❌ Inserisci nome API.')
   try {
-    const res = await $fetch<any>('/api/user/keys/generate', {
-      method: 'POST',
-      body: {
-        name: newKeyName.value.trim(),
-        role: 'PRO'
-      }
-    })
-
+    const res = await $fetch<any>('/api/user/keys/generate', { method: 'POST', body: { name: newKeyName.value.trim(), role: 'PRO' } })
     if (res?.success && res?.rawApiKey) {
-      generatedKeyModal.value = res.rawApiKey
-      newKeyName.value = ''
-      triggerToast('🔑 Nuova API Key creata con successo sul DB Neon!')
-      await refreshApiKeys()
+      generatedKeyModal.value = res.rawApiKey; newKeyName.value = ''; triggerToast('🔑 API Key creata!'); await refreshApiKeys()
     }
-  } catch (err: any) {
-    triggerToast('❌ Errore durante la generazione della chiave: ' + (err.data?.statusMessage || err.message))
-  }
+  } catch (err: any) { triggerToast('❌ Errore generazione API.') }
 }
 
 async function revokeApiKey(id: number | string) {
-  if (!confirm('Sei sicuro di voler revocare questa API Key? Le chiamate esterne verranno bloccate.')) return
-
+  if (!confirm('Sicuro di revocare la Key?')) return
   try {
-    const res = await $fetch<any>('/api/user/keys/revoke', {
-      method: 'POST',
-      body: { id }
-    })
-
-    if (res?.success) {
-      triggerToast('🗑️ API Key revocata permanentemente dal DB.')
-      await refreshApiKeys()
-    }
-  } catch (err: any) {
-    triggerToast('❌ Errore durante la revoca: ' + (err.data?.statusMessage || err.message))
-  }
+    const res = await $fetch<any>('/api/user/keys/revoke', { method: 'POST', body: { id } })
+    if (res?.success) { triggerToast('🗑️ API Key revocata.'); await refreshApiKeys() }
+  } catch (err: any) { triggerToast('❌ Errore revoca.') }
 }
 
 function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text)
-  copiedKey.value = true
-  triggerToast('📋 Copiato negli appunti!')
+  navigator.clipboard.writeText(text); copiedKey.value = true; triggerToast('📋 Copiato!')
   setTimeout(() => copiedKey.value = false, 2000)
 }
 
-// TELEMETRIA API
 const realLatency = ref<number | string>(22)
 const memoryMb = ref<number>(45)
 const uptimeSec = ref<number>(48)
@@ -242,122 +189,50 @@ async function fetchTelemetryData() {
   const startTime = performance.now()
   try {
     const healthData: any = await $fetch('/api/public/health')
-    const elapsed = Math.round(performance.now() - startTime)
-    realLatency.value = elapsed > 0 ? elapsed : 12
+    realLatency.value = Math.round(performance.now() - startTime) > 0 ? Math.round(performance.now() - startTime) : 12
     if (healthData?.status) serverStatus.value = healthData.status
-
     const metricsData: any = await $fetch('/api/public/metrics')
     if (metricsData?.memoryUsageMb) memoryMb.value = metricsData.memoryUsageMb
     if (metricsData?.uptimeSeconds) uptimeSec.value = metricsData.uptimeSeconds
-  } catch {
-    realLatency.value = 18
-  }
+  } catch { realLatency.value = 18 }
 }
 
-onMounted(() => {
-  if (currentUser.value) {
-    userProfileData.value.username = currentUser.value.username || 'alexdpl'
-    if (currentUser.value.avatar) {
-      userProfileData.value.avatar = currentUser.value.avatar
-    }
-  }
-  fetchCategories()
-  fetchTelemetryData()
-  fetchUserArticles()
-  fetchVaultCertificates()
-  fetchGamificationData()
-
-  window.addEventListener('dkp:xp_updated', fetchGamificationData)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('dkp:xp_updated', fetchGamificationData)
-})
-
-// PROFILO SOCIAL
 const profileForm = ref({
   avatar: currentUser.value?.avatar || 'https://github.com/alexdpl.png',
-  bio: currentUser.value?.bio || 'Lead Engineer Architect & Core Creator of DevKernelPulse',
-  github: 'https://github.com/alexdpl',
-  twitter: 'https://x.com/alexdpl76',
-  linkedin: 'https://linkedin.com/in/alexdpl',
-  reddit: 'https://reddit.com/user/alexdpl'
+  bio: currentUser.value?.bio || 'Lead Engineer Architect',
+  github: 'https://github.com/alexdpl', twitter: 'https://x.com/alexdpl76', linkedin: 'https://linkedin.com/in/alexdpl', reddit: 'https://reddit.com/user/alexdpl'
 })
 const profileSaved = ref(false)
+function saveProfile() { profileSaved.value = true; triggerToast('✅ Profilo aggiornato!'); setTimeout(() => profileSaved.value = false, 3000) }
 
-function saveProfile() {
-  profileSaved.value = true
-  triggerToast('✅ Profilo e canali Social aggiornati!')
-  setTimeout(() => profileSaved.value = false, 3000)
-}
-
-// CATEGORIE DA NEON DB
-interface CategoryItem {
-  id: string | number
-  name: string
-  icon: string
-  subcategories: string[]
-}
-
+interface CategoryItem { id: string | number; name: string; icon: string; subcategories: string[] }
 const availableCategories = ref<CategoryItem[]>([])
 
 async function fetchCategories() {
   try {
     const res: any = await $fetch('/api/blog/categories')
     const rawData = (res && res.success) ? res.data : (Array.isArray(res) ? res : [])
-    
-    if (rawData && rawData.length > 0) {
+    if (rawData?.length > 0) {
       availableCategories.value = rawData.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        icon: c.icon || '🏷️',
-        subcategories: (c.subcategories || []).map((s: any) => typeof s === 'string' ? s : s.name)
+        id: c.id, name: c.name, icon: c.icon || '🏷️', subcategories: (c.subcategories || []).map((s: any) => typeof s === 'string' ? s : s.name)
       }))
-    } else {
-      populateCategoriesFallback()
-    }
-  } catch {
-    populateCategoriesFallback()
-  }
+    } else { populateCategoriesFallback() }
+  } catch { populateCategoriesFallback() }
 }
 
 function populateCategoriesFallback() {
   availableCategories.value = [
-    {
-      id: 'cat-1',
-      name: 'AI, LLM & Machine Learning',
-      icon: '🤖',
-      subcategories: ['LLM Architecture', 'Local AI & Ollama', 'AI Agents', 'Prompt Engineering', 'RAG & Vector Databases']
-    },
-    {
-      id: 'cat-2',
-      name: 'Cloud Native & DevOps',
-      icon: '☁️',
-      subcategories: ['Kubernetes', 'GCP Architecture', 'Docker & Containers', 'CI/CD Pipelines']
-    },
-    {
-      id: 'cat-3',
-      name: 'Cybersecurity & Vault',
-      icon: '🛡️',
-      subcategories: ['Penetration Testing', 'Vault & Hashing', 'Zero Trust']
-    }
+    { id: 'cat-1', name: 'AI, LLM & Machine Learning', icon: '🤖', subcategories: ['LLM Architecture', 'Local AI & Ollama'] },
+    { id: 'cat-2', name: 'Cloud Native & DevOps', icon: '☁️', subcategories: ['Kubernetes', 'GCP Architecture'] },
+    { id: 'cat-3', name: 'Cybersecurity & Vault', icon: '🛡️', subcategories: ['Penetration Testing', 'Vault & Hashing'] }
   ]
 }
 
-// ARTICOLI E MODALE UNIFICATA
-const articles = ref<any[]>([])
 const isEditingArticle = ref(false)
 const useAdvancedEditor = ref(false)
 
 const articleForm = ref({
-  id: null as number | null, 
-  title: '',
-  category: '',
-  subCategory: '',
-  summary: '',
-  content: '',
-  tags: [] as string[],
-  status: 'draft'
+  id: null as number | null, title: '', category: '', subCategory: '', summary: '', content: '', tags: [] as string[], status: 'draft'
 })
 
 const currentSubcategories = computed(() => {
@@ -365,48 +240,21 @@ const currentSubcategories = computed(() => {
   return cat ? cat.subcategories : []
 })
 
-function onCategoryChange() {
-  const subs = currentSubcategories.value
-  articleForm.value.subCategory = subs.length > 0 ? subs[0] : ''
-}
+function onCategoryChange() { const subs = currentSubcategories.value; articleForm.value.subCategory = subs.length > 0 ? subs[0] : '' }
 
 function openNewArticleModal() {
   const defaultCat = availableCategories.value.length > 0 ? availableCategories.value[0] : null
-  articleForm.value = {
-    id: null,
-    title: '',
-    category: defaultCat ? defaultCat.name : 'AI, LLM & Machine Learning',
-    subCategory: defaultCat && defaultCat.subcategories.length > 0 ? defaultCat.subcategories[0] : '',
-    summary: '',
-    content: '',
-    tags: [],
-    status: 'draft'
-  }
-  useAdvancedEditor.value = false
-  isEditingArticle.value = true
+  articleForm.value = { id: null, title: '', category: defaultCat ? defaultCat.name : 'AI, LLM & Machine Learning', subCategory: defaultCat && defaultCat.subcategories.length > 0 ? defaultCat.subcategories[0] : '', summary: '', content: '', tags: [], status: 'draft' }
+  useAdvancedEditor.value = false; isEditingArticle.value = true
 }
 
 function editArticle(article: any) {
-  articleForm.value = {
-    id: article.id,
-    title: article.title || '',
-    category: article.category || '',
-    subCategory: article.subCategory || '',
-    summary: article.summary || '',
-    content: article.content || '',
-    tags: Array.isArray(article.tags) ? [...article.tags] : [],
-    status: article.status || 'draft'
-  }
-  useAdvancedEditor.value = true 
-  isEditingArticle.value = true
+  articleForm.value = { id: article.id, title: article.title || '', category: article.category || '', subCategory: article.subCategory || '', summary: article.summary || '', content: article.content || '', tags: Array.isArray(article.tags) ? [...article.tags] : [], status: article.status || 'draft' }
+  useAdvancedEditor.value = true; isEditingArticle.value = true
 }
 
-function submitWithStatus(status: 'draft' | 'published') {
-  articleForm.value.status = status
-  saveArticle()
-}
+function submitWithStatus(status: 'draft' | 'published') { articleForm.value.status = status; saveArticle() }
 
-// CARICAMENTO ARTICOLI DAL DB NEON
 async function fetchUserArticles() {
   try {
     const res: any = await $fetch('/api/blog/posts')
@@ -427,104 +275,85 @@ async function fetchUserArticles() {
   }
 }
 
-// SALVATAGGIO POST + GAMIFICATION EVENT
-async function saveArticle() {
-  if (!articleForm.value.title.trim() || !articleForm.value.category) {
-    triggerToast('❌ Compila Titolo e Categoria prima di salvare.')
-    return
-  }
-
-  const payload = {
-    title: articleForm.value.title,
-    category: articleForm.value.category,
-    subCategory: articleForm.value.subCategory,
-    excerpt: articleForm.value.summary,
-    content: articleForm.value.content,
-    tags: JSON.parse(JSON.stringify(articleForm.value.tags)), 
-    status: articleForm.value.status
-  }
-
-  const isUpdate = articleForm.value.id !== null;
-  const method = isUpdate ? 'PUT' : 'POST';
-  const url = isUpdate ? `/api/blog/posts/${articleForm.value.id}` : '/api/blog/posts';
-
+async function fetchHnLinks() {
   try {
-    const res: any = await $fetch(url, {
-      method: method,
-      body: payload
-    })
-    
-    if (res && res.success) {
-        let msg = isUpdate
-          ? (articleForm.value.status === 'published' ? '✅ Articolo aggiornato con successo!' : '💾 Bozza aggiornata!')
-          : (articleForm.value.status === 'published' ? '🎉 Articolo pubblicato e salvato nel Vault!' : '💾 Bozza salvata nel DB!');
-        
-        triggerToast(msg)
-
-        if (!isUpdate && articleForm.value.status === 'published') {
-          try {
-             await $fetch('/api/user/xp/award', {
-                method: 'POST',
-                body: {
-                  amount: 150,
-                  actionType: 'ARTICLE_PUBLISHED',
-                  description: `Pubblicazione articolo: ${articleForm.value.title.substring(0, 30)}...`
-                }
-             })
-             window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
-          } catch(e) {
-             console.warn('Errore gamification durante il salvataggio:', e)
-          }
-        }
-
-        isEditingArticle.value = false
-        await fetchUserArticles()
-    } else {
-        triggerToast('❌ Errore durante il salvataggio: ' + (res?.statusMessage || 'Controlla i dati.'))
+    const res: any = await $fetch('/api/user/contents').catch(() => null)
+    if (res && res.success && res.hnPosts) {
+      hnArticles.value = res.hnPosts.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        url: p.url,
+        type: p.type || 'news',
+        points: p.points || 1,
+        commentsCount: p.commentsCount || 0,
+        date: p.createdAt ? p.createdAt.split('T')[0] : '2026-10-12'
+      }))
     }
-  } catch (err: any) {
-    console.error('Errore salvataggio post:', err)
-    triggerToast('❌ Errore durante il salvataggio nel DB.')
+  } catch (e) {
+    console.warn("API contents non trovata, skippo i link HN", e)
   }
+}
+
+async function saveArticle() {
+  if (!articleForm.value.title.trim() || !articleForm.value.category) return triggerToast('❌ Compila Titolo e Categoria.')
+  const payload = { title: articleForm.value.title, category: articleForm.value.category, subCategory: articleForm.value.subCategory, excerpt: articleForm.value.summary, content: articleForm.value.content, tags: JSON.parse(JSON.stringify(articleForm.value.tags)), status: articleForm.value.status }
+  const isUpdate = articleForm.value.id !== null; const url = isUpdate ? `/api/blog/posts/${articleForm.value.id}` : '/api/blog/posts'
+  try {
+    const res: any = await $fetch(url, { method: isUpdate ? 'PUT' : 'POST', body: payload })
+    if (res && res.success) {
+        triggerToast(isUpdate ? '✅ Articolo aggiornato!' : '🎉 Articolo pubblicato!')
+        if (!isUpdate && articleForm.value.status === 'published') {
+          try { 
+            await $fetch('/api/user/xp/award', { method: 'POST', body: { amount: 150, actionType: 'ARTICLE_PUBLISHED', description: `Pubblicazione articolo` } })
+            window.dispatchEvent(new CustomEvent('dkp:xp_updated')) 
+          } catch(e) {}
+        }
+        isEditingArticle.value = false; await fetchUserArticles()
+    } else { triggerToast('❌ Errore salvataggio.') }
+  } catch (err: any) { triggerToast('❌ Errore DB.') }
 }
 
 async function quickUpdateStatus(art: any, newStatus: 'published' | 'draft') {
   try {
-    const payload = {
-      title: art.title,
-      category: art.category,
-      subCategory: art.subCategory,
-      excerpt: art.summary,
-      content: art.content,
-      tags: art.tags,
-      status: newStatus
-    }
-    
-    await $fetch(`/api/blog/posts/${art.id}`, {
-      method: 'PUT',
-      body: payload
-    })
-    
-    triggerToast(newStatus === 'published' ? '🚀 Articolo online!' : '📝 Ritirato in bozza.')
-    await fetchUserArticles()
-  } catch (err: any) {
-    triggerToast('❌ Errore durante l\'aggiornamento dello stato.')
-  }
+    await $fetch(`/api/blog/posts/${art.id}`, { method: 'PUT', body: { ...art, excerpt: art.summary, status: newStatus } })
+    triggerToast(newStatus === 'published' ? '🚀 Articolo online!' : '📝 Ritirato in bozza.'); await fetchUserArticles()
+  } catch (err: any) { triggerToast('❌ Errore aggiornamento.') }
 }
 
 async function deleteArticle(id: number) {
-  if (!confirm('Sei sicuro di voler eliminare permanentemente questo post dal Vault?')) return
+  if (!confirm('Eliminare permanentemente?')) return
+  try { await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' }); triggerToast('🗑️ Rimosso.'); await fetchUserArticles() } catch (err) {}
+}
+
+async function deleteHnLink(id: number) {
+  if (!confirm('Sei sicuro di voler eliminare questo Link/Repo?')) return
   try {
-    await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' })
-    articles.value = articles.value.filter(a => a.id !== id)
-    if (filteredAndPaginatedPosts.value.items.length === 0 && currentPage.value > 1) {
-        currentPage.value--
+    const res: any = await $fetch(`/api/pulse/stories/${id}`, { method: 'DELETE' })
+    if (res && res.success) {
+      triggerToast('🗑️ Post e commenti rimossi con successo.')
+      await fetchHnLinks()
+    } else {
+      triggerToast('❌ ' + (res?.message || 'Impossibile eliminare il post.'))
     }
-    triggerToast('🗑️ Articolo rimosso con successo.')
-  } catch (err) {
-    triggerToast('❌ Impossibile eliminare l\'articolo dal DB.')
+  } catch (err: any) {
+    triggerToast('❌ Errore di rete durante la cancellazione.')
   }
 }
+
+onMounted(() => {
+  if (currentUser.value) { 
+    userProfileData.value.username = currentUser.value.username || 'alexdpl' 
+    if (currentUser.value.avatar) userProfileData.value.avatar = currentUser.value.avatar 
+  }
+  fetchCategories(); fetchTelemetryData(); fetchVaultCertificates(); fetchGamificationData()
+  
+  fetchUserArticles()
+  fetchHnLinks()
+  
+  window.addEventListener('dkp:xp_updated', fetchGamificationData)
+})
+
+onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamificationData))
 </script>
 
 <template>
@@ -628,7 +457,7 @@ async function deleteArticle(id: number) {
         </div>
       </section>
 
-      <!-- PANNELLO 2: GESTIONE CONTENUTI (Blog, Feed, Commenti) -->
+      <!-- PANNELLO 2: GESTIONE CONTENUTI -->
       <section v-if="activeTab === 'content'" class="tab-panel">
         
         <!-- Sub-Tabs di Navigazione Contenuti -->
@@ -644,7 +473,7 @@ async function deleteArticle(id: number) {
           </button>
         </div>
 
-        <!-- 2A. TAB BLOG EDITORIALE (Il tuo codice originale intatto) -->
+        <!-- 2A. TAB BLOG EDITORIALE -->
         <div v-if="contentTab === 'blog'">
           <div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-4 mb-6">
             <details class="group cursor-pointer">
@@ -763,12 +592,59 @@ async function deleteArticle(id: number) {
           </div>
         </div>
 
-        <!-- 2B. TAB PULSE MANAGER (Nuovo) -->
+        <!-- 2B. TAB PULSE MANAGER (News / Ask / Show HN) -->
         <div v-if="contentTab === 'pulse'">
+          
+          <div class="panel-card mb-6">
+            <div class="panel-header-action flex-wrap gap-4">
+              <div>
+                <h2 class="section-title">I Tuoi Link e Repository</h2>
+                <p class="section-sub">Gestisci le news, i tool e i progetti che hai condiviso nella sezione principale.</p>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table class="dkp-table">
+                <thead>
+                  <tr>
+                    <th>Titolo &amp; Link</th>
+                    <th>Tipo</th>
+                    <th>Karma</th>
+                    <th>Commenti</th>
+                    <th>Data</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="hnArticles.length === 0">
+                    <td colspan="6" class="text-center py-6 text-gray-500 italic">
+                      Nessun contenuto HN condiviso. Visita la NewsRoom per postare la tua prima repository!
+                    </td>
+                  </tr>
+                  <tr v-for="link in hnArticles" :key="link.id">
+                    <td class="font-bold">
+                      {{ link.title }}
+                      <a v-if="link.url" :href="link.url" target="_blank" class="text-sky-400 text-xs ml-2 hover:underline">🔗 Visita</a>
+                    </td>
+                    <td>
+                      <span class="status-pill published uppercase">{{ link.type }}</span>
+                    </td>
+                    <td class="text-emerald font-bold">🔥 {{ link.points }}</td>
+                    <td>💬 {{ link.commentsCount }}</td>
+                    <td style="white-space: nowrap;">{{ link.date }}</td>
+                    <td class="actions-cell">
+                      <button @click="deleteHnLink(link.id)" class="btn-action delete" title="Elimina Link">🗑️ Del</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <DkpPulseManager/>
         </div>
 
-        <!-- 2C. TAB COMMENTS MANAGER (Nuovo) -->
+        <!-- 2C. TAB COMMENTS MANAGER -->
         <div v-if="contentTab === 'comments'">
           <DkpCommentsManager/>
         </div>

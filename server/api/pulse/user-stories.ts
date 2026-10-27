@@ -1,36 +1,32 @@
 // server/api/pulse/user-stories.get.ts
 import { defineEventHandler, getQuery } from 'h3'
-import { sql } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { posts } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  
-  // Gestione sicura del parametro
-  if (!query.userId || query.userId === 'undefined' || query.userId === '') {
-    return { success: true, data: [] }
-  }
-
-  const userId = Number(query.userId)
-  const username = query.username as string
+  const userId = query.userId ? Number(query.userId) : 1
 
   try {
-    const db = await getDb()
+    const db = getDb()
     if (!db) throw new Error('Database non disponibile.')
 
-    // Recupera i post creati dall'utente (escludiamo quelli del blog interno per questa tab)
-    const result: any = await db.execute(sql`
-      SELECT id, title, type, url, domain, points, created_at
-      FROM posts
-      WHERE author_id = ${userId} OR author = ${username}
-      ORDER BY created_at DESC;
-    `)
-
-    const rows = Array.isArray(result) ? result : (result?.rows || [])
+    const userPosts = await db.select({
+      id: posts.id,
+      title: posts.title,
+      type: posts.type,
+      url: posts.url,
+      points: posts.points,
+      createdAt: posts.createdAt
+    })
+    .from(posts)
+    .where(eq(posts.userId, userId))
+    .orderBy(desc(posts.createdAt))
 
     return {
       success: true,
-      data: rows
+      data: userPosts
     }
   } catch (err: any) {
     console.error('❌ Errore fetch user-stories:', err?.message)

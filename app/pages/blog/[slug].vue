@@ -25,14 +25,13 @@ const post = computed(() => {
 const readTime = computed(() => {
   const text = post.value?.content || post.value?.description || ''
   if (!text) return 1
-  // Rimuovi tag HTML e conta le parole
   const plainText = text.replace(/<\/?[^>]+(>|$)/g, "")
   const words = plainText.trim().split(/\s+/).length
-  const wpm = 200 // Parole medie al minuto
+  const wpm = 200
   return Math.max(1, Math.ceil(words / wpm))
 })
 
-// === PARSER CUSTOM ===
+// === PARSER CUSTOM (BLINDATO) ===
 const parsedContent = computed(() => {
   try {
     const contentVal = post.value?.content || post.value?.description || ''
@@ -41,12 +40,12 @@ const parsedContent = computed(() => {
     let rawContent = contentVal.replace(/\\n/g, '\n').replace(/\\r/g, '\r')
     const codeBlocks: string[] = [];
     
+    // 1. ISOLAMENTO BLOCCHI DI CODICE
     rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
       const index = codeBlocks.length;
       const cleanLang = lang ? lang.trim().toLowerCase() : '';
       const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
       
-      // 🟢 FIX COPIA: Aggiungiamo un data-attribute per identificare il blocco di codice
       const languageLabel = cleanLang ? `<div class="dkp-code-header"><span>${cleanLang}</span><button class="dkp-copy-btn" data-code-id="code-block-${index}" title="Copia codice">📋</button></div>` : '';
       const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -54,6 +53,7 @@ const parsedContent = computed(() => {
       return `__DKP_CODE_BLOCK_${index}__`;
     });
 
+    // 2. PARSING MARKDOWN
     let html = rawContent.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
     html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
@@ -94,28 +94,31 @@ const parsedContent = computed(() => {
     html = html.replace(/<\/ul>\s*<ul class="dkp-sub-list">/g, '')
     html = html.replace(/<\/ol>\s*<ol class="dkp-sub-list">/g, '')
 
-    codeBlocks.forEach((block, index) => {
-      html = html.replace(`__DKP_CODE_BLOCK_${index}__`, block);
-    });
-
+    // 3. GESTIONE A CAPO E PARAGRAFI
     let lines = html.split(/\r?\n/);
     let parsedHtml = '';
-    let inCodeBlock = false;
     
     for (let i = 0; i < lines.length; i++) {
        let line = lines[i];
-       if (line.includes('<div class="dkp-code-wrapper')) inCodeBlock = true;
-       if (line.includes('</div>') && inCodeBlock && !line.includes('<div class="dkp-code-header">')) inCodeBlock = false;
-
-       if (inCodeBlock || /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(line.trim())) {
+       let trimmed = line.trim();
+       
+       if (trimmed.includes('__DKP_CODE_BLOCK_')) {
+          parsedHtml += line + '\n';
+       } else if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) || /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)) {
           parsedHtml += line + '\n'; 
-       } else if (line.trim() === '' || /^<\/(div|table|ul|ol|blockquote)>/.test(line.trim())) {
-           parsedHtml += line + '\n';
+       } else if (trimmed === '') {
+          parsedHtml += '<br />\n'; // 🟢 INSERISCE GLI SPAZI VUOTI
        } else {
           parsedHtml += line + (i < lines.length - 1 ? '<br />' : '');
        }
     }
 
+    // 4. REINSERIMENTO SICURO DEI BLOCCHI DI CODICE
+    codeBlocks.forEach((block, index) => {
+      parsedHtml = parsedHtml.replace(new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'), () => block); // 🟢 FIX BUG SIMBOLO DOLLARO
+    });
+
+    // 5. CLEANUP
     return parsedHtml
       .replace(/(<\/h[1-6]>)<br \/>/g, '$1') 
       .replace(/(<\/pre>)<br \/>/g, '$1')
@@ -163,10 +166,8 @@ const applyPrism = () => {
   }
 }
 
-// 🟢 LOGICA TASTO COPIA 🟢
 const handleCopyClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
-  // Controlla se il clic è avvenuto sul bottone di copia o su un suo figlio
   const copyBtn = target.closest('.dkp-copy-btn') as HTMLButtonElement | null;
   
   if (copyBtn) {
@@ -174,7 +175,6 @@ const handleCopyClick = (event: MouseEvent) => {
     if (codeId) {
       const codeElement = document.getElementById(codeId);
       if (codeElement) {
-        // Usa API Clipboard moderna o fallback
         const textToCopy = codeElement.innerText || codeElement.textContent || '';
         
         if (navigator.clipboard && window.isSecureContext) {
@@ -182,10 +182,8 @@ const handleCopyClick = (event: MouseEvent) => {
                 showCopyFeedback(copyBtn);
             });
         } else {
-            // Fallback per vecchi browser o contesti non sicuri
             const textArea = document.createElement("textarea");
             textArea.value = textToCopy;
-            // Evita scrolling
             textArea.style.top = "0";
             textArea.style.left = "0";
             textArea.style.position = "fixed";
@@ -207,16 +205,15 @@ const handleCopyClick = (event: MouseEvent) => {
 
 const showCopyFeedback = (btn: HTMLButtonElement) => {
   const originalText = btn.innerHTML;
-  btn.innerHTML = '✅'; // Feedback visivo
+  btn.innerHTML = '✅'; 
   btn.style.color = '#00dc82';
   
   setTimeout(() => {
     btn.innerHTML = originalText;
-    btn.style.color = ''; // Ripristina il colore originale dal CSS
+    btn.style.color = ''; 
   }, 2000);
 }
 
-// Reagisce ogni volta che il contenuto HTML viene calcolato e montato
 watch(parsedContent, async () => {
   await nextTick()
   applyPrism()
@@ -224,15 +221,12 @@ watch(parsedContent, async () => {
 
 onMounted(() => {
   setTimeout(applyPrism, 200)
-  // Aggiungi event listener globale per catturare i click sui bottoni generati dinamicamente
   document.addEventListener('click', handleCopyClick)
 })
 
 onUnmounted(() => {
-   // Pulizia
    document.removeEventListener('click', handleCopyClick)
 })
-
 
 function handleLike() {
   if (post.value?.id) {
@@ -297,7 +291,6 @@ function handleLike() {
               <div class="text-xs text-slate-400 flex items-center gap-3 mt-1 flex-wrap">
                 <span>📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
                 <span>👁️ {{ post.views || 0 }} visualizzazioni</span>
-				<!-- 🟢 NUOVO: Aggiunto tempo di lettura reale -->
                 <span>⏱️ {{ readTime }} min lettura</span>
               </div>
             </div>
@@ -312,7 +305,7 @@ function handleLike() {
           <div class="post-content prose prose-invert max-w-none text-slate-200 mb-12 dkp-preview-content relative z-10" v-html="parsedContent"></div>
           <template #fallback>
             <div class="py-10 text-center text-slate-500 animate-pulse font-mono mb-12">
-               ⏳ Formattazione Vault in corso...
+                ⏳ Formattazione Vault in corso...
             </div>
           </template>
         </ClientOnly>
@@ -363,13 +356,11 @@ function handleLike() {
             <SocialShare :title="post.title" :url="currentUrl" :horizontal="true" />
           </div>
         </div>
-		<!-- 🔗 SEZIONE ARTICOLI CORRELATI -->
         <DkpRelatedPosts 
           v-if="post"
           :current-post-id="post.id" 
           :category="post.category" 
           :tags="post.tags || []"  />
-		<!-- INCASTRA QUI IL COMPONENTI COMMENTI PULSE v2.5-GOLD -->
     <DKPBlogComments :blogSlug="post.slug" />
       </article>
     </div>
@@ -458,7 +449,7 @@ function handleLike() {
   background: transparent !important;
 }
 
-/* 🟢 ELEMENTI CUSTOM (Titoli, Liste, Highlight, Video, ecc.) - TRASFERITI DALL'EDITOR 🟢 */
+/* 🟢 ELEMENTI CUSTOM 🟢 */
 :deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
 :deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1.5rem 0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
 :deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
@@ -494,3 +485,4 @@ function handleLike() {
 :deep(.dkp-li-nested) { margin-left: 1.5rem; margin-bottom: 0.3rem; color: #94a3b8; position: relative; }
 :deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) { content: '▪'; color: #00dc82; position: absolute; left: -1.2rem; top: 0; }
 </style>
+Appena testato questo f

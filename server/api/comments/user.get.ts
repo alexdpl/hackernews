@@ -7,7 +7,6 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const username = query.username as string
 
-  // Ignora le chiamate inviate erroneamente durante il caricamento
   if (!username || username === 'undefined' || username === '') {
     return { success: true, comments: [] }
   }
@@ -16,12 +15,13 @@ export default defineEventHandler(async (event) => {
     const db = await getDb()
     if (!db) throw new Error('Database non disponibile.')
 
-    // Recupera tutti i commenti scritti da questo username
+    // Usiamo c.content al posto di c.text per allinearci esattamente al DB Neon
     const result: any = await db.execute(sql`
-      SELECT id, post_id AS "postId", text, created_at AS "createdAt"
-      FROM comments
-      WHERE author = ${username}
-      ORDER BY created_at DESC;
+      SELECT c.id, c.post_id AS "postId", c.content AS "text", c.created_at AS "createdAt"
+      FROM comments c
+      JOIN users u ON c.user_id = u.id
+      WHERE u.username = ${username}
+      ORDER BY c.created_at DESC;
     `)
 
     const rows = Array.isArray(result) ? result : (result?.rows || [])
