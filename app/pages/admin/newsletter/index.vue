@@ -45,7 +45,7 @@ async function fetchSubscribers() {
       { id: 1, email: 'dev@devkernelpulse.org', status: 'SUBSCRIBED', source: 'FOOTER_FORM', created_at: new Date().toISOString() },
       { id: 2, email: 'alex@devkernelpulse.org', status: 'SUBSCRIBED', source: 'API_GATEWAY', created_at: new Date().toISOString() }
     ]
-  } font-mono {
+  } finally {
     isLoading.value = false
   }
 }

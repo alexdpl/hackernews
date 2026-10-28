@@ -86,7 +86,7 @@ export async function scanWithSentinelAI(title: string, content: string): Promis
 
   // 1. SCANSIONE EURISTICA RAPIDA (Rule-based)
   const xssRules = [
-    { pattern: /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, points: 100, name: 'Tag <script>' },
+    { pattern: /<script\b[^<]*(?:(?!<\/script\b)<[^<]*)*<\/script\b[^>]*>/gi, points: 100, name: 'Tag <script>' },
     { pattern: /javascript\s*:/gi, points: 90, name: 'Pseudo-protocollo javascript:' },
     { pattern: /on\w+\s*=\s*["']?[^"'>]+/gi, points: 85, name: 'Event Handler Injection' },
     { pattern: /(document\.cookie|eval\s*\(|window\.location)/gi, points: 80, name: 'Manipolazione DOM' }
