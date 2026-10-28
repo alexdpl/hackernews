@@ -51,6 +51,7 @@
   "overrides": {
     "braces": "patch:braces@3.0.3#./patches/braces@3.0.3.patch",
     "postcss-selector-parser": ">=7.1.6",
-    "node-forge": ">=1.4.1"
+    "node-forge": ">=1.4.1",
+	"undici": ">=7.30.1"
   }
 }
