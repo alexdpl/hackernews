@@ -1,28 +1,38 @@
 // server/api/blog/posts/[slug].ts
 import postgres from 'postgres'
 
+// Inizializzazione singleton per evitare di aprire/chiudere connessioni ad ogni richiesta
+let sqlInstance: ReturnType<typeof postgres> | null = null
+
+function getSql() {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) {
+    throw createError({ statusCode: 500, statusMessage: 'Errore DB URL non configurato' })
+  }
+  
+  if (!sqlInstance) {
+    const isProd = process.env.NODE_ENV === 'production'
+    sqlInstance = postgres(connectionString, { 
+      ssl: isProd ? { rejectUnauthorized: false } : 'prefer',
+      max: 10, // Pool di connessioni ottimizzato per GCP
+      idle_timeout: 20
+    })
+  }
+  return sqlInstance
+}
+
 export default defineEventHandler(async (event) => {
   // H3 Headers polyfill
   if (event.node?.req?.headers && typeof (event.node.req.headers as any).get !== 'function') {
     (event.node.req.headers as any).get = (key: string) => (event.node.req.headers as any)[key.toLowerCase()]
   }
 
-  // Cattura lo slug dall'URL
   const slug = getRouterParam(event, 'slug')
-
   if (!slug) {
     throw createError({ statusCode: 400, statusMessage: 'Slug mancante.' })
   }
 
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    throw createError({ statusCode: 500, statusMessage: 'Errore DB URL' })
-  }
-
-  const isProd = process.env.NODE_ENV === 'production'
-  const sql = postgres(connectionString, { 
-    ssl: isProd ? { rejectUnauthorized: false } : 'prefer' 
-  })
+  const sql = getSql()
 
   try {
     // 1. Lettura dal DB unendo post, utente e categoria
@@ -41,8 +51,7 @@ export default defineEventHandler(async (event) => {
     `
 
     if (result.length === 0) {
-      await sql.end()
-      throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato.' })
+      throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato nel database.' })
     }
 
     const row = result[0]
@@ -55,10 +64,10 @@ export default defineEventHandler(async (event) => {
       try { parsedTags = JSON.parse(row.tags) } catch { parsedTags = [] }
     }
 
-    // 3. Incremento View counter in background
-    sql`UPDATE blog_posts SET views = views + 1 WHERE id = ${row.id}`.execute().catch(() => {})
-
-    await sql.end()
+    // 3. Incremento View counter in background (senza bloccare la risposta)
+    sql`UPDATE blog_posts SET views = views + 1 WHERE id = ${row.id}`.execute().catch((e) => {
+      console.error('Errore aggiornamento views:', e)
+    })
 
     // 4. Mappatura rigorosa con i nomi campi attesi dal componente [slug].vue
     return {
@@ -86,8 +95,8 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error: any) {
-    await sql.end()
+    console.error(`❌ Errore caricamento post per slug [${slug}]:`, error.message)
     if (error.statusCode === 404) throw error
-    throw createError({ statusCode: 500, statusMessage: error.message })
+    throw createError({ statusCode: 500, statusMessage: error.message || 'Errore interno del server database.' })
   }
 })
