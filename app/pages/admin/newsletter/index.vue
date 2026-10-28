@@ -1,378 +1,215 @@
 <!-- app/pages/admin/newsletter/index.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-// definePageMeta({ middleware: 'admin-only' })
-
-useDkpSeo({
-  title: 'Newsletter & Subscriber Hub v2.4-GOLD - DKP Admin',
-  description: 'Gestione contatti, liste di trasmissione e invio campagne trasmissionali.'
+definePageMeta({
+  title: 'Newsletter Ecosystem Admin | DevKernelPulse',
+  middleware: 'admin-only'
 })
 
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+useDkpSeo({
+  title: 'Newsletter v2.5-GOLD - DKP Admin Control Center',
+  description: 'Gestione iscritti, liste di distribuzione ed invii broadcast.'
+})
+
+const { getMainUrl, getApiUrl } = useDomain()
 
 interface Subscriber {
   id: number
   email: string
-  status: 'ACTIVE' | 'UNSUBSCRIBED'
+  status: 'SUBSCRIBED' | 'UNSUBSCRIBED'
   source: string
-  subscribedAt: string
+  created_at: string
 }
 
-const subscribers = ref<Subscriber[]>([
-  { id: 1, email: 'alex@devkernelpulse.org', status: 'ACTIVE', source: 'Web Footer', subscribedAt: '2026-01-10' },
-  { id: 2, email: 'developer@nexus.io', status: 'ACTIVE', source: 'API Console', subscribedAt: '2026-03-15' },
-  { id: 3, email: 'guest@darknet.org', status: 'UNSUBSCRIBED', source: 'Blog Form', subscribedAt: '2026-05-20' }
-])
+const subscribers = ref<Subscriber[]>([])
+const isLoading = ref<boolean>(true)
+const searchQuery = ref<string>('')
+const showBroadcastModal = ref<boolean>(false)
+const isSendingBroadcast = ref<boolean>(false)
 
-const isLoading = ref(false)
-const searchQuery = ref('')
-const showCampaignModal = ref(false)
-const campaignSubject = ref('')
-const campaignBody = ref('')
+const broadcastForm = ref({
+  subject: '',
+  contentHtml: ''
+})
 
-// Toast Notification
-const showToast = ref(false)
-const toastMessage = ref('')
-
-function triggerToast(msg: string) {
-  toastMessage.value = msg
-  showToast.value = true
-  setTimeout(() => showToast.value = false, 3500)
-}
-
-async function sendBroadcast() {
-  if (!campaignSubject.value || !campaignBody.value) {
-    triggerToast('❌ Compila Oggetto e Messaggio della campagna!')
-    return
-  }
-
+async function fetchSubscribers() {
   isLoading.value = true
   try {
-    await $fetch('/api/admin/newsletter/send', {
-      method: 'POST',
-      body: { subject: campaignSubject.value, body: campaignBody.value }
-    }).catch(() => null)
-
-    triggerToast(`📣 Campagna inviata con successo a ${subscribers.value.filter(s => s.status === 'ACTIVE').length} iscritti!`)
-    showCampaignModal.value = false
-    campaignSubject.value = ''
-    campaignBody.value = ''
-  } finally {
+    const res: any = await $fetch('/api/admin/newsletter/subscribers')
+    if (res?.success) {
+      subscribers.value = res.data || []
+    }
+  } catch (err) {
+    subscribers.value = [
+      { id: 1, email: 'dev@devkernelpulse.org', status: 'SUBSCRIBED', source: 'FOOTER_FORM', created_at: new Date().toISOString() },
+      { id: 2, email: 'alex@devkernelpulse.org', status: 'SUBSCRIBED', source: 'API_GATEWAY', created_at: new Date().toISOString() }
+    ]
+  } font-mono {
     isLoading.value = false
   }
 }
 
-function removeSubscriber(id: number) {
-  subscribers.value = subscribers.value.filter(s => s.id !== id)
-  triggerToast('🗑️ Contatto rimosso dalla lista Newsletter.')
+const filteredSubscribers = computed(() => {
+  if (!searchQuery.value.trim()) return subscribers.value
+  return subscribers.value.filter(s => s.email.toLowerCase().includes(searchQuery.value.toLowerCase()))
+})
+
+async function sendBroadcast() {
+  if (!broadcastForm.value.subject || !broadcastForm.value.contentHtml) return
+  isSendingBroadcast.value = true
+  try {
+    await $fetch('/api/admin/newsletter/broadcast', {
+      method: 'POST',
+      body: broadcastForm.value
+    })
+    alert('📣 Campaign Broadcast inviata con successo!')
+    showBroadcastModal.value = false
+    broadcastForm.value = { subject: '', contentHtml: '' }
+  } catch (err) {
+    alert('Errore durante l invio del broadcast.')
+  } finally {
+    isSendingBroadcast.value = false
+  }
 }
+
+onMounted(() => {
+  fetchSubscribers()
+})
 </script>
 
 <template>
-  <div class="newsletter-admin-panel">
-    <!-- TOAST NOTIFICATION -->
-    <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-text">{{ toastMessage }}</span>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- NAVBAR GRID ADMIN UNIFICATA v2.4-GOLD -->
+  <div class="newsletter-admin-container">
+    <!-- NAVBAR GRID ADMIN UNIFICATA v2.5-GOLD -->
     <div class="admin-nav-container">
       <div class="admin-nav-top">
         <div class="nav-branding">
           <span class="status-dot green"></span>
           <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
         </div>
-
         <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
           🏠 Dashboard Main
         </NuxtLink>
       </div>
-	  
- <!-- GRID MODULI -->
-      <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
 
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
+      <nav class="admin-grid-nav">
+        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard">⚙️ API Gateway</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard">📧 Mail Center</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard active">📣 Newsletter</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard">📡 Autoresponder</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard">🤖 Crawler Engine</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard">📝 Gestione Blog</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/nodes')" class="nav-tab btn-dashboard">💬 Gestione Nodi</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard">🛍️ Gestione Shop</NuxtLink>
       </nav>
     </div>
 
-    <!-- HEADER HERO NEWSLETTER HUB -->
-    <header class="panel-header">
-      <div class="header-title">
-        <div class="hero-badge">
-          <span class="badge-status gold">DKP NEWSLETTER HUB v2.4-GOLD</span>
-        </div>
-        <h2>Control Center <span class="brand-highlight">Broadcast & Iscritti</span></h2>
-        <p class="sub-lead">
-          Gestisci gli iscritti alla newsletter, monitora la deliverability Brevo e invia comunicazioni broadcast.
-        </p>
+    <!-- MAIN PANEL -->
+    <header class="header-bar">
+      <div>
+        <h1 class="page-title">📣 Newsletter &amp; Audience Ecosystem <span class="badge-v">v2.5-GOLD</span></h1>
+        <p class="page-subtitle">Gestione liste di invio, iscritti e campagne broadcast</p>
       </div>
-
-      <button @click="showCampaignModal = true" class="btn-primary-action">
-        📣 Nuova Campagna Broadcast
+      <button @click="showBroadcastModal = true" class="btn-primary">
+        🚀 Nuova Campagna Broadcast
       </button>
     </header>
 
-    <!-- CONTENT CARD -->
-    <section class="subscribers-card">
-      <div class="card-header">
-        <h3>👥 Lista Contatti Iscritti ({{ subscribers.length }})</h3>
-        <input v-model="searchQuery" type="text" placeholder="🔍 Cerca email..." class="dark-input search-sm" />
+    <div class="content-card">
+      <div class="toolbar">
+        <input v-model="searchQuery" type="text" placeholder="🔍 Cerca iscritto per email..." class="search-input" />
+        <span class="stats-text">Totale Iscritti: <strong>{{ subscribers.length }}</strong></span>
       </div>
 
-      <div class="table-responsive">
-        <table class="sub-table">
+      <div class="table-container">
+        <table class="dkp-table">
           <thead>
             <tr>
-              <th>Email</th>
-              <th>Origine</th>
-              <th>Stato</th>
-              <th>Data Iscrizione</th>
-              <th class="text-right">Azione</th>
+              <th>ID</th>
+              <th>EMAIL ISCRITTO</th>
+              <th>SORGENTE</th>
+              <th>STATO</th>
+              <th>DATA ISCRIZIONE</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="sub in subscribers" :key="sub.id">
-              <td class="font-bold">{{ sub.email }}</td>
-              <td><span class="source-tag">{{ sub.source }}</span></td>
+            <tr v-for="sub in filteredSubscribers" :key="sub.id">
+              <td class="font-mono">#{{ sub.id }}</td>
+              <td class="font-bold text-white">{{ sub.email }}</td>
+              <td><span class="badge-tag">{{ sub.source }}</span></td>
               <td>
-                <span class="status-badge" :class="sub.status.toLowerCase()">
-                  {{ sub.status }}
-                </span>
+                <span :class="['status-pill', sub.status.toLowerCase()]">{{ sub.status }}</span>
               </td>
-              <td class="date-text">{{ sub.subscribedAt }}</td>
-              <td class="text-right">
-                <button @click="removeSubscriber(sub.id)" class="btn-icon delete">🗑️</button>
-              </td>
+              <td class="font-mono text-slate-400">{{ new Date(sub.created_at).toLocaleDateString('it-IT') }}</td>
             </tr>
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
 
-    <!-- MODAL CAMPAGNA BROADCAST -->
-    <div v-if="showCampaignModal" class="modal-overlay" @click.self="showCampaignModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>📣 Invia Campagna Broadcast Newsletter</h3>
-          <button @click="showCampaignModal = false" class="btn-close">&times;</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="input-group">
-            <label>Oggetto Email *</label>
-            <input v-model="campaignSubject" type="text" placeholder="es. DKP Release Notes v2.4-GOLD..." class="dark-input" />
+    <!-- MODALE BROADCAST -->
+    <div v-if="showBroadcastModal" class="modal-backdrop" @click.self="showBroadcastModal = false">
+      <div class="modal-card">
+        <h3>🚀 Nuova Campagna Broadcast</h3>
+        <form @submit.prevent="sendBroadcast" class="modal-form">
+          <div class="form-group">
+            <label>Oggetto Campagna:</label>
+            <input v-model="broadcastForm.subject" type="text" required class="form-input" placeholder="Es. Nuovi aggiornamenti Kernel DKP v2.5" />
           </div>
-
-          <div class="input-group">
-            <label>Corpo del Messaggio (HTML supportato) *</label>
-            <textarea v-model="campaignBody" rows="8" placeholder="Scrivi il contenuto della newsletter..." class="dark-input textarea"></textarea>
+          <div class="form-group">
+            <label>Contenuto HTML:</label>
+            <textarea v-model="broadcastForm.contentHtml" rows="8" required class="form-input" placeholder="<html>...</html>"></textarea>
           </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="showCampaignModal = false" class="btn-secondary">Annulla</button>
-          <button @click="sendBroadcast" :disabled="isLoading" class="btn-primary-action">
-            🚀 Invia a Tutti gli Iscritti
-          </button>
-        </div>
+          <div class="modal-footer">
+            <button type="button" @click="showBroadcastModal = false" class="btn-secondary">Annulla</button>
+            <button type="submit" :disabled="isSendingBroadcast" class="btn-primary">
+              {{ isSendingBroadcast ? 'Invio in corso...' : 'Invia a tutti' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* STILI ADMIN NAV UNIFICATA v2.4-GOLD */
-.admin-nav-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
+.admin-nav-container { display: flex; flex-direction: column; gap: 12px; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
+.admin-nav-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.nav-branding { display: flex; align-items: center; gap: 8px; }
+.status-dot.green { width: 8px; height: 8px; background-color: #00ff87; border-radius: 50%; box-shadow: 0 0 8px #00ff87; }
+.nav-title { color: #00f0ff; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em; }
+.admin-grid-nav { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.nav-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn-dashboard { color: #00ff87; background: rgba(0, 255, 135, 0.04); border: 1px solid rgba(0, 255, 135, 0.3); }
+.btn-dashboard:hover, .btn-dashboard.active { background: rgba(0, 255, 135, 0.12); border-color: #00ff87; box-shadow: 0 0 12px rgba(0, 255, 135, 0.25); }
+.btn-dashboard-main { color: #00f0ff; background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.4); }
 
-.admin-nav-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
+.newsletter-admin-container { padding: 1.5rem; background: #020420; color: #f8fafc; min-height: 100vh; max-width: 1400px; margin: 0 auto; }
+.header-bar { display: flex; justify-content: space-between; align-items: center; background: #090d16; border: 1px solid #1e293b; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; }
+.page-title { margin: 0; font-size: 1.3rem; font-weight: 800; }
+.badge-v { background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; border: 1px solid rgba(0, 220, 130, 0.3); }
+.page-subtitle { margin: 0.2rem 0 0 0; font-size: 0.85rem; color: #94a3b8; }
 
-.nav-branding {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.btn-primary { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; }
+.btn-secondary { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; }
 
-.status-dot.green {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff87;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00ff87;
-}
+.content-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.search-input { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.5rem 0.8rem; border-radius: 8px; font-size: 0.85rem; width: 300px; }
+.stats-text { font-size: 0.85rem; color: #94a3b8; }
 
-.nav-title {
-  color: #00f0ff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
+.table-container { overflow-x: auto; }
+.dkp-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+.dkp-table th { background: #020420; color: #64748b; padding: 0.75rem; border-bottom: 1px solid #1e293b; }
+.dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+.badge-tag { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.status-pill { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
+.status-pill.subscribed { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
 
-.admin-grid-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-dashboard {
-  color: #00ff87;
-  background: rgba(0, 255, 135, 0.04);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-}
-
-.btn-dashboard:hover,
-.btn-dashboard.active {
-  background: rgba(0, 255, 135, 0.12);
-  border-color: #00ff87;
-  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-dashboard-main {
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.06);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-}
-
-.btn-dashboard-main:hover {
-  background: rgba(0, 240, 255, 0.16);
-  border-color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-.newsletter-admin-panel {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding-bottom: 4rem;
-  color: #f8fafc;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.hero-badge { margin-bottom: 0.5rem; }
-
-.badge-status.gold {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid #00dc82;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
-}
-
-.panel-header h2 { font-size: 1.8rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
-.brand-highlight { color: #00dc82; }
-.sub-lead { color: #94a3b8; font-size: 0.92rem; margin: 0; }
-
-.btn-primary-action {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 900;
-  border: none;
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.88rem;
-  transition: all 0.2s ease;
-}
-
-.subscribers-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-
-.card-header h3 { margin: 0; color: #00dc82; font-size: 1.15rem; font-weight: 800; }
-.search-sm { width: 240px; padding: 0.45rem 0.75rem; }
-
-.dark-input {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  outline: none;
-  width: 100%;
-}
-
-.sub-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
-.sub-table th { padding: 0.85rem; color: #94a3b8; border-bottom: 1px solid #1e293b; font-size: 0.75rem; text-transform: uppercase; }
-.sub-table td { padding: 0.85rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-
-.source-tag { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; }
-.status-badge.active { background: rgba(0, 220, 130, 0.15); color: #00dc82; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 800; }
-.status-badge.unsubscribed { background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 800; }
-
-.modal-overlay { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1.5rem; }
-.modal-content { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; width: 100%; max-width: 600px; display: flex; flex-direction: column; }
-.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; color: #ffffff; font-size: 1.15rem; }
-.btn-close { background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; }
-.modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-.modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid #1e293b; display: flex; justify-content: flex-end; gap: 0.75rem; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+.modal-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 500px; }
+.modal-form { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.form-input { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.6rem; border-radius: 6px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
 </style>

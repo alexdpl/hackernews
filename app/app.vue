@@ -8,7 +8,7 @@ useHead({
 
 useSeoMeta({
   titleTemplate: 'DevKernelPulse | %s',
-  description: 'DevKernelPulse v2.3 - Ecosystem & Proof of Code su GCP'
+  description: 'DevKernelPulse v2.5 - Ecosystem & Proof of Code su GCP'
 })
 
 const { initAuth } = useAuthCore()
@@ -18,7 +18,7 @@ onMounted(() => {
   // 1. Attiviamo subito il client per garantire la resa dei componenti interattivi
   isClientReady.value = true
 
-  // 2. Eseguiamo l'auth in modo totalmente isolato (un errore qui non blocca l'UI)
+  // 2. Eseguiamo l'auth in modo totalmente isolato
   setTimeout(async () => {
     try {
       await initAuth()
@@ -30,7 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dkp-app-wrapper">
+  <div class="dkp-app-wrapper min-h-screen bg-[#020617] text-slate-100">
     <!-- LAYOUT E PAGINA UNICI -->
     <NuxtLayout>
       <NuxtPage />
@@ -52,13 +52,14 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #020617;
+html, body {
   margin: 0;
   padding: 0;
+  background-color: #020617;
   color: #f8fafc;
-  overflow-y: scroll;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* 🟢 Forziamo lo scroll verticale principale senza bloccare il contesto sticky */
+  overflow-y: auto;
 }
 
 a {

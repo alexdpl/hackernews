@@ -1,26 +1,21 @@
 <!-- app/layouts/default.vue -->
 <script setup lang="ts">
-// Layout Master DKP v2.4
-// Nuxt auto-importa Navbar, AppFooter e DkpPulseNexus da app/components/
+// Layout Master DKP v2.5
+// Navbar e AppFooter vengono caricati automaticamente da app/components/
 </script>
 
 <template>
-  <div class="default-layout">
+  <div class="default-layout min-h-screen flex flex-col bg-[#020617] text-slate-100">
     <!-- Navbar Master DKP -->
     <Navbar />
 
     <!-- Contenuto Principale delle Pagine (UNICO SLOT) -->
-    <main class="main-content">
+    <main class="main-content flex-1 w-full">
       <slot />
     </main>
 
     <!-- Footer DKP -->
     <AppFooter />
-
-    <!-- CHAT FLUTTUANTE NEXUS -->
-
-    <DkpPulseNexus />
-
   </div>
 </template>
 
@@ -31,10 +26,13 @@
   min-height: 100vh;
   background-color: #020617;
   color: #f8fafc;
+  /* 🟢 Assicuriamo che non ci siano proprietà di overflow che rompono gli elementi sticky */
+  overflow: visible;
 }
 
 .main-content {
   flex: 1;
   width: 100%;
+  position: relative;
 }
 </style>

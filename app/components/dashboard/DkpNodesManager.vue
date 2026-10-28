@@ -2,10 +2,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const { data, pending, refresh } = await useFetch('/api/user/nodes')
+// Puntiamo all'endpoint corretto che abbiamo definito per le attività
+const { data: apiResponse, pending, refresh } = await useFetch('/api/user/nodes/activity')
 
-const threads = computed(() => data.value?.threads || [])
-const comments = computed(() => data.value?.comments || [])
+// Mappiamo i dati estraendoli dall'oggetto "data" della risposta API
+const threads = computed(() => (apiResponse.value as any)?.data?.threads || [])
+const comments = computed(() => (apiResponse.value as any)?.data?.comments || [])
 
 async function deleteThread(id: number) {
   if (!confirm('Eliminare definitivamente questo Thread? Tutti i commenti andranno persi.')) return
@@ -55,10 +57,10 @@ async function deleteComment(id: number) {
                   {{ thread.title }}
                 </NuxtLink>
               </td>
-              <td class="text-sky-400 font-mono text-xs">n/{{ thread.nodeSlug }}</td>
+              <td class="text-sky-400 font-mono text-xs">n/{{ thread.node?.slug || 'sconosciuto' }}</td>
               <td class="font-mono text-emerald-400 font-bold">▲ {{ thread.karmaScore }}</td>
               <td class="font-mono">{{ thread.commentsCount }}</td>
-              <td>{{ new Date(thread.createdAt).toLocaleDateString('it-IT') }}</td>
+              <td>{{ new Date(thread.createdAt || Date.now()).toLocaleDateString('it-IT') }}</td>
               <td class="actions">
                 <button @click="deleteThread(thread.id)" class="btn-delete">Elimina</button>
               </td>
@@ -100,7 +102,7 @@ async function deleteComment(id: number) {
                 </NuxtLink>
               </td>
               <td class="font-mono text-emerald-400 font-bold">▲ {{ comment.karmaScore }}</td>
-              <td>{{ new Date(comment.createdAt).toLocaleDateString('it-IT') }}</td>
+              <td>{{ new Date(comment.createdAt || Date.now()).toLocaleDateString('it-IT') }}</td>
               <td class="actions">
                 <button @click="deleteComment(comment.id)" class="btn-delete">Elimina</button>
               </td>
@@ -114,7 +116,6 @@ async function deleteComment(id: number) {
 </template>
 
 <style scoped>
-/* Riutilizziamo lo standard visivo esatto del DkpCommentsManager */
 .manager-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 .manager-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .manager-header h2 { font-size: 1.3rem; font-weight: 800; margin: 0; color: #fff; }

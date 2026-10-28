@@ -1,144 +1,96 @@
 // server/api/nodes/vote.post.ts
-import { defineEventHandler, readBody, getCookie, createError } from 'h3'
+import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { awardNodeXpAndBadges, GamificationRules } from '~~/server/utils/gamification'
 
 export default defineEventHandler(async (event) => {
-  const body = (await readBody(event)) || {}
-  const { postId, commentId, voteValue, userId } = body
+  const db = await getDb()
+  const body = await readBody(event)
 
-  const targetPostId = postId ? Number(postId) : null
-  const targetCommentId = commentId ? Number(commentId) : null
-  const value = Number(voteValue)
+  // Sostituisci questo mock con il reale prelievo dell'ID dalla tua sessione utente (es. useSupabaseUser, JWT, ecc.)
+  const userId = event.context.user?.id || 1 
 
-  if (!targetPostId && !targetCommentId) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Devi specificare un postId o un commentId.'
-    })
+  const targetType = body.targetType // 'post' | 'comment'
+  const targetId = Number(body.targetId)
+  const voteValue = Number(body.value) // 1 (Upvote) o -1 (Downvote)
+
+  if (!targetType || !targetId || ![1, -1].includes(voteValue)) {
+    throw createError({ statusCode: 400, statusMessage: 'Payload di voto non valido.' })
   }
 
-  if (value !== 1 && value !== -1) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Il valore del voto deve essere 1 (Upvote) o -1 (Downvote).'
-    })
-  }
-
-  let voterUserId = userId ? Number(userId) : 1
-  const sessionCookie = getCookie(event, 'dkp_session')
-  if (sessionCookie) {
-    try {
-      const parsed = JSON.parse(decodeURIComponent(sessionCookie))
-      if (parsed.id) voterUserId = Number(parsed.id)
-    } catch (_) {}
-  }
+  const isPost = targetType === 'post'
+  const targetTable = isPost ? 'node_posts' : 'node_comments'
+  const targetColumn = isPost ? sql`post_id` : sql`comment_id`
 
   try {
-    const db = await getDb()
-    if (!db) {
-      throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
-    }
+    // 1. Verifica se l'utente ha già votato questo elemento
+    const existingVoteResult: any = await db.execute(sql`
+      SELECT id, vote_value 
+      FROM node_votes 
+      WHERE user_id = ${userId} 
+        AND ${isPost ? sql`post_id = ${targetId}` : sql`comment_id = ${targetId}`}
+      LIMIT 1
+    `)
 
-    // 1. Controllo voto esistente per l'utente su questo target
-    let existingVoteRes: any = null
-    if (targetPostId) {
-      existingVoteRes = await db.execute(sql`
-        SELECT id, vote_value AS "voteValue" 
-        FROM node_votes 
-        WHERE user_id = ${voterUserId} AND post_id = ${targetPostId};
-      `)
-    } else if (targetCommentId) {
-      existingVoteRes = await db.execute(sql`
-        SELECT id, vote_value AS "voteValue" 
-        FROM node_votes 
-        WHERE user_id = ${voterUserId} AND comment_id = ${targetCommentId};
-      `)
-    }
+    const existingVote = existingVoteResult?.rows?.[0] || existingVoteResult?.[0]
+    
+    let karmaDiff = 0
+    let isNewUpvote = false
 
-    const existingVotes = Array.isArray(existingVoteRes) ? existingVoteRes : (existingVoteRes?.rows || [])
-    const currentVote = existingVotes[0] || null
-
-    let karmaDelta = 0
-    let userVoteState = value
-
-    if (!currentVote) {
-      // NUOVO VOTO
-      if (targetPostId) {
-        await db.execute(sql`
-          INSERT INTO node_votes (user_id, post_id, vote_value)
-          VALUES (${voterUserId}, ${targetPostId}, ${value});
-        `)
+    if (existingVote) {
+      if (existingVote.vote_value === voteValue) {
+        // Toggle Off: L'utente ha cliccato lo stesso voto, quindi lo rimuoviamo
+        await db.execute(sql`DELETE FROM node_votes WHERE id = ${existingVote.id}`)
+        karmaDiff = -voteValue
       } else {
-        await db.execute(sql`
-          INSERT INTO node_votes (user_id, comment_id, vote_value)
-          VALUES (${voterUserId}, ${targetCommentId}, ${value});
-        `)
+        // Inversione: L'utente ha cambiato idea (da Up a Down o viceversa)
+        await db.execute(sql`UPDATE node_votes SET vote_value = ${voteValue} WHERE id = ${existingVote.id}`)
+        karmaDiff = voteValue === 1 ? 2 : -2
+        if (voteValue === 1) isNewUpvote = true
       }
-      karmaDelta = value
-    } else if (currentVote.voteValue === value) {
-      // TOGGLE OFF: Cliccando nuovamente sullo stesso tasto il voto viene annullato
-      await db.execute(sql`
-        DELETE FROM node_votes WHERE id = ${currentVote.id};
-      `)
-      karmaDelta = -value
-      userVoteState = 0
     } else {
-      // SWAP VOTO: Da -1 a +1 (o viceversa), con delta doppio
+      // Primo Voto
       await db.execute(sql`
-        UPDATE node_votes 
-        SET vote_value = ${value} 
-        WHERE id = ${currentVote.id};
+        INSERT INTO node_votes (user_id, ${targetColumn}, vote_value)
+        VALUES (${userId}, ${targetId}, ${voteValue})
       `)
-      karmaDelta = value * 2
+      karmaDiff = voteValue
+      if (voteValue === 1) isNewUpvote = true
     }
 
-    // 2. Aggiornamento del karma_score e recupero del nuovo totale
-    let updatedScore = 0
+    // 2. Applica la differenza di Karma al Thread o al Commento in modo atomico
+    const targetUpdateResult: any = await db.execute(sql`
+      UPDATE ${sql.raw(targetTable)}
+      SET karma_score = karma_score + ${karmaDiff}
+      WHERE id = ${targetId}
+      RETURNING author_id, karma_score
+    `)
 
-    if (targetPostId) {
-      const updateRes: any = await db.execute(sql`
-        UPDATE node_posts 
-        SET karma_score = karma_score + ${karmaDelta}
-        WHERE id = ${targetPostId}
-        RETURNING karma_score AS "karmaScore", author_id AS "authorId";
-      `)
-      const row = Array.isArray(updateRes) ? updateRes[0] : (updateRes?.rows?.[0] || null)
-      updatedScore = row?.karmaScore ?? 0
+    const targetData = targetUpdateResult?.rows?.[0] || targetUpdateResult?.[0]
 
-      // Gamification: +2 XP all'autore del post per ogni upvote ricevuto
-      if (karmaDelta > 0 && row?.authorId && row.authorId !== voterUserId) {
-        await db.execute(sql`
-          UPDATE users SET xp = COALESCE(xp, 0) + 2 WHERE id = ${row.authorId};
-        `).catch(() => {})
-      }
-    } else if (targetCommentId) {
-      const updateRes: any = await db.execute(sql`
-        UPDATE node_comments 
-        SET karma_score = karma_score + ${karmaDelta}
-        WHERE id = ${targetCommentId}
-        RETURNING karma_score AS "karmaScore", author_id AS "authorId";
-      `)
-      const row = Array.isArray(updateRes) ? updateRes[0] : (updateRes?.rows?.[0] || null)
-      updatedScore = row?.karmaScore ?? 0
-
-      if (karmaDelta > 0 && row?.authorId && row.authorId !== voterUserId) {
-        await db.execute(sql`
-          UPDATE users SET xp = COALESCE(xp, 0) + 2 WHERE id = ${row.authorId};
-        `).catch(() => {})
+    // 3. Integrazione XP (Gamification)
+    // Non premiamo l'utente se si sta auto-votando
+    if (isNewUpvote && targetData?.author_id && targetData.author_id !== userId) {
+      try {
+        await awardNodeXpAndBadges(
+          targetData.author_id,
+          `Upvote ricevuto sul tuo ${isPost ? 'Thread' : 'Commento'}`,
+          GamificationRules.UPVOTE_RECEIVED
+        )
+      } catch (xpErr) {
+        console.warn("⚠️ Impossibile assegnare XP per il voto:", xpErr)
       }
     }
 
     return {
       success: true,
-      karmaScore: updatedScore,
-      userVote: userVoteState
+      message: 'Voto registrato con successo',
+      newKarma: targetData?.karma_score || 0
     }
-  } catch (err: any) {
-    console.error('❌ [NODE VOTE ERROR]:', err)
-    throw createError({
-      statusCode: 500,
-      statusMessage: err.message || 'Errore durante la registrazione del voto.'
-    })
+    
+  } catch (error: any) {
+    console.error('💥 [VOTE ERROR]:', error?.message)
+    throw createError({ statusCode: 500, statusMessage: 'Errore interno nel calcolo del Karma.' })
   }
 })

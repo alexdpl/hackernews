@@ -5,15 +5,15 @@ import { ref, computed, onMounted } from 'vue'
 useHead({
   title: 'Admin Control Center — DKP Sentinel AI v2.5-GOLD',
   meta: [
-    { name: 'description', content: 'Pannello di controllo centrale, telemetria reale e monitoraggio difensivo con Pulse Sentinel AI in europe-west4.' }
+    { name: 'description', content: 'Pannello di controllo centrale, telemetria reale, moderazione DKP Nodes e monitoraggio difensivo con Pulse Sentinel AI.' }
   ]
 })
 
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+const { getMainUrl, getApiUrl } = useDomain()
 
 const showToast = ref(false)
 const toastMessage = ref('')
-const activeTab = ref<'users' | 'moderation' | 'infrastructure' | 'sentinel'>('users')
+const activeTab = ref<'users' | 'nodes' | 'whitelist' | 'infrastructure' | 'sentinel' | 'moderation'>('users')
 const searchQuery = ref('')
 const manualIpToBan = ref('')
 
@@ -29,8 +29,35 @@ export interface AdminUserKeyItem {
   joined: string
 }
 
+interface DkpNodeSummary {
+  id: number
+  name: string
+  slug: string
+  icon: string
+  color: string
+  subscribersCount: number
+  postsCount: number
+}
+
+interface ThreadModerationSummary {
+  id: number
+  title: string
+  authorName: string
+  nodeSlug: string
+  nodeIcon: string
+  karmaScore: number
+  isPinned: boolean
+  isLocked: boolean
+  vaultHash?: string
+  createdAt: string
+}
+
+// === STATI DATI ===
 const users = ref<AdminUserKeyItem[]>([])
+const nodes = ref<DkpNodeSummary[]>([])
+const nodeThreads = ref<ThreadModerationSummary[]>([])
 const isLoadingUsers = ref(false)
+const isLoadingNodes = ref(false)
 
 const sentinelData = ref<any>({
   status: 'ACTIVE_PROTECTION',
@@ -60,7 +87,6 @@ function toggleAutoDefend() {
       ? '🤖 Auto-Defend AI (v2.5-GOLD): Protezione euristica in europe-west4 ATTIVATA!'
       : '⚠️ Auto-Defend AI: Protezione euristica DISATTIVATA.'
   )
-
   triggerAction('toggle_autodefend', { enabled: sentinelData.value.autoDefendEnabled })
 }
 
@@ -99,6 +125,23 @@ async function fetchUsers() {
   }
 }
 
+// === CARICAMENTO DATI NODI E THREAD PER LA TAB NODES ===
+async function fetchAdminNodesData() {
+  isLoadingNodes.value = true
+  try {
+    const [nodesRes, threadsRes]: any = await Promise.all([
+      $fetch('/api/admin/nodes').catch(() => ({ success: false, data: [] })),
+      $fetch('/api/admin/nodes/posts').catch(() => ({ success: false, data: [] }))
+    ])
+    if (nodesRes?.success) nodes.value = nodesRes.data || []
+    if (threadsRes?.success) nodeThreads.value = threadsRes.data || []
+  } catch (err) {
+    console.warn('Errore caricamento nodi nella dashboard admin:', err)
+  } finally {
+    isLoadingNodes.value = false
+  }
+}
+
 const filteredUsers = computed(() => {
   if (!searchQuery.value.trim()) return users.value
   const q = searchQuery.value.toLowerCase()
@@ -131,12 +174,6 @@ async function triggerAction(actionName: string, payload: any = {}) {
   }
 }
 
-async function submitManualBan() {
-  if (!manualIpToBan.value.trim()) return
-  await triggerAction('ban_ip', { ip: manualIpToBan.value.trim(), reason: 'Ban Manuale Admin' })
-  manualIpToBan.value = ''
-}
-
 async function toggleUserStatus(user: AdminUserKeyItem) {
   const isCurrentlyActive = user.status === 'ACTIVE'
   const newStatus = isCurrentlyActive ? 'SUSPENDED' : 'ACTIVE'
@@ -157,20 +194,46 @@ async function toggleUserStatus(user: AdminUserKeyItem) {
   }
 }
 
+// === AZIONI DI MODERAZIONE RAPIDA NODES ===
+async function toggleLockThread(thread: ThreadModerationSummary) {
+  try {
+    const res: any = await $fetch(`/api/admin/nodes/posts/${thread.id}`, {
+      method: 'PATCH',
+      body: { action: 'toggle_lock' }
+    })
+    if (res?.success) {
+      thread.isLocked = !thread.isLocked
+      triggerToast(thread.isLocked ? '🔒 Thread bloccato' : '🔓 Thread sbloccato')
+    }
+  } catch (err) {
+    triggerToast('Impossibile modificare stato Lock.')
+  }
+}
+
+async function deleteThread(id: number) {
+  if (!confirm('Eliminare definitivamente questo thread?')) return
+  try {
+    const res: any = await $fetch(`/api/admin/nodes/posts/${id}`, { method: 'DELETE' })
+    if (res?.success) {
+      nodeThreads.value = nodeThreads.value.filter(t => t.id !== id)
+      triggerToast('🗑️ Thread rimosso dal forum.')
+    }
+  } catch (err) {
+    triggerToast('Errore durante l eliminazione.')
+  }
+}
+
 onMounted(() => {
   fetchSentinel()
   fetchUsers()
+  fetchAdminNodesData()
 })
 </script>
 
-Ecco il template aggiornato e ottimizzato per pages/admin/index.vue.
-
-Ho integrato in modo modulare i nuovi componenti per la Telemetria CLI e la Whitelist IP, aggiungendo anche le tab dedicate per non appesantire il rendering e mantenere la dashboard fluida, veloce e ben organizzata.
-
-Snippet di codice
 <template>
   <div class="admin-container max-w-7xl mx-auto flex flex-col gap-6 pb-16 px-4 sm:px-6">
-    <!-- TOAST NOTIFICATION -->
+    
+    <!-- TOAST NOTIFICATION FLOATING -->
     <Transition name="toast-fade">
       <div v-if="showToast" class="fixed top-6 right-6 z-50 bg-[#061811] border border-[#00dc82] shadow-2xl p-4 rounded-xl backdrop-blur-md max-w-md">
         <div class="flex items-center gap-3 text-slate-100 font-mono text-sm font-semibold">
@@ -187,7 +250,7 @@ Snippet di codice
           <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">🔒 Control Center Admin</h1>
           <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-xs font-extrabold uppercase">v2.5-GOLD</span>
         </div>
-        <p class="text-slate-400 text-sm sm:text-base">Gestione piattaforma, licenze e protezione infrastruttura Cloud Run in tempo reale.</p>
+        <p class="text-slate-400 text-sm sm:text-base">Gestione piattaforma, forum Nodi, licenze e protezione infrastruttura Cloud Run.</p>
       </div>
       <div class="region-badge bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-full text-xs text-sky-400 flex items-center gap-2 font-bold shadow-inner">
         <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_10px_#00dc82] animate-pulse"></span>
@@ -195,7 +258,7 @@ Snippet di codice
       </div>
     </div>
 
-    <!-- NAVBAR GRID v2.5-GOLD -->
+    <!-- 2. NAVBAR GRID MODULI ADMIN v2.5-GOLD -->
     <div class="admin-nav-container flex flex-col gap-3 bg-[#090d16] border border-slate-800/80 rounded-xl p-4 shadow-lg">
       <div class="admin-nav-top flex justify-between items-center pb-3 border-b border-slate-800/60">
         <div class="flex items-center gap-2">
@@ -207,35 +270,35 @@ Snippet di codice
         </NuxtLink>
       </div>
 
-      <nav class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           ⚙️ API Gateway
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-          📧 Mail Center
+        <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+          📧 Mail
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📣 Newsletter
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-          📡 Autoresponder
+        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+          🤖 Crawler
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-          🤖 Crawler Engine
+        <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+          📝 Blog
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-          📝 Gestione Blog
+        <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 transition-all shadow-[0_0_10px_rgba(56,189,248,0.15)]">
+          💬 Gestione Nodi
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-          🛍️ Gestione Shop
+        <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+          🛍️ Shop
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs sm:text-sm text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-          💼 Gestione Jobs
+        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+          💼 Jobs
         </NuxtLink>
       </nav>
     </div>
 
-    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER (v2.5-GOLD) -->
+    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER -->
     <div class="sentinel-monitor-banner bg-gradient-to-br from-[#090d16] to-[#030712] border border-slate-800 border-l-4 border-l-purple-500 rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div class="sentinel-monitor-header flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/60 pb-5 mb-5 gap-4">
         <div class="sentinel-brand flex items-center gap-4">
@@ -305,10 +368,10 @@ Snippet di codice
 
       <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
         <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-          Cloud Run Region <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">WEST-4</span>
+          DKP Nodes Attivi <span class="bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded text-[10px] font-black">LIVE FORUM</span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black text-white my-2">europe-west4</div>
-        <div class="text-xs text-slate-500">Netherlands (Eemshaven)</div>
+        <div class="text-2xl sm:text-3xl font-black text-sky-400 my-2">{{ nodes.length }} Nodi</div>
+        <div class="text-xs text-slate-500">{{ nodeThreads.length }} Thread aperti nel forum</div>
       </div>
 
       <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
@@ -331,8 +394,14 @@ Snippet di codice
     <!-- 5. TAB DI NAVIGAZIONE INTERNA -->
     <div class="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
       <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'users' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'users'">
-        🔑 API Keys &amp; Licenze Attive ({{ users.length }})
+        🔑 API Keys &amp; Licenze ({{ users.length }})
       </button>
+      
+      <!-- 🟢 TAB DKP NODES INTEGRATA -->
+      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'nodes' ? 'bg-[#090d16] border border-sky-400 text-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'nodes'">
+        💬 DKP Nodes &amp; Forum ({{ nodes.length }})
+      </button>
+
       <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'whitelist' ? 'bg-[#090d16] border border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'whitelist'">
         🛡️ Whitelist IP &amp; Esenzioni
       </button>
@@ -347,7 +416,7 @@ Snippet di codice
       </button>
     </div>
 
-    <!-- TAB 1: GESTIONE LICENZE E API KEYS REALI -->
+    <!-- TAB 1: GESTIONE LICENZE E API KEYS -->
     <div v-if="activeTab === 'users'" class="flex flex-col gap-4">
       <div class="flex justify-between items-center gap-4 flex-wrap">
         <input v-model="searchQuery" type="text" placeholder="Cerca per email o licenza..." class="w-full sm:max-w-md bg-[#090d16] border border-slate-800 px-4 py-3 rounded-xl text-slate-100 text-sm outline-none focus:border-emerald-500 transition-all" />
@@ -402,12 +471,107 @@ Snippet di codice
       </div>
     </div>
 
-    <!-- TAB 2: WHITELIST IP & EXEMPTION MANAGER -->
+    <!-- 🟢 TAB 2: GESTIONE INTELLIGENTE DKP NODES & FORUM -->
+    <div v-else-if="activeTab === 'nodes'" class="flex flex-col gap-6">
+      
+      <!-- HERO BANNER INTRODUTTIVO NODES -->
+      <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex items-start gap-4">
+          <span class="text-3xl">💬</span>
+          <div>
+            <h4 class="text-sky-400 font-bold text-lg mb-1">Panoramica DKP Nodes &amp; Moderazione</h4>
+            <p class="text-slate-300 text-sm">Monitora i subreddits attivi, gli iscritti e gestisci le discussioni bloccate automaticamente da Pulse Sentinel AI.</p>
+          </div>
+        </div>
+        <NuxtLink :to="getMainUrl('/admin/nodes')" external class="px-4 py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black rounded-xl text-xs font-mono transition-all flex items-center gap-2 whitespace-nowrap">
+          ⚙️ Gestore Nodi Avanzato ↗
+        </NuxtLink>
+      </div>
+
+      <!-- CARTELLI RESUMÉ NODI -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div v-for="node in nodes" :key="node.id" class="bg-[#090d16] border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-lg" :style="{ backgroundColor: `${node.color}20`, color: node.color, border: `1px solid ${node.color}40` }">
+              {{ node.icon }}
+            </span>
+            <div>
+              <h5 class="text-white font-bold text-sm">n/{{ node.name }}</h5>
+              <span class="text-xs text-slate-400 font-mono">/nodes/n/{{ node.slug }}</span>
+            </div>
+          </div>
+          <div class="text-right text-xs font-mono">
+            <span class="text-emerald-400 font-bold block">👥 {{ node.subscribersCount }}</span>
+            <span class="text-slate-500">💬 {{ node.postsCount || 0 }} thread</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ULTIMI THREAD SUBMITTATI CON CONTROLLI DI MODERAZIONE -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-white font-bold text-base mb-4 flex items-center justify-between">
+          <span>📚 Ultime Discussioni Aperte nei Nodi</span>
+          <span class="text-xs font-mono text-slate-400">Totale: {{ nodeThreads.length }}</span>
+        </h3>
+
+        <div v-if="isLoadingNodes" class="text-center py-8 text-sky-400 font-mono text-sm">Sincronizzazione thread dal DB...</div>
+        <div v-else-if="nodeThreads.length === 0" class="text-center py-8 text-slate-500 font-mono text-sm">Nessuna discussione aperta nei Nodi.</div>
+        
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-[#020420] text-slate-400 font-extrabold uppercase border-b border-slate-800">
+                <th class="p-3">TITOLO THREAD</th>
+                <th class="p-3">NODO</th>
+                <th class="p-3">AUTORE</th>
+                <th class="p-3">KARMA</th>
+                <th class="p-3">STATO SENTINEL</th>
+                <th class="p-3 text-right">AZIONI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="thread in nodeThreads.slice(0, 10)" :key="thread.id" class="border-b border-slate-800/60 hover:bg-slate-900/40">
+                <td class="p-3 font-bold text-slate-200">
+                  <NuxtLink :to="`/nodes/thread/${thread.id}`" target="_blank" class="hover:text-sky-400">
+                    {{ thread.title }}
+                  </NuxtLink>
+                  <span v-if="thread.vaultHash" class="ml-2 text-[10px] text-purple-400 font-mono">🛡️ Proof-of-Code</span>
+                </td>
+                <td class="p-3">
+                  <span class="bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded font-bold">
+                    {{ thread.nodeIcon }} n/{{ thread.nodeSlug }}
+                  </span>
+                </td>
+                <td class="p-3 text-slate-400">@{{ thread.authorName }}</td>
+                <td class="p-3 font-mono font-bold text-emerald-400">▲ {{ thread.karmaScore }}</td>
+                <td class="p-3">
+                  <span v-if="thread.isLocked" class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">🔒 Locked (Sentinel)</span>
+                  <span v-else class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-bold">🟢 Attivo</span>
+                </td>
+                <td class="p-3 text-right">
+                  <div class="flex justify-end gap-2">
+                    <button @click="toggleLockThread(thread)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-bold" :title="thread.isLocked ? 'Sblocca' : 'Blocca'">
+                      {{ thread.isLocked ? '🔓' : '🔒' }}
+                    </button>
+                    <button @click="deleteThread(thread.id)" class="px-2 py-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded font-bold" title="Elimina">
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 3: WHITELIST IP & EXEMPTION MANAGER -->
     <div v-else-if="activeTab === 'whitelist'" class="flex flex-col gap-6">
       <AdminWhitelistManager />
     </div>
 
-    <!-- TAB 3: MONITORAGGIO INFRASTRUTTURA CLOUD RUN & CLI TELEMETRIA -->
+    <!-- TAB 4: MONITORAGGIO INFRASTRUTTURA CLOUD RUN & CLI TELEMETRIA -->
     <div v-else-if="activeTab === 'infrastructure'" class="flex flex-col gap-6">
       <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex items-start gap-4">
         <span class="text-3xl">📊</span>
@@ -417,20 +581,16 @@ Snippet di codice
         </div>
       </div>
 
-      <!-- COMPONENTE TELEMETRIA CLI -->
       <AdminCliAnalytics />
     </div>
 
-    <!-- TAB 4: SENTINEL LOGS & FIREWALL REALE -->
+    <!-- TAB 5: SENTINEL LOGS & FIREWALL REALE -->
     <div v-else-if="activeTab === 'sentinel'" class="flex flex-col gap-6">
-      <!-- COMPONENTE TABELLA BLACKLIST DB -->
       <AdminSentinelBlacklistTable />
-
-      <!-- COMPONENTE TERMINALE STREAMING TELEMETRIA -->
       <AdminSentinelLiveStream />
     </div>
 
-    <!-- TAB 5: CODA MODERAZIONE -->
+    <!-- TAB 6: CODA MODERAZIONE -->
     <div v-else-if="activeTab === 'moderation'" class="flex flex-col gap-4">
       <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex items-start gap-4">
         <span class="text-3xl">🛡️</span>
@@ -440,6 +600,7 @@ Snippet di codice
         </div>
       </div>
     </div>
+
   </div>
 </template>
 

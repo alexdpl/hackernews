@@ -8,7 +8,7 @@ definePageMeta({
 })
 
 useDkpSeo({
-  title: 'Mail Center v2.4-GOLD - DKP Admin Control Center',
+  title: 'Mail Center v2.5-GOLD - DKP Admin Control Center',
   description: 'Client Webmail & Mail Ecosystem Control Center.'
 })
 
@@ -64,15 +64,14 @@ async function fetchMails() {
       }
     }
   } catch (err) {
-    // Fallback demo locale se endpoint non risponde
     if (!mails.value.length) {
       mails.value = [
         {
           id: 1,
           sender: 'support@brevo.com',
           recipient: 'bc3a58001@smtp-brevo.com',
-          subject: 'Autenticazione SMTP Brevo v2.4 Completata',
-          body_text: 'Sincronizzazione completata per IP Whitelist VM GCP.',
+          subject: 'Autenticazione SMTP Brevo v2.5-GOLD Completata',
+          body_text: 'Sincronizzazione completata per IP Whitelist VM GCP europe-west4.',
           direction: 'INBOUND',
           status: 'UNREAD',
           is_starred: true,
@@ -160,30 +159,27 @@ onMounted(() => {
 
 <template>
   <div class="mail-admin-container">
-    <!-- NAVBAR GRID ADMIN UNIFICATA v2.4-GOLD -->
+    <!-- NAVBAR GRID ADMIN UNIFICATA v2.5-GOLD -->
     <div class="admin-nav-container">
       <div class="admin-nav-top">
         <div class="nav-branding">
           <span class="status-dot green"></span>
           <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
         </div>
-
         <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
           🏠 Dashboard Main
         </NuxtLink>
       </div>
 
-      <!-- GRID MODULI -->
       <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')"class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
-
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" class="nav-tab btn-dashboard" active-class="active" >💼 Gestione Jobs</NuxtLink>
+        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard">⚙️ API Gateway</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard active">📧 Mail Center</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard">📣 Newsletter</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard">📡 Autoresponder</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard">🤖 Crawler Engine</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard">📝 Gestione Blog</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/nodes')" class="nav-tab btn-dashboard">💬 Gestione Nodi</NuxtLink>
+        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard">🛍️ Gestione Shop</NuxtLink>
       </nav>
     </div>
 
@@ -191,9 +187,9 @@ onMounted(() => {
     <header class="mail-header-bar">
       <div class="header-left">
         <h1 class="page-title">
-          ⚡ DKP Mail Engine <span class="badge-v">v2.4-GOLD</span>
+          ⚡ DKP Mail Engine <span class="badge-v">v2.5-GOLD</span>
         </h1>
-        <p class="page-subtitle">Client Webmail & Mail Ecosystem Control Center</p>
+        <p class="page-subtitle">Client Webmail &amp; Mail Ecosystem Control Center</p>
       </div>
 
       <div class="header-actions">
@@ -240,12 +236,12 @@ onMounted(() => {
           <div class="sidebar-divider"></div>
           <span class="sidebar-section-title">STRUMENTI MAIL</span>
 
-          <NuxtLink :to="getMailUrl('/admin/newsletter')" external class="nav-item link-item">
-            📡 Newsletter & Contatti
+          <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-item link-item">
+            📣 Newsletter &amp; Contatti
           </NuxtLink>
 
-          <NuxtLink :to="getMailUrl('/admin/autoresponder')" external class="nav-item link-item">
-            🤖 Autoresponder Rules
+          <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-item link-item">
+            📡 Autoresponder Rules
           </NuxtLink>
         </nav>
 
@@ -388,130 +384,22 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* STILI ADMIN NAV UNIFICATA v2.4-GOLD */
-.admin-nav-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
+.admin-nav-container { display: flex; flex-direction: column; gap: 12px; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
+.admin-nav-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.nav-branding { display: flex; align-items: center; gap: 8px; }
+.status-dot.green { width: 8px; height: 8px; background-color: #00ff87; border-radius: 50%; box-shadow: 0 0 8px #00ff87; }
+.nav-title { color: #00f0ff; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em; text-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+.admin-grid-nav { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.nav-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; text-decoration: none; transition: all 0.2s ease-in-out; cursor: pointer; white-space: nowrap; }
+.btn-dashboard { color: #00ff87; background: rgba(0, 255, 135, 0.04); border: 1px solid rgba(0, 255, 135, 0.3); }
+.btn-dashboard:hover, .btn-dashboard.active { background: rgba(0, 255, 135, 0.12); border-color: #00ff87; box-shadow: 0 0 12px rgba(0, 255, 135, 0.25); transform: translateY(-1px); }
+.btn-dashboard-main { color: #00f0ff; background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.4); }
 
-.admin-nav-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.nav-branding {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-dot.green {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff87;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00ff87;
-}
-
-.nav-title {
-  color: #00f0ff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
-.admin-grid-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-dashboard {
-  color: #00ff87;
-  background: rgba(0, 255, 135, 0.04);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-}
-
-.btn-dashboard:hover,
-.btn-dashboard.active {
-  background: rgba(0, 255, 135, 0.12);
-  border-color: #00ff87;
-  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-dashboard-main {
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.06);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-}
-
-.btn-dashboard-main:hover {
-  background: rgba(0, 240, 255, 0.16);
-  border-color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-@media (max-width: 1024px) {
-  .admin-grid-nav { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 580px) {
-  .admin-grid-nav { grid-template-columns: 1fr; }
-}
-
-.mail-admin-container {
-  padding: 1.5rem;
-  background-color: #020420;
-  color: #f8fafc;
-  min-height: calc(100vh - 80px);
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-.mail-header-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-}
-
+.mail-admin-container { padding: 1.5rem; background-color: #020420; color: #f8fafc; min-height: calc(100vh - 80px); display: flex; flex-direction: column; gap: 1.25rem; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; max-width: 1400px; margin: 0 auto; }
+.mail-header-bar { display: flex; justify-content: space-between; align-items: center; background: #090d16; border: 1px solid #1e293b; padding: 1rem 1.5rem; border-radius: 12px; }
 .page-title { margin: 0; font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
 .badge-v { background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); }
 .page-subtitle { margin: 0.2rem 0 0 0; font-size: 0.85rem; color: #94a3b8; }
-
 .header-actions { display: flex; align-items: center; gap: 1rem; }
 .stat-card { display: flex; flex-direction: column; align-items: center; background: #020420; padding: 0.4rem 0.85rem; border-radius: 8px; border: 1px solid #1e293b; }
 .stat-num { font-size: 1.1rem; font-weight: 800; }
@@ -519,95 +407,39 @@ onMounted(() => {
 .stat-label { font-size: 0.68rem; color: #94a3b8; }
 
 .btn-primary { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.65rem 1.2rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-.btn-primary:hover { background: #00bf71; transform: translateY(-1px); }
-
 .btn-secondary { background: #1e293b; color: #f8fafc; font-weight: 600; border: 1px solid #334155; padding: 0.65rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-.btn-secondary:hover { background: #334155; }
 
 .mail-workspace { display: grid; grid-template-columns: 240px 360px 1fr; gap: 1rem; flex: 1; min-height: 600px; }
 .mail-sidebar { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 0.4rem; }
 .sidebar-section-title { font-size: 0.68rem; font-weight: 800; color: #64748b; letter-spacing: 0.5px; padding: 0.2rem 0.5rem; }
-
 .nav-item { display: flex; justify-content: space-between; align-items: center; background: transparent; border: none; color: #94a3b8; padding: 0.65rem 0.85rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.88rem; text-align: left; transition: all 0.2s; text-decoration: none; }
 .nav-item:hover, .nav-item.active { background: #020420; color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.2); }
-.link-item { color: #cbd5e1; }
-
 .count-badge { background: #1e293b; color: #f8fafc; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 10px; }
 .count-badge.neon { background: #00dc82; color: #020420; font-weight: 800; }
 .sidebar-divider { height: 1px; background: #1e293b; }
 
-.quick-addresses-box { font-size: 0.75rem; }
-.box-title { font-weight: 800; color: #64748b; letter-spacing: 0.5px; }
-.address-list { list-style: none; padding: 0; margin: 0.5rem 0 0 0; display: flex; flex-direction: column; gap: 0.4rem; color: #94a3b8; }
-.status-dot { display: inline-block; width: 6px; height: 6px; background: #00dc82; border-radius: 50%; margin-right: 0.4rem; }
-
 .mail-list-panel { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
 .search-box { padding: 0.75rem; border-bottom: 1px solid #1e293b; }
 .search-input { width: 100%; background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.55rem 0.85rem; border-radius: 8px; font-size: 0.82rem; outline: none; }
-.search-input:focus { border-color: #00dc82; }
-
-.loading-state, .empty-state { padding: 2rem; text-align: center; color: #64748b; font-size: 0.85rem; }
 .mail-items-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-
 .mail-card { padding: 0.85rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; gap: 0.3rem; }
-.mail-card:hover { background: rgba(255, 255, 255, 0.02); }
 .mail-card.active { background: #020420; border-left: 3px solid #00dc82; }
-.mail-card.unread { background: rgba(0, 220, 130, 0.04); }
-
-.mail-card-header { display: flex; justify-content: space-between; font-size: 0.75rem; }
-.sender-tag { font-weight: 700; color: #f8fafc; }
-.mail-date { color: #64748b; }
-
-.mail-subject { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mail-preview { font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.mail-card-footer { display: flex; gap: 0.4rem; margin-top: 0.2rem; }
-.dir-badge { font-size: 0.62rem; font-weight: 800; padding: 0.1rem 0.35rem; border-radius: 4px; text-transform: uppercase; }
-.dir-badge.inbound { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.dir-badge.outbound { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
-
-.status-tag { font-size: 0.62rem; padding: 0.1rem 0.35rem; border-radius: 4px; text-transform: uppercase; }
-.status-tag.unread { background: rgba(0, 220, 130, 0.2); color: #00dc82; }
-.status-tag.read { background: #1e293b; color: #94a3b8; }
-.status-tag.sent { background: rgba(16, 185, 129, 0.2); color: #34d399; }
 
 .mail-detail-panel { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; }
 .no-mail-selected { margin: auto; color: #64748b; font-size: 0.9rem; }
-
 .reader-header { border-bottom: 1px solid #1e293b; padding-bottom: 1rem; margin-bottom: 1rem; }
-.reader-title-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .reader-subject { margin: 0; font-size: 1.2rem; font-weight: 800; color: #00dc82; }
-.btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
-
-.reader-meta { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.82rem; color: #94a3b8; }
-.meta-label { color: #64748b; width: 45px; display: inline-block; }
-
 .reader-body { flex: 1; overflow-y: auto; background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 1.25rem; font-size: 0.9rem; line-height: 1.6; }
-.html-content-view :deep(a) { color: #00dc82; text-decoration: underline; }
-.text-content-view { white-space: pre-wrap; word-break: break-word; }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; }
-.modal-card { background: #090d16; border: 1px solid #1e293b; border-radius: 14px; width: 550px; max-width: 90vw; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); overflow: hidden; }
+.modal-card { background: #090d16; border: 1px solid #1e293b; border-radius: 14px; width: 550px; max-width: 90vw; overflow: hidden; }
 .modal-header { padding: 1rem 1.25rem; background: #020420; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; font-size: 1rem; color: #fff; }
-.btn-close { background: none; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; }
-
 .modal-form { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
-.form-group label { font-size: 0.78rem; font-weight: 700; color: #94a3b8; }
-
 .form-input { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.85rem; outline: none; }
-.form-input:focus { border-color: #00dc82; }
-.textarea { resize: vertical; font-family: inherit; }
-
-.modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
-.alert { padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.8rem; }
-.alert.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.alert.error { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 
 @media (max-width: 1024px) {
+  .admin-grid-nav { grid-template-columns: repeat(4, 1fr); }
   .mail-workspace { grid-template-columns: 1fr; }
-  .mail-header-bar { flex-direction: column; align-items: flex-start; gap: 1rem; }
 }
 </style>

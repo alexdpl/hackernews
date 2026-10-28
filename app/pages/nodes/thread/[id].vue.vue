@@ -4,7 +4,7 @@ import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import DKPAdBanner from '~/components/DKPAdBanner.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
-import SocialShare from '~/components/nodes/SocialShareTalks.vue'
+import SocialShareTalks from '~/components/nodes/SocialShareTalks.vue'
 
 const route = useRoute()
 const postId = Number(route.params.id)
@@ -121,6 +121,11 @@ async function vote(postIdTarget: number | null, commentIdTarget: number | null,
     console.warn('Errore durante il voto:', err)
   }
 }
+
+// Dynamic SEO Head
+useHead({
+  title: computed(() => thread.value ? `${thread.value.title} - DKP Nodes` : 'Discussione DKP Nodes')
+})
 </script>
 
 <template>
@@ -132,7 +137,7 @@ async function vote(postIdTarget: number | null, commentIdTarget: number | null,
         ← Torna a DKP Nodes
       </NuxtLink>
 
-      <!-- GRID A 3 COLONNE: MAIN CONTENT (2) + SIDEBAR ADS/RELATED & SOCIAL SHARE (1) -->
+      <!-- GRID A 3 COLONNE: MAIN CONTENT (2) + SIDEBAR STICKY (1) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         <!-- COLONNA PRINCIPALE: THREAD & COMMENTI (2 COLONNE) -->
@@ -151,7 +156,7 @@ async function vote(postIdTarget: number | null, commentIdTarget: number | null,
             <div class="flex-1 flex flex-col gap-3">
               <div class="flex items-center gap-2 font-mono text-xs text-slate-400 flex-wrap">
                 <span class="text-sky-400 font-bold bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
-                  {{ thread.nodeIcon }} {{ thread.nodeName }}
+                  {{ thread.nodeIcon || '💬' }} {{ thread.nodeName || 'General' }}
                 </span>
                 <span>•</span>
                 <span class="text-slate-200 font-semibold">@{{ thread.authorUsername }}</span>
@@ -187,10 +192,10 @@ async function vote(postIdTarget: number | null, commentIdTarget: number | null,
             <div class="flex justify-end">
               <button 
                 @click="submitComment(null)" 
-                :disabled="isSubmitting"
-                class="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
+                :disabled="isSubmitting || !newCommentText.trim()"
+                class="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all cursor-pointer disabled:opacity-50"
               >
-                Invia Commento (+10 XP)
+                {{ isSubmitting ? 'Invio in corso...' : 'Invia Commento (+10 XP)' }}
               </button>
             </div>
           </div>
@@ -267,21 +272,29 @@ async function vote(postIdTarget: number | null, commentIdTarget: number | null,
 
         </div>
 
-        <!-- COLONNA SIDEBAR DESTRA: SOCIAL SHARE STICKY + ADS + RELATED -->
-        <aside class="lg:col-span-1 flex flex-col gap-6 sticky top-24">
-        <!-- 📌 SOCIAL SHARE TALKS -->
-  <div class="bg-[#090d16] border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col items-center">
-    <span class="text-[10px] font-mono text-slate-400 mb-3 uppercase tracking-wider">Condividi Discussione</span>
-    <SocialShareTalks :title="thread?.title || 'Discussione DKP Nodes'" :url="currentUrl" :vertical="true" />
+<!-- COLONNA SIDEBAR DESTRA (3a colonna della Grid) -->
+<aside class="lg:col-span-1 w-full h-full">
+  <!-- Wrapper Sticky interno con top offset di 24 (96px) -->
+  <div class="sticky top-24 flex flex-col gap-6">
+    
+    <!-- BOX CONDIVISIONE TALKS -->
+    <div class="bg-[#090d16] border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col items-center">
+      <span class="text-[10px] font-mono text-slate-400 mb-3 uppercase tracking-wider font-bold">Condividi Discussione</span>
+      <SocialShareTalks :title="thread?.title || 'Discussione DKP Nodes'" :url="currentUrl" :vertical="true" />
+    </div>
+
+    <!-- BANNER ADVERTISING -->
+    <DKPAdBanner />
+    
+    <!-- THREADS CORRELATI -->
+    <DKPRelatedThreads 
+      v-if="thread" 
+      :currentNodeSlug="thread.nodeSlug" 
+      :currentPostId="thread.id" 
+    />
+
   </div>
-          <DKPAdBanner />
-          
-          <DKPRelatedThreads 
-            v-if="thread" 
-            :currentNodeSlug="thread.nodeSlug" 
-            :currentPostId="thread.id" 
-          />
-        </aside>
+</aside>
 
       </div>
     </div>
