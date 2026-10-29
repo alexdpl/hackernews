@@ -1,6 +1,6 @@
-// app/pages/blog/[slug].vue
+<!-- app/pages/blog/[slug].vue -->
 <script setup lang="ts">
-import { computed, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { useBlog } from "~/composables/useBlog";
 import SocialShare from "~/components/blog/SocialShare.vue";
@@ -247,9 +247,19 @@ useDkpSeo({
   ),
 });
 
-onMounted(() => {
-  if (post.value?.id) incrementView(String(post.value.id));
-});
+// === TRACKING VISUALIZZAZIONI SICURO & REATTIVO ===
+const viewTracked = ref(false);
+
+watch(
+  () => post.value?.id,
+  (newId) => {
+    if (newId && !viewTracked.value) {
+      incrementView(String(newId));
+      viewTracked.value = true;
+    }
+  },
+  { immediate: true },
+);
 
 let prismTimer: ReturnType<typeof setTimeout> | undefined;
 const applyPrism = () => {
@@ -356,10 +366,9 @@ function handleLike() {
       >
     </div>
 
-    <!-- 🟢 FIX START: Aggiunto items-start al container flex genitore -->
     <div v-else class="flex flex-col lg:flex-row gap-8 relative items-start">
-      <!-- 🟢 FIX: Trasformato direttamente aside in sticky, rimosso il div inutile, aggiunto h-max -->
-      <aside class="hidden lg:block w-16 flex-shrink-0 sticky top-32 z-20 h-max">
+      <!-- 🟢 ASIDE STICKY CORRETTO CON self-start -->
+      <aside class="hidden lg:block w-16 flex-shrink-0 sticky top-32 self-start z-20">
         <SocialShare :title="post.title" :url="currentUrl" :vertical="true" />
       </aside>
 
@@ -434,8 +443,7 @@ function handleLike() {
               <div
                 class="text-xs text-slate-400 flex items-center gap-3 mt-1 flex-wrap"
               >
-                <span
-                  >📅
+                <span>📅
                   {{
                     post.createdAt
                       ? new Date(post.createdAt).toLocaleDateString("it-IT")
@@ -541,7 +549,7 @@ function handleLike() {
         </div>
 
         <div
-          class="article-actions-footer bg-[#020420] border border-slate-800 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10"
+          class="article-actions-footer bg-[#020420] border border-slate-800 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10 mb-8"
         >
           <div
             class="flex flex-col gap-2 items-center md:items-start text-center md:text-left w-full md:w-auto"
@@ -570,13 +578,13 @@ function handleLike() {
             />
           </div>
         </div>
+
         <DkpRelatedPosts
           v-if="post"
           :current-post-id="post.id"
           :category="post.category"
           :tags="post.tags || []"
         />
-        <!-- Assumendo tu abbia DKPBlogComments o simili commentati dal tuo codice -->
       </article>
     </div>
   </div>
