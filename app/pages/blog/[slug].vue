@@ -6,18 +6,53 @@ import { useBlog } from '~/composables/useBlog'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DkpRelatedPosts from '~/components/blog/DkpRelatedPosts.vue'
 
-// 🟢 Abilita la copia codice per l'articolo renderizzato
-useCodeCopy()
+interface BlogPost {
+  id?: string | number
+  slug?: string
+  title: string
+  content?: string
+  description?: string
+  excerpt?: string
+  summary?: string
+  categoryName?: string
+  category?: string
+  isVerified?: boolean
+  authorXp?: number
+  authorName?: string
+  createdAt?: string
+  updatedAt?: string
+  date?: string
+  views?: number
+  likes?: number
+  tags?: string[]
+  vaultCertificateId?: string
+  vaultHash?: string
+}
+
+interface BlogApiResponse {
+  data?: BlogPost | null
+}
+
+interface AuthorRank {
+  color: string
+  badge: string
+  level: number
+  title: string
+}
+
+interface PrismHighlighter {
+  highlightAll: () => void
+}
 
 const route = useRoute()
-const slug = route.params.slug as string
+const slug = computed(() => route.params.slug as string)
 const { $prism } = useNuxtApp()
 
-const { likePost, incrementView, getAuthorRank } = useBlog()
+const { likePost, getAuthorRank } = useBlog()
 
-const { data: apiResponse, pending, error } = await useFetch(`/api/blog/posts/${slug}`)
-const post = computed(() => {
-  const res = apiResponse.value as Record<string, any> | null
+const { data: apiResponse, pending, error } = await useFetch(() => `/api/blog/posts/${slug.value}`)
+const post = computed<BlogPost | null>(() => {
+  const res = apiResponse.value as BlogApiResponse | null
   return res?.data || null
 })
 
@@ -41,7 +76,7 @@ const parsedContent = computed(() => {
     const codeBlocks: string[] = [];
     
     // 1. ISOLAMENTO BLOCCHI DI CODICE
-    rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
+    rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (_match: string, lang: string, code: string) => {
       const index = codeBlocks.length;
       const cleanLang = lang ? lang.trim().toLowerCase() : '';
       const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
@@ -130,7 +165,7 @@ const parsedContent = computed(() => {
   }
 })
 
-const authorRank = computed(() => {
+const authorRank = computed<AuthorRank>(() => {
   try {
     const xp = post.value?.authorXp || 0
     return getAuthorRank ? getAuthorRank(xp) : { color: '#10b981', badge: '🔰', level: 1, title: 'Member' }
@@ -140,7 +175,7 @@ const authorRank = computed(() => {
 })
 
 const currentUrl = computed(() => {
-  return typeof window !== 'undefined' ? window.location.href : `https://devkernelpulse.org/blog/${slug}`
+  return typeof window !== 'undefined' ? window.location.href : `https://devkernelpulse.org/blog/${slug.value}`
 })
 
 useDkpSeo({
@@ -148,17 +183,13 @@ useDkpSeo({
   description: post.value?.excerpt || 'Approfondimento tecnico dall ecosistema DKP.'
 })
 
-onMounted(() => {
-  if (post.value?.id) incrementView(String(post.value.id))
-})
-
-let prismTimer: any = null
+let prismTimer: ReturnType<typeof setTimeout> | undefined
 const applyPrism = () => {
   if (import.meta.client && $prism) {
     clearTimeout(prismTimer)
     prismTimer = setTimeout(() => {
       try {
-        ($prism as any).highlightAll()
+        ($prism as PrismHighlighter).highlightAll()
       } catch (e) {
         console.warn('Prism highlight notice:', e)
       }
@@ -361,7 +392,7 @@ function handleLike() {
           :current-post-id="post.id" 
           :category="post.category" 
           :tags="post.tags || []"  />
-    <DKPBlogComments :blogSlug="post.slug" />
+    <DKPBlogComments :key="post.slug" :blogSlug="post.slug" />
       </article>
     </div>
   </div>

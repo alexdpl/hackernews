@@ -15,7 +15,10 @@ minimumReleaseAgeExclude:
   - '@nuxt/*'
   - vue
   - '@vue/*'
-
+  - '@ai-sdk/gateway@4.0.129'
+  - '@ai-sdk/vue@4.0.156'
+  - ai@7.0.156
+  - nodemailer@10.3.0
 overrides:
   esbuild@<=0.24.2: ^0.25.0
 
