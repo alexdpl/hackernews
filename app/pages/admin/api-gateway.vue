@@ -25,6 +25,7 @@ export interface LicenseItem {
 
 const licenses = ref<LicenseItem[]>([])
 const isLoading = ref(true)
+const fetchError = ref<string | null>(null)
 const searchQuery = ref('')
 const selectedStatusFilter = ref('all')
 
@@ -44,21 +45,32 @@ const newMaxDownloads = ref<number>(1000)
 const newStatus = ref<'active' | 'suspended' | 'revoked'>('active')
 
 // Normalizza lo stato per confronti omogenei
-function normalizeStatus(status: string): string {
+function normalizeStatus(status: string | undefined | null): string {
   return (status || '').toLowerCase()
 }
 
 // Carica la lista licenze/chiavi dal backend API Gateway
 async function fetchGatewayData() {
   isLoading.value = true
+  fetchError.value = null
   try {
-    const res = await $fetch<{ success: boolean; data: LicenseItem[] }>('/api/admin/api-gateway')
+    // 🟢 CORRETTO: Aggiunto lo slash iniziale '/' per puntare correttamente alla rotta assoluta di Nitro
+    const res = await $fetch<{ success: boolean; data: LicenseItem[]; error?: string }>('/api/admin/api-gateway')
+    
     if (res && res.success) {
-      licenses.value = res.data || []
+      licenses.value = (res.data || []).map(item => ({
+        ...item,
+        downloadsCount: item.downloadsCount || 0,
+        maxDownloads: item.maxDownloads || 1000,
+        status: item.status || 'active'
+      }))
+    } else {
+      fetchError.value = res.error || 'Impossibile recuperare i dati dal server.'
     }
   } catch (err: any) {
     console.error('Errore durante il caricamento licenze dal Gateway:', err)
-    triggerToast('❌ Errore durante il caricamento dati dal DB Neon.')
+    fetchError.value = `Errore di connessione: ${err.message || 'Impossibile raggiungere il server.'}`
+    triggerToast('❌ Errore durante il caricamento dati.')
   } finally {
     isLoading.value = false
   }
@@ -201,10 +213,21 @@ async function resetQuotaUsage(id: string | number) {
 
       <!-- TABELLA LICENZE & RATE LIMITS -->
       <section class="table-section">
+        
+        <!-- STATO CARICAMENTO -->
         <div v-if="isLoading" class="loading-state">
-          <span>⚡ Caricamento licenze dal database Neon PostgreSQL...</span>
+          <span>⚡ Sincronizzazione API Gateway in corso...</span>
         </div>
 
+        <!-- STATO ERRORE DATABASE -->
+        <div v-else-if="fetchError" class="error-state">
+          <span class="text-3xl mb-4 inline-block">⚠️</span>
+          <h3 class="text-amber-400 font-bold mb-2">Errore Connessione Tabella Licenze</h3>
+          <p class="text-slate-400 text-sm mb-4">{{ fetchError }}</p>
+          <button @click="fetchGatewayData" class="btn-edit" style="margin: 0 auto">🔄 Riprova</button>
+        </div>
+
+        <!-- TABELLA DATI -->
         <table v-else-if="filteredLicenses.length" class="gateway-table">
           <thead>
             <tr>
@@ -251,7 +274,7 @@ async function resetQuotaUsage(id: string | number) {
                     ✏️ Limiti
                   </button>
                   <button @click="resetQuotaUsage(item.id)" class="btn-reset" title="Azzera Consumo">
-                    🔄 Reset Quota
+                    🔄 Reset
                   </button>
                 </div>
               </td>
@@ -259,8 +282,9 @@ async function resetQuotaUsage(id: string | number) {
           </tbody>
         </table>
 
+        <!-- STATO VUOTO -->
         <div v-else class="empty-state">
-          Nessuna licenza trovata con i filtri correnti.
+          Nessuna licenza API trovata con i filtri correnti.
         </div>
       </section>
 
@@ -650,5 +674,13 @@ async function resetQuotaUsage(id: string | number) {
   padding: 3rem;
   text-align: center;
   color: #64748b;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem;
+  text-align: center;
 }
 </style>

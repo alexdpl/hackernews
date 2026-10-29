@@ -12,6 +12,7 @@ const { getMainUrl, getApiUrl } = useDomain()
 // --- INTERFACCE DATI ---
 interface DkpNode {
   id: number | string
+  parentId?: number | string | null
   name: string
   slug: string
   description: string
@@ -45,7 +46,6 @@ interface ThreadPost {
 const nodes = ref<DkpNode[]>([])
 const threads = ref<ThreadPost[]>([])
 const isLoading = ref(false)
-const errorMessage = ref('')
 const showToast = ref(false)
 const toastMessage = ref('')
 const searchQuery = ref('')
@@ -62,6 +62,7 @@ function triggerToast(msg: string) {
 const isNodeModalOpen = ref(false)
 const nodeForm = ref({
   id: null as number | string | null,
+  parentId: null as number | string | null,
   name: '',
   slug: '',
   description: '',
@@ -70,16 +71,62 @@ const nodeForm = ref({
   isPrivate: false
 })
 
-// --- STATO MODALE VAULT REPORT ---
-const isVaultModalOpen = ref(false)
-const selectedPostForVault = ref<ThreadPost | null>(null)
+// --- STATO CATEGORIA EMOJI PICKER ---
+const selectedEmojiCategory = ref<string>('ALL')
 
-// Emojis e Colori Preset per i Nodi
-const presetEmojis = ['💬', '💻', '⚙️', '⚡', '🧠', '🛡️', '🔒', '🤖', '☁️', '🐳', '🌐', '📦', '🚀', '📱', '🔑', '📊', '🎯', '🛠️', '🔥', '✨']
-const presetColors = ['#38bdf8', '#00dc82', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4']
+const emojiCategories = [
+  { id: 'ALL', label: '🌟 Tutte le Emoji' },
+  { id: 'TECH', label: '💻 Tech, Dev & Code' },
+  { id: 'SECURITY', label: '🛡️ Security, Cyber & Vault' },
+  { id: 'CLOUD', label: '☁️ Cloud, Infra & DB' },
+  { id: 'COMMUNITY', label: '💬 Community, Social & Forum' },
+  { id: 'TOOLS', label: '🛠️ Tools & Analytics' }
+]
+
+const emojiCatalog: Record<string, string[]> = {
+  TECH: ['💻', '⚙️', '🧠', '🤖', '⚡', '🐍', '🦀', '☕', '📦', '📐', '🔬', '🕹️', '📱', '🎮', '🧬', '🧪', '🔌', '🖥️'],
+  SECURITY: ['🛡️', '🔒', '🔑', '🔐', '🕵️', '🚨', '🪪', '🎯', '🧱', '🛡', '☣️', '⚓', '👁️‍🗨️'],
+  CLOUD: ['☁️', '🐳', '🛰️', '📡', '🌐', '🛜', '🚀', '🗄️', '💾', '⚡', '🏢', '📊', '📉', '📈'],
+  COMMUNITY: ['💬', '📢', '🗣️', '💡', '👥', '🏆', '✨', '🔥', '💼', '📚', '🎨', '🛍️', '🎉', '🏅', '🌟'],
+  TOOLS: ['🛠️', '🎯', '🔍', '⚙️', '📌', '🏷️', '📝', '⚡', '🧾', '🧰', '🔧', '🔨']
+}
+
+const filteredEmojis = computed(() => {
+  if (selectedEmojiCategory.value === 'ALL') {
+    return Array.from(new Set(Object.values(emojiCatalog).flat()))
+  }
+  return emojiCatalog[selectedEmojiCategory.value] || []
+})
+
+const presetColors = ['#38bdf8', '#00dc82', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#10b981', '#6366f1', '#eab308']
 
 const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '')
 const handleNodeNameInput = () => { if (!nodeForm.value.id) nodeForm.value.slug = autoSlug(nodeForm.value.name) }
+
+// --- COMPUTED: ORDINAMENTO GERARCHICO (Nodi Principali n/ prima, poi Sub-Nodi n/n/) ---
+const sortedNodes = computed(() => {
+  const mainNodes = nodes.value.filter(n => !n.parentId)
+  const subNodes = nodes.value.filter(n => !!n.parentId)
+  
+  const result: DkpNode[] = []
+  
+  mainNodes.forEach(main => {
+    result.push(main)
+    const children = subNodes.filter(sub => String(sub.parentId) === String(main.id))
+    result.push(...children)
+  })
+  
+  const assignedIds = new Set(result.map(r => r.id))
+  subNodes.forEach(sub => {
+    if (!assignedIds.has(sub.id)) result.push(sub)
+  })
+  
+  return result
+})
+
+// --- STATO MODALE VAULT REPORT ---
+const isVaultModalOpen = ref(false)
+const selectedPostForVault = ref<ThreadPost | null>(null)
 
 // --- CARICAMENTO DATI ---
 const fetchNodes = async () => {
@@ -105,7 +152,7 @@ const fetchThreads = async () => {
   }
 }
 
-// --- COMPUTED THREAD FILTRATI ---
+// --- COMPUTED THREAD FILTRATI & COUNTER SENTINEL ---
 const filteredThreads = computed(() => {
   return threads.value.filter(t => {
     const matchesSearch = !searchQuery.value || t.title.toLowerCase().includes(searchQuery.value.toLowerCase()) || t.authorName.toLowerCase().includes(searchQuery.value.toLowerCase())
@@ -120,10 +167,20 @@ const flaggedCount = computed(() => threads.value.filter(t => t.isLocked).length
 // --- OPERAZIONI NODI ---
 const openNodeModal = (node: DkpNode | null = null) => {
   if (node) {
-    nodeForm.value = { id: node.id, name: node.name, slug: node.slug, description: node.description, icon: node.icon || '💬', color: node.color || '#38bdf8', isPrivate: node.isPrivate }
+    nodeForm.value = { 
+      id: node.id, 
+      parentId: node.parentId || null,
+      name: node.name, 
+      slug: node.slug, 
+      description: node.description, 
+      icon: node.icon || '💬', 
+      color: node.color || '#38bdf8', 
+      isPrivate: node.isPrivate 
+    }
   } else {
-    nodeForm.value = { id: null, name: '', slug: '', description: '', icon: '💬', color: '#38bdf8', isPrivate: false }
+    nodeForm.value = { id: null, parentId: null, name: '', slug: '', description: '', icon: '💬', color: '#38bdf8', isPrivate: false }
   }
+  selectedEmojiCategory.value = 'ALL'
   isNodeModalOpen.value = true
 }
 
@@ -139,7 +196,7 @@ const saveNode = async () => {
 
     const res: any = await $fetch(url, { method, body: payload })
     if (res?.success) {
-      triggerToast(nodeForm.value.id ? '✅ Nodo aggiornato' : '🚀 Nuovo Nodo creato!')
+      triggerToast(nodeForm.value.id ? '✅ Nodo aggiornato con successo!' : '🚀 Nuovo Nodo creato!')
       await fetchNodes()
       isNodeModalOpen.value = false
     }
@@ -156,7 +213,7 @@ const deleteNode = async (id: number | string) => {
   try {
     const res: any = await $fetch(`/api/admin/nodes/${id}`, { method: 'DELETE' })
     if (res?.success) {
-      triggerToast('🗑️ Nodo eliminato con successo.')
+      triggerToast('🗑️ Nodo eliminato dal database.')
       await fetchNodes()
       await fetchThreads()
     }
@@ -272,7 +329,7 @@ onMounted(() => {
     <!-- MAIN HYBRID GRID (380px / 1fr) -->
     <div class="hybrid-grid">
       
-      <!-- ================= COLONNA SINISTRA: NODI (SUBREDDITS) ================= -->
+      <!-- ================= COLONNA SINISTRA: NODI (GERARCHIA REDDIT / SUBREDDIT) ================= -->
       <aside class="sidebar-panel">
         <div class="sidebar-header">
           <h3 class="flex items-center gap-2">
@@ -288,15 +345,26 @@ onMounted(() => {
         </div>
 
         <div v-else class="compact-cat-list">
-          <div v-for="node in nodes" :key="node.id" class="compact-cat-item">
+          <div 
+            v-for="node in sortedNodes" 
+            :key="node.id" 
+            class="compact-cat-item"
+            :class="{ 'is-subnode': node.parentId }"
+          >
             <div class="cat-item-top">
               <div class="cat-info-head">
                 <div class="cat-icon-badge mini" :style="{ backgroundColor: `${node.color || '#38bdf8'}20`, color: node.color || '#38bdf8', borderColor: `${node.color || '#38bdf8'}40` }">
                   <span class="text-base">{{ node.icon || '💬' }}</span>
                 </div>
                 <div>
-                  <h4 class="cat-title-sm">n/{{ node.name }}</h4>
-                  <span class="cat-slug-sm">/nodes/n/{{ node.slug }}</span>
+                  <h4 class="cat-title-sm flex items-center gap-1">
+                    <span v-if="node.parentId" class="text-[10px] bg-sky-500/20 text-sky-400 px-1 py-0.5 rounded font-mono font-bold">n/n/</span>
+                    <span v-else class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1 py-0.5 rounded font-mono font-bold">n/</span>
+                    {{ node.name }}
+                  </h4>
+                  <span class="cat-slug-sm">
+                    {{ node.parentId ? `/nodes/n/sub/${node.slug}` : `/nodes/n/${node.slug}` }}
+                  </span>
                 </div>
               </div>
               <div class="actions">
@@ -411,15 +479,34 @@ onMounted(() => {
       </main>
     </div>
 
-    <!-- MODALE CREAZIONE / MODIFICA NODO -->
+    <!-- ================= MODALE CREAZIONE / MODIFICA NODO (CON GERARCHIA GERARCHICA N/ E N/N/) ================= -->
     <div v-if="isNodeModalOpen" class="modal-backdrop" @click.self="isNodeModalOpen = false">
       <div class="modal-box">
+        
+        <!-- HEADER MODALE -->
         <div class="vault-modal-header">
-          <h3>💬 {{ nodeForm.id ? "Modifica Nodo" : "Nuovo Nodo (Subreddit)" }}</h3>
-          <button class="icon-btn" @click="isNodeModalOpen = false">×</button>
+          <h3>💬 {{ nodeForm.id ? "Modifica Nodo DKP" : "Nuovo Nodo (Subreddit)" }}</h3>
+          <button class="icon-btn close-x" @click="isNodeModalOpen = false">×</button>
         </div>
 
-        <div class="form-stack mt-4">
+        <!-- FORM SCROLLABILE -->
+        <div class="form-stack scrollable-form mt-4">
+          
+          <!-- SELETTORE GERARCHIA PADRE -->
+          <div class="form-group">
+            <label>TIPO NODO &amp; GERARCHIA *</label>
+            <select v-model="nodeForm.parentId" class="dkp-input text-xs bg-[#020420] border-slate-800">
+              <option :value="null">📂 Nodo Principale (n/ reddit)</option>
+              <option 
+                v-for="parent in nodes.filter(n => !n.parentId && n.id !== nodeForm.id)" 
+                :key="parent.id" 
+                :value="parent.id"
+              >
+                ↳ Sub-Nodo di: n/{{ parent.name }} (n/n/ subreddit)
+              </option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>NOME NODO *</label>
             <input v-model="nodeForm.name" @input="handleNodeNameInput" type="text" placeholder="Es. devops, javascript, rust" required />
@@ -435,35 +522,78 @@ onMounted(() => {
             <textarea v-model="nodeForm.description" rows="2" placeholder="Di cosa si parla in questo nodo..." required></textarea>
           </div>
 
+          <!-- PICKER EMOJI AVANZATO CON CATEGORIE E INPUT LIBERO -->
           <div class="form-group">
-            <label>SELEZIONA ICONA EMOJI</label>
+            <div class="flex justify-between items-center mb-1">
+              <label>ICONA EMOJI NODO *</label>
+              <div class="emoji-custom-input flex items-center gap-2">
+                <span class="text-xs text-slate-400">Emoji Personalizzata:</span>
+                <input v-model="nodeForm.icon" type="text" class="w-12 text-center py-0.5 px-1 bg-slate-900 border border-slate-700 rounded text-sm" max-length="4" />
+              </div>
+            </div>
+
+            <!-- MENU A TENDINA CATEGORIE EMOJI -->
+            <select v-model="selectedEmojiCategory" class="dkp-input text-xs mb-2 bg-[#020420] border-slate-800">
+              <option v-for="cat in emojiCategories" :key="cat.id" :value="cat.id">
+                {{ cat.label }}
+              </option>
+            </select>
+
+            <!-- GRIGLIA EMOJI CON SCROLL -->
             <div class="icons-grid emoji-scroll-picker">
-              <button v-for="emoji in presetEmojis" :key="emoji" type="button" @click="nodeForm.icon = emoji" :class="['icon-btn', { active: nodeForm.icon === emoji }]">
+              <button 
+                v-for="emoji in filteredEmojis" 
+                :key="emoji" 
+                type="button" 
+                @click="nodeForm.icon = emoji" 
+                :class="['icon-btn emoji-select-btn', { active: nodeForm.icon === emoji }]"
+              >
                 {{ emoji }}
               </button>
             </div>
           </div>
 
+          <!-- PALETTE COLORI PRESET E CUSTOM -->
           <div class="form-group">
             <label>COLORE ACCENT NODO</label>
             <div class="color-picker">
-              <span v-for="color in presetColors" :key="color" @click="nodeForm.color = color" :style="{ backgroundColor: color }" :class="['color-dot', { active: nodeForm.color === color }]"></span>
-              <input v-model="nodeForm.color" type="color" class="color-input" title="Colore personalizzato" />
+              <span 
+                v-for="color in presetColors" 
+                :key="color" 
+                @click="nodeForm.color = color" 
+                :style="{ backgroundColor: color }" 
+                :class="['color-dot', { active: nodeForm.color === color }]"
+              ></span>
+              <input v-model="nodeForm.color" type="color" class="color-input" title="Seleziona colore personalizzato" />
             </div>
           </div>
 
+          <!-- PREVIEW ANTEPRIMA BADGE -->
           <div class="badge-preview-box">
-            <span class="preview-label">Anteprima Live:</span>
+            <span class="preview-label">Anteprima Live Badge:</span>
             <span class="preview-badge" :style="{ backgroundColor: `${nodeForm.color}20`, color: nodeForm.color, borderColor: `${nodeForm.color}40` }">
-              <span>{{ nodeForm.icon }}</span> n/{{ nodeForm.name || "nome-nodo" }}
+              <span>{{ nodeForm.icon }}</span>
+              <span class="font-mono text-[11px]">{{ nodeForm.parentId ? 'n/n/' : 'n/' }}</span>{{ nodeForm.name || "nome-nodo" }}
             </span>
           </div>
+
+          <div class="form-group flex items-center gap-2 mt-1">
+            <input type="checkbox" id="isPrivateNode" v-model="nodeForm.isPrivate" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+            <label for="isPrivateNode" class="normal-case text-xs text-slate-300 cursor-pointer font-bold">
+              🔒 Nodo Privato (Visibile solo agli utenti registrati)
+            </label>
+          </div>
+
         </div>
 
+        <!-- FOOTER ANCORATO FISSO IN BASSO -->
         <div class="modal-footer">
-          <button @click="saveNode" class="btn-primary btn-save-cat" :disabled="isLoading">💾 Salva Nodo</button>
-          <button @click="isNodeModalOpen = false" class="btn-cancel">Annulla</button>
+          <button @click="isNodeModalOpen = false" type="button" class="btn-cancel">Annulla</button>
+          <button @click="saveNode" type="button" class="btn-primary btn-save-cat" :disabled="isLoading">
+            {{ isLoading ? 'Salvataggio...' : '💾 Salva Nodo' }}
+          </button>
         </div>
+
       </div>
     </div>
 
@@ -496,7 +626,7 @@ onMounted(() => {
 
 <style scoped>
 /* ==========================================================================
-   STILI NAVBAR ADMIN & COMPONENTI UNIFICATI (Identici all'Admin Blog)
+   STILI NAVBAR ADMIN & COMPONENTI UNIFICATI
    ========================================================================== */
 .admin-nav-container { display: flex; flex-direction: column; gap: 12px; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
 .admin-nav-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
@@ -558,27 +688,120 @@ onMounted(() => {
 .status-badge.draft { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
 .action-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 20000; padding: 1rem; }
-.modal-box { background: #090d16; border: 1px solid #1e293b; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 520px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7); }
-.vault-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 12px; }
+/* ==========================================================================
+   STILI MODALE FIX SCROLLING & PULSANTE SALVA VISIBILE
+   ========================================================================== */
+.modal-backdrop { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0, 0, 0, 0.85); 
+  backdrop-filter: blur(8px); 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  z-index: 20000; 
+  padding: 1rem; 
+}
+
+.modal-box { 
+  background: #090d16; 
+  border: 1px solid #1e293b; 
+  border-radius: 14px; 
+  padding: 1.5rem; 
+  width: 100%; 
+  max-width: 540px; 
+  max-height: 90vh; 
+  display: flex; 
+  flex-direction: column; 
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); 
+  overflow: hidden; 
+}
+
+.vault-modal-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  border-bottom: 1px solid #1e293b; 
+  padding-bottom: 12px; 
+  flex-shrink: 0; 
+}
+
 .vault-modal-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; color: #00f0ff; }
-.vault-cert-tag { font-size: 0.65rem; font-weight: 900; background: rgba(0, 240, 255, 0.1); color: #00f0ff; border: 1px solid rgba(0, 240, 255, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; }
-.report-title { font-size: 1.1rem; font-weight: 800; color: #ffffff; margin: 0 0 4px 0; }
-.report-sub { font-size: 0.8rem; color: #94a3b8; margin: 0 0 16px 0; }
-.vault-hash-box { background: #020420; border: 1px solid #1e293b; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
-.hash-label { font-size: 0.68rem; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; }
-.vault-hash-box code { color: #00ff87; font-family: monospace; font-size: 0.75rem; word-break: break-all; }
-.modal-footer { flex-shrink: 0; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: 12px; }
-.emoji-scroll-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; max-height: 110px; overflow-y: auto; padding: 0.5rem; background: #020420; border: 1px solid #1e293b; border-radius: 8px; }
-.icon-btn { background: #090d16; border: 1px solid #1e293b; font-size: 1.2rem; padding: 0.4rem; border-radius: 6px; cursor: pointer; color: #fff; }
-.icon-btn:hover, .icon-btn.active { border-color: #00dc82; background: rgba(0, 220, 130, 0.15); }
+.close-x { background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; }
+.close-x:hover { color: #fff; }
+
+/* CONTAINER FORM SCROLLABILE */
+.scrollable-form { 
+  flex: 1; 
+  overflow-y: auto; 
+  padding-right: 6px; 
+  margin-bottom: 1rem; 
+}
+
+.scrollable-form::-webkit-scrollbar { width: 6px; }
+.scrollable-form::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+.scrollable-form::-webkit-scrollbar-thumb:hover { background: #00dc82; }
+
+.emoji-scroll-picker { 
+  display: grid; 
+  grid-template-columns: repeat(7, 1fr); 
+  gap: 0.4rem; 
+  max-height: 120px; 
+  overflow-y: auto; 
+  padding: 0.5rem; 
+  background: #020420; 
+  border: 1px solid #1e293b; 
+  border-radius: 8px; 
+}
+
+.emoji-select-btn { 
+  background: #090d16; 
+  border: 1px solid #1e293b; 
+  font-size: 1.25rem; 
+  padding: 0.35rem; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  color: #fff; 
+  transition: all 0.2s ease; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+
+.emoji-select-btn:hover, .emoji-select-btn.active { 
+  border-color: #00dc82; 
+  background: rgba(0, 220, 130, 0.2); 
+  transform: scale(1.1); 
+}
+
 .color-picker { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
-.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-.color-dot.active { border-color: #ffffff; transform: scale(1.1); }
+.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+.color-dot.active { border-color: #ffffff; transform: scale(1.15); box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); }
 .color-input { width: 32px; height: 32px; padding: 0; border: none; background: none; cursor: pointer; }
+
 .badge-preview-box { display: flex; align-items: center; gap: 0.75rem; background: #020420; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #1e293b; }
 .preview-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
 .preview-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8rem; font-weight: 800; border: 1px solid; }
-.btn-save-cat { background: #00dc82; color: #020420; font-weight: 900; padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer; }
-.btn-cancel { background: #1e293b; color: #cbd5e1; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 700; }
+
+/* FOOTER FISSO IN BASSO */
+.modal-footer { 
+  flex-shrink: 0; 
+  padding-top: 1rem; 
+  border-top: 1px solid rgba(255, 255, 255, 0.08); 
+  display: flex; 
+  gap: 12px; 
+  justify-content: flex-end; 
+}
+
+/* Rientro ed indentazione visiva per i Sub-Nodi n/n/ */
+.compact-cat-item.is-subnode {
+  margin-left: 1.25rem;
+  border-left: 3px solid #38bdf8;
+  background: #050814;
+}
+
+.btn-save-cat { background: #00dc82; color: #020420; font-weight: 900; padding: 0.65rem 1.4rem; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
+.btn-save-cat:hover { background: #00bf71; transform: translateY(-1px); }
+.btn-cancel { background: #1e293b; color: #cbd5e1; border: none; padding: 0.65rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.btn-cancel:hover { background: #334155; }
 </style>

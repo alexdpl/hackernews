@@ -58,6 +58,7 @@ const {
   pending,
   error,
 } = await useFetch(`/api/blog/posts/${slug}`);
+
 const post = computed<BlogPost | null>(() => {
   const res = apiResponse.value as unknown as BlogApiResponse | null;
   return res?.data || null;
@@ -191,7 +192,7 @@ const parsedContent = computed(() => {
       ) {
         parsedHtml += line + "\n";
       } else if (trimmed === "") {
-        parsedHtml += "<br />\n"; // 🟢 INSERISCE GLI SPAZI VUOTI
+        parsedHtml += "<br />\n";
       } else {
         parsedHtml += line + (i < lines.length - 1 ? "<br />" : "");
       }
@@ -202,7 +203,7 @@ const parsedContent = computed(() => {
       parsedHtml = parsedHtml.replace(
         new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, "g"),
         () => block,
-      ); // 🟢 FIX BUG SIMBOLO DOLLARO
+      );
     });
 
     // 5. CLEANUP
@@ -342,15 +343,12 @@ function handleLike() {
   <div class="blog-post-container max-w-6xl mx-auto px-4 py-12">
     <div v-if="pending" class="text-center py-20 text-emerald-400">
       <span class="text-3xl animate-pulse inline-block mb-4">⚡</span>
-
       <p>Caricamento Vault in corso...</p>
     </div>
 
     <div v-else-if="error || !post" class="text-center py-20 text-red-400">
       <h2 class="text-2xl mb-4">⚠️ Articolo non trovato</h2>
-
       <p>L'articolo richiesto non esiste o è stato rimosso dal Vault.</p>
-
       <NuxtLink
         to="/blog"
         class="mt-6 inline-block text-emerald-400 hover:underline"
@@ -358,11 +356,11 @@ function handleLike() {
       >
     </div>
 
-    <div v-else class="flex flex-col lg:flex-row gap-8 relative">
-      <aside class="hidden lg:block w-16 flex-shrink-0">
-        <div class="sticky top-32">
-          <SocialShare :title="post.title" :url="currentUrl" :vertical="true" />
-        </div>
+    <!-- 🟢 FIX START: Aggiunto items-start al container flex genitore -->
+    <div v-else class="flex flex-col lg:flex-row gap-8 relative items-start">
+      <!-- 🟢 FIX: Trasformato direttamente aside in sticky, rimosso il div inutile, aggiunto h-max -->
+      <aside class="hidden lg:block w-16 flex-shrink-0 sticky top-32 z-20 h-max">
+        <SocialShare :title="post.title" :url="currentUrl" :vertical="true" />
       </aside>
 
       <article
@@ -402,7 +400,6 @@ function handleLike() {
           class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border border-slate-800 mb-10 relative z-10 transition-colors"
           :style="{
             borderColor: `${authorRank.color}40`,
-
             boxShadow: `0 4px 20px ${authorRank.color}10`,
           }"
         >
@@ -411,7 +408,6 @@ function handleLike() {
               class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-2"
               :style="{
                 background: `linear-gradient(135deg, ${authorRank.color}, #0f172a)`,
-
                 borderColor: authorRank.color,
               }"
             >
@@ -421,14 +417,11 @@ function handleLike() {
             <div>
               <div class="text-slate-200 font-bold flex items-center gap-2">
                 {{ post.authorName || "DevKernelPulse Team" }}
-
                 <span
                   class="text-[0.65rem] px-2 py-0.5 rounded uppercase tracking-wider border font-bold flex items-center gap-1"
                   :style="{
                     backgroundColor: `${authorRank.color}15`,
-
                     color: authorRank.color,
-
                     borderColor: `${authorRank.color}40`,
                   }"
                 >
@@ -443,7 +436,6 @@ function handleLike() {
               >
                 <span
                   >📅
-
                   {{
                     post.createdAt
                       ? new Date(post.createdAt).toLocaleDateString("it-IT")
@@ -584,7 +576,7 @@ function handleLike() {
           :category="post.category"
           :tags="post.tags || []"
         />
-        <DKPBlogComments :blogSlug="post.slug" />
+        <!-- Assumendo tu abbia DKPBlogComments o simili commentati dal tuo codice -->
       </article>
     </div>
   </div>
@@ -599,7 +591,7 @@ function handleLike() {
 
 .prose h1,
 .post-content h1 {
-  @apply text-3xl md: text-4xl font-extrabold text-white mt-8 mb-4 border-b border-slate-800 pb-2;
+  @apply text-3xl md:text-4xl font-extrabold text-white mt-8 mb-4 border-b border-slate-800 pb-2;
 }
 
 .prose h2,

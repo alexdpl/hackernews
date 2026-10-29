@@ -1,30 +1,28 @@
 // server/utils/ai.ts
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
-const apiKey = process.env.OPENROUTER_API_KEY
+// 🟢 Legge sia PROVIDER_API_KEY che OPENROUTER_API_KEY dal file .env
+const apiKey = process.env.PROVIDER_API_KEY || process.env.OPENROUTER_API_KEY
 
 if (!apiKey) {
-  console.warn('⚠️ OPENROUTER_API_KEY non trovata nelle variabili d\'ambiente (.env).')
+  console.warn('⚠️ [AI SDK WARNING]: Nessuna API Key trovata in PROVIDER_API_KEY o OPENROUTER_API_KEY!')
 }
 
-// Inizializzazione istanza centralizzata OpenRouter
 export const openrouter = createOpenRouter({
-  apiKey: apiKey || '',
-  // Opzionale: aggiunge informazioni sulle metriche DKP ad OpenRouter
-  extraBody: {
-    site_url: 'https://devkernelpulse.org',
-    site_name: 'DevKernelPulse Platform'
-  }
+  apiKey: apiKey || ''
 })
 
-// Alias pratici per i modelli per tutta la piattaforma:
+// 🟢 MODELLI 100% GRATUITI DI OPENROUTER (Non richiedono credito)
 export const AI_MODELS = {
-  // Modello ultra-veloce ed economico per moderation e sentiment (Sentinel AI, Tagging)
-  FAST: openrouter('google/gemini-2.0-flash-001'), 
-  
-  // Modello bilanciato per generazione articoli, summary e SAST review
-  BALANCED: openrouter('openai/gpt-4o-mini'),
-  
-  // Modello avanzato per la Chat Pulse Nexus e l'analisi di architetture complesse
-  SMART: openrouter('anthropic/claude-3.5-haiku')
+  // Router automatico gratuito che seleziona il modello disponibile migliore
+  AUTO_FREE: openrouter('openrouter/free'),
+
+  // Modello veloce per risposte rapide ed euristiche
+  FAST: openrouter('meta-llama/llama-3.3-70b-instruct:free'),
+
+  // Modello bilanciato per audit di codice, blog e Neural Playground
+  BALANCED: openrouter('deepseek/deepseek-chat:free'),
+
+  // Modello avanzato di reasoning per analisi SAST complesse e Sentinel AI
+  ADVANCED: openrouter('deepseek/deepseek-r1:free')
 }
