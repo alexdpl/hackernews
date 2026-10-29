@@ -7,7 +7,7 @@ import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 
 const dkpProvider = createOpenAI({
-  apiKey: process.env.PROVIDER_API_KEY || '', 
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.PROVIDER_API_KEY || ''
   baseURL: 'https://openrouter.ai/api/v1',
   headers: {
     'HTTP-Referer': 'https://devkernelpulse.org',

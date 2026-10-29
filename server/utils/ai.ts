@@ -1,28 +1,73 @@
 // server/utils/ai.ts
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
-// 🟢 Legge sia PROVIDER_API_KEY che OPENROUTER_API_KEY dal file .env
-const apiKey = process.env.PROVIDER_API_KEY || process.env.OPENROUTER_API_KEY
+// 🟢 Esportato per submit.post.ts e Sentinel
+export const AI_MODELS = {
+  SENTINEL: 'google/gemini-2.0-flash-001',
+  MODERATOR: 'meta-llama/llama-3.3-70b-instruct',
+  TRINITY: 'dots-studio/dots-3-note-preview:free',
+  FLASH: 'google/gemini-2.0-flash-001',
+  CODER: 'recursive/flint-v1.0:free',
+  PRO: 'nvidia/nemotron-3-ultra-550b-a55b:free'
+} as const
 
-if (!apiKey) {
-  console.warn('⚠️ [AI SDK WARNING]: Nessuna API Key trovata in PROVIDER_API_KEY o OPENROUTER_API_KEY!')
+// Mappatura alias per compatibilità
+export const OPENROUTER_MODEL_MAP: Record<string, string> = {
+  'sentinel': AI_MODELS.SENTINEL,
+  'moderator': AI_MODELS.MODERATOR,
+  'trinity': AI_MODELS.TRINITY,
+  'dkp-flash': AI_MODELS.FLASH,
+  'dkp-coder': AI_MODELS.CODER,
+  'dkp-pro': AI_MODELS.PRO
 }
 
-export const openrouter = createOpenRouter({
-  apiKey: apiKey || ''
-})
+interface CallAiOptions {
+  model?: string
+  prompt: string
+  systemPrompt?: string
+  temperature?: number
+  maxTokens?: number
+}
 
-// 🟢 MODELLI 100% GRATUITI DI OPENROUTER (Non richiedono credito)
-export const AI_MODELS = {
-  // Router automatico gratuito che seleziona il modello disponibile migliore
-  AUTO_FREE: openrouter('openrouter/free'),
+export async function callOpenRouterAI(options: CallAiOptions) {
+  const config = useRuntimeConfig()
+  
+  // 🟢 Lettura unificata dell'unica chiave OpenRouter (.env)
+  const apiKey = process.env.OPENROUTER_API_KEY || 
+                 process.env.PROVIDER_API_KEY || 
+                 config.openrouterApiKey
 
-  // Modello veloce per risposte rapide ed euristiche
-  FAST: openrouter('meta-llama/llama-3.3-70b-instruct:free'),
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY mancante nel file .env')
+  }
 
-  // Modello bilanciato per audit di codice, blog e Neural Playground
-  BALANCED: openrouter('deepseek/deepseek-chat:free'),
+  const requestedModel = options.model?.toLowerCase() || 'sentinel'
+  const resolvedModel = OPENROUTER_MODEL_MAP[requestedModel] || options.model || AI_MODELS.SENTINEL
 
-  // Modello avanzato di reasoning per analisi SAST complesse e Sentinel AI
-  ADVANCED: openrouter('deepseek/deepseek-r1:free')
+  const messages: Array<{ role: string; content: string }> = []
+  if (options.systemPrompt) {
+    messages.push({ role: 'system', content: options.systemPrompt })
+  }
+  messages.push({ role: 'user', content: options.prompt })
+
+  const response = await $fetch<any>('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://devkernelpulse.org',
+      'X-Title': 'DevKernelPulse Sentinel & Services',
+      'Content-Type': 'application/json'
+    },
+    body: {
+      model: resolvedModel,
+      messages,
+      temperature: options.temperature ?? 0.3,
+      max_tokens: options.maxTokens ?? 1000
+    }
+  })
+
+  return {
+    content: response.choices?.[0]?.message?.content || '',
+    modelUsed: resolvedModel,
+    usage: response.usage || null
+  }
 }
