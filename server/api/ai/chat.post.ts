@@ -1,13 +1,12 @@
 // server/api/ai/chat.post.ts
 import { defineEventHandler, readBody, getHeader, createError } from 'h3'
-import { sql, eq } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { apiKeys } from '~~/server/db/schema'
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 
 const dkpProvider = createOpenAI({
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.PROVIDER_API_KEY || '',
+  apiKey: process.env.OPENROUTER_API_KEY || process.env.PROVIDER_API_KEY || '',
   baseURL: 'https://openrouter.ai/api/v1',
   headers: {
     'HTTP-Referer': 'https://devkernelpulse.org',
@@ -72,8 +71,6 @@ export default defineEventHandler(async (event) => {
   }
 
   // 4. 🛡️ PAYWALL DINAMICO (Controllo Accesso Modelli per Tier)
-  // Gli utenti FREE (Newbie) possono usare solo DKP-Flash (dots-3)
-  // Gli utenti PRO / ENTERPRISE / VIP sbloccano Coder e Pro
   if (roleTier === 'FREE' && (model === 'dkp-coder' || model === 'dkp-pro')) {
     throw createError({
       statusCode: 403,
@@ -95,7 +92,6 @@ export default defineEventHandler(async (event) => {
       temperature: typeof temperature === 'number' ? temperature : 0.7,
       maxTokens: typeof maxTokens === 'number' ? maxTokens : 2048,
       onFinish: async () => {
-        // ⚡ Metering Atomico: Scala/Incrementa 1 richiesta dal contatore su Neon DB
         try {
           await db.execute(sql`
             UPDATE api_keys 
@@ -108,7 +104,6 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    // Retrocompatibilità Vercel AI SDK
     if (typeof (result as any).toDataStreamResponse === 'function') {
       return (result as any).toDataStreamResponse()
     } else if (typeof (result as any).toAIStreamResponse === 'function') {
