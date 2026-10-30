@@ -228,23 +228,20 @@ const authorRank = computed<AuthorRank>(() => {
   }
 });
 
-const currentUrl = computed(() => {
-  return typeof window !== "undefined"
+const currentUrl = computed(() =>
+  process.client
     ? window.location.href
-    : `https://devkernelpulse.org/blog/${slug}`;
-});
+    : `https://devkernelpulse.org/blog/${slug}`
+);
+
 
 useDkpSeo({
-  title: computed(() =>
-    post.value ? `${post.value.title} - DevKernelPulse` : "Caricamento...",
-  ),
-  description: computed(
-    () =>
-      post.value?.excerpt ||
-      post.value?.description ||
-      post.value?.summary ||
-      "Approfondimento tecnico dall'ecosistema DKP.",
-  ),
+  title: post.value?.title || "Caricamento...",
+  description:
+    post.value?.excerpt ||
+    post.value?.description ||
+    post.value?.summary ||
+    "Approfondimento tecnico dall'ecosistema DKP.",
 });
 
 // === TRACKING VISUALIZZAZIONI SICURO & REATTIVO ===

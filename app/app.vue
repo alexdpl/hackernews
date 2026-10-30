@@ -8,7 +8,7 @@ useHead({
 
 useSeoMeta({
   titleTemplate: 'DevKernelPulse | %s',
-  description: 'DevKernelPulse v2.5 - Ecosystem & Proof of Code su GCP'
+  description: 'DevKernelPulse - Ecosystem & Proof of Code su GCP'
 })
 
 const { initAuth } = useAuthCore()

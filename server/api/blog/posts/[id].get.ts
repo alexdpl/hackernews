@@ -1,22 +1,21 @@
-// server/api/blog/posts/[id].ts
+// server/api/blog/posts/[id].get.ts
 import postgres from 'postgres'
 
 let sqlInstance: any = null
 function getSqlClient() {
   if (sqlInstance) return sqlInstance
   const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante.' })
-  }
+  if (!connectionString) throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante.' })
   sqlInstance = postgres(connectionString, { ssl: 'require', max: 10 })
   return sqlInstance
 }
 
 export default defineEventHandler(async (event) => {
+  // 🟢 IL SEGRETO È QUI: Estraiamo 'id', ma conterrà lo slug testuale inviato dal frontend!
   const param = getRouterParam(event, 'id')
 
   if (!param) {
-    throw createError({ statusCode: 400, statusMessage: 'ID o Slug mancante.' })
+    throw createError({ statusCode: 400, statusMessage: 'Parametro mancante.' })
   }
 
   const sql = getSqlClient()
@@ -45,38 +44,35 @@ export default defineEventHandler(async (event) => {
       `
     }
 
-    if (posts.length === 0) {
-      throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato nel Vault.' })
-    }
+    if (posts.length === 0) throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato' })
 
     const row = posts[0]
-
-    const formattedPost = {
-      id: row.id,
-      title: row.title,
-      slug: row.slug,
-      content: row.content,
-      excerpt: row.excerpt,
-      categoryId: row.category_id,
-      categoryName: row.category_name || 'Generale',
-      subcategoryId: row.subcategory_id,
-      authorId: row.author_id,
-      authorName: row.author_name || 'alexdpl',
-      authorXp: row.author_xp || 500,
-      tags: row.tags || [],
-      status: row.status,
-      isVerified: row.is_verified,
-      vaultCertificateId: row.vault_certificate_id,
-      vaultHash: row.vault_hash,
-      views: row.views || 0,
-      likes: row.likes || 0,
-      createdAt: row.created_at,
-    }
-
+    
     return {
       success: true,
-      data: formattedPost,
+      data: {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        content: row.content,
+        excerpt: row.excerpt,
+        categoryId: row.category_id,
+        categoryName: row.category_name || 'Generale',
+        subcategoryId: row.subcategory_id,
+        authorId: row.author_id,
+        authorName: row.author_name || 'alexdpl',
+        authorXp: row.author_xp || 500,
+        tags: row.tags || [],
+        status: row.status,
+        isVerified: row.is_verified,
+        vaultCertificateId: row.vault_certificate_id,
+        vaultHash: row.vault_hash,
+        views: row.views || 0,
+        likes: row.likes || 0,
+        createdAt: row.created_at,
+      }
     }
+  
   } catch (error: any) {
     console.error(`💥 ERRORE API [id]:`, error.message)
     throw createError({ statusCode: error.statusCode || 500, statusMessage: error.message })
