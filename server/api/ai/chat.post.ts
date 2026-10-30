@@ -5,15 +5,6 @@ import { getDb } from '~~/server/utils/db'
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 
-const dkpProvider = createOpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY || process.env.PROVIDER_API_KEY || '',
-  baseURL: 'https://openrouter.ai/api/v1',
-  headers: {
-    'HTTP-Referer': 'https://devkernelpulse.org',
-    'X-Title': 'DevKernelPulse'
-  }
-})
-
 // Definizione delle quote mensili per ciascun Tier
 const TIER_QUOTAS: Record<string, number> = {
   FREE: 1000,
@@ -22,17 +13,40 @@ const TIER_QUOTAS: Record<string, number> = {
 }
 
 export default defineEventHandler(async (event) => {
-  // 1. Estrazione del Bearer Token
+  // 1. Estrazione del Bearer Token DKP
   const authHeader = getHeader(event, 'authorization')
   if (!authHeader || !authHeader.startsWith('Bearer dkp_live_')) {
     throw createError({ statusCode: 401, statusMessage: 'Accesso negato: API Key DKP mancante o formato errato' })
   }
 
+  // 2. Lettura DINAMICA della chiave OpenRouter a runtime
+  const config = useRuntimeConfig()
+  const openrouterKey = process.env.OPENROUTER_API_KEY || 
+                        process.env.PROVIDER_API_KEY || 
+                        config.openrouterApiKey
+
+  if (!openrouterKey) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'OPENROUTER_API_KEY non presente nelle variabili d\'ambiente del server.'
+    })
+  }
+
+  // Provider inizializzato con la chiave verificata ad ogni richiesta
+  const dkpProvider = createOpenAI({
+    apiKey: openrouterKey,
+    baseURL: 'https://openrouter.ai/api/v1',
+    headers: {
+      'HTTP-Referer': 'https://devkernelpulse.org',
+      'X-Title': 'DevKernelPulse'
+    }
+  })
+
   const token = authHeader.replace('Bearer ', '').trim()
   const db = await getDb()
   if (!db) throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile' })
 
-  // 2. Lettura del payload dal Neural Playground prima di validare i limiti
+  // 3. Lettura del payload dal Neural Playground
   const body = await readBody(event)
   const { messages, model, systemPrompt, temperature, maxTokens } = body
 
@@ -40,7 +54,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Array messages richiesto' })
   }
 
-  // 3. Controllo e Metering della Chiave su Database
+  // 4. Controllo e Metering della Chiave su Database
   let apiKeyRecord: any = null
   try {
     const keyResult: any = await db.execute(sql`
@@ -53,12 +67,10 @@ export default defineEventHandler(async (event) => {
     console.error('Errore query DB api_keys:', e)
   }
 
-  // Fallback di sicurezza per Admin / Sviluppo locale
   if (!apiKeyRecord) {
     apiKeyRecord = { id: 1, user_id: 1, role: 'PRO', usageCount: 0 }
   }
 
-  // Verifica Quota Mensile (API Metering & Cost Control)
   const roleTier = (apiKeyRecord.role || 'FREE').toUpperCase()
   const maxQuota = TIER_QUOTAS[roleTier] || TIER_QUOTAS.FREE
   const currentUsage = apiKeyRecord.usageCount || 0
@@ -70,7 +82,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 4. 🛡️ PAYWALL DINAMICO (Controllo Accesso Modelli per Tier)
+  // 5. Paywall Dinamico
   if (roleTier === 'FREE' && (model === 'dkp-coder' || model === 'dkp-pro')) {
     throw createError({
       statusCode: 403,
@@ -78,13 +90,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 5. Routing sui modelli gratuiti di OpenRouter
+  // 6. Routing sui modelli gratuiti di OpenRouter
   let targetModel = 'dots-studio/dots-3-note-preview:free'
   if (model === 'dkp-coder') targetModel = 'recursive/flint-v1.0:free'
   if (model === 'dkp-pro') targetModel = 'nvidia/nemotron-3-ultra-550b-a55b:free'
 
   try {
-    // 6. Esecuzione dello Streaming
     const result = await streamText({
       model: dkpProvider(targetModel),
       messages,
