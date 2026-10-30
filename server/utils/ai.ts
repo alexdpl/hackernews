@@ -1,16 +1,14 @@
 // server/utils/ai.ts
 
-// 🟢 Esportato per submit.post.ts e Sentinel
 export const AI_MODELS = {
-  SENTINEL: 'google/gemini-2.0-flash-001',
-  MODERATOR: 'meta-llama/llama-3.3-70b-instruct',
+  SENTINEL: 'google/gemini-2.0-flash-exp:free',
+  MODERATOR: 'google/gemini-2.0-flash-exp:free',
   TRINITY: 'dots-studio/dots-3-note-preview:free',
-  FLASH: 'google/gemini-2.0-flash-001',
-  CODER: 'recursive/flint-v1.0:free',
+  FLASH: 'google/gemini-2.0-flash-exp:free',
+  CODER: 'dots-studio/dots-3-note-preview:free',
   PRO: 'nvidia/nemotron-3-ultra-550b-a55b:free'
 } as const
 
-// Mappatura alias per compatibilità
 export const OPENROUTER_MODEL_MAP: Record<string, string> = {
   'sentinel': AI_MODELS.SENTINEL,
   'moderator': AI_MODELS.MODERATOR,
@@ -31,7 +29,6 @@ interface CallAiOptions {
 export async function callOpenRouterAI(options: CallAiOptions) {
   const config = useRuntimeConfig()
   
-  // 🟢 Lettura unificata dell'unica chiave OpenRouter (.env)
   const apiKey = process.env.OPENROUTER_API_KEY || 
                  process.env.PROVIDER_API_KEY || 
                  config.openrouterApiKey
