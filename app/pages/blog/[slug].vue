@@ -234,9 +234,8 @@ const currentUrl = computed(() =>
     : `https://devkernelpulse.org/blog/${slug}`
 );
 
-
 useDkpSeo({
-  title: post.value?.title || "Caricamento...",
+  title: post.value?.title || "Caricamento Articolo — DevKernelPulse",
   description:
     post.value?.excerpt ||
     post.value?.description ||
@@ -248,10 +247,11 @@ useDkpSeo({
 const viewTracked = ref(false);
 
 watch(
-  () => post.value?.id,
-  (newId) => {
-    if (newId && !viewTracked.value) {
-      incrementView(String(newId));
+  () => post.value,
+  (currentPost) => {
+    if (currentPost && !viewTracked.value) {
+      const targetIdentifier = currentPost.slug || slug || currentPost.id;
+      incrementView(String(targetIdentifier));
       viewTracked.value = true;
     }
   },
@@ -339,16 +339,17 @@ onUnmounted(() => {
 });
 
 function handleLike() {
-  if (post.value?.id) {
-    likePost(String(post.value.id));
+  if (post.value) {
+    const targetIdentifier = post.value.slug || slug || post.value.id;
+    likePost(String(targetIdentifier));
     post.value.likes = (post.value.likes || 0) + 1;
   }
 }
 </script>
 
 <template>
-  <div class="blog-post-container max-w-6xl mx-auto px-4 py-12">
-    <div v-if="pending" class="text-center py-20 text-emerald-400">
+  <div class="blog-post-container max-w-4xl mx-auto px-4 py-12">
+    <div v-if="pending" class="text-center py-20 text-emerald-400 font-mono">
       <span class="text-3xl animate-pulse inline-block mb-4">⚡</span>
       <p>Caricamento Vault in corso...</p>
     </div>
@@ -358,19 +359,14 @@ function handleLike() {
       <p>L'articolo richiesto non esiste o è stato rimosso dal Vault.</p>
       <NuxtLink
         to="/blog"
-        class="mt-6 inline-block text-emerald-400 hover:underline"
+        class="mt-6 inline-block text-emerald-400 hover:underline font-bold"
         >← Torna alla NewsRoom</NuxtLink
       >
     </div>
 
-    <div v-else class="flex flex-col lg:flex-row gap-8 relative items-start">
-      <!-- 🟢 ASIDE STICKY CORRETTO CON self-start -->
-      <aside class="hidden lg:block w-16 flex-shrink-0 sticky top-32 self-start z-20">
-        <SocialShare :title="post.title" :url="currentUrl" :vertical="true" />
-      </aside>
-
+    <div v-else class="flex flex-col gap-8 relative">
       <article
-        class="flex-1 glass-panel p-6 sm:p-10 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl relative overflow-hidden"
+        class="glass-panel p-6 sm:p-10 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl relative overflow-hidden"
       >
         <div class="flex justify-between items-start mb-8 relative z-10">
           <NuxtLink
@@ -445,8 +441,7 @@ function handleLike() {
                     post.createdAt
                       ? new Date(post.createdAt).toLocaleDateString("it-IT")
                       : post.date || "Recente"
-                  }}</span
-                >
+                  }}</span>
 
                 <span>👁️ {{ post.views || 0 }} visualizzazioni</span>
 
@@ -485,15 +480,16 @@ function handleLike() {
           <span
             v-for="tag in post.tags"
             :key="tag"
-            class="bg-[#020420] text-sky-400 border border-slate-700 px-2 py-1 rounded text-xs font-mono transition-colors hover:border-sky-500 cursor-pointer"
+            class="bg-[#020420] text-sky-400 border border-slate-700 px-2.5 py-1 rounded text-xs font-mono transition-colors hover:border-sky-500 cursor-pointer"
           >
             #{{ tag }}
           </span>
         </div>
 
+        <!-- CERTIFICATO VAULT NOTARIZATION -->
         <div
           v-if="post.isVerified && post.vaultCertificateId"
-          class="mt-12 bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)] z-10 mb-10"
+          class="mt-8 bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)] z-10 mb-8"
         >
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
@@ -530,7 +526,7 @@ function handleLike() {
             >
               <span class="text-slate-500 font-semibold">TIMESTAMP:</span>
               <span class="text-slate-300">{{
-                new Date(post.updatedAt || post.createdAt).toISOString()
+                new Date(post.updatedAt || post.createdAt || Date.now()).toISOString()
               }}</span>
             </div>
             <div class="flex flex-col gap-2">
@@ -545,15 +541,16 @@ function handleLike() {
           </div>
         </div>
 
+        <!-- FOOTER KARMA / LIKE -->
         <div
-          class="article-actions-footer bg-[#020420] border border-slate-800 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10 mb-8"
+          class="article-actions-footer bg-[#020420] border border-slate-800 rounded-xl p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10 mb-6"
         >
           <div
-            class="flex flex-col gap-2 items-center md:items-start text-center md:text-left w-full md:w-auto"
+            class="flex flex-col gap-1 items-center sm:items-start text-center sm:text-left w-full sm:w-auto"
           >
             <button
               @click="handleLike"
-              class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 border-none px-6 py-3 rounded-lg font-bold text-lg cursor-pointer flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-[0_0_15px_rgba(16,185,129,0.3)] w-full md:w-auto"
+              class="bg-emerald-500 hover:bg-emerald-400 text-slate-900 border-none px-6 py-3 rounded-lg font-bold text-lg cursor-pointer flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-[0_0_15px_rgba(16,185,129,0.3)] w-full sm:w-auto"
             >
               🔥 Accendi Kernel
               <span
@@ -561,25 +558,42 @@ function handleLike() {
                 >{{ post.likes || 0 }}</span
               >
             </button>
-            <span class="text-slate-400 text-xs"
+            <span class="text-slate-400 text-xs mt-1"
               >Premi per premiare questo articolo con Karma!</span
             >
           </div>
-          <div
-            class="flex flex-col gap-2 items-center md:items-end w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-none border-slate-800 lg:hidden"
-          >
-            <SocialShare
-              :title="post.title"
-              :url="currentUrl"
-              :horizontal="true"
-            />
+        </div>
+
+        <!-- 🚀 NUOVA SEZIONE ORIZZONTALE CONDIVISIONE ARTICOLO (STYLE WORDPRESS/TECH) -->
+        <div
+          class="share-horizontal-card bg-[#020420] border border-slate-800 rounded-xl p-6 relative z-10 mb-10 shadow-lg"
+        >
+          <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 text-center md:text-left">
+              <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl font-bold">
+                🚀
+              </div>
+              <div>
+                <h4 class="text-white font-extrabold text-base margin-0">Condividi articolo</h4>
+                <p class="text-slate-400 text-xs margin-0">Diffondi la conoscenza nell'ecosistema Dev</p>
+              </div>
+            </div>
+
+            <div class="w-full md:w-auto flex justify-center">
+              <SocialShare
+                :title="post?.title || 'DevKernelPulse Blog'"
+                :url="currentUrl"
+                :horizontal="true"
+              />
+            </div>
           </div>
         </div>
 
+        <!-- ARTICOLI CORRELATI -->
         <DkpRelatedPosts
-          v-if="post"
-          :current-post-id="post.id"
-          :category="post.category"
+          v-if="post && post.id"
+          :current-post-id="String(post.id)"
+          :category="post.categoryName || post.category || 'Generale'"
           :tags="post.tags || []"
         />
       </article>
@@ -636,14 +650,12 @@ function handleLike() {
   @apply p-3 text-slate-300 border border-slate-800 text-sm;
 }
 
-/* Rimozione dei backtick automatici aggiunti da Tailwind Typography */
-
 .prose code::before,
 .prose code::after {
   content: "" !important;
 }
 
-/* 🟢 GRAFICA DEI BLOCCHI CODICE DKP & RESET PER PRISM 🟢 */
+/* 🟢 GRAFICA BLOCCHI CODICE DKP & PRISM 🟢 */
 
 :deep(.dkp-code-wrapper) {
   background: #0d1117;
@@ -686,8 +698,6 @@ function handleLike() {
   margin: 0;
   overflow-x: auto;
 }
-
-/* Rimuove i colori "forzati" dal CSS di Tailwind per lasciare agire i colori di PrismJS */
 
 .prose pre code,
 .post-content pre code,
@@ -749,8 +759,6 @@ function handleLike() {
   text-decoration-color: #38bdf8;
   text-decoration-thickness: 2px;
 }
-
-/* Codice inline (es. `variabile`) */
 
 .prose :not(pre) > code,
 .post-content :not(pre) > code,
@@ -816,8 +824,6 @@ function handleLike() {
   background-color: #334155;
   margin: 1.5rem 0;
 }
-
-/* Liste */
 
 :deep(.dkp-preview-content ul),
 :deep(.dkp-preview-content ol) {

@@ -12,24 +12,34 @@ function getSqlClient() {
 }
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, 'id')
+  const param = getRouterParam(event, 'id')
 
-  if (!id || isNaN(Number(id))) {
-    return { success: false, message: 'ID non valido' }
+  if (!param) {
+    throw createError({ statusCode: 400, statusMessage: 'Parametro mancante.' })
   }
 
   const sql = getSqlClient()
 
   try {
-    await sql`
-      UPDATE blog_posts 
-      SET views = COALESCE(views, 0) + 1 
-      WHERE id = ${Number(id)}
-    `
+    const isNumeric = !isNaN(Number(param))
+
+    if (isNumeric) {
+      await sql`
+        UPDATE blog_posts 
+        SET views = COALESCE(views, 0) + 1 
+        WHERE id = ${Number(param)}
+      `
+    } else {
+      await sql`
+        UPDATE blog_posts 
+        SET views = COALESCE(views, 0) + 1 
+        WHERE slug = ${param}
+      `
+    }
 
     return { success: true }
   } catch (error: any) {
-    console.error(`Errore incremento view per post ${id}:`, error.message)
-    return { success: false, error: error.message }
+    console.error(`Errore incremento view per post ${param}:`, error.message)
+    throw createError({ statusCode: 500, statusMessage: error.message })
   }
 })

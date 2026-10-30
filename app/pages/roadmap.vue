@@ -1,11 +1,10 @@
 <!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-const currentYear = new Date().getFullYear()
 
 useDkpSeo({
   title: 'Roadmap Ecosistema 2026-2027 v2.5-GOLD - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP: Firewall Live SSE, OpenUI Studio, OpenRouter AI Gateway, Proof of Code e Visione Futura 2027.'
+  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP: Firewall Live SSE, OpenUI Studio, OpenRouter AI Gateway, Pulse Sentinel, DKP Nodes e Visione Futura 2027.'
 })
 
 interface RoadmapMilestone {
@@ -71,18 +70,18 @@ const milestones = ref<RoadmapMilestone[]>([
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'Neural Gateway, OpenUI Studio & Security Hardening',
+    phaseTitle: 'Neural Gateway, DKP Trinity, DKP Nodes & Security Hardening',
     version: 'v2.5-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Lancio dell\'infrastruttura AI decentralizzata tramite OpenRouter, live rendering visivo con OpenUI Studio e validazione crittografica (SHA-256) per l\'API Gateway.',
+    description: 'Lancio dell\'infrastruttura AI decentralizzata con OpenRouter, moderazione automatica DKP Nodes tramite Gemini 2.0, OpenUI Live Studio e Paywall Dinamico.',
     features: [
       'OpenUI Studio: Sandbox interattiva per la generazione e rendering live di componenti Tailwind',
-      'DKP Trinity Models: Integrazione di Dots-3 (MoE), Flint v1.0 (Coder) e Nemotron-3',
-      'API Gateway H3 con crittografia token in volo e Bypass Rate Limit (God-Mode)',
-      'Vercel AI SDK Universal Streaming con retrocompatibilità architetturale per i client',
-      'Proof of Code Vault con hash SHA-256 deterministico, SAST audit e +100 XP automatici',
-      'CLI Telemetry & Analytics dashboard con tracciamento chiamate dkp-cli e latenze'
+      'DKP Trinity Engine: Integrazione di Gemini 2.0 Flash (Flash), Dots-3 (Coder) e Nemotron-3 (Pro)',
+      'Pulse Sentinel SAST & DKP Nodes: Moderazione automatizzata post e codice tramite Gemini 2.0',
+      'API Gateway H3 con unificazione OPENROUTER_API_KEY e metering atomico su Neon DB',
+      'Paywall Dinamico basato su Tier (Free, Pro, Enterprise) e metering usabilità API',
+      'Proof of Code Vault con hash SHA-256 deterministico, SAST audit e +100 XP automatici'
     ]
   },
   {
@@ -172,7 +171,7 @@ const overallCompletion = computed(() => {
       </div>
       <h1>Piano di Sviluppo &amp; <span class="highlight">Vision v2.5-GOLD</span></h1>
       <p class="subtitle">
-        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, rilasci dell'ecosistema DevKernelPulse e la nuova visione strategica per il 2027.
+        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA OpenRouter, moderazione Sentinel per i DKP Nodes e la nuova visione strategica per il 2027.
       </p>
 
       <!-- PROGRESS OVERALL METRIC -->

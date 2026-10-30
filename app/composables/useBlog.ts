@@ -48,7 +48,7 @@ export function useBlog() {
     }
   }
 
-  // Scarica il SINGOLO articolo per la pagina Dettaglio (/blog/[id])
+  // Scarica il SINGOLO articolo per la pagina Dettaglio (/blog/[slug] o /blog/[id])
   const fetchPostById = async (idOrSlug: string | number) => {
     isLoading.value = true
     error.value = null
@@ -81,7 +81,7 @@ export function useBlog() {
     try {
       await $fetch(`/api/blog/posts/${postId}/like`, { method: 'POST' })
       // Aggiornamento ottimistico locale se il post è aperto
-      if (currentPost.value && currentPost.value.id === postId) {
+      if (currentPost.value && (currentPost.value.id === postId || currentPost.value.slug === postId)) {
         currentPost.value.likes = (currentPost.value.likes || 0) + 1
       }
     } catch (err: any) {
@@ -109,8 +109,12 @@ export function useBlog() {
   // 3. UTILITY CONDIVISIONE E GAMIFICATION
   // ==========================================
 
-  // Apre i popup nativi per la condivisione dell'articolo
-  const sharePost = (network: 'twitter' | 'linkedin' | 'reddit', url: string, title: string) => {
+  // Apre i popup nativi per la condivisione social o copia il link negli appunti
+  const sharePost = async (
+    network: 'twitter' | 'linkedin' | 'reddit' | 'facebook' | 'telegram' | 'link', 
+    url: string, 
+    title: string
+  ) => {
     const encodedUrl = encodeURIComponent(url)
     const encodedTitle = encodeURIComponent(title)
     let shareUrl = ''
@@ -118,13 +122,25 @@ export function useBlog() {
     if (network === 'twitter') shareUrl = `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`
     if (network === 'linkedin') shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
     if (network === 'reddit') shareUrl = `https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`
+    if (network === 'facebook') shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+    if (network === 'telegram') shareUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`
+
+    if (network === 'link') {
+      try {
+        await navigator.clipboard.writeText(url)
+        return { copied: true, message: 'Link copiato negli appunti!' }
+      } catch (err) {
+        console.error('Errore durante la copia del link:', err)
+        return { copied: false, message: 'Impossibile copiare il link.' }
+      }
+    }
 
     if (shareUrl) {
       window.open(shareUrl, '_blank', 'width=600,height=400,scrollbars=no,resizable=no')
     }
   }
 
-  // Helper RPG: Calcola Grado, Badge e Colore per il box Autore partendo dagli XP dell'autore salvati nel DB
+  // Helper RPG: Calcola Grado, Badge e Colore per il box Autore partendo dagli XP salvati nel DB
   const getAuthorRank = (authorXp: number = 0) => {
     const lvl = Math.floor(Math.sqrt(Math.max(0, authorXp) / 100)) + 1
     

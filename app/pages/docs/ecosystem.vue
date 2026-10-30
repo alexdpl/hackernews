@@ -4,13 +4,13 @@ import { ref } from 'vue'
 
 useDkpSeo({
   title: 'Guida Ecosistema & Architettura v2.5-GOLD — DKP Docs',
-  description: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.5-GOLD, moduli SaaS proprietari, Integrazione OpenRouter AI, OpenUI Studio e Gamification XP.'
+  description: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.5-GOLD, DKP Nodes, Sentinella Gemini, Integrazione OpenRouter AI, OpenUI Studio e Gamification XP.'
 })
 
 const activeSection = ref('architettura')
 const sections = [
   { id: 'architettura', title: '🏗️ Architettura DKP', icon: '⚡' },
-  { id: 'moduli', title: '🛠️ Moduli & OpenUI', icon: '🧩' },
+  { id: 'moduli', title: '🛠️ Moduli, Nodes & OpenUI', icon: '🧩' },
   { id: 'cli-toolkit', title: '⚡ DKP CLI Toolkit', icon: '💻' },
   { id: 'gamification', title: '🏆 Gamification & XP System', icon: '🎮' },
   { id: 'best-practices', title: '💡 Best Practices & Growth', icon: '🚀' }
@@ -60,10 +60,10 @@ function scrollToSection(id: string) {
         
         <!-- HERO DOCS -->
         <header class="docs-hero">
-          <div class="breadcrumb">Docs / Ecosistema & Architettura v2.5-GOLD</div>
+          <div class="breadcrumb">Docs / Ecosistema &amp; Architettura v2.5-GOLD</div>
           <h1>DevKernelPulse Knowledge Base</h1>
           <p class="subtitle">
-            Guida completa all'architettura modulare DKP v2.5-GOLD, dal motore Proof-of-Code Vault su Neon DB all'integrazione IA OpenRouter, OpenUI Studio e il sistema di reputazione XP.
+            Guida completa all'architettura modulare DKP v2.5-GOLD: dal motore Proof-of-Code Vault su Neon DB ai DKP Nodes, la Sentinella SAST con Gemini 2.0 Flash, l'OpenUI Live Engine e il sistema di reputazione XP.
           </p>
         </header>
 
@@ -76,20 +76,20 @@ function scrollToSection(id: string) {
 
           <div class="architecture-grid">
             <div class="arch-card">
-              <h4>🌐 Edge Processing & AI Gateway</h4>
-              <p>Gateway Nitro H3 con crittografia SHA-256 nativa in-flight (Hash Check) e bypass God-Mode dinamico per l'amministratore.</p>
+              <h4>🌐 Edge Processing &amp; AI Gateway</h4>
+              <p>Gateway Nitro H3 con crittografia SHA-256 nativa in-flight, gestione dinamica delle API Keys DKP per metering e rate-limiting in tempo reale.</p>
             </div>
             <div class="arch-card">
-              <h4>🛡️ Proof-of-Code Vault</h4>
-              <p>Hashing SHA-256 e archiviazione crittografica permanente su Neon DB per la certificazione della proprietà intellettuale.</p>
+              <h4>🛡️ Pulse Sentinel &amp; SAST Engine</h4>
+              <p>Sentinella integrata su <strong>Google Gemini 2.0 Flash</strong> per l'analisi statica del codice, la moderazione istantanea dei DKP Nodes e la prevenzione injection.</p>
             </div>
             <div class="arch-card">
-              <h4>🧠 OpenRouter Neural Pipeline</h4>
-              <p>Integrazione multi-LLM (Vercel AI SDK compatibile universale) per l'elaborazione di stream testuali ed esecuzione zero-cost in tempo reale.</p>
+              <h4>🧠 OpenRouter Trinity Pipeline</h4>
+              <p>Integrazione unificata multi-LLM (Vercel AI SDK) con supporto streaming in tempo reale per DKP Flash, DKP Coder e DKP Pro.</p>
             </div>
             <div class="arch-card">
-              <h4>🗄️ Neon Serverless DB & Nitro</h4>
-              <p>Persistenza dati ultra-veloce, gestione delle transazioni di Gamification e validazione API con logica retro-compatibile.</p>
+              <h4>🗄️ Neon Serverless DB &amp; Drizzle</h4>
+              <p>Persistenza dati ultra-veloce, gestione atomica dei contatori `usage_count`, transazioni di Gamification XP e tabelle `api_keys` / `vault`.</p>
             </div>
           </div>
         </section>
@@ -104,33 +104,46 @@ function scrollToSection(id: string) {
             <div class="module-box firewall">
               <div class="mod-header">
                 <span class="mod-icon">🛡️</span>
-                <h3>Proof-of-Code Vault v2.5</h3>
+                <h3>Pulse Sentinel SAST &amp; DKP Nodes Moderation</h3>
               </div>
-              <p>Permette di generare un'impronta digitale immutabile del tuo sorgente. Dimostra la titolarità intellettuale registrando un certificato collegato al tuo profilo utente.</p>
+              <p>Sistema di moderazione intelligente alimentato da <strong>Google Gemini 2.0 Flash</strong> (<code>google/gemini-2.0-flash-exp:free</code>). Analizza i post della community nei DKP Nodes e scansiona il codice prevenendo vulnerabilità prima della pubblicazione.</p>
             </div>
 
             <div class="module-box keys">
               <div class="mod-header">
                 <span class="mod-icon">🔑</span>
-                <h3>API Key Enterprise Management</h3>
+                <h3>API Key Enterprise Management &amp; Paywall</h3>
               </div>
-              <p>Gestione chiavi crittografate (salvataggio tramite <code>key_hash</code>). Valida e traccia l'uso dell'ecosistema, collegato direttamente all'engine di Rate Limiting.</p>
+              <p>Gestione chiavi crittografate (salvataggio tramite <code>key_hash</code>). Valida le chiamate, gestisce il metering atomico su Neon DB e applica il Paywall Dinamico tra i tier FREE, PRO e ENTERPRISE.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🎨</span>
-                <h3>OpenUI Studio & Live Rendering</h3>
+                <h3>OpenUI Studio &amp; Live Rendering</h3>
               </div>
-              <p>Motore visivo reattivo integrato. Genera componenti Tailwind CSS, interfacce e layout inviando prompt naturali tramite IA e li renderizza istantaneamente a schermo.</p>
+              <p>Motore visivo reattivo integrato nel Playground. Genera componenti Tailwind CSS, interfacce e layout inviando prompt naturali e li renderizza istantaneamente in un sandbox iframe protetto.</p>
             </div>
 
             <div class="module-box">
               <div class="mod-header">
                 <span class="mod-icon">🧠</span>
-                <h3>Neural Playground & DKP Trinity</h3>
+                <h3>Neural Playground &amp; DKP Trinity Engine</h3>
               </div>
-              <p>Sandbox interattiva per l'accesso gratuito all'AI. Alimentata dai modelli: <strong>DKP-Flash</strong> (Dots-3 MoE 16B), <strong>DKP-Coder</strong> (Flint v1.0 2.5B), e <strong>DKP-Pro</strong> (Nemotron-3 55B).</p>
+              <p>Sandbox interattiva per il testing e la generazione AI in streaming. Alimentata dalla nuova suite di modelli OpenRouter:</p>
+              <ul class="model-doc-list">
+                <li>⚡ <strong>DKP-Flash:</strong> <code>google/gemini-2.0-flash-exp:free</code> — Risposta istantanea e moderazione.</li>
+                <li>💻 <strong>DKP-Coder:</strong> <code>dots-studio/dots-3-note-preview:free</code> — Specializzato in blocchi di codice e componenti OpenUI.</li>
+                <li>🧠 <strong>DKP-Pro:</strong> <code>nvidia/nemotron-3-ultra-550b-a55b:free</code> — Architetture avanzate con output a 3 varianti.</li>
+              </ul>
+            </div>
+
+            <div class="module-box vault">
+              <div class="mod-header">
+                <span class="mod-icon">📜</span>
+                <h3>Proof-of-Code Vault v2.5</h3>
+              </div>
+              <p>Permette di generare un'impronta digitale immutabile (SHA-256) del tuo sorgente o output OpenUI, notarizzandolo direttamente sul database Neon con reward XP immediato.</p>
             </div>
 
           </div>
@@ -154,20 +167,20 @@ npm install -g @devkernelpulse/cli
 <span class="comment"># Autenticazione con API Key crittografata</span>
 dkp auth login --key dkp_live_xxx
 
-<span class="comment"># Generazione UI da Terminale tramite OpenRouter</span>
+<span class="comment"># Generazione UI da Terminale tramite Trinity (Dots-3 Engine)</span>
 dkp ui generate "Dashboard Tailwind Dark"
 
 <span class="comment"># Notarizzazione istantanea sul Vault Cloud</span>
 dkp vault notarize https://miosito.com
 
-<span class="comment"># Verifica stato API Gateway</span>
+<span class="comment"># Verifica stato API Gateway & Sentinel</span>
 dkp status</code></pre>
           </div>
         </section>
 
         <!-- SEZIONE 4: GAMIFICATION & XP -->
         <section id="gamification" class="doc-section">
-          <h2><span class="sec-icon">🏆</span> Gamification & XP Reputation Engine</h2>
+          <h2><span class="sec-icon">🏆</span> Gamification &amp; XP Reputation Engine</h2>
           <p>
             Ogni interazione su DevKernelPulse genera <strong>Experience Points (XP)</strong> registrati in tempo reale nella tabella <code>api_keys</code> e <code>users</code> su Neon DB, incrementando il tuo rank sviluppatore.
           </p>
@@ -187,19 +200,19 @@ dkp status</code></pre>
                 <td><code>/api/user/vault</code></td>
               </tr>
               <tr>
-                <td><strong>Pubblicazione Articolo Blog Pro</strong></td>
+                <td><strong>Pubblicazione Post / Node Moderato</strong></td>
                 <td><span class="xp-badge gold">+50 XP</span></td>
-                <td><code>/api/blog/posts</code></td>
+                <td><code>/api/nodes / Pulse Sentinel</code></td>
               </tr>
               <tr>
-                <td><strong>Generazione OpenUI / Coder</strong></td>
+                <td><strong>Generazione OpenUI / DKP-Coder</strong></td>
                 <td><span class="xp-badge">+30 XP</span></td>
                 <td><code>/api/ai/chat.post.ts</code></td>
               </tr>
               <tr>
-                <td><strong>Esecuzione Neural Playground</strong></td>
+                <td><strong>Esecuzione Neural Playground (Trinity)</strong></td>
                 <td><span class="xp-badge">+15 XP</span></td>
-                <td><code>streamText (Vercel SDK)</code></td>
+                <td><code>streamText (Gemini / Nemotron)</code></td>
               </tr>
               <tr>
                 <td><strong>Comandi Web Terminal Shell</strong></td>
@@ -215,15 +228,15 @@ dkp status</code></pre>
           <h2><span class="sec-icon">💡</span> Best Practices per gli Sviluppatori</h2>
           <div class="tip-box">
             <h4>⚡ Model Routing Intelligente</h4>
-            <p>Usa DKP-Coder (Flint v1.0) per richieste specifiche sul codice, e DKP-Pro (Nemotron-3) per architetture di sistema o refactoring massivi nel Playground.</p>
+            <p>Usa <strong>DKP-Flash</strong> (Gemini 2.0) per query veloci o analisi di testo, <strong>DKP-Coder</strong> (Dots-3) per generare componenti Tailwind/Vue in OpenUI, e <strong>DKP-Pro</strong> (Nemotron-3) per richiedere 3 varianti di architetture complesse.</p>
           </div>
           <div class="tip-box green">
             <h4>🔑 Sicurezza e Crittografia API</h4>
             <p>Le chiavi DKP (es. <code>dkp_live_...</code>) non vengono mai memorizzate in chiaro. Il sistema salva e confronta in tempo reale unicamente l'hash crittografato (SHA-256) per la massima sicurezza aziendale.</p>
           </div>
           <div class="tip-box purple">
-            <h4>🛡️ Certificazione Proof-of-Code</h4>
-            <p>Notarizza regolarmente i tuoi snippet generati da OpenUI nel Vault per ottenere certificati crittografati verificabili in qualsiasi momento.</p>
+            <h4>🛡️ Moderazione Nodes &amp; Pulse Sentinel</h4>
+            <p>Tutti i contributi pubblicati nei DKP Nodes passano automaticamente la scansione della Sentinella Gemini prima di essere visibili nel feed principale.</p>
           </div>
         </section>
 
@@ -415,12 +428,27 @@ dkp status</code></pre>
 
 .module-box.firewall { border-left: 4px solid #3b82f6; }
 .module-box.keys { border-left: 4px solid #f59e0b; }
+.module-box.vault { border-left: 4px solid #10b981; }
 
 .module-box p {
   margin: 0;
   font-size: 0.88rem;
   line-height: 1.5;
   color: #94a3b8;
+}
+
+.model-doc-list {
+  margin: 0.75rem 0 0 1rem;
+  padding: 0;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.model-doc-list code {
+  color: #38bdf8;
 }
 
 .mod-header {

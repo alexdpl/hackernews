@@ -1,4 +1,5 @@
 // server/api/blog/posts/[id].get.ts
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import postgres from 'postgres'
 
 let sqlInstance: any = null
@@ -11,7 +12,6 @@ function getSqlClient() {
 }
 
 export default defineEventHandler(async (event) => {
-  // 🟢 IL SEGRETO È QUI: Estraiamo 'id', ma conterrà lo slug testuale inviato dal frontend!
   const param = getRouterParam(event, 'id')
 
   if (!param) {
@@ -70,6 +70,7 @@ export default defineEventHandler(async (event) => {
         views: row.views || 0,
         likes: row.likes || 0,
         createdAt: row.created_at,
+        updatedAt: row.updated_at
       }
     }
   

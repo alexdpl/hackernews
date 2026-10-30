@@ -1,116 +1,78 @@
 // server/api/blog/related.get.ts
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { and, desc, eq, ne, or, sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { blogPosts, blogCategories, users } from '~~/server/db/schema'
+import postgres from 'postgres'
+
+let sqlInstance: any = null
+function getSqlClient() {
+  if (sqlInstance) return sqlInstance
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante.' })
+  sqlInstance = postgres(connectionString, { ssl: 'require', max: 10 })
+  return sqlInstance
+}
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
+  const currentId = query.id ? String(query.id) : null
+  const category = query.cat ? String(query.cat) : null
+  const tagsRaw = query.tags ? String(query.tags) : ''
 
-  const currentId = Number(query.id)
-  const category = typeof query.cat === 'string' ? query.cat.trim() : ''
-  const tagsParam = typeof query.tags === 'string' ? query.tags : ''
-  const requestedLimit = Number(query.limit) || 2
-  const limit = Math.min(Math.max(requestedLimit, 1), 6)
-
-  if (!Number.isInteger(currentId) || currentId <= 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Parametro id obbligatorio e numerico'
-    })
-  }
-
-  const tags = tagsParam
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(Boolean)
-
-  const db = getDb()
+  const sql = getSqlClient()
 
   try {
-    let categoryId: number | null = null
+    const isNumeric = currentId && !isNaN(Number(currentId))
+
+    // Estrazione dei tag puliti
+    const tagList = tagsRaw
+      ? tagsRaw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+      : []
+
+    let relatedPosts: any[] = []
 
     if (category) {
-      const cat = await db.query.blogCategories.findFirst({
-        where: eq(blogCategories.name, category),
-        columns: { id: true }
-      })
-
-      categoryId = cat?.id ?? null
+      relatedPosts = await sql`
+        SELECT p.id, p.title, p.slug, p.excerpt, p.created_at, p.views, p.likes,
+               c.name as category_name
+        FROM blog_posts p
+        LEFT JOIN blog_categories c ON p.category_id = c.id
+        WHERE p.status = 'published'
+          ${isNumeric ? sql`AND p.id != ${Number(currentId)}` : currentId ? sql`AND p.slug != ${currentId}` : sql``}
+          AND (c.name = ${category} OR c.slug = ${category})
+        ORDER BY p.created_at DESC
+        LIMIT 3
+      `
     }
 
-    const baseConditions = [
-      ne(blogPosts.id, currentId),
-      eq(blogPosts.status, 'published')
-    ]
-
-    const relevanceConditions = []
-
-    if (categoryId !== null) {
-      relevanceConditions.push(eq(blogPosts.categoryId, categoryId))
+    // Fallback: se non trova post per categoria, prende gli ultimi pubblicati
+    if (!relatedPosts || relatedPosts.length === 0) {
+      relatedPosts = await sql`
+        SELECT p.id, p.title, p.slug, p.excerpt, p.created_at, p.views, p.likes,
+               c.name as category_name
+        FROM blog_posts p
+        LEFT JOIN blog_categories c ON p.category_id = c.id
+        WHERE p.status = 'published'
+          ${isNumeric ? sql`AND p.id != ${Number(currentId)}` : currentId ? sql`AND p.slug != ${currentId}` : sql``}
+        ORDER BY p.created_at DESC
+        LIMIT 3
+      `
     }
 
-    if (tags.length > 0) {
-      const tagArray = sql`ARRAY[${sql.join(
-        tags.map(tag => sql`${tag}`),
-        sql`, `
-      )}]::text[]`
-
-      relevanceConditions.push(
-        sql`${blogPosts.tags}::jsonb ?| ${tagArray}`
-      )
+    return {
+      success: true,
+      data: relatedPosts.map(row => ({
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        excerpt: row.excerpt,
+        categoryName: row.category_name || 'Generale',
+        views: row.views || 0,
+        likes: row.likes || 0,
+        createdAt: row.created_at
+      }))
     }
-
-    const whereClause = relevanceConditions.length > 0
-      ? and(...baseConditions, or(...relevanceConditions))
-      : and(...baseConditions)
-
-    const orderExpressions = []
-
-    if (categoryId !== null) {
-      orderExpressions.push(
-        desc(sql`CASE WHEN ${blogPosts.categoryId} = ${categoryId} THEN 1 ELSE 0 END`)
-      )
-    }
-
-    orderExpressions.push(desc(blogPosts.createdAt))
-
-    const related = await db
-      .select({
-        id: blogPosts.id,
-        slug: blogPosts.slug,
-        title: blogPosts.title,
-        excerpt: blogPosts.excerpt,
-        category: blogCategories.name,
-        date: blogPosts.createdAt,
-        userEmail: users.email
-      })
-      .from(blogPosts)
-      .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
-      .leftJoin(users, eq(blogPosts.authorId, users.id))
-      .where(whereClause)
-      .orderBy(...orderExpressions)
-      .limit(limit)
-
-    return related.map(post => ({
-      id: post.id,
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
-      category: post.category || 'Senza categoria',
-      author: post.userEmail ? post.userEmail.split('@')[0] : 'alexdpl',
-      date: post.date ? new Date(post.date).toISOString().split('T')[0] : null
-    }))
   } catch (error: any) {
-    console.error('[API /blog/related] Errore:', error)
-
-    if (error?.statusCode) {
-      throw error
-    }
-
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Errore nel recupero dei post correlati'
-    })
+    console.error('[API /blog/related] Errore:', error.message)
+    // Ritorna un array vuoto anziché mandare in crash la pagina con errore 500
+    return { success: true, data: [] }
   }
 })

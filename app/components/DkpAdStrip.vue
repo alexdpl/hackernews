@@ -2,13 +2,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-// Nel DkpAdStrip.vue
 const props = defineProps({ categoryTag: { type: String, default: 'DKP Ads Feed' } })
 
-const { data: adData } = await useFetch('/api/v2.5/ads/active', {
-  query: { tag: props.categoryTag },
-  transform: (res) => res?.ads || []
-})
+// Helper per pulire gli indirizzi email e formattare un provider pulito
+const formatProvider = (rawProvider?: string) => {
+  if (!rawProvider || rawProvider.includes('@')) {
+    return 'DKP Partner'
+  }
+  return rawProvider
+}
 
 // 1. I nostri "House Ads" di riserva (fallback se il DB è vuoto o ha meno di 3 sponsor attivi)
 const fallbackAds = [
@@ -34,11 +36,11 @@ const fallbackAds = [
     snippet: 'Proteggi il tuo ecosistema Cloud con il monitoraggio attivo e le whitelist di sicurezza.',
     url: '/vault',
     tag: 'VAULT',
-    provider: 'DevKernelPulse Network'
+    provider: 'Vault Verified'
   }
 ]
 
-// Array reattivo che conterrà il mix finale da mostrare a video
+// Array reattivo con il mix finale da mostrare a video
 const ads = ref([...fallbackAds])
 
 // 2. Fetch dal Database (Neon DB) all'avvio del componente
@@ -46,14 +48,14 @@ onMounted(async () => {
   try {
     const res = await $fetch<any>('/api/v2.5/ads/active')
     
-    if (res.success && res.ads && res.ads.length > 0) {
+    if (res?.success && res.ads && res.ads.length > 0) {
       const dbAds = res.ads.map((ad: any) => ({
         id: ad.id,
         title: ad.title,
         snippet: ad.snippet || 'Scopri l\'offerta sponsorizzata selezionata dal Vault.',
         url: ad.url,
         tag: ad.tag || 'SPONSOR',
-        provider: ad.provider || 'DKP Partner'
+        provider: formatProvider(ad.provider || ad.email || ad.author)
       }))
 
       // Uniamo gli annunci DB con i fallback per riempire sempre esattamente 3 slot
@@ -132,7 +134,9 @@ const handleAdClick = async (adId: string | number) => {
   padding: 1.2rem 1.5rem;
   margin: 2rem 0;
   font-family: system-ui, sans-serif;
-  grid-column: 1 / -1; 
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .strip-header {
@@ -142,6 +146,8 @@ const handleAdClick = async (adId: string | number) => {
   margin-bottom: 1rem;
   border-bottom: 1px solid rgba(30, 41, 59, 0.8);
   padding-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .strip-badge {
@@ -160,10 +166,12 @@ const handleAdClick = async (adId: string | number) => {
   color: #64748b;
 }
 
+/* 🟢 FIX CRITICO: minmax(0, 1fr) impedisce alla griglia di strabordare a destra */
 .strip-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+  width: 100%;
 }
 
 .strip-item {
@@ -177,6 +185,8 @@ const handleAdClick = async (adId: string | number) => {
   gap: 0.5rem;
   transition: all 0.25s ease;
   cursor: pointer;
+  min-width: 0; /* FIX PER CONTENITORI FLEX/GRID */
+  box-sizing: border-box;
 }
 
 .strip-item:hover {
@@ -189,6 +199,8 @@ const handleAdClick = async (adId: string | number) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .item-tag {
@@ -196,29 +208,45 @@ const handleAdClick = async (adId: string | number) => {
   font-weight: 800;
   background: rgba(56, 189, 248, 0.1);
   color: #38bdf8;
-  padding: 0.1rem 0.4rem;
+  padding: 0.15rem 0.4rem;
   border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .item-provider {
   font-size: 0.65rem;
   color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-title {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 800;
   color: #fff;
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .item-snippet {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #94a3b8;
   margin: 0;
   line-height: 1.4;
   flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .item-footer {
@@ -241,9 +269,9 @@ const handleAdClick = async (adId: string | number) => {
 }
 
 @media (max-width: 1024px) {
-  .strip-grid { grid-template-columns: repeat(2, 1fr); }
+  .strip-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 768px) {
-  .strip-grid { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .strip-grid { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

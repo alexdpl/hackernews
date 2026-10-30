@@ -12,13 +12,13 @@ function getSqlClient() {
 }
 
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, 'id')
+  const param = getRouterParam(event, 'id')
 
-  if (!id || isNaN(Number(id))) {
-    return { success: false, message: 'ID non valido' }
+  if (!param) {
+    throw createError({ statusCode: 400, statusMessage: 'Parametro mancante.' })
   }
 
-  const cookieName = `dkp_liked_${id}`
+  const cookieName = `dkp_liked_${param}`
   const alreadyLiked = getCookie(event, cookieName)
 
   if (alreadyLiked) {
@@ -28,17 +28,27 @@ export default defineEventHandler(async (event) => {
   const sql = getSqlClient()
 
   try {
-    await sql`
-      UPDATE blog_posts 
-      SET likes = COALESCE(likes, 0) + 1 
-      WHERE id = ${Number(id)}
-    `
+    const isNumeric = !isNaN(Number(param))
+
+    if (isNumeric) {
+      await sql`
+        UPDATE blog_posts 
+        SET likes = COALESCE(likes, 0) + 1 
+        WHERE id = ${Number(param)}
+      `
+    } else {
+      await sql`
+        UPDATE blog_posts 
+        SET likes = COALESCE(likes, 0) + 1 
+        WHERE slug = ${param}
+      `
+    }
 
     setCookie(event, cookieName, 'true', { maxAge: 60 * 60 * 24 })
 
     return { success: true, message: 'Karma assegnato!' }
   } catch (error: any) {
-    console.error(`Errore incremento like per post ${id}:`, error.message)
-    return { success: false, error: error.message }
+    console.error(`Errore incremento like per post ${param}:`, error.message)
+    throw createError({ statusCode: 500, statusMessage: error.message })
   }
 })
