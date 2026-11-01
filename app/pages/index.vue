@@ -1,4 +1,4 @@
-<!-- app/pages/index.vue -->
+<!-- app/pages/index.vue --> 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
@@ -140,7 +140,6 @@ useHead({
     </div>
 
     <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
-	<RoadmapProgress />
   </div>
 </template>
 
@@ -149,12 +148,12 @@ useHead({
 
 .feed-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .feed-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.feed-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.feed-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .feed-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
 
-.submit-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
+.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-btn:hover { background: #00dc82; color: #020420; }
 
 .feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
 .feed-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; transition: border-color 0.2s ease; }
@@ -162,9 +161,9 @@ useHead({
 
 .card-body { display: flex; flex-direction: column; gap: 0.4rem; }
 .title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.item-index { font-size: 1rem; color: #00dc82; font-weight: 900; }
-.item-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
-.item-title:hover { color: #00dc82; text-decoration: underline; }
+.item-index { font-size: 0.9rem; color: #00dc82; font-weight: 900; }
+.item-title { font-size: 1.0rem; font-weight: 400; color: #ffffff; text-decoration: none; }
+.item-title:hover { color: #38bdf8; text-decoration: underline; }
 .item-domain { font-size: 0.82rem; color: #64748b; font-weight: 500; }
 
 .item-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.2rem; }
@@ -185,7 +184,7 @@ useHead({
 .loading-state, .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
 
 .vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
-.recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
+.recommended-title { font-size: 1.0rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
 .recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
 .recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
 .recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }

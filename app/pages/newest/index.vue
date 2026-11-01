@@ -73,12 +73,9 @@ useSeoMeta({
     <!-- HEADER BLOG UNIFICATO CON PULSANTE -->
     <div class="news-header-box">
       <div class="header-content">
-        <div class="feed-badge">
-          📚 DKP BLOG VAULT • v2.5-GOLD
-        </div>
-        <h1 class="feed-title">
-          Ultime <span class="highlight-text">Pubblicazioni</span>
-        </h1>
+        <div class="feed-badge">DKP BLOG VAULT • v2.5-GOLD</div>
+		<div class="feed-title">📚 DKP Blog <span class="highlight-text">Vault</span></div>
+<h1 class="feed-title">Ultime <span class="highlight-text">Pubblicazioni</span></h1>
         <p class="news-subtitle">Gli articoli editoriali, le guide e gli approfondimenti tecnici redatti dalla community.</p>
       </div>
       
@@ -177,10 +174,10 @@ useSeoMeta({
 .post-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; gap: 1rem; align-items: flex-start; transition: border-color 0.2s ease; }
 .post-card:hover { border-color: rgba(0, 220, 130, 0.4); }
 
-.post-index { font-weight: 800; color: #00dc82; font-size: 0.95rem; min-width: 24px; text-align: right; }
+.post-index { font-weight: 800; color: #38bdf8; font-size: 0.95rem; min-width: 24px; text-align: right; }
 .post-content { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .post-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
-.post-title { font-weight: 800; color: #ffffff; text-decoration: none; font-size: 1.05rem; }
+.post-title { font-weight: 400; color: #ffffff; text-decoration: none; font-size: 1.05rem; }
 .post-title:hover { text-decoration: underline; color: #00dc82; }
 .post-domain { font-size: 0.8rem; color: #38bdf8; }
 

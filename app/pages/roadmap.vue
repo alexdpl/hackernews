@@ -1,4 +1,3 @@
-<!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { roadmapMilestones } from '~/data/roadmap'
@@ -10,7 +9,6 @@ useDkpSeo({
 
 const milestones = roadmapMilestones
 
-// ✅ FIX: usa direttamente il campo progress, include anche gli "upcoming" parziali
 const overallCompletion = computed(() => {
   if (!milestones.length) return 0
   const total = milestones.reduce((acc, m) => acc + m.progress, 0)
@@ -39,7 +37,6 @@ const statusLabel = (item: typeof milestones[number]) => {
   return '🔮 IN ARRIVO'
 }
 
-// ✅ Structured data per rich snippet su Google/Bing
 useHead({
   script: [
     {
@@ -73,7 +70,6 @@ useHead({
         Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA OpenRouter, moderazione Sentinel per i DKP Nodes e la nuova visione strategica per il 2027.
       </p>
 
-      <!-- PROGRESS OVERALL METRIC -->
       <div class="overall-progress-card">
         <div class="progress-info">
           <span id="overall-progress-label">Stato Avanzamento Globale Ecosistema:</span>
@@ -92,7 +88,7 @@ useHead({
       </div>
     </header>
 
-    <!-- CONTROLS & FILTRI -->
+    <!-- FILTRI -->
     <div class="controls-bar">
       <div class="filter-pills" role="tablist" aria-label="Filtra milestone per stato">
         <button
@@ -109,7 +105,7 @@ useHead({
       </div>
     </div>
 
-    <!-- TIMELINE MILESTONES -->
+    <!-- TIMELINE -->
     <div class="timeline-wrapper">
       <div
         v-for="item in filteredMilestones"
@@ -117,13 +113,10 @@ useHead({
         class="timeline-item"
         :class="item.status"
       >
-
-        <!-- MARKER E LINEA -->
         <div class="timeline-marker" aria-hidden="true">
           <span class="marker-dot"></span>
         </div>
 
-        <!-- CONTENT CARD -->
         <article class="milestone-card">
           <div class="card-header">
             <div class="quarter-box">
@@ -155,9 +148,6 @@ useHead({
 </template>
 
 <style scoped>
-/* ==========================================================================
-   LAYOUT GENERALE
-   ========================================================================== */
 .roadmap-page-container {
   max-width: 1100px;
   margin: 2rem auto;
@@ -197,10 +187,7 @@ useHead({
   color: #ffffff;
 }
 
-.highlight {
-  color: #00dc82;
-  text-shadow: 0 0 20px rgba(0, 220, 130, 0.3);
-}
+.highlight { color: #00dc82; text-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
 
 .subtitle {
   color: #94a3b8;
@@ -210,7 +197,6 @@ useHead({
   line-height: 1.6;
 }
 
-/* OVERALL PROGRESS CARD */
 .overall-progress-card {
   background: #020420;
   border: 1px solid #1e293b;
@@ -229,4 +215,138 @@ useHead({
   color: #cbd5e1;
   font-weight: 700;
 }
+
+.progress-percent { color: #00dc82; font-size: 1.2rem; font-weight: 900; }
+
+.progress-bar-track {
+  height: 8px;
+  background: #1e293b;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #00dc82);
+  box-shadow: 0 0 12px rgba(0, 220, 130, 0.5);
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.controls-bar { margin-bottom: 2.5rem; display: flex; justify-content: center; }
+.filter-pills { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.pill {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  color: #cbd5e1;
+  padding: 0.5rem 1.1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pill:hover { border-color: #00dc82; color: #00dc82; }
+.pill.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.12); box-shadow: 0 0 12px rgba(0, 220, 130, 0.2); }
+
+.timeline-wrapper { position: relative; padding-left: 2rem; }
+
+.timeline-wrapper::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: #1e293b;
+}
+
+.timeline-item { position: relative; margin-bottom: 2rem; }
+
+.timeline-marker {
+  position: absolute;
+  left: -2rem;
+  top: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.marker-dot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #020420;
+  border: 3px solid #64748b;
+}
+
+.timeline-item.completed .marker-dot { border-color: #00dc82; background: #00```css
+dc82; box-shadow: 0 0 12px #00dc82; }
+.timeline-item.in-progress .marker-dot { border-color: #facc15; background: #facc15; box-shadow: 0 0 12px #facc15; }
+.timeline-item.upcoming .marker-dot { border-color: #38bdf8; background: #38bdf8; box-shadow: 0 0 12px #38bdf8; }
+
+.milestone-card {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 1.75rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.milestone-card:hover { border-color: #38bdf8; transform: translateY(-2px); }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.quarter-box { display: flex; align-items: center; gap: 0.6rem; }
+.quarter-text { font-size: 1.1rem; font-weight: 900; color: #ffffff; }
+
+.version-tag {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+
+.status-badge.completed { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
+.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
+.status-badge.upcoming { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+.milestone-title { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.6rem 0; color: #ffffff; }
+.milestone-desc { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.25rem; }
+
+.features-box {
+  background: #020420;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.features-box h4 { margin: 0 0 0.6rem 0; color: #38bdf8; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.features-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+
+.features-list li { font-size: 0.88rem; color: #cbd5e1; display: flex; align-items: center; gap: 0.5rem; }
+
+.check-icon { color: #00dc82; font-weight: bold; }
 </style>

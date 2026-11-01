@@ -1,5 +1,5 @@
 // app/data/roadmap.ts
-import { roadmapMilestones } from '~/pages/data/roadmap'
+import { roadmapMilestones } from '~/app/data/roadmap'
 
 export interface RoadmapMilestone {
   id: string

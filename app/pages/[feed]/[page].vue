@@ -167,11 +167,11 @@ useHead({
 .feed-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
 
 .feed-header.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.feed-title { font-size: 1.4rem; font-weight: 900; margin: 0 0 0.2rem 0; color: #ffffff; }
+.feed-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.2rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .feed-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0; }
 
-.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 800; font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
 .submit-btn:hover { background: #00dc82; color: #020420; }
 
 .feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
@@ -181,8 +181,8 @@ useHead({
 .card-body { display: flex; flex-direction: column; gap: 0.4rem; }
 .title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
 .item-index { font-size: 1rem; color: #00dc82; font-weight: 900; }
-.item-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
-.item-title:hover { color: #00dc82; text-decoration: underline; }
+.item-title { font-size: 1.0rem; font-weight: 400; color: #ffffff; text-decoration: none; }
+.item-title:hover { color: #38bdf8; text-decoration: underline; }
 .item-domain { font-size: 0.82rem; color: #64748b; font-weight: 500; }
 
 .item-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.2rem; }

@@ -75,10 +75,12 @@ useSeoMeta({
 <template>
   <div class="news-container">
     <div class="news-header-box compact">
-      <h1 class="feed-title">📚 DKP Blog <span class="highlight-text">Vault</span></h1>
+	<div class="feed-badge">DKP BLOG VAULT • v2.5-GOLD</div>
+      <div class="feed-title">📚 DKP Blog <span class="highlight-text">Vault</span></div>
+<h1 class="feed-title">Ultime <span class="highlight-text">Pubblicazioni</span></h1>
       <p class="news-subtitle">Stai visualizzando la <strong>Pagina {{ currentPage }}</strong> degli articoli editoriali.</p>
     </div>
-
+	
     <div v-if="error" class="error-msg">Errore nel caricamento degli articoli dal database.</div>
     <div v-if="pending" class="loading-state">
       <span class="spinner">⚡</span> Sincronizzazione pagina {{ currentPage }} in corso...
@@ -139,33 +141,35 @@ useSeoMeta({
 <style scoped>
 .news-container { max-width: 950px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
 
-.news-header-box.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
-.feed-title { font-size: 1.5rem; font-weight: 900; margin: 0 0 0.2rem 0; color: #ffffff; }
-.highlight-text { color: #f59e0b; }
-.news-subtitle { color: #94a3b8; font-size: 0.85rem; margin-top: 0.2rem; }
+/* Header allineato alla home */
+.news-header-box.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.feed-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
+.feed-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
+.highlight-text { color: #00dc82; }
+.news-subtitle { color: #94a3b8; font-size: 0.88rem; margin: 0; }
 
 .posts-list { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 3rem; }
 .post-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; gap: 1rem; align-items: flex-start; transition: border-color 0.2s ease; }
-.post-card:hover { border-color: rgba(245, 158, 11, 0.4); }
+.post-card:hover { border-color: rgba(0, 220, 130, 0.4); }
 
-.post-index { font-weight: 800; color: #f59e0b; font-size: 0.95rem; min-width: 24px; text-align: right; }
+.post-index { font-weight: 800; color: #38bdf8; font-size: 0.95rem; min-width: 24px; text-align: right; }
 .post-content { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .post-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
-.post-title { font-weight: 800; color: #ffffff; text-decoration: none; font-size: 1.05rem; }
-.post-title:hover { text-decoration: underline; color: #f59e0b; }
+.post-title { font-weight: 400; color: #ffffff; text-decoration: none; font-size: 1.0rem; }
+.post-title:hover { text-decoration: underline; color: #00dc82; }
 .post-domain { font-size: 0.8rem; color: #64748b; }
 
 .post-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
-.source-pill { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; }
-.points-tag { color: #00dc82; font-weight: 800; }
+.source-pill { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; }
+.points-tag { color: #f59e0b; font-weight: 800; }
 .author-tag { color: #a78bfa; }
 .meta-dot { color: #334155; }
 .comments-link { color: #38bdf8; text-decoration: none; font-weight: 700; }
-.comments-link:hover { color: #f59e0b; text-decoration: underline; }
+.comments-link:hover { color: #00dc82; text-decoration: underline; }
 
 .pagination-nav { margin-top: 2rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #1e293b; }
-.nav-btn { background: #090d16; border: 1px solid #1e293b; color: #f59e0b; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }
-.nav-btn:hover:not(:disabled) { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.nav-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }
+.nav-btn:hover:not(:disabled) { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
 .nav-btn:disabled { color: #475569; border-color: #1e293b; cursor: not-allowed; background: transparent; }
 .page-indicator { font-size: 0.9rem; font-weight: 800; color: #94a3b8; font-family: monospace; }
 
