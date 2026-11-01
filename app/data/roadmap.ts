@@ -1,4 +1,6 @@
-// app/pages/data/roadmap.ts
+// app/data/roadmap.ts
+import { roadmapMilestones } from '~/pages/data/roadmap'
+
 export interface RoadmapMilestone {
   id: string
   quarter: string

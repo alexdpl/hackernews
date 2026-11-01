@@ -140,6 +140,7 @@ useHead({
     </div>
 
     <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
+	<RoadmapProgress />
   </div>
 </template>
 

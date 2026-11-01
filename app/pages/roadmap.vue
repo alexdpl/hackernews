@@ -1,7 +1,7 @@
 <!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { roadmapMilestones } from '~pages/data/roadmap'
+import { roadmapMilestones } from '~/data/roadmap'
 
 useDkpSeo({
   title: 'Roadmap Ecosistema 2026-2027 v2.5-GOLD - DevKernelPulse',
