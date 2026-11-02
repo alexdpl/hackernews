@@ -93,8 +93,11 @@ useSeoMeta({
     <!-- HEADER COMPATTO PER PAGINE SUCCESSIVE -->
     <div class="ask-header compact">
       <div class="header-text">
+	  <div class="ask-badge">
+        ⚡   COMMUNITY Q&A • v2.5-GOLD
+        </div>
         <h1 class="ask-title">
-          Ask <span class="highlight-text">DKP Community</span>
+        💭  Ask <span class="highlight-text">DKP Community</span>
         </h1>
         <p class="ask-subtitle">
           Community Q&A — Stai visualizzando la <strong>Pagina {{ currentPage }}</strong>.
@@ -102,7 +105,7 @@ useSeoMeta({
       </div>
       <div class="header-action">
         <NuxtLink to="/submit?type=ask" class="submit-ask-btn">
-          💬 Fai una Domanda
+          💭 Fai una Domanda
         </NuxtLink>
       </div>
     </div>
@@ -189,12 +192,13 @@ useSeoMeta({
 
 <style scoped>
 .ask-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
+.ask-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
 .ask-header.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.ask-title { font-size: 1.4rem; font-weight: 900; margin: 0 0 0.2rem 0; color: #ffffff; }
+.ask-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.2rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .ask-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0; }
 .submit-ask-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 800; font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
-.submit-ask-btn:hover { background: #00dc82; color: #020420; }
+.submit-ask-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 .ask-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
 .ask-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
 .ask-card:hover { border-color: rgba(0, 220, 130, 0.4); }
@@ -206,11 +210,11 @@ useSeoMeta({
 .ask-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .ask-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
 .ask-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
-.ask-question-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
+.ask-question-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
 .ask-question-title:hover { color: #00dc82; text-decoration: underline; }
 .ask-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.author-tag { color: #00dc82; }
-.verify-tag { color: #94a3b8; }
+.author-tag { color: #a78bfa; }
+.verify-tag { color: #38bdf8; }
 .meta-dot { color: #334155; }
 .pagination-nav { margin-top: 2.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid #1e293b; }
 .nav-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }

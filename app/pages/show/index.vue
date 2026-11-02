@@ -73,10 +73,10 @@ useSeoMeta({
     <div class="show-header">
       <div class="header-text">
         <div class="show-badge">
-          🚀 DKP SHOWCASE • v2.5-GOLD
+          ⚡ DKP SHOWCASE • v2.5-GOLD
         </div>
         <h1 class="show-title">
-          Progetti & Repo <span class="highlight-text">Open Source</span>
+        🚀  Progetti & Repo <span class="highlight-text">Open Source</span>
         </h1>
         <p class="show-subtitle">
           Le migliori repository GitHub di tendenza e i progetti creati dalla community, sincronizzati dal DKP Crawler. Vota i progetti e accumula XP!
@@ -182,12 +182,12 @@ useSeoMeta({
 
 .show-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .show-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.show-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.show-title { font-size: 1.80rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .show-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
 
-.submit-show-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
-.submit-show-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
+.submit-show-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-show-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
 .show-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
 .show-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
@@ -202,14 +202,14 @@ useSeoMeta({
 .show-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .show-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
 .show-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
-.show-project-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
+.show-project-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
 .show-project-title:hover { color: #00dc82; text-decoration: underline; }
 .show-domain { font-size: 0.8rem; color: #38bdf8; }
 
 .show-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .author-tag { color: #00dc82; }
 .xp-tag { color: #f59e0b; font-weight: 800; }
-.verify-tag { color: #94a3b8; }
+.verify-tag { color: #a78bfa; }
 .meta-dot { color: #334155; }
 
 .loading-state, .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }

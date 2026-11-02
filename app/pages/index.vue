@@ -53,10 +53,10 @@ useHead({
     <div class="feed-header">
       <div class="header-text">
         <div class="feed-badge">
-          v2.5-GOLD
+          ⚡ DKP TECH NEWS FEED • v2.5-GOLD
         </div>
         <h1 class="feed-title">
-          Tech News <span class="highlight-text">Feed</span>
+        🌍 Tech News <span class="highlight-text">Feed</span>
         </h1>
         <p class="feed-subtitle">
           Ultime notizie e articoli dal web raccolti in tempo reale in ordine cronologico.

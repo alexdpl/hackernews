@@ -172,7 +172,7 @@ useHead({
 .feed-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0; }
 
 .submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
-.submit-btn:hover { background: #00dc82; color: #020420; }
+.submit-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
 .feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
 .feed-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; transition: border-color 0.2s ease; }

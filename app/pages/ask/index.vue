@@ -76,10 +76,10 @@ useHead({
     <div class="ask-header">
       <div class="header-text">
         <div class="ask-badge">
-          💬 COMMUNITY Q&A • v2.5-GOLD
+          ⚡ COMMUNITY Q&A • v2.5-GOLD
         </div>
         <h1 class="ask-title">
-          Ask <span class="highlight-text">DKP Community</span>
+        💭  Ask <span class="highlight-text">DKP Community</span>
         </h1>
         <p class="ask-subtitle">
           Fai domande sull'architettura software, chiedi code review o apri un dibattito tecnico con la community.
@@ -88,7 +88,7 @@ useHead({
 
       <div class="header-action">
         <NuxtLink to="/submit?type=ask" class="submit-ask-btn">
-          💬 Fai una Domanda (+15 XP)
+          💭 Fai una Domanda (+15 XP)
         </NuxtLink>
       </div>
     </div>
@@ -181,18 +181,18 @@ useHead({
 
 .ask-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .ask-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.ask-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.ask-title { font-size: 1.80rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .ask-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
 
 .submit-ask-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
-.submit-ask-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
+.submit-ask-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
 .ask-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
 .ask-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
 .ask-card:hover { border-color: rgba(0, 220, 130, 0.4); }
 
-.vote-btn { background: #020420; border: 1px solid #1e293b; color: #94a3b8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 44px; transition: all 0.2s; }
+.vote-btn { background: #020420; border: 1px solid #1e293b; color: #38bdf8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 44px; transition: all 0.2s; }
 .vote-btn:hover { border-color: #00dc82; color: #00dc82; }
 .vote-btn.voted { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; color: #00dc82; }
 .vote-icon { font-size: 0.7rem; }
@@ -200,14 +200,14 @@ useHead({
 
 .ask-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .ask-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.ask-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
-.ask-question-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; text-decoration: none; }
+.ask-index { font-size: 0.88rem; color: #38bdf8; font-weight: 800; }
+.ask-question-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
 .ask-question-title:hover { color: #00dc82; text-decoration: underline; }
 
 .ask-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.author-tag { color: #00dc82; }
+.author-tag { color: #a78bfa; }
 .xp-tag { color: #f59e0b; font-weight: 800; }
-.verify-tag { color: #94a3b8; }
+.verify-tag { color: #38bdf8; }
 .meta-dot { color: #334155; }
 
 .mt-6 { margin-top: 1.5rem; }
@@ -222,7 +222,7 @@ useHead({
 .submit-inline-link { color: #00dc82; text-decoration: underline; font-weight: 700; }
 .sep { color: #334155; }
 
-.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
+.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #38bdf8; }
 .recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
 .recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
 .recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }

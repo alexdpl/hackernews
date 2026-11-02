@@ -75,7 +75,7 @@ useHead({
           ⚡ DKP PROOF OF CODE JOBS • v2.5-GOLD
         </div>
         <h1 class="jobs-title">
-          Opportunità Tech <span class="highlight-text">Meritocratiche</span>
+         💼 Opportunità Tech <span class="highlight-text">Meritocratiche</span>
         </h1>
         <p class="jobs-subtitle">
           Offerte di lavoro verificate e acquisite in tempo reale dal DKP Crawler da provider globali. Candidati sfruttando il tuo profilo Proof of Code e accumula XP.
@@ -170,12 +170,12 @@ useHead({
 
 .jobs-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
 .jobs-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.jobs-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.jobs-title { font-size: 1.80rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .jobs-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
 
-.submit-job-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
-.submit-job-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
+.submit-job-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-job-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
 .jobs-feed-list { display: flex; flex-direction: column; gap: 1rem; }
 .job-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap; transition: border-color 0.2s ease; }
@@ -184,16 +184,16 @@ useHead({
 .job-info { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; min-width: 280px; }
 .job-title-row { display: flex; align-items: baseline; gap: 0.5rem; }
 .job-index { font-size: 0.9rem; color: #64748b; font-weight: 800; }
-.job-position-title { font-size: 1.1rem; font-weight: 800; color: #ffffff; text-decoration: none; }
+.job-position-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
 .job-position-title:hover { color: #00dc82; text-decoration: underline; }
 
 .job-details-meta { display: flex; align-items: center; gap: 1rem; font-size: 0.82rem; color: #94a3b8; flex-wrap: wrap; }
-.company { color: #f1f5f9; font-weight: 700; }
+.company { color: #a78bfa; font-weight: 700; }
 .domain { color: #38bdf8; }
 .xp-badge-tag { color: #f59e0b; font-weight: 800; }
 
-.apply-btn { background: #00dc82; color: #020420; border: none; font-size: 0.85rem; font-weight: 800; padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
-.apply-btn:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 220, 130, 0.4); }
+.apply-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.apply-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 220, 130, 0.4); }
 
 .mt-6 { margin-top: 1.5rem; }
 .flex { display: flex; }

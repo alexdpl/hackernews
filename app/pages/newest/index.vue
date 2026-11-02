@@ -73,7 +73,7 @@ useSeoMeta({
     <!-- HEADER BLOG UNIFICATO CON PULSANTE -->
     <div class="news-header-box">
       <div class="header-content">
-        <div class="feed-badge">DKP BLOG VAULT • v2.5-GOLD</div>
+        <div class="feed-badge">⚡ DKP BLOG VAULT • v2.5-GOLD</div>
 		<div class="feed-title">📚 DKP Blog <span class="highlight-text">Vault</span></div>
 <h1 class="feed-title">Ultime <span class="highlight-text">Pubblicazioni</span></h1>
         <p class="news-subtitle">Gli articoli editoriali, le guide e gli approfondimenti tecnici redatti dalla community.</p>
@@ -162,12 +162,12 @@ useSeoMeta({
 .news-header-box { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
 .header-content { flex: 1; }
 .feed-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.feed-title { font-size: 1.85rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
+.feed-title { font-size: 1.80rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
 .highlight-text { color: #00dc82; }
 .news-subtitle { color: #94a3b8; font-size: 0.88rem; margin: 0; }
 
-.submit-btn { background: #00dc82; color: #020420; font-weight: 900; font-size: 0.85rem; padding: 0.7rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; white-space: nowrap; display: inline-block; }
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
+.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 
 .posts-wrapper { margin-bottom: 3rem; }
 .posts-list { display: flex; flex-direction: column; gap: 0.8rem; }
@@ -177,7 +177,7 @@ useSeoMeta({
 .post-index { font-weight: 800; color: #38bdf8; font-size: 0.95rem; min-width: 24px; text-align: right; }
 .post-content { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .post-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
-.post-title { font-weight: 400; color: #ffffff; text-decoration: none; font-size: 1.05rem; }
+.post-title { font-weight: 400; color: #ffffff; text-decoration: none; font-size: 1.00rem; }
 .post-title:hover { text-decoration: underline; color: #00dc82; }
 .post-domain { font-size: 0.8rem; color: #38bdf8; }
 
