@@ -1,0 +1,24 @@
+{
+  "name": "@devkernelpulse/sdk",
+  "version": "1.0.0-beta",
+  "description": "DevKernelPulse SDK: AI Trinity, Vault Notarization & Blog Integration",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "ai",
+    "vault",
+    "devkernelpulse",
+    "security",
+    "blog"
+  ],
+  "author": "DevKernelPulse Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.0.0"
+  }
+}

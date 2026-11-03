@@ -8,7 +8,8 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview",
+	"build:sdk": "tsc -p sdk/tsconfig.json"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.104",
