@@ -167,8 +167,8 @@ function changePage(page: number) {
         </p>
 
         <div class="mt-8 flex justify-center gap-4">
-          <NuxtLink to="/user/dashboard?tab=content" class="bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold px-6 py-2.5 rounded-lg transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transform hover:-translate-y-1">
-            ✍️ Sottoponi un Articolo
+          <NuxtLink to="/user/dashboard?tab=content" class="submit-btn">
+            ✍️ Sottoponi un Articolo (+150 XP)
           </NuxtLink>
         </div>
       </header>
@@ -394,8 +394,8 @@ function changePage(page: number) {
 
 .subcategories-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem; background: #090d16; border: 1px solid #1e293b; padding: 0.6rem 1rem; border-radius: 10px; max-width: 900px; margin: -0.5rem auto 0; }
 .sub-label { font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-right: 0.4rem; }
-.sub-btn { background: #020420; border: 1px solid #1e293b; color: #cbd5e1; padding: 0.3rem 0.7rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
-.sub-btn:hover { border-color: #38bdf8; color: #38bdf8; }
+.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
 .sub-btn.active { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: #38bdf8; }
 
 .fade-sub-enter-active, .fade-sub-leave-active { transition: all 0.25s ease; }
