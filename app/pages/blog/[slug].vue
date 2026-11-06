@@ -16,6 +16,10 @@ interface BlogPost {
   summary?: string;
   categoryName?: string;
   category?: string;
+  // 👇 AGGIUNGI QUESTE DUE RIGHE 👇
+  subcategoryName?: string;
+  subCategory?: string;
+  // 👆 ------------------------ 👆
   isVerified?: boolean;
   authorXp?: number;
   authorName?: string;
@@ -368,26 +372,57 @@ function handleLike() {
       <article
         class="glass-panel p-6 sm:p-10 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl relative overflow-hidden"
       >
-        <div class="flex justify-between items-start mb-8 relative z-10">
-          <NuxtLink
-            to="/blog"
-            class="text-emerald-400 hover:text-emerald-300 text-sm font-bold flex items-center gap-2 transition-colors"
-          >
-            <span>←</span> Torna all'Hub
-          </NuxtLink>
+     <!-- 🟢 BREADCRUMB NAVBAR SEO-READY (INCOLONNATA) -->
+        <div class="flex flex-col gap-4 mb-8 relative z-10 border-b border-slate-800 pb-4">
+          
+          <!-- Riga 1: Briciole di pane (In alto per massima visibilità) -->
+          <nav aria-label="Breadcrumb" class="w-full text-sm text-slate-400">
+            <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
+              <!-- Home / Newsroom -->
+              <li class="flex items-center">
+                <NuxtLink to="/blog" class="text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1">
+                  <span class="text-xs">🏠</span> Newsroom
+                </NuxtLink>
+              </li>
+              
+              <!-- Categoria -->
+              <li class="flex items-center gap-2">
+                <span class="text-slate-600 font-bold">/</span>
+                <span class="text-sky-400 max-w-[120px] sm:max-w-[200px] truncate" :title="post.categoryName || post.category || 'Generale'">
+                  {{ post.categoryName || post.category || "Generale" }}
+                </span>
+              </li>
 
-          <div class="flex items-center gap-3 flex-wrap justify-end">
-            <span
-              class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider"
-            >
+              <!-- Sottocategoria (Mostrata solo se presente) -->
+              <li v-if="post.subcategoryName || post.subCategory" class="flex items-center gap-2">
+                <span class="text-slate-600 font-bold">/</span>
+                <span class="text-sky-300 max-w-[120px] sm:max-w-[200px] truncate" :title="post.subcategoryName || post.subCategory">
+                  {{ post.subcategoryName || post.subCategory }}
+                </span>
+              </li>
+              
+              <!-- Titolo Articolo -->
+              <li class="flex items-center gap-2">
+                <span class="text-slate-600 font-bold">/</span>
+                <span class="text-slate-200 max-w-[150px] sm:max-w-[250px] truncate" :title="post.title" aria-current="page">
+                  {{ post.title }}
+                </span>
+              </li>
+            </ol>
+          </nav>
+
+          <!-- Riga 2: Badges Categoria e Verifica -->
+          <div class="flex items-center gap-3 flex-wrap justify-start">
+            <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-[0.7rem] sm:text-xs font-bold uppercase tracking-wider shadow-sm">
               {{ post.categoryName || post.category || "Generale" }}
             </span>
 
-            <span
-              v-if="post.isVerified"
-              class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-            >
-              DKP Verified
+            <span v-if="post.subcategoryName || post.subCategory" class="bg-sky-500/10 text-sky-300 border border-sky-500/30 px-3 py-1 rounded-md text-[0.7rem] sm:text-xs font-bold uppercase tracking-wider shadow-sm">
+              {{ post.subcategoryName || post.subCategory }}
+            </span>
+
+            <span v-if="post.isVerified" class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-[0.7rem] sm:text-xs font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+              🛡️ DKP Verified
             </span>
           </div>
         </div>

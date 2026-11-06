@@ -419,6 +419,75 @@ function changePage(page: number) {
 .read-more-btn { color: #00dc82; text-decoration: none; font-weight: 800; font-size: 0.9rem; transition: all 0.2s ease; }
 .read-more-btn:hover { color: #38bdf8; transform: translateX(3px); }
 
+.subcategories-bar { 
+  display: flex; 
+  flex-wrap: wrap; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 0.6rem; 
+  background: #090d16; 
+  border: 1px solid #1e293b; 
+  padding: 0.8rem 1.2rem; 
+  border-radius: 10px; 
+  max-width: 900px; 
+  margin: -0.5rem auto 0; 
+}
+.sub-label { 
+  font-size: 0.78rem; 
+  font-weight: 800; 
+  color: #64748b; 
+  text-transform: uppercase; 
+  margin-right: 0.4rem; 
+}
+
+/* 🟢 FIX SOTTOCATEGORIE: Nuovo stile per i link */
+.sub-btn {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Hover effect: Verde DKP + Underline */
+.sub-btn:hover {
+  color: #00dc82;
+  text-decoration: none; /* Rimuoviamo il native underline per usare il pseudo-elemento */
+}
+
+/* Linea animata verde sotto il testo al passaggio del mouse */
+.sub-btn::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 50%;
+  background-color: #00dc82;
+  transition: all 0.2s ease;
+  transform: translateX(-50%);
+}
+
+.sub-btn:hover::after {
+  width: 100%;
+  box-shadow: 0 0 8px rgba(0, 220, 130, 0.4);
+}
+
+/* Stato Attivo (Categoria selezionata) */
+.sub-btn.active { 
+  color: #38bdf8; 
+  font-weight: 700;
+}
+.sub-btn.active::after {
+  width: 100%;
+  background-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
 /* STILI PAGINAZIONE */
 .pagination-container {
   display: flex;

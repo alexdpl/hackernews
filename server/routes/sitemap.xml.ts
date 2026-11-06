@@ -1,4 +1,7 @@
 // server/routes/sitemap.xml.ts
+import { getDb } from '../utils/db'
+import { sql } from 'drizzle-orm'
+
 export default defineEventHandler(async (event) => {
   // 1. Imposta l'header della risposta come XML
   setHeader(event, 'content-type', 'text/xml; charset=utf-8')
@@ -46,7 +49,7 @@ export default defineEventHandler(async (event) => {
   staticRoutes.forEach((route) => {
     let priority = '0.8'
     if (route === '') priority = '1.0'
-    else if (route.startsWith('/tools') || route.startsWith('/shop') || route.startsWith('/docs')) priority = '0.9'
+    else if (route === '/news' || route.startsWith('/tools') || route.startsWith('/shop') || route.startsWith('/docs')) priority = '0.9'
 
     allUrls.push({
       url: `${baseUrl}${route}`,
@@ -118,7 +121,34 @@ export default defineEventHandler(async (event) => {
     // Fallback silente
   }
 
-  // 6. Generazione del markup XML
+  // 6. 🟢 FETCH DINAMICO: DKP Nodes (Hacker News AI Stream /news/[slug])
+  try {
+    const db = getDb()
+    const res = await db.execute(sql`
+      SELECT slug, updated_at, created_at 
+      FROM hn_stories 
+      ORDER BY created_at DESC 
+      LIMIT 1000
+    `)
+    const stories: any[] = Array.isArray(res) ? res : (res.rows || [])
+    if (Array.isArray(stories)) {
+      stories.forEach((story: any) => {
+        if (story.slug) {
+          const dateVal = story.updated_at || story.created_at
+          allUrls.push({
+            url: `${baseUrl}/news/${story.slug}`,
+            lastmod: dateVal ? new Date(dateVal).toISOString() : currentDate,
+            priority: '0.8',
+            changefreq: 'daily'
+          })
+        }
+      })
+    }
+  } catch (err) {
+    // Fallback silente se la tabella non è ancora pronta
+  }
+
+  // 7. Generazione del markup XML
   const xmlEntries = allUrls
     .map(
       (item) => `

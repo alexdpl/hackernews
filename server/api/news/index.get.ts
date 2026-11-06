@@ -1,61 +1,47 @@
 // server/api/news/index.get.ts
 import { defineEventHandler, getQuery } from 'h3'
+import { getDb } from '../../utils/db'
 import { sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const page = Math.max(1, Number(query.page) || 1)
-  const limit = Math.max(1, Number(query.limit) || 15)
+  const limit = Math.min(50, Math.max(1, Number(query.limit) || 12))
   const offset = (page - 1) * limit
+  const search = query.q ? String(query.q).trim().toLowerCase() : ''
+  const minScore = Number(query.minScore) || 0
+  const category = query.category ? String(query.category).trim() : ''
 
-  const db = await getDb()
-  if (!db) {
-    return query.paginated === 'true' ? { page, limit, total: 0, data: [] } : []
-  }
+  const db = getDb()
 
-  try {
-    // 1. Conteggio totale delle news nel DB Neon
-    const countResult: any = await db.execute(sql`
-      SELECT COUNT(*)::int as total FROM pulse_stories WHERE type = 'news';
-    `)
-    const total = countResult?.rows?.[0]?.total || countResult?.[0]?.total || 0
+  const res = await db.execute(sql`
+    SELECT id, hn_id, title, original_url, slug, summary_it, tags, tech_score, hn_points, hn_by, category, created_at
+    FROM hn_stories
+    WHERE tech_score >= ${minScore}
+      AND (${category} = '' OR category = ${category})
+      AND (${search} = '' OR LOWER(title) LIKE ${'%' + search + '%'} OR LOWER(summary_it) LIKE ${'%' + search + '%'})
+    ORDER BY created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `)
 
-    // 2. Fetch delle news reali dal database
-    const result: any = await db.execute(sql`
-      SELECT id, title, url, domain, points, author, comments_count, created_at
-      FROM pulse_stories
-      WHERE type = 'news'
-      ORDER BY created_at DESC, points DESC
-      LIMIT ${limit} OFFSET ${offset};
-    `)
+  const countRes = await db.execute(sql`
+    SELECT COUNT(*)::int as total
+    FROM hn_stories
+    WHERE tech_score >= ${minScore}
+      AND (${category} = '' OR category = ${category})
+      AND (${search} = '' OR LOWER(title) LIKE ${'%' + search + '%'} OR LOWER(summary_it) LIKE ${'%' + search + '%'})
+  `)
 
-    const stories = result?.rows || result || []
+  const stories = Array.isArray(res) ? res : (res.rows || [])
+  const total = Array.isArray(countRes) ? countRes[0]?.total : (countRes.rows[0]?.total || 0)
 
-    // Mappatura pulita dei campi per il frontend
-    const formattedStories = stories.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      domain: item.domain || 'devkernelpulse.org',
-      url: item.url || `/item/${item.id}`,
-      user: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
-      points: item.points || 1,
-      time_ago: 'Recente',
-      comments_count: item.comments_count || 0
-    }))
-
-    if (query.paginated === 'true') {
-      return {
-        page,
-        limit,
-        total,
-        data: formattedStories
-      }
+  return {
+    data: stories,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
     }
-
-    return formattedStories
-  } catch (err: any) {
-    console.error('[NEWS API ERROR]:', err?.message)
-    return query.paginated === 'true' ? { page, limit, total: 0, data: [] } : []
   }
 })
