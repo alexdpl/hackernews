@@ -20,13 +20,23 @@ const { data: responseData, pending, error } = await useFetch('/api/pulse/storie
   watch: [currentPage, currentFeed]
 })
 
+function getDomain(urlStr?: string, domainFallback?: string): string {
+  if (domainFallback) return domainFallback
+  if (!urlStr || urlStr.startsWith('/')) return 'devkernelpulse.org'
+  try {
+    return new URL(urlStr).hostname.replace('www.', '')
+  } catch {
+    return 'devkernelpulse.org'
+  }
+}
+
 const feedList = computed(() => {
   const raw = responseData.value?.stories || responseData.value?.data || []
   return raw.map((item: any) => ({
     ...item,
     author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
     url: item.url || `/item/${item.id}`,
-    domain: item.domain || (item.url && !item.url.startsWith('/') ? new URL(item.url).hostname.replace('www.', '') : 'devkernelpulse.org'),
+    domain: getDomain(item.url, item.domain),
     points: item.points || 1,
     comments_count: item.comments_count || item.commentsCount || 0,
     xp_awarded: item.xp_awarded || 15
@@ -37,7 +47,6 @@ const pagination = computed(() => responseData.value?.pagination || {})
 const totalPages = computed(() => pagination.value?.totalPages || 1)
 const hasMore = computed(() => currentPage.value < totalPages.value)
 
-// GESTIONE ROUTING DINAMICA CORRETTA
 function handleNextPage() {
   if (!hasMore.value || pending.value) return
   router.push(`/${currentFeed.value}/${currentPage.value + 1}`)
@@ -46,7 +55,7 @@ function handleNextPage() {
 function handlePrevPage() {
   if (currentPage.value <= 1 || pending.value) return
   if (currentPage.value === 2) {
-    router.push(`/${currentFeed.value}`) // Torna all'index del feed (es. /feed o /newest)
+    router.push(`/${currentFeed.value}`)
   } else {
     router.push(`/${currentFeed.value}/${currentPage.value - 1}`)
   }
@@ -73,141 +82,119 @@ useHead({
 </script>
 
 <template>
-  <div class="feed-page-container">
-    <div class="feed-header compact">
-      <div class="header-text">
-        <h1 class="feed-title">
-          Tech News <span class="highlight-text capitalize">{{ currentFeed }}</span>
-        </h1>
-        <p class="feed-subtitle">
-          Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong> del feed crawler.
-        </p>
-      </div>
-      <div class="header-action">
-        <NuxtLink to="/submit" class="submit-btn">
-          ⚡ Invia Post (+15 XP)
-        </NuxtLink>
-      </div>
-    </div>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+      
+      <!-- HEADER COMPATTO -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-xl flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+              ⚡ DKP TECH NEWS FEED • v2.5-GOLD
+            </span>
+          </div>
+          <h1 class="text-2xl font-bold text-white">🌍 Tech News <span class="text-emerald-400 capitalize">{{ currentFeed }}</span></h1>
+          <p class="text-xs text-slate-400 mt-1">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong> del feed crawler.</p>
+        </div>
 
-    <div v-if="error" class="error-state">Errore nel caricamento del feed.</div>
-    <div v-if="pending" class="loading-state">
-      <span class="spinner">⚡</span> Sincronizzazione Pagina {{ currentPage }} dal DB Neon...
-    </div>
+        <NuxtLink :to="`/${currentFeed}`" class="text-xs font-mono font-bold text-sky-400 hover:underline">← Torna alla prima pagina</NuxtLink>
+      </div>
 
-    <div v-else-if="feedList.length > 0">
-      <div class="feed-list">
-        <article 
-          v-for="(item, index) in feedList" 
-          :key="item.id || index" 
-          class="feed-card"
-        >
-          <div class="card-body">
-            <div class="title-row">
-              <span class="item-index">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
-              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="item-title">
+      <div v-if="error" class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-xl text-red-400 font-mono text-xs">
+        Errore nel caricamento del feed.
+      </div>
+
+      <div v-else-if="pending" class="text-center py-12 text-emerald-400 font-mono text-xs animate-pulse">
+        ⚡ Sincronizzazione Pagina {{ currentPage }} dal DB Neon...
+      </div>
+
+      <!-- LISTA FEED NOTIZIE -->
+      <div v-else-if="feedList.length > 0" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
+          <article 
+            v-for="(item, index) in feedList" 
+            :key="item.id || index" 
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex flex-col gap-2 transition-all shadow-md group"
+          >
+            <div class="flex items-baseline gap-2 flex-wrap">
+              <span class="text-xs font-mono font-bold text-emerald-400 shrink-0">
+                {{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.
+              </span>
+              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-sky-400 transition-colors">
                 {{ item.title }}
               </a>
-              <span v-if="item.domain" class="item-domain">({{ item.domain }})</span>
+              <span v-if="item.domain" class="text-xs font-mono text-slate-500">
+                ({{ item.domain }})
+              </span>
             </div>
 
-            <div class="item-meta">
-              <span class="source-pill">📡 {{ item.domain }}</span>
-              <span class="meta-dot">•</span>
-              <span class="author-tag">👤 @{{ item.author }}</span>
-              <span class="meta-dot">•</span>
-              <span class="points-tag">▲ {{ item.points }} pts</span>
-              <span class="meta-dot">•</span>
-              <span class="xp-tag">⭐ +{{ item.xp_awarded }} XP</span>
-              <span class="meta-dot">•</span>
-              <NuxtLink :to="`/item/${item.id}`" class="comments-link">
+            <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded text-[10px] font-bold">
+                📡 {{ item.domain }}
+              </span>
+              <span>•</span>
+              <span class="text-purple-400">👤 @{{ item.author }}</span>
+              <span>•</span>
+              <span class="text-amber-400 font-bold">▲ {{ item.points }} pts</span>
+              <span>•</span>
+              <span class="text-emerald-400 font-bold">⭐ +{{ item.xp_awarded }} XP</span>
+              <span>•</span>
+              <NuxtLink :to="`/item/${item.id}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
                 💬 {{ item.comments_count }} commenti
               </NuxtLink>
             </div>
-          </div>
-        </article>
+          </article>
+        </div>
+
+        <!-- NAVIGAZIONE PAGINAZIONE -->
+        <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
+          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            ← Precedente
+          </button>
+          <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
+          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            Successiva →
+          </button>
+        </div>
       </div>
 
-      <div class="pagination-nav">
-        <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="nav-btn">
-          &lt; Pagina Precedente
-        </button>
-        <span class="page-indicator">Pagina {{ currentPage }} / {{ totalPages }}</span>
-        <button @click="handleNextPage" :disabled="!hasMore || pending" class="nav-btn">
-          Pagina Successiva &gt;
-        </button>
+      <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
+        <p>📭 Nessun'altra notizia trovata in questa pagina.</p>
+        <NuxtLink :to="`/${currentFeed}`" class="text-sky-400 underline font-bold">Torna alla prima pagina del feed</NuxtLink>
       </div>
-    </div>
 
-    <div v-else class="empty-state">
-      <p>📭 Nessun'altra notizia trovata in questa pagina.</p>
-      <NuxtLink :to="`/${currentFeed}`" class="admin-link">Torna alla prima pagina del feed</NuxtLink>
-    </div>
+      <!-- 🟢 SEZIONE VAULT -->
+      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+          <span>🔗</span> Approfondimenti dal Vault
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NuxtLink 
+            v-for="art in featuredArticles" 
+            :key="art.id" 
+            :to="`/blog/${art.slug || art.id}`"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+          >
+            <div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                {{ art.categoryName || art.category || 'Tech' }}
+              </span>
+              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                {{ art.title }}
+              </h4>
+            </div>
+            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+              Leggi articolo ➔
+            </span>
+          </NuxtLink>
+        </div>
 
-    <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
-      <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
-      <div class="recommended-grid">
-        <NuxtLink 
-          v-for="art in featuredArticles" 
-          :key="art.id" 
-          :to="`/blog/${art.slug || art.id}`"
-          class="recommended-card"
-        >
-          <span class="rec-cat">{{ art.categoryName || art.category || 'Tech' }}</span>
-          <h4>{{ art.title }}</h4>
-          <span class="rec-read">Leggi articolo ➔</span>
-        </NuxtLink>
-      </div>
-      
-      <div class="mt-8">
         <DkpNodesHomeWidget />
       </div>
-    </div>
 
-    <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
+      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
+    </div>
   </div>
 </template>
-
-<style scoped>
-.capitalize { text-transform: capitalize; }
-.feed-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
-.feed-header.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.feed-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.2rem 0; color: #ffffff; }
-.highlight-text { color: #00dc82; }
-.feed-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0; }
-.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
-.submit-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
-.feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
-.feed-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; transition: border-color 0.2s ease; }
-.feed-card:hover { border-color: rgba(0, 220, 130, 0.4); }
-.card-body { display: flex; flex-direction: column; gap: 0.4rem; }
-.title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.item-index { font-size: 1rem; color: #00dc82; font-weight: 900; }
-.item-title { font-size: 1.0rem; font-weight: 400; color: #ffffff; text-decoration: none; }
-.item-title:hover { color: #38bdf8; text-decoration: underline; }
-.item-domain { font-size: 0.82rem; color: #64748b; font-weight: 500; }
-.item-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.2rem; }
-.source-pill { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; }
-.author-tag { color: #a78bfa; font-weight: 600; }
-.points-tag { color: #f59e0b; font-weight: 800; }
-.xp-tag { color: #00dc82; font-weight: 800; }
-.comments-link { color: #38bdf8; text-decoration: none; font-weight: 700; }
-.comments-link:hover { text-decoration: underline; color: #00dc82; }
-.meta-dot { color: #334155; }
-.pagination-nav { margin-top: 2.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid #1e293b; }
-.nav-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }
-.nav-btn:hover:not(:disabled) { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
-.nav-btn:disabled { color: #475569; border-color: #1e293b; cursor: not-allowed; background: transparent; }
-.page-indicator { font-size: 0.9rem; font-weight: 800; color: #94a3b8; font-family: monospace; }
-.loading-state, .empty-state, .error-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
-.admin-link { color: #38bdf8; text-decoration: underline; font-weight: 700; margin-top: 1rem; display: inline-block; }
-.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
-.recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
-.recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
-.recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }
-.rec-cat { font-size: 0.65rem; font-weight: 800; color: #00dc82; text-transform: uppercase; }
-.recommended-card h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
-.rec-read { color: #38bdf8; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; }
-.mt-8 { margin-top: 2rem; }
-</style>

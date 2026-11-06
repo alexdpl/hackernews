@@ -59,8 +59,8 @@ function parseTags(tags: any): string[] {
         </p>
 
         <div class="flex flex-wrap gap-4 justify-center">
-          <NuxtLink to="/news" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-            🚀 Esplora DKP AI Stream
+          <NuxtLink to="/feed" class="px-6 py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-sm rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+            🌍 Esplora DKP Tech Feed
           </NuxtLink>
           <NuxtLink to="/tools" class="px-6 py-3 bg-[#090d16] border border-slate-700 hover:border-slate-500 text-white font-bold text-sm rounded-xl transition-all">
             🛠️ Developer Tools
