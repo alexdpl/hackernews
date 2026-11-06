@@ -3,6 +3,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useBlog } from '~/composables/useBlog'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
 useDkpSeo({
   title: 'DKP Technical Blog & Vault Articles NewsRoom - DevKernelPulse — v2.5',
@@ -317,6 +318,9 @@ function changePage(page: number) {
           </div>
         </article>
       </div>
+	  <div>
+	  <DkpNodesHomeWidget />
+	  </div>
 <!-- 🟢 BANNER DKP ADS STRIP (Fuso con le info estese e link funzionanti) -->
       <DkpAdStrip />
       <!-- 🟢 CONTROLLI PAGINAZIONE NUMERATA -->

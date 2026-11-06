@@ -5,6 +5,7 @@ import { useRoute } from "vue-router";
 import { useBlog } from "~/composables/useBlog";
 import SocialShare from "~/components/blog/SocialShare.vue";
 import DkpRelatedPosts from "~/components/blog/DkpRelatedPosts.vue";
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue';
 
 interface BlogPost {
   id?: string | number;
@@ -623,7 +624,9 @@ function handleLike() {
             </div>
           </div>
         </div>
-
+   <div>
+     <DkpNodesHomeWidget />
+    </div>
         <!-- ARTICOLI CORRELATI -->
         <DkpRelatedPosts
           v-if="post && post.id"

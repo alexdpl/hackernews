@@ -3,6 +3,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -175,6 +176,7 @@ useSeoMeta({
           <span class="rec-read">Leggi articolo ➔</span>
         </NuxtLink>
       </div>
+	    <DkpNodesHomeWidget />
     </div>
 
     <DkpAdStrip categoryTag="DKP SHOWCASE SPONSORED FEED" />

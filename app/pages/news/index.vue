@@ -1,7 +1,6 @@
-<!-- app/pages/[feed]/index.vue -->
+<!-- app/pages/news/index.vue -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useDkpSeo({
@@ -9,12 +8,25 @@ useDkpSeo({
   description: 'Feed in tempo reale da Hacker News filtrato e tradotto da Trinity AI e validato dal punteggio di rilevanza Sentinel AI.'
 })
 
+// 🟢 1. Dichiara la variabile reattiva per evitare ReferenceError
+const featuredArticles = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    featuredArticles.value = raw.slice(0, 2)
+  } catch (err) {
+    console.error('Errore recupero articoli in evidenza:', err)
+  }
+})
+
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const minTechScore = ref(0)
 const currentPage = ref(1)
 
-const { data: response, pending, refresh } = await useFetch('/api/news', {
+const { data: response, pending } = await useFetch('/api/news', {
   query: {
     page: currentPage,
     limit: 12,
@@ -192,8 +204,37 @@ function parseTags(tags: any): string[] {
           Successiva →
         </button>
       </div>
- <DkpNodesHomeWidget />
+
+      <!-- 🟢 2. SEZIONE VAULT (Consigliati) STYLING TAILWIND INTEGRATO -->
+      <div v-if="featuredArticles.length > 0" class="pt-8 mt-4 border-t border-slate-800">
+        <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+          <span>🔗</span> Approfondimenti dal Vault
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NuxtLink 
+            v-for="art in featuredArticles" 
+            :key="art.id" 
+            :to="`/blog/${art.slug || art.id}`"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+          >
+            <div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                {{ art.categoryName || art.category || 'Tech' }}
+              </span>
+              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                {{ art.title }}
+              </h4>
+            </div>
+            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+              Leggi articolo ➔
+            </span>
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- BANNER AD SPONSORED STREAM -->
+      <DkpAdStrip categoryTag="DKP NODES AI SPONSORED STREAM" />
+
     </div>
-	 <DkpAdStrip />
   </div>
 </template>

@@ -1,8 +1,10 @@
 <!-- app/pages/nodes/index.vue -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import DKPAdBanner from '~/components/DKPAdBanner.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 // 🛡️ SEO Metadata ufficiale DKP
 useHead({
@@ -35,6 +37,19 @@ const { data: postsRes, pending: loadingPosts, refresh: refreshPosts } = await u
 })
 
 const posts = computed(() => postsRes.value?.posts || [])
+
+// 🟢 Recupero dinamico articoli in evidenza dal Vault
+const featuredArticles = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    featuredArticles.value = raw.slice(0, 2)
+  } catch (err) {
+    console.error('Errore recupero articoli Vault:', err)
+  }
+})
 
 watch(nodes, (val) => {
   if (val.length > 0 && !newPostNodeId.value) {
@@ -88,9 +103,8 @@ function selectNode(slug: string | null) {
   <div class="min-h-screen bg-[#060911] text-slate-100 font-sans p-4 md:p-8">
     <div class="max-w-7xl mx-auto flex flex-col gap-8">
       
-      <!-- 🌟 HEADER INTRODUTTIVO (STILE DKP EDITORIAL HUB) -->
+      <!-- 🌟 HEADER INTRODUTTIVO -->
       <div class="flex flex-col items-center text-center py-6 px-4 bg-[#090d16] border border-slate-800/80 rounded-2xl shadow-2xl relative overflow-hidden">
-        <!-- Glow accent di sfondo -->
         <div class="absolute top-0 w-96 h-32 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="flex items-center gap-2 mb-3">
@@ -116,10 +130,10 @@ function selectNode(slug: string | null) {
         </button>
       </div>
 
-      <!-- GRIGLIA A 3 COLONNE (1 SINISTRA MENU+ADS | 2 CENTRO FEED) -->
+      <!-- GRIGLIA A 2 COLONNE (1 SINISTRA MENU+ADS | 2 CENTRO FEED) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <!-- 1. SIDEBAR SINISTRA: LISTA NODI + BANNER ADS & RELATED SOTTO -->
+        <!-- 1. SIDEBAR SINISTRA: LISTA NODI + BANNER ADS -->
         <aside class="lg:col-span-1 flex flex-col gap-6">
           <div class="bg-[#090d16] border border-slate-800/80 rounded-xl p-5 shadow-xl">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
@@ -165,12 +179,10 @@ function selectNode(slug: string | null) {
             </button>
           </div>
 
-          <!-- ADS & RELATED SOTTO IL MENU A SINISTRA -->
           <DKPAdBanner />
-          <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined" />
         </aside>
 
-        <!-- 2. MAIN FEED CENTRALE (2 COLONNE PIENE) -->
+        <!-- 2. MAIN FEED CENTRALE -->
         <main class="lg:col-span-2 flex flex-col gap-6">
           
           <!-- HEADER FEED & FILTER TABS -->
@@ -222,14 +234,12 @@ function selectNode(slug: string | null) {
               :key="post.id"
               class="bg-[#090d16] border border-slate-800/80 hover:border-sky-500/40 rounded-xl p-5 shadow-xl transition-all flex gap-4"
             >
-              <!-- WIDGET KARMA VOTES -->
               <div class="flex flex-col items-center justify-start bg-slate-950/60 p-2 rounded-lg border border-slate-800/60 font-mono text-xs h-fit min-w-[44px]">
                 <button class="text-slate-500 hover:text-emerald-400 transition-colors text-sm font-bold">▲</button>
                 <span class="font-extrabold my-1 text-slate-200">{{ post.karmaScore }}</span>
                 <button class="text-slate-500 hover:text-rose-400 transition-colors text-sm font-bold">▼</button>
               </div>
 
-              <!-- CONTENUTO THREAD -->
               <div class="flex-1 flex flex-col gap-2">
                 <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400 flex-wrap">
                   <span class="text-sky-400 font-bold bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
@@ -260,9 +270,50 @@ function selectNode(slug: string | null) {
               </div>
             </article>
           </div>
-        </main>
 
+          <!-- 🟢 1. DISCUSSIONI CORRELATE AL CENTRO -->
+          <div class="pt-6 border-t border-slate-800/80">
+            <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined" />
+          </div>
+
+          <!-- 🟢 2. APPROFONDIMENTI DAL VAULT AL CENTRO -->
+          <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800/80">
+            <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2 font-mono">
+              <span>🔗</span> Approfondimenti dal Vault
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <NuxtLink 
+                v-for="art in featuredArticles" 
+                :key="art.id" 
+                :to="`/blog/${art.slug || art.id}`"
+                class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+              >
+                <div>
+                  <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                    {{ art.categoryName || art.category || 'Tech' }}
+                  </span>
+                  <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                    {{ art.title }}
+                  </h4>
+                </div>
+                <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+                  Leggi articolo ➔
+                </span>
+              </NuxtLink>
+            </div>
+          </div>
+
+          <!-- 🟢 3. HACKER NEWS AI STREAM AL CENTRO -->
+          <div class="pt-6 border-t border-slate-800/80">
+            <DkpNodesHomeWidget />
+          </div>
+
+          <!-- BANNER AD SPONSORED -->
+          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM" />
+
+        </main>
       </div>
+
     </div>
 
     <!-- MODALE CREAZIONE THREAD -->

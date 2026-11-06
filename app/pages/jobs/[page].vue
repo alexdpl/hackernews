@@ -164,10 +164,9 @@ useSeoMeta({
           <span class="rec-read">Leggi articolo ➔</span>
         </NuxtLink>
       </div>
+	   <DkpNodesHomeWidget />
     </div>
-
     <DkpAdStrip categoryTag="DKP JOBS SPONSORED FEED" />
-  </div>
 </template>
 
 <style scoped>

@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
 // 1. Puntiamo all'endpoint dedicato /api/ask che restituisce dati strutturati e puliti
 const { data: responseData, pending } = await useFetch('/api/ask', {
@@ -169,8 +170,8 @@ useHead({
           <span class="rec-read">Leggi articolo ➔</span>
         </NuxtLink>
       </div>
+	    <DkpNodesHomeWidget />
     </div>
-
     <!-- 🟢 BANNER DKP ADS STRIP -->
     <DkpAdStrip categoryTag="DKP ASK SPONSORED FEED" />
   </div>

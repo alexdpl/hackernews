@@ -1,10 +1,12 @@
 <!-- app/pages/nodes/thread/[id].vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DKPAdBanner from '~/components/DKPAdBanner.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import SocialShareTalks from '~/components/nodes/SocialShareTalks.vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const route = useRoute()
 const postId = Number(route.params.id)
@@ -33,6 +35,19 @@ const { data: commentsRes, pending: loadingComments, refresh: refreshComments } 
 })
 
 const rawComments = computed(() => commentsRes.value?.comments || [])
+
+// 🟢 Recupero dinamico articoli in evidenza dal Vault
+const featuredArticles = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    featuredArticles.value = raw.slice(0, 2)
+  } catch (err) {
+    console.error('Errore recupero articoli Vault:', err)
+  }
+})
 
 interface CommentNode {
   id: number
@@ -97,7 +112,7 @@ async function submitComment(parentId: number | null = null) {
     }
   } catch (err: any) {
     alert(err?.data?.statusMessage || 'Errore invio commento.')
-  } finally {
+  } fontally {
     isSubmitting.value = false
   }
 }
@@ -137,22 +152,20 @@ useHead({
         ← Torna a DKP Nodes
       </NuxtLink>
 
-      <!-- GRID A 3 COLONNE: MAIN CONTENT (2) + SIDEBAR STICKY (1) -->
+      <!-- GRID A 2 COLONNE: MAIN CONTENT (2) + SIDEBAR STICKY (1) -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
-        <!-- COLONNA PRINCIPALE: THREAD & COMMENTI (2 COLONNE) -->
+        <!-- COLONNA PRINCIPALE: THREAD, COMMENTI & FLUSSO DKP -->
         <div class="lg:col-span-2 flex flex-col gap-6">
           
           <!-- THREAD MAIN CONTAINER -->
           <article v-if="thread" class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-2xl flex gap-5">
-            <!-- VOTI THREAD -->
             <div class="flex flex-col items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800 font-mono text-xs h-fit">
               <button @click="vote(thread.id, null, 1)" class="text-slate-500 hover:text-emerald-400 font-bold text-base transition-colors">▲</button>
               <span class="font-extrabold my-1.5 text-slate-100">{{ thread.karmaScore }}</span>
               <button @click="vote(thread.id, null, -1)" class="text-slate-500 hover:text-rose-400 font-bold text-base transition-colors">▼</button>
             </div>
 
-            <!-- CONTENUTO PRINCIPALE -->
             <div class="flex-1 flex flex-col gap-3">
               <div class="flex items-center gap-2 font-mono text-xs text-slate-400 flex-wrap">
                 <span class="text-sky-400 font-bold bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
@@ -241,7 +254,6 @@ useHead({
                     </button>
                   </div>
 
-                  <!-- FORM RISPOSTA NIDIFICATA -->
                   <div v-if="activeReplyParentId === comment.id" class="mt-2 pl-4 border-l-2 border-sky-400 flex flex-col gap-2">
                     <textarea 
                       v-model="replyText" 
@@ -255,7 +267,6 @@ useHead({
                     </div>
                   </div>
 
-                  <!-- SUB-REPLIES -->
                   <div v-if="comment.replies && comment.replies.length > 0" class="pl-4 border-l-2 border-slate-800 flex flex-col gap-2 mt-2">
                     <div v-for="reply in comment.replies" :key="reply.id" class="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
                       <div class="flex items-center justify-between text-slate-400 text-[10px] mb-1">
@@ -270,31 +281,62 @@ useHead({
             </div>
           </section>
 
+          <!-- 🟢 1. THREADS CORRELATI AL CENTRO -->
+          <div class="pt-6 border-t border-slate-800/80">
+            <DKPRelatedThreads 
+              v-if="thread" 
+              :currentNodeSlug="thread.nodeSlug" 
+              :currentPostId="thread.id" 
+            />
+          </div>
+
+          <!-- 🟢 2. APPROFONDIMENTI DAL VAULT AL CENTRO -->
+          <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800/80">
+            <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2 font-mono">
+              <span>🔗</span> Approfondimenti dal Vault
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <NuxtLink 
+                v-for="art in featuredArticles" 
+                :key="art.id" 
+                :to="`/blog/${art.slug || art.id}`"
+                class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+              >
+                <div>
+                  <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                    {{ art.categoryName || art.category || 'Tech' }}
+                  </span>
+                  <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                    {{ art.title }}
+                  </h4>
+                </div>
+                <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+                  Leggi articolo ➔
+                </span>
+              </NuxtLink>
+            </div>
+          </div>
+
+          <!-- 🟢 3. HACKER NEWS AI STREAM AL CENTRO -->
+          <div class="pt-6 border-t border-slate-800/80">
+            <DkpNodesHomeWidget />
+          </div>
+
+          <DkpAdStrip categoryTag="DKP THREAD STREAM" />
+
         </div>
 
-<!-- COLONNA SIDEBAR DESTRA (3a colonna della Grid) -->
-<aside class="lg:col-span-1 w-full h-full">
-  <!-- Wrapper Sticky interno con top offset di 24 (96px) -->
-  <div class="sticky top-24 flex flex-col gap-6">
-    
-    <!-- BOX CONDIVISIONE TALKS -->
-    <div class="bg-[#090d16] border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col items-center">
-      <span class="text-[10px] font-mono text-slate-400 mb-3 uppercase tracking-wider font-bold">Condividi Discussione</span>
-      <SocialShareTalks :title="thread?.title || 'Discussione DKP Nodes'" :url="currentUrl" :vertical="true" />
-    </div>
+        <!-- COLONNA SIDEBAR DESTRA -->
+        <aside class="lg:col-span-1 w-full h-full">
+          <div class="sticky top-24 flex flex-col gap-6">
+            <div class="bg-[#090d16] border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col items-center">
+              <span class="text-[10px] font-mono text-slate-400 mb-3 uppercase tracking-wider font-bold">Condividi Discussione</span>
+              <SocialShareTalks :title="thread?.title || 'Discussione DKP Nodes'" :url="currentUrl" :vertical="true" />
+            </div>
 
-    <!-- BANNER ADVERTISING -->
-    <DKPAdBanner />
-    
-    <!-- THREADS CORRELATI -->
-    <DKPRelatedThreads 
-      v-if="thread" 
-      :currentNodeSlug="thread.nodeSlug" 
-      :currentPostId="thread.id" 
-    />
-
-  </div>
-</aside>
+            <DKPAdBanner />
+          </div>
+        </aside>
 
       </div>
     </div>
