@@ -1,6 +1,6 @@
 <!-- app/pages/ask/[page].vue -->
-<script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
@@ -9,7 +9,7 @@ const route = useRoute()
 const router = useRouter()
 
 // 1. Gestione Paginazione Dinamica
-const currentPage = computed(() => Math.max(1, parseInt(route.params.page) || 1))
+const currentPage = computed(() => Math.max(1, parseInt(route.params.page as string) || 1))
 const itemsPerPage = 15
 
 // 2. Fetch API Dedicato con chiave reattiva per evitare la deduplicazione
@@ -19,17 +19,19 @@ const { data: responseData, pending, error } = await useFetch('/api/ask', {
   watch: [currentPage]
 })
 
-// Estrazione dati sicura con normalizzazione al volo di autore e link
+// Estrazione dati sicura con normalizzazione al volo
 const askList = computed(() => {
   const raw = responseData.value?.data || responseData.value?.stories || []
-  return raw.map((item) => ({
+  return raw.map((item: any) => ({
     ...item,
     author: typeof item.author === 'object' ? item.author?.username : (item.author || item.user || 'community_ask'),
     url: item.url || `/item/${item.id}`
   }))
 })
 
-const hasMore = computed(() => responseData.value?.pagination?.hasMore || false)
+const pagination = computed(() => responseData.value?.pagination || {})
+const totalPages = computed(() => pagination.value?.totalPages || 1)
+const hasMore = computed(() => (currentPage.value < totalPages.value) || responseData.value?.pagination?.hasMore || false)
 
 // Navigazione
 function handleNextPage() {
@@ -39,10 +41,14 @@ function handleNextPage() {
 
 function handlePrevPage() {
   if (currentPage.value <= 1 || pending.value) return
-  router.push(`/ask/${currentPage.value - 1}`)
+  if (currentPage.value === 2) {
+    router.push('/ask')
+  } else {
+    router.push(`/ask/${currentPage.value - 1}`)
+  }
 }
 
-const voteAsk = (item) => {
+const voteAsk = (item: any) => {
   if (item.voted) {
     item.points = (item.points || 1) - 1
     item.voted = false
@@ -52,7 +58,7 @@ const voteAsk = (item) => {
   }
 }
 
-function formatTime(dateStr) {
+function formatTime(dateStr: string | undefined): string {
   if (!dateStr) return 'di recente'
   try {
     const date = new Date(dateStr)
@@ -66,11 +72,11 @@ function formatTime(dateStr) {
   }
 }
 
-const featuredArticles = ref([])
+const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const res = await $fetch('/api/blog/posts')
+    const res: any = await $fetch('/api/blog/posts')
     const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
     featuredArticles.value = raw.slice(0, 2)
   } catch (err) {
@@ -78,158 +84,123 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
-  responseData.value = null
-})
-
 useSeoMeta({
   title: `Ask DKP - Pagina ${currentPage.value} - DevKernelPulse`,
-  description: 'Scopri la pagina ' + currentPage.value + ' delle discussioni e Q&A tecniche della community DKP.'
+  description: `Scopri la pagina ${currentPage.value} delle discussioni e Q&A tecniche della community DKP.`
 })
 </script>
 
 <template>
-  <div class="ask-page-container">
-    
-    <!-- HEADER COMPATTO PER PAGINE SUCCESSIVE -->
-    <div class="ask-header compact">
-      <div class="header-text">
-	  <div class="ask-badge">
-        ⚡   COMMUNITY Q&A • v2.5-GOLD
-        </div>
-        <h1 class="ask-title">
-        💭  Ask <span class="highlight-text">DKP Community</span>
-        </h1>
-        <p class="ask-subtitle">
-          Community Q&A — Stai visualizzando la <strong>Pagina {{ currentPage }}</strong>.
-        </p>
-      </div>
-      <div class="header-action">
-        <NuxtLink to="/submit?type=ask" class="submit-ask-btn">
-          💭 Fai una Domanda
-        </NuxtLink>
-      </div>
-    </div>
-
-    <!-- FEED DISCUSSIONI -->
-    <div v-if="error" class="error-msg">Errore nel caricamento delle discussioni.</div>
-    <div v-if="pending" class="loading-state">
-      <span class="spinner">⚡</span> Sincronizzazione pagina {{ currentPage }} in corso...
-    </div>
-
-    <div v-else-if="askList.length > 0">
-      <div class="ask-feed-list">
-        <article 
-          v-for="(item, index) in askList" 
-          :key="item.id || index" 
-          class="ask-card"
-        >
-          <button 
-            @click="voteAsk(item)" 
-            class="vote-btn" 
-            :class="{ voted: item.voted }"
-          >
-            <span class="vote-icon">▲</span>
-            <span class="vote-count">{{ item.points || 1 }}</span>
-          </button>
-
-          <div class="ask-info">
-            <div class="ask-title-row">
-              <span class="ask-index">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
-              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="ask-question-title">
-                {{ item.title }}
-              </a>
-            </div>
-
-            <div class="ask-meta">
-              <span>👤 Chiesto da <strong class="author-tag">@{{ item.author }}</strong></span>
-              <span class="meta-dot">•</span>
-              <span class="time-tag">⏱️ {{ formatTime(item.createdAt || item.created_at) }}</span>
-              <span class="meta-dot">•</span>
-              <span class="verify-tag">Verified da <strong>DKP Crawler</strong></span>
-            </div>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+      
+      <!-- HEADER COMPATTO PER PAGINE SUCCESSIVE -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-xl flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+              ⚡ COMMUNITY Q&A • v2.5-GOLD
+            </span>
           </div>
-        </article>
+          <h1 class="text-2xl font-bold text-white">💭 Ask <span class="text-emerald-400">DKP Community</span></h1>
+          <p class="text-xs text-slate-400 mt-1">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong>.</p>
+        </div>
+        
+        <NuxtLink to="/ask" class="text-xs font-mono font-bold text-sky-400 hover:underline">← Torna alla prima pagina</NuxtLink>
       </div>
 
-      <!-- NAVIGAZIONE PAGINAZIONE -->
-      <div class="pagination-nav">
-        <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="nav-btn prev">
-          &lt; Pagina Precedente
-        </button>
-        <span class="page-indicator">Pag {{ currentPage }}</span>
-        <button @click="handleNextPage" :disabled="!hasMore || pending" class="nav-btn next">
-          Pagina Successiva &gt;
-        </button>
+      <!-- FEED DISCUSSIONI -->
+      <div v-if="error" class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-xl text-red-400 font-mono text-xs">
+        Errore nel caricamento delle discussioni.
       </div>
-    </div>
 
-    <div v-else class="empty-state">
-      <p>📭 Nessun'altra discussione trovata in questa pagina.</p>
-      <NuxtLink to="/ask" class="admin-link">Torna alla prima pagina</NuxtLink>
-    </div>
-
-    <!-- 🟢 SEZIONE VAULT -->
-    <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
-      <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
-      <div class="recommended-grid">
-        <NuxtLink 
-          v-for="art in featuredArticles" 
-          :key="art.id" 
-          :to="`/blog/${art.slug || art.id}`"
-          class="recommended-card"
-        >
-          <span class="rec-cat">{{ art.categoryName || art.category || 'Tech' }}</span>
-          <h4>{{ art.title }}</h4>
-          <span class="rec-read">Leggi articolo ➔</span>
-        </NuxtLink>
+      <div v-else-if="pending" class="text-center py-12 text-emerald-400 font-mono text-xs animate-pulse">
+        ⚡ Sincronizzazione pagina {{ currentPage }} in corso...
       </div>
-	          <DkpNodesHomeWidget />
+
+      <div v-else-if="askList.length > 0" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
+          <article 
+            v-for="(item, index) in askList" 
+            :key="item.id || index" 
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
+          >
+            <button 
+              @click="voteAsk(item)" 
+              :class="['flex flex-col items-center justify-center p-2.5 rounded-xl border font-mono text-xs cursor-pointer min-w-[46px] transition-all shrink-0', item.voted ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#020420] border-slate-800 text-sky-400 hover:border-emerald-500/50 hover:text-emerald-400']"
+            >
+              <span class="text-[10px] leading-none">▲</span>
+              <span class="font-extrabold mt-1 text-xs">{{ item.points || 1 }}</span>
+            </button>
+
+            <div class="flex flex-col gap-1.5 flex-1">
+              <div class="flex items-baseline gap-2">
+                <span class="text-xs font-mono font-bold text-slate-500">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
+                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                  {{ item.title }}
+                </a>
+              </div>
+
+              <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span>👤 Chiesto da <strong class="text-purple-400">@{{ item.author }}</strong></span>
+                <span>•</span>
+                <span class="text-slate-400">⏱️ {{ formatTime(item.createdAt || item.created_at) }}</span>
+                <span>•</span>
+                <span class="text-sky-400">Verified da <strong>DKP Crawler</strong></span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- NAVIGAZIONE PAGINAZIONE -->
+        <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
+          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            ← Precedente
+          </button>
+          <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
+          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            Successiva →
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
+        <p>📭 Nessun'altra discussione trovata in questa pagina.</p>
+        <NuxtLink to="/ask" class="text-sky-400 underline font-bold">Torna alla prima pagina</NuxtLink>
+      </div>
+
+      <!-- 🟢 SEZIONE VAULT -->
+      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+          <span>🔗</span> Approfondimenti dal Vault
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NuxtLink 
+            v-for="art in featuredArticles" 
+            :key="art.id" 
+            :to="`/blog/${art.slug || art.id}`"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+          >
+            <div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                {{ art.categoryName || art.category || 'Tech' }}
+              </span>
+              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                {{ art.title }}
+              </h4>
+            </div>
+            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+              Leggi articolo ➔
+            </span>
+          </NuxtLink>
+        </div>
+        
+        <DkpNodesHomeWidget />
+      </div>
+
+      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <DkpAdStrip categoryTag="DKP ASK SPONSORED FEED" />
     </div>
-    <!-- 🟢 BANNER DKP ADS STRIP -->
-    <DkpAdStrip categoryTag="DKP ASK SPONSORED FEED" />
   </div>
 </template>
-
-<style scoped>
-.ask-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
-.ask-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.ask-header.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.ask-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.2rem 0; color: #ffffff; }
-.highlight-text { color: #00dc82; }
-.ask-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0; }
-.submit-ask-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 800; font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
-.submit-ask-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
-.ask-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
-.ask-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
-.ask-card:hover { border-color: rgba(0, 220, 130, 0.4); }
-.vote-btn { background: #020420; border: 1px solid #1e293b; color: #94a3b8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 44px; transition: all 0.2s; }
-.vote-btn:hover { border-color: #00dc82; color: #00dc82; }
-.vote-btn.voted { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; color: #00dc82; }
-.vote-icon { font-size: 0.7rem; }
-.vote-count { font-size: 0.82rem; font-weight: 800; }
-.ask-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-.ask-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.ask-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
-.ask-question-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
-.ask-question-title:hover { color: #00dc82; text-decoration: underline; }
-.ask-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.author-tag { color: #a78bfa; }
-.verify-tag { color: #38bdf8; }
-.meta-dot { color: #334155; }
-.pagination-nav { margin-top: 2.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid #1e293b; }
-.nav-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }
-.nav-btn:hover:not(:disabled) { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
-.nav-btn:disabled { color: #475569; border-color: #1e293b; cursor: not-allowed; background: transparent; }
-.page-indicator { font-size: 0.9rem; font-weight: 800; color: #94a3b8; font-family: monospace; }
-.loading-state, .empty-state, .error-msg { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
-.admin-link { color: #38bdf8; text-decoration: underline; font-weight: 700; margin-top: 1rem; display: inline-block; }
-.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
-.recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
-.recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
-.recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
-.recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }
-.rec-cat { font-size: 0.65rem; font-weight: 800; color: #00dc82; text-transform: uppercase; }
-.recommended-card h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
-.rec-read { color: #38bdf8; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; }
-</style>

@@ -3,6 +3,7 @@
 import { computed, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -10,14 +11,13 @@ const router = useRouter()
 const currentPage = computed(() => Math.max(1, parseInt(route.params.page as string) || 1))
 const itemsPerPage = 15
 
-// 1. Fetch agganciato al BLOG interno, non al crawler
+// 1. Fetch agganciato al BLOG interno
 const { data: responseData, error, pending } = await useFetch('/api/blog/posts', {
   key: `newest-blog-page-${currentPage.value}`,
   query: { page: currentPage, limit: itemsPerPage },
   watch: [currentPage]
 })
 
-// Helper per estrarre in modo sicuro l'autore anche se è una stringa JSON
 function parseAuthor(authorData: any): string {
   if (!authorData) return 'community'
   if (typeof authorData === 'object') return authorData.username || 'community'
@@ -32,7 +32,7 @@ function parseAuthor(authorData: any): string {
   return authorData
 }
 
-// 2. Normalizzazione Dati (Autore pulito, slug per i link)
+// 2. Normalizzazione Dati
 const postsList = computed(() => {
   const raw = responseData.value?.data || responseData.value || []
   return raw.map((post: any) => ({
@@ -44,8 +44,8 @@ const postsList = computed(() => {
   }))
 })
 
-// Calcolo paginazione in base ai dati del blog
 const pagination = computed(() => responseData.value?.pagination || {})
+const totalPages = computed(() => pagination.value?.totalPages || 1)
 const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || (postsList.value.length === itemsPerPage))
 
 function nextPage() {
@@ -73,106 +73,90 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="news-container">
-    <div class="news-header-box compact">
-	<div class="feed-badge">DKP BLOG VAULT • v2.5-GOLD</div>
-      <div class="feed-title">📚 DKP Blog <span class="highlight-text">Vault</span></div>
-<h1 class="feed-title">Ultime <span class="highlight-text">Pubblicazioni</span></h1>
-      <p class="news-subtitle">Stai visualizzando la <strong>Pagina {{ currentPage }}</strong> degli articoli editoriali.</p>
-    </div>
-	
-    <div v-if="error" class="error-msg">Errore nel caricamento degli articoli dal database.</div>
-    <div v-if="pending" class="loading-state">
-      <span class="spinner">⚡</span> Sincronizzazione pagina {{ currentPage }} in corso...
-    </div>
-
-    <!-- LISTA ARTICOLI BLOG (Design Unificato) -->
-    <div v-else-if="postsList.length > 0" class="posts-list">
-      <article v-for="(post, index) in postsList" :key="post.id || index" class="post-card">
-        <span class="post-index">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
-        <div class="post-content">
-          
-          <div class="post-heading">
-            <!-- Il titolo punta alla rotta del blog interno -->
-            <NuxtLink :to="`/blog/${post.slug}`" class="post-title">
-              {{ post.title }}
-            </NuxtLink>
-            <span class="post-domain">(devkernelpulse.org)</span>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+      
+      <!-- HEADER COMPATTO -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-xl flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+              ⚡ DKP BLOG VAULT • v2.5-GOLD
+            </span>
           </div>
-
-          <div class="post-meta">
-            <span class="source-pill">📝 {{ post.categoryName || post.category || 'Editoriale' }}</span>
-            <span class="meta-dot">•</span>
-            <span class="points-tag">▲ {{ post.points }} punti</span>
-            <span class="meta-dot">•</span>
-            <span>da <strong class="author-tag">@{{ post.authorName }}</strong></span>
-            <span class="meta-dot">•</span>
-            <span>⏱️ {{ new Date(post.createdAt || post.created_at || Date.now()).toLocaleDateString('it-IT') }}</span>
-            <span class="meta-dot">•</span>
-            <!-- I commenti puntano all'articolo del blog, non alla sezione /item -->
-            <NuxtLink :to="`/blog/${post.slug}#comments`" class="comments-link">
-              💬 {{ post.commentsCount }} commenti
-            </NuxtLink>
-          </div>
+          <h1 class="text-2xl font-bold text-white">📚 DKP Blog <span class="text-emerald-400">Vault</span></h1>
+          <p class="text-xs text-slate-400 mt-1">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong> degli articoli editoriali.</p>
         </div>
-      </article>
 
-      <!-- Barra Paginazione Dark -->
-      <div class="pagination-nav">
-        <button @click="prevPage" :disabled="currentPage <= 1 || pending" class="nav-btn">
-          &lt; Pagina Precedente
-        </button>
-        <span class="page-indicator">Pagina {{ currentPage }}</span>
-        <button @click="nextPage" :disabled="!hasMore || pending" class="nav-btn">
-          Pagina Successiva &gt;
-        </button>
+        <NuxtLink to="/newest" class="text-xs font-mono font-bold text-sky-400 hover:underline">← Torna alla prima pagina</NuxtLink>
       </div>
-    </div>
 
-    <div v-else class="empty-state">
-      <p>📭 Nessun articolo presente in questa pagina.</p>
-      <NuxtLink to="/newest" class="admin-link">Torna alla prima pagina del Vault</NuxtLink>
-    </div>
+      <div v-if="error" class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-xl text-red-400 font-mono text-xs">
+        Errore nel caricamento degli articoli dal database.
+      </div>
 
-    <DkpAdStrip categoryTag="DKP BLOG SPONSORED" />
+      <div v-if="pending" class="text-center py-12 text-emerald-400 font-mono text-xs animate-pulse">
+        ⚡ Sincronizzazione pagina {{ currentPage }} in corso...
+      </div>
+
+      <!-- LISTA ARTICOLI BLOG -->
+      <div v-else-if="postsList.length > 0" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
+          <article v-for="(post, index) in postsList" :key="post.id || index" class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex gap-4 items-start transition-all shadow-md group">
+            <span class="text-xs font-mono font-bold text-sky-400 shrink-0 min-w-[24px] text-right pt-0.5">
+              {{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.
+            </span>
+
+            <div class="flex flex-col gap-1.5 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <NuxtLink :to="`/blog/${post.slug}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                  {{ post.title }}
+                </NuxtLink>
+                <span class="text-xs font-mono text-slate-500">(devkernelpulse.org)</span>
+              </div>
+
+              <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded text-[10px] font-bold">
+                  📝 {{ post.categoryName || post.category || 'Editoriale' }}
+                </span>
+                <span>•</span>
+                <span class="text-amber-400 font-bold">▲ {{ post.points }} punti</span>
+                <span>•</span>
+                <span>da <strong class="text-purple-400">@{{ post.authorName }}</strong></span>
+                <span>•</span>
+                <span>⏱️ {{ new Date(post.createdAt || post.created_at || Date.now()).toLocaleDateString('it-IT') }}</span>
+                <span>•</span>
+                <NuxtLink :to="`/blog/${post.slug}#comments`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
+                  💬 {{ post.commentsCount }} commenti
+                </NuxtLink>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- BARRA PAGINAZIONE -->
+        <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
+          <button @click="prevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            ← Precedente
+          </button>
+          <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
+          <button @click="nextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            Successiva →
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
+        <p>📭 Nessun articolo presente in questa pagina.</p>
+        <NuxtLink to="/newest" class="text-sky-400 underline font-bold">Torna alla prima pagina del Vault</NuxtLink>
+      </div>
+
+      <div class="pt-8 border-t border-slate-800">
+        <DkpNodesHomeWidget />
+      </div>
+
+      <DkpAdStrip categoryTag="DKP BLOG SPONSORED" />
+    </div>
   </div>
 </template>
-
-<style scoped>
-.news-container { max-width: 950px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
-
-/* Header allineato alla home */
-.news-header-box.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
-.feed-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.feed-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
-.highlight-text { color: #00dc82; }
-.news-subtitle { color: #94a3b8; font-size: 0.88rem; margin: 0; }
-
-.posts-list { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 3rem; }
-.post-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; gap: 1rem; align-items: flex-start; transition: border-color 0.2s ease; }
-.post-card:hover { border-color: rgba(0, 220, 130, 0.4); }
-
-.post-index { font-weight: 800; color: #38bdf8; font-size: 0.95rem; min-width: 24px; text-align: right; }
-.post-content { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-.post-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
-.post-title { font-weight: 400; color: #ffffff; text-decoration: none; font-size: 1.0rem; }
-.post-title:hover { text-decoration: underline; color: #00dc82; }
-.post-domain { font-size: 0.8rem; color: #64748b; }
-
-.post-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.2rem; }
-.source-pill { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; }
-.points-tag { color: #f59e0b; font-weight: 800; }
-.author-tag { color: #a78bfa; }
-.meta-dot { color: #334155; }
-.comments-link { color: #38bdf8; text-decoration: none; font-weight: 700; }
-.comments-link:hover { color: #00dc82; text-decoration: underline; }
-
-.pagination-nav { margin-top: 2rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #1e293b; }
-.nav-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }
-.nav-btn:hover:not(:disabled) { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
-.nav-btn:disabled { color: #475569; border-color: #1e293b; cursor: not-allowed; background: transparent; }
-.page-indicator { font-size: 0.9rem; font-weight: 800; color: #94a3b8; font-family: monospace; }
-
-.loading-state, .empty-state, .error-msg { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
-.admin-link { color: #38bdf8; text-decoration: underline; font-weight: 700; margin-top: 1rem; display: inline-block; }
-</style>

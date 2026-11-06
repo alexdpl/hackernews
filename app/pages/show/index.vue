@@ -4,24 +4,34 @@ import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
-// 1. Puntiamo all'endpoint dedicato /api/show con paginazione a 15
+// 1. Fetch dall'endpoint dedicato /api/show con paginazione a 15
 const { data: responseData, pending } = await useFetch('/api/show', {
   query: { page: 1, limit: 15 }
 })
+
+// Helper sicuro per l'estrazione del dominio
+function getDomain(urlStr: string, domainFallback?: string): string {
+  if (domainFallback) return domainFallback
+  if (!urlStr || urlStr === '#') return 'github.com'
+  try {
+    return new URL(urlStr).hostname.replace('www.', '')
+  } catch {
+    return 'github.com'
+  }
+}
 
 // Estrazione sicura con normalizzazione al volo di link e autore
 const projectsList = computed(() => {
   const raw = responseData.value?.data || responseData.value?.stories || []
   return raw.map((project: any) => ({
     ...project,
-    // Estrazione stringa pulita dell'owner / autore
     author: typeof project.author === 'object' ? project.author?.username : (project.author || 'github_user'),
-    // Fallback sicuro per l'URL del progetto
     url: project.url || '#'
   }))
 })
 
-const hasMore = computed(() => responseData.value?.pagination?.hasMore || false)
+const pagination = computed(() => responseData.value?.pagination || {})
+const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || responseData.value?.pagination?.hasMore || false)
 
 // Funzioni specifiche della Vetrina Show (Voti e Formattazione tempo)
 const voteProject = (project: any) => {
@@ -48,7 +58,7 @@ function formatTime(dateStr: string | undefined): string {
   }
 }
 
-// 2. Recupero articoli interni in evidenza per la sezione Vault
+// 2. Recupero articoli in evidenza per il Vault
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
@@ -68,171 +78,130 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="show-page-container">
-    
-    <!-- HEADER SHOWCASE UNIFICATO -->
-    <div class="show-header">
-      <div class="header-text">
-        <div class="show-badge">
-          ⚡ DKP SHOWCASE • v2.5-GOLD
-        </div>
-        <h1 class="show-title">
-        🚀  Progetti & Repo <span class="highlight-text">Open Source</span>
-        </h1>
-        <p class="show-subtitle">
-          Le migliori repository GitHub di tendenza e i progetti creati dalla community, sincronizzati dal DKP Crawler. Vota i progetti e accumula XP!
-        </p>
-      </div>
-
-      <div class="header-action">
-        <NuxtLink to="/submit?type=show" class="submit-show-btn">
-          🚀 Invia Progetto (+30 XP)
-        </NuxtLink>
-      </div>
-    </div>
-
-    <!-- FEED SHOWCASE -->
-    <div v-if="pending" class="loading-state">
-      <span class="spinner">⚡</span> Caricamento showcase dal Neon Kernel DB...
-    </div>
-
-    <div v-else-if="projectsList.length > 0">
-      <div class="show-feed-list">
-        <article 
-          v-for="(project, index) in projectsList" 
-          :key="project.id || index" 
-          class="show-card"
-        >
-          <button 
-            @click="voteProject(project)" 
-            class="vote-btn" 
-            :class="{ voted: project.voted }"
-            title="Vota questo progetto (+5 XP)"
-          >
-            <span class="vote-icon">▲</span>
-            <span class="vote-count">{{ project.points || 1 }}</span>
-          </button>
-
-          <div class="show-info">
-            <div class="show-title-row">
-              <span class="show-index">{{ index + 1 }}.</span>
-              <a :href="project.url" target="_blank" rel="noopener noreferrer" class="show-project-title">
-                {{ project.title }}
-              </a>
-              <span v-if="project.domain || project.url" class="show-domain">
-                ({{ project.domain || new URL(project.url).hostname.replace('www.', '') }}) ↗
-              </span>
-            </div>
-
-            <div class="show-meta">
-              <span>👤 Owner: <strong class="author-tag">@{{ project.author }}</strong></span>
-              <span class="meta-dot">•</span>
-              <span class="xp-tag">⭐ +{{ project.xp_awarded || 30 }} XP</span>
-              <span class="meta-dot">•</span>
-              <span class="time-tag">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
-              <span class="meta-dot">•</span>
-              <span class="verify-tag">Verified da <strong>DKP Crawler</strong></span>
-            </div>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+      
+      <!-- HEADER SHOWCASE UNIFICATO -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl relative overflow-hidden">
+        <div class="flex flex-col gap-2 max-w-2xl">
+          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+              ⚡ DKP SHOWCASE • v2.5-GOLD
+            </span>
           </div>
-        </article>
-      </div>
+          <h1 class="text-3xl font-extrabold text-white tracking-tight">
+            🚀 Progetti &amp; Repo <span class="text-emerald-400">Open Source</span>
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+            Le migliori repository GitHub di tendenza e i progetti creati dalla community, sincronizzati dal DKP Crawler. Vota i progetti e accumula XP!
+          </p>
+        </div>
 
-      <!-- Tasto per la paginazione -->
-      <div v-if="hasMore" class="mt-6 flex justify-center">
-        <NuxtLink to="/show/2" class="more-btn">
-          Vedi altri progetti ➔
+        <NuxtLink to="/submit?type=show" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0 flex items-center gap-1.5">
+          <span>🚀</span> Invia Progetto (+30 XP)
         </NuxtLink>
       </div>
-    </div>
 
-    <!-- EMPTY STATE FALLBACK -->
-    <div v-else class="empty-state">
-      <p>📭 Nessun progetto presente nella vetrina Showcase.</p>
-      <div class="empty-actions">
-        <NuxtLink to="/admin/crawler" class="admin-link">🤖 Avvia Crawler GitHub Trending</NuxtLink>
-        <span class="sep">•</span>
-        <NuxtLink to="/submit?type=show" class="submit-inline-link">Invia il tuo primo progetto!</NuxtLink>
+      <!-- FEED SHOWCASE -->
+      <div v-if="pending" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl text-emerald-400 font-mono text-xs animate-pulse">
+        ⚡ Caricamento showcase dal Neon Kernel DB...
       </div>
-    </div>
 
-    <!-- 🟢 SEZIONE AGGIUNTIVA: ARTICOLI CONSIGLIATI DAL VAULT -->
-    <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
-      <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
-      <div class="recommended-grid">
-        <NuxtLink 
-          v-for="art in featuredArticles" 
-          :key="art.id" 
-          :to="`/blog/${art.slug || art.id}`"
-          class="recommended-card"
-        >
-          <span class="rec-cat">{{ art.categoryName || art.category || 'Tech' }}</span>
-          <h4>{{ art.title }}</h4>
-          <p>{{ art.excerpt || art.summary || 'Approfondimento tecnico verificato.' }}</p>
-          <span class="rec-read">Leggi articolo ➔</span>
-        </NuxtLink>
+      <div v-else-if="projectsList.length > 0" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
+          <article 
+            v-for="(project, index) in projectsList" 
+            :key="project.id || index" 
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
+          >
+            <!-- VOTING WIDGET -->
+            <button 
+              @click="voteProject(project)" 
+              :class="['flex flex-col items-center justify-center p-2.5 rounded-xl border font-mono text-xs cursor-pointer min-w-[46px] transition-all shrink-0', project.voted ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#020420] border-slate-800 text-sky-400 hover:border-emerald-500/50 hover:text-emerald-400']"
+              title="Vota questo progetto (+5 XP)"
+            >
+              <span class="text-[10px] leading-none">▲</span>
+              <span class="font-extrabold mt-1 text-xs">{{ project.points || 1 }}</span>
+            </button>
+
+            <!-- CONTENUTO SHOW -->
+            <div class="flex flex-col gap-1.5 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="text-xs font-mono font-bold text-slate-500">{{ index + 1 }}.</span>
+                <a :href="project.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                  {{ project.title }}
+                </a>
+                <span class="text-xs font-mono text-sky-400/80">
+                  ({{ getDomain(project.url, project.domain) }}) ↗
+                </span>
+              </div>
+
+              <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span>👤 Owner: <strong class="text-emerald-400">@{{ project.author }}</strong></span>
+                <span>•</span>
+                <span class="text-amber-400 font-bold">⭐ +{{ project.xp_awarded || 30 }} XP</span>
+                <span>•</span>
+                <span class="text-slate-400">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
+                <span>•</span>
+                <span class="text-purple-400">Verified da <strong>DKP Crawler</strong></span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- BOTTONE PAGINAZIONE -->
+        <div v-if="hasMore" class="mt-4 flex justify-center">
+          <NuxtLink to="/show/2" class="px-6 py-2.5 bg-[#090d16] border border-slate-800 text-emerald-400 font-mono font-bold text-xs rounded-xl hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all">
+            Vedi altri progetti ➔
+          </NuxtLink>
+        </div>
       </div>
-	  <DkpNodesHomeWidget />
-    </div>
 
-    <!-- 🟢 BANNER DKP ADS STRIP -->
-    <DkpAdStrip categoryTag="DKP SHOWCASE SPONSORED FEED" />
+      <!-- EMPTY STATE FALLBACK -->
+      <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
+        <p>📭 Nessun progetto presente nella vetrina Showcase.</p>
+        <div class="flex items-center gap-3 text-xs">
+          <NuxtLink to="/admin/crawler" class="text-sky-400 underline font-bold">🤖 Avvia Crawler GitHub Trending</NuxtLink>
+          <span class="text-slate-600">•</span>
+          <NuxtLink to="/submit?type=show" class="text-emerald-400 underline font-bold">Invia il tuo primo progetto!</NuxtLink>
+        </div>
+      </div>
+
+      <!-- 🟢 SEZIONE VAULT (Consigliati) -->
+      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+          <span>🔗</span> Approfondimenti dal Vault
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NuxtLink 
+            v-for="art in featuredArticles" 
+            :key="art.id" 
+            :to="`/blog/${art.slug || art.id}`"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+          >
+            <div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                {{ art.categoryName || art.category || 'Tech' }}
+              </span>
+              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                {{ art.title }}
+              </h4>
+              <p class="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+                {{ art.excerpt || art.summary || 'Approfondimento tecnico verificato.' }}
+              </p>
+            </div>
+            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+              Leggi articolo ➔
+            </span>
+          </NuxtLink>
+        </div>
+
+        <DkpNodesHomeWidget />
+      </div>
+
+      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <DkpAdStrip categoryTag="DKP SHOWCASE SPONSORED FEED" />
+    </div>
   </div>
 </template>
-
-<style scoped>
-.show-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
-
-.show-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
-.show-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
-.show-title { font-size: 1.80rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
-.highlight-text { color: #00dc82; }
-.show-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
-
-.submit-show-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
-.submit-show-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
-
-.show-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
-.show-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
-.show-card:hover { border-color: rgba(0, 220, 130, 0.4); }
-
-.vote-btn { background: #020420; border: 1px solid #1e293b; color: #94a3b8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 44px; transition: all 0.2s; }
-.vote-btn:hover { border-color: #00dc82; color: #00dc82; }
-.vote-btn.voted { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; color: #00dc82; }
-.vote-icon { font-size: 0.7rem; }
-.vote-count { font-size: 0.82rem; font-weight: 800; }
-
-.show-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-.show-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.show-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
-.show-project-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
-.show-project-title:hover { color: #00dc82; text-decoration: underline; }
-.show-domain { font-size: 0.8rem; color: #38bdf8; }
-
-.show-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.author-tag { color: #00dc82; }
-.xp-tag { color: #f59e0b; font-weight: 800; }
-.verify-tag { color: #a78bfa; }
-.meta-dot { color: #334155; }
-
-.loading-state, .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
-.empty-actions { margin-top: 0.8rem; display: flex; justify-content: center; gap: 0.8rem; align-items: center; }
-.admin-link { color: #38bdf8; text-decoration: underline; font-weight: 700; }
-.submit-inline-link { color: #00dc82; text-decoration: underline; font-weight: 700; }
-.sep { color: #334155; }
-
-.mt-6 { margin-top: 1.5rem; }
-.flex { display: flex; }
-.justify-center { justify-content: center; }
-.more-btn { background: #090d16; color: #00dc82; border: 1px solid #1e293b; padding: 0.6rem 1.5rem; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.2s; }
-.more-btn:hover { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
-
-.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
-.recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
-.recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
-.recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
-.recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }
-.rec-cat { font-size: 0.65rem; font-weight: 800; color: #00dc82; text-transform: uppercase; }
-.recommended-card h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
-.recommended-card p { color: #94a3b8; font-size: 0.8rem; margin: 0; line-height: 1.4; flex-grow: 1; }
-.rec-read { color: #38bdf8; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; }
-</style>

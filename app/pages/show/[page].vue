@@ -1,6 +1,6 @@
 <!-- app/pages/show/[page].vue -->
-<script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
@@ -8,26 +8,39 @@ import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 const route = useRoute()
 const router = useRouter()
 
-const currentPage = computed(() => Math.max(1, parseInt(route.params.page) || 1))
+const currentPage = computed(() => Math.max(1, parseInt(route.params.page as string) || 1))
 const itemsPerPage = 15
 
-// Puntiamo all'endpoint dedicato /api/show con paginazione
+// Fetch con chiave unica per la paginazione
 const { data: responseData, pending, error } = await useFetch('/api/show', {
+  key: `show-page-${currentPage.value}`,
   query: { page: currentPage, limit: itemsPerPage },
   watch: [currentPage]
 })
 
-// Estrazione dati sicura con normalizzazione al volo di autore e link
+function getDomain(urlStr: string, domainFallback?: string): string {
+  if (domainFallback) return domainFallback
+  if (!urlStr || urlStr === '#') return 'github.com'
+  try {
+    return new URL(urlStr).hostname.replace('www.', '')
+  } catch {
+    return 'github.com'
+  }
+}
+
+// Normalizzazione progetti
 const projectsList = computed(() => {
   const raw = responseData.value?.data || responseData.value?.stories || []
-  return raw.map((project) => ({
+  return raw.map((project: any) => ({
     ...project,
     author: typeof project.author === 'object' ? project.author?.username : (project.author || 'github_user'),
     url: project.url || '#'
   }))
 })
 
-const hasMore = computed(() => responseData.value?.pagination?.hasMore || false)
+const pagination = computed(() => responseData.value?.pagination || {})
+const totalPages = computed(() => pagination.value?.totalPages || 1)
+const hasMore = computed(() => (currentPage.value < totalPages.value) || responseData.value?.pagination?.hasMore || false)
 
 function handleNextPage() {
   if (!hasMore.value || pending.value) return
@@ -36,10 +49,14 @@ function handleNextPage() {
 
 function handlePrevPage() {
   if (currentPage.value <= 1 || pending.value) return
-  router.push(`/show/${currentPage.value - 1}`)
+  if (currentPage.value === 2) {
+    router.push('/show')
+  } else {
+    router.push(`/show/${currentPage.value - 1}`)
+  }
 }
 
-const voteProject = (project) => {
+const voteProject = (project: any) => {
   if (project.voted) {
     project.points = (project.points || 1) - 1
     project.voted = false
@@ -49,7 +66,7 @@ const voteProject = (project) => {
   }
 }
 
-function formatTime(dateStr) {
+function formatTime(dateStr: string | undefined): string {
   if (!dateStr) return 'di recente'
   try {
     const date = new Date(dateStr)
@@ -63,11 +80,11 @@ function formatTime(dateStr) {
   }
 }
 
-const featuredArticles = ref([])
+const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const res = await $fetch('/api/blog/posts')
+    const res: any = await $fetch('/api/blog/posts')
     const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
     featuredArticles.value = raw.slice(0, 2)
   } catch (err) {
@@ -75,155 +92,126 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
-  responseData.value = null
-})
-
 useSeoMeta({
   title: `Show DKP - Pagina ${currentPage.value} - DevKernelPulse`,
-  description: 'Scopri la pagina ' + currentPage.value + ' della vetrina dei migliori progetti Open Source.'
+  description: `Scopri la pagina ${currentPage.value} della vetrina dei migliori progetti Open Source.`
 })
 </script>
 
 <template>
-  <div class="show-page-container">
-    <div class="show-header compact">
-      <div class="header-text">
-        <h1 class="show-title">
-          Progetti & Repo <span class="highlight-text">Open Source</span>
-        </h1>
-        <p class="show-subtitle">
-          Vetrina DKP — Stai visualizzando la <strong>Pagina {{ currentPage }}</strong>.
-        </p>
-      </div>
-      <div class="header-action">
-        <NuxtLink to="/submit?type=show" class="submit-show-btn">
-          🚀 Invia Progetto
-        </NuxtLink>
-      </div>
-    </div>
-
-    <div v-if="error" class="error-msg">Errore nel caricamento dei progetti.</div>
-    <div v-if="pending" class="loading-state">
-      <span class="spinner">⚡</span> Sincronizzazione pagina {{ currentPage }} in corso...
-    </div>
-
-    <div v-else-if="projectsList.length > 0">
-      <div class="show-feed-list">
-        <article 
-          v-for="(project, index) in projectsList" 
-          :key="project.id || index" 
-          class="show-card"
-        >
-          <button 
-            @click="voteProject(project)" 
-            class="vote-btn" 
-            :class="{ voted: project.voted }"
-          >
-            <span class="vote-icon">▲</span>
-            <span class="vote-count">{{ project.points || 1 }}</span>
-          </button>
-
-          <div class="show-info">
-            <div class="show-title-row">
-              <span class="show-index">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
-              <a :href="project.url" target="_blank" rel="noopener noreferrer" class="show-project-title">
-                {{ project.title }}
-              </a>
-              <span v-if="project.domain || project.url" class="show-domain">
-                ({{ project.domain || new URL(project.url).hostname.replace('www.', '') }}) ↗
-              </span>
-            </div>
-
-            <div class="show-meta">
-              <span>👤 Owner: <strong class="author-tag">@{{ project.author }}</strong></span>
-              <span class="meta-dot">•</span>
-              <span class="time-tag">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
-              <span class="meta-dot">•</span>
-              <span class="verify-tag">Verified da <strong>DKP Crawler</strong></span>
-            </div>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+      
+      <!-- HEADER COMPATTO -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-xl flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
+              ⚡ DKP SHOWCASE • v2.5-GOLD
+            </span>
           </div>
-        </article>
+          <h1 class="text-2xl font-bold text-white">🚀 Progetti &amp; Repo <span class="text-emerald-400">Open Source</span></h1>
+          <p class="text-xs text-slate-400 mt-1">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong>.</p>
+        </div>
+
+        <NuxtLink to="/show" class="text-xs font-mono font-bold text-sky-400 hover:underline">← Torna alla prima pagina</NuxtLink>
       </div>
 
-      <div class="pagination-nav">
-        <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="nav-btn prev">
-          &lt; Pagina Precedente
-        </button>
-        <span class="page-indicator">Pag {{ currentPage }}</span>
-        <button @click="handleNextPage" :disabled="!hasMore || pending" class="nav-btn next">
-          Pagina Successiva &gt;
-        </button>
+      <div v-if="error" class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-xl text-red-400 font-mono text-xs">
+        Errore nel caricamento dei progetti.
       </div>
-    </div>
 
-    <div v-else class="empty-state">
-      <p>📭 Nessun'altro progetto trovato in questa pagina.</p>
-      <NuxtLink to="/show" class="admin-link">Torna alla prima pagina</NuxtLink>
-    </div>
-
-    <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
-      <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
-      <div class="recommended-grid">
-        <NuxtLink 
-          v-for="art in featuredArticles" 
-          :key="art.id" 
-          :to="`/blog/${art.slug || art.id}`"
-          class="recommended-card"
-        >
-          <span class="rec-cat">{{ art.categoryName || art.category || 'Tech' }}</span>
-          <h4>{{ art.title }}</h4>
-          <span class="rec-read">Leggi articolo ➔</span>
-        </NuxtLink>
+      <div v-else-if="pending" class="text-center py-12 text-emerald-400 font-mono text-xs animate-pulse">
+        ⚡ Sincronizzazione pagina {{ currentPage }} in corso...
       </div>
-	    <DkpNodesHomeWidget />
-    </div>
 
-    <DkpAdStrip categoryTag="DKP SHOWCASE SPONSORED FEED" />
+      <!-- LISTA PROGETTI SHOWCASE -->
+      <div v-else-if="projectsList.length > 0" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
+          <article 
+            v-for="(project, index) in projectsList" 
+            :key="project.id || index" 
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
+          >
+            <button 
+              @click="voteProject(project)" 
+              :class="['flex flex-col items-center justify-center p-2.5 rounded-xl border font-mono text-xs cursor-pointer min-w-[46px] transition-all shrink-0', project.voted ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#020420] border-slate-800 text-sky-400 hover:border-emerald-500/50 hover:text-emerald-400']"
+            >
+              <span class="text-[10px] leading-none">▲</span>
+              <span class="font-extrabold mt-1 text-xs">{{ project.points || 1 }}</span>
+            </button>
+
+            <div class="flex flex-col gap-1.5 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
+                <span class="text-xs font-mono font-bold text-slate-500">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
+                <a :href="project.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                  {{ project.title }}
+                </a>
+                <span class="text-xs font-mono text-sky-400/80">
+                  ({{ getDomain(project.url, project.domain) }}) ↗
+                </span>
+              </div>
+
+              <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span>👤 Owner: <strong class="text-emerald-400">@{{ project.author }}</strong></span>
+                <span>•</span>
+                <span class="text-slate-400">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
+                <span>•</span>
+                <span class="text-purple-400">Verified da <strong>DKP Crawler</strong></span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- NAVIGAZIONE PAGINAZIONE -->
+        <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
+          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            ← Precedente
+          </button>
+          <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
+          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+            Successiva →
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
+        <p>📭 Nessun'altro progetto trovato in questa pagina.</p>
+        <NuxtLink to="/show" class="text-sky-400 underline font-bold">Torna alla prima pagina</NuxtLink>
+      </div>
+
+      <!-- 🟢 SEZIONE VAULT -->
+      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+          <span>🔗</span> Approfondimenti dal Vault
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NuxtLink 
+            v-for="art in featuredArticles" 
+            :key="art.id" 
+            :to="`/blog/${art.slug || art.id}`"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+          >
+            <div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                {{ art.categoryName || art.category || 'Tech' }}
+              </span>
+              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+                {{ art.title }}
+              </h4>
+            </div>
+            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+              Leggi articolo ➔
+            </span>
+          </NuxtLink>
+        </div>
+
+        <DkpNodesHomeWidget />
+      </div>
+
+      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <DkpAdStrip categoryTag="DKP SHOWCASE SPONSORED FEED" />
+    </div>
   </div>
 </template>
-
-<style scoped>
-.show-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
-.show-header.compact { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.show-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.2rem 0; color: #ffffff; }
-.highlight-text { color: #00dc82; }
-.show-subtitle { font-size: 0.85rem; color: #94a3b8; margin: 0; }
-
-.submit-show-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
-.submit-show-btn:hover { background: #00dc82; color: #020420; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.4); }
-
-.show-feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
-.show-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; display: flex; align-items: center; gap: 1rem; transition: border-color 0.2s ease; }
-.show-card:hover { border-color: rgba(0, 220, 130, 0.4); }
-.vote-btn { background: #020420; border: 1px solid #1e293b; color: #94a3b8; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; align-items: center; cursor: pointer; min-width: 44px; transition: all 0.2s; }
-.vote-btn:hover { border-color: #00dc82; color: #00dc82; }
-.vote-btn.voted { background: rgba(0, 220, 130, 0.15); border-color: #00dc82; color: #00dc82; }
-.vote-icon { font-size: 0.7rem; }
-.vote-count { font-size: 0.82rem; font-weight: 800; }
-.show-info { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-.show-title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.show-index { font-size: 0.88rem; color: #64748b; font-weight: 800; }
-.show-project-title { font-size: 1.00rem; font-weight: 400; color: #ffffff; text-decoration: none; }
-.show-project-title:hover { color: #00dc82; text-decoration: underline; }
-.show-domain { font-size: 0.8rem; color: #38bdf8; }
-.show-meta { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.author-tag { color: #00dc82; }
-.verify-tag { color: #a78bfa; }
-.meta-dot { color: #334155; }
-.pagination-nav { margin-top: 2.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; padding-top: 1rem; border-top: 1px solid #1e293b; }
-.nav-btn { background: #090d16; border: 1px solid #1e293b; color: #00dc82; font-weight: 800; cursor: pointer; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px; transition: all 0.2s; }
-.nav-btn:hover:not(:disabled) { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
-.nav-btn:disabled { color: #475569; border-color: #1e293b; cursor: not-allowed; background: transparent; }
-.page-indicator { font-size: 0.9rem; font-weight: 800; color: #94a3b8; font-family: monospace; }
-.loading-state, .empty-state, .error-msg { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
-.admin-link { color: #38bdf8; text-decoration: underline; font-weight: 700; margin-top: 1rem; display: inline-block; }
-.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
-.recommended-title { font-size: 1.2rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
-.recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
-.recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
-.recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }
-.rec-cat { font-size: 0.65rem; font-weight: 800; color: #00dc82; text-transform: uppercase; }
-.recommended-card h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
-.rec-read { color: #38bdf8; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; }
-</style>

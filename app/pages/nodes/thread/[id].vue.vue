@@ -36,7 +36,7 @@ const { data: commentsRes, pending: loadingComments, refresh: refreshComments } 
 
 const rawComments = computed(() => commentsRes.value?.comments || [])
 
-// 🟢 Recupero dinamico articoli in evidenza dal Vault
+// Recupero dinamico articoli dal Vault
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
@@ -112,7 +112,7 @@ async function submitComment(parentId: number | null = null) {
     }
   } catch (err: any) {
     alert(err?.data?.statusMessage || 'Errore invio commento.')
-  } fontally {
+  } finally {
     isSubmitting.value = false
   }
 }
@@ -137,7 +137,6 @@ async function vote(postIdTarget: number | null, commentIdTarget: number | null,
   }
 }
 
-// Dynamic SEO Head
 useHead({
   title: computed(() => thread.value ? `${thread.value.title} - DKP Nodes` : 'Discussione DKP Nodes')
 })
@@ -152,10 +151,10 @@ useHead({
         ← Torna a DKP Nodes
       </NuxtLink>
 
-      <!-- GRID A 2 COLONNE: MAIN CONTENT (2) + SIDEBAR STICKY (1) -->
+      <!-- GRID A 2 COLONNE -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
-        <!-- COLONNA PRINCIPALE: THREAD, COMMENTI & FLUSSO DKP -->
+        <!-- COLONNA PRINCIPALE -->
         <div class="lg:col-span-2 flex flex-col gap-6">
           
           <!-- THREAD MAIN CONTAINER -->
@@ -281,7 +280,7 @@ useHead({
             </div>
           </section>
 
-          <!-- 🟢 1. THREADS CORRELATI AL CENTRO -->
+          <!-- DISCUSSIONI CORRELATE -->
           <div class="pt-6 border-t border-slate-800/80">
             <DKPRelatedThreads 
               v-if="thread" 
@@ -290,7 +289,7 @@ useHead({
             />
           </div>
 
-          <!-- 🟢 2. APPROFONDIMENTI DAL VAULT AL CENTRO -->
+          <!-- APPROFONDIMENTI DAL VAULT -->
           <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800/80">
             <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2 font-mono">
               <span>🔗</span> Approfondimenti dal Vault
@@ -317,7 +316,7 @@ useHead({
             </div>
           </div>
 
-          <!-- 🟢 3. HACKER NEWS AI STREAM AL CENTRO -->
+          <!-- HACKER NEWS AI STREAM -->
           <div class="pt-6 border-t border-slate-800/80">
             <DkpNodesHomeWidget />
           </div>
@@ -326,7 +325,7 @@ useHead({
 
         </div>
 
-        <!-- COLONNA SIDEBAR DESTRA -->
+        <!-- SIDEBAR DESTRA -->
         <aside class="lg:col-span-1 w-full h-full">
           <div class="sticky top-24 flex flex-col gap-6">
             <div class="bg-[#090d16] border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col items-center">
