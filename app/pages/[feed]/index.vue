@@ -1,196 +1,193 @@
 <!-- app/pages/[feed]/index.vue -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
-useDkpSeo({
-  title: 'DKP Nodes — Hacker News AI Realtime Stream v2.5',
-  description: 'Feed in tempo reale da Hacker News filtrato e tradotto da Trinity AI e validato dal punteggio di rilevanza Sentinel AI.'
+const route = useRoute()
+// Estrae dinamicamente il parametro dalla rotta (es. 'feed', 'newest', 'top')
+const currentFeed = computed(() => (route.params.feed as string) || 'feed')
+
+// Fetch dal feed crawler del Neon DB (15 notizie per pagina)
+const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
+  query: { type: currentFeed.value, page: 1, limit: 15 }
 })
 
-const searchQuery = ref('')
-const selectedCategory = ref('')
-const minTechScore = ref(0)
-const currentPage = ref(1)
-
-const { data: response, pending, refresh } = await useFetch('/api/news', {
-  query: {
-    page: currentPage,
-    limit: 12,
-    q: searchQuery,
-    minScore: minTechScore,
-    category: selectedCategory
-  },
-  watch: [currentPage, searchQuery, minTechScore, selectedCategory]
+// Normalizzazione e sanitizzazione
+const feedList = computed(() => {
+  const raw = responseData.value?.stories || responseData.value?.data || []
+  return raw.map((item: any) => ({
+    ...item,
+    author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
+    url: item.url || `/item/${item.id}`,
+    domain: item.domain || (item.url && !item.url.startsWith('/') ? new URL(item.url).hostname.replace('www.', '') : 'devkernelpulse.org'),
+    points: item.points || 1,
+    comments_count: item.comments_count || item.commentsCount || 0,
+    xp_awarded: item.xp_awarded || 15
+  }))
 })
 
-const stories = computed(() => response.value?.data || [])
-const meta = computed(() => response.value?.meta || { totalPages: 1, total: 0 })
+const pagination = computed(() => responseData.value?.pagination || {})
+const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || pagination.value?.totalItems > 15)
 
-function getScoreBadgeColor(score: number) {
-  if (score >= 80) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-  if (score >= 50) return 'border-sky-500/40 bg-sky-500/10 text-sky-400'
-  return 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-}
+// Articoli consigliati dal Vault
+const featuredArticles = ref<any[]>([])
 
-function parseTags(tags: any): string[] {
-  if (Array.isArray(tags)) return tags
-  if (typeof tags === 'string') {
-    return tags.replace(/[{}]/g, '').split(',').map(t => t.trim().replace(/^"/, '').replace(/"$/, '')).filter(Boolean)
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts')
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    featuredArticles.value = raw.slice(0, 2)
+  } catch (err) {
+    console.error('Errore recupero articoli Vault:', err)
   }
-  return []
-}
+})
+
+useHead({
+  title: `DKP Crawler Feed (${currentFeed.value}) - v2.5-GOLD`,
+  meta: [
+    { name: 'description', content: 'Ultime notizie e articoli dal web raccolti in tempo reale in ordine cronologico.' }
+  ]
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
-    <div class="max-w-6xl mx-auto flex flex-col gap-8">
-      
-      <!-- HERO HEADER -->
-      <header class="text-center max-w-3xl mx-auto flex flex-col items-center gap-3">
-        <div class="inline-flex items-center gap-2 bg-[#090d16] border border-emerald-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">
-            DKP Nodes · Realtime HN Crawler Active
-          </span>
+  <div class="feed-page-container">
+    
+    <div class="feed-header">
+      <div class="header-text">
+        <div class="feed-badge">
+          ⚡ DKP TECH NEWS FEED • v2.5-GOLD
         </div>
-
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
-          Hacker News <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">AI Stream</span>
+        <h1 class="feed-title">
+          🌍 Tech News <span class="highlight-text capitalize">{{ currentFeed }}</span>
         </h1>
-        <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
-          Notizie tecnologiche in tempo reale arricchite con riassunti in italiano di Trinity AI e filtrate da Sentinel AI Score.
+        <p class="feed-subtitle">
+          Ultime notizie e articoli dal web raccolti dal crawler in ordine cronologico.
         </p>
-      </header>
-
-      <!-- BARRA DI RICERCA & FILTRI -->
-      <div class="bg-[#090d16] border border-slate-800 rounded-xl p-4 sm:p-6 flex flex-col md:flex-row gap-4 items-center justify-between shadow-xl">
-        
-        <!-- Search Input -->
-        <div class="relative w-full md:w-1/2">
-          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Cerca per tecnologia o parola chiave (es. Rust, Docker, AI)..." 
-            class="w-full bg-[#020420] border border-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-            @input="currentPage = 1"
-          />
-        </div>
-
-        <!-- Filter Controls -->
-        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-          
-          <!-- Filter Category -->
-          <button 
-            @click="selectedCategory = ''; currentPage = 1"
-            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all border', !selectedCategory ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
-          >
-            🔥 Tutti
-          </button>
-          <button 
-            @click="selectedCategory = 'Show HN'; currentPage = 1"
-            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all border', selectedCategory === 'Show HN' ? 'bg-sky-500/20 text-sky-400 border-sky-500/40' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
-          >
-            🚀 Show HN
-          </button>
-
-          <!-- Min Tech Score -->
-          <div class="flex items-center gap-2 bg-[#020420] border border-slate-800 px-3 py-1.5 rounded-lg">
-            <span class="text-xs font-mono text-slate-400">Score &ge; {{ minTechScore }}</span>
-            <input 
-              v-model.number="minTechScore" 
-              type="range" 
-              min="0" 
-              max="90" 
-              step="10" 
-              class="w-20 accent-emerald-400 cursor-pointer"
-              @change="currentPage = 1"
-            />
-          </div>
-        </div>
       </div>
 
-      <!-- FEED GRID -->
-      <div v-if="pending" class="text-center py-20 text-emerald-400 font-mono animate-pulse">
-        ⚡ Ingestione notizie dal Vault DKP Nodes in corso...
+      <div class="header-action">
+        <NuxtLink to="/submit" class="submit-btn">
+          ⚡ Invia Post (+15 XP)
+        </NuxtLink>
       </div>
+    </div>
 
-      <div v-else-if="stories.length === 0" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-xl">
-        <div class="text-4xl mb-3">📡</div>
-        <h3 class="text-lg font-bold text-white">Nessuna notizia trovata</h3>
-        <p class="text-slate-400 text-xs mt-1">Prova a resettare i filtri di ricerca o attendere la prossima cron job.</p>
-        <button @click="searchQuery = ''; selectedCategory = ''; minTechScore = 0" class="mt-4 px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-lg hover:bg-emerald-400 transition-all">
-          Ripristina Filtri
-        </button>
-      </div>
+    <div v-if="pending" class="loading-state">
+      <span class="spinner">⚡</span> Caricamento Tech News dal DB Neon...
+    </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-else-if="feedList.length > 0">
+      <div class="feed-list">
         <article 
-          v-for="item in stories" 
-          :key="item.id"
-          class="bg-[#090d16] border border-slate-800/80 hover:border-emerald-500/40 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-lg group"
+          v-for="(item, index) in feedList" 
+          :key="item.id || index" 
+          class="feed-card"
         >
-          <div>
-            <!-- Header Badges -->
-            <div class="flex items-center justify-between mb-3">
-              <span :class="['px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border', getScoreBadgeColor(item.tech_score)]">
-                🛡️ Sentinel Score: {{ item.tech_score }}
-              </span>
-              <span class="text-xs font-mono text-slate-400">
-                👍 {{ item.hn_points || 0 }} pts
-              </span>
-            </div>
-
-            <!-- Title -->
-            <h2 class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug mb-2">
-              <NuxtLink :to="`/news/${item.slug}`">
+          <div class="card-body">
+            <div class="title-row">
+              <span class="item-index">{{ index + 1 }}.</span>
+              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="item-title">
                 {{ item.title }}
-              </NuxtLink>
-            </h2>
-
-            <!-- AI Summary Preview -->
-            <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">
-              {{ item.summary_it || 'In attesa di sintesi Trinity AI...' }}
-            </p>
-          </div>
-
-          <!-- Footer Metadata -->
-          <div class="pt-3 border-t border-slate-800/60 flex flex-col gap-3">
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="tag in parseTags(item.tags)" :key="tag" class="text-[10px] font-mono bg-[#020420] text-sky-400 border border-slate-800 px-2 py-0.5 rounded">
-                #{{ tag }}
-              </span>
+              </a>
+              <span v-if="item.domain" class="item-domain">({{ item.domain }})</span>
             </div>
 
-            <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
-              <span>by {{ item.hn_by || 'hn' }}</span>
-              <NuxtLink :to="`/news/${item.slug}`" class="text-emerald-400 font-bold hover:underline">
-                Leggi scheda ↗
+            <div class="item-meta">
+              <span class="source-pill">📡 {{ item.domain }}</span>
+              <span class="meta-dot">•</span>
+              <span class="author-tag">👤 @{{ item.author }}</span>
+              <span class="meta-dot">•</span>
+              <span class="points-tag">▲ {{ item.points }} pts</span>
+              <span class="meta-dot">•</span>
+              <span class="xp-tag">⭐ +{{ item.xp_awarded }} XP</span>
+              <span class="meta-dot">•</span>
+              <NuxtLink :to="`/item/${item.id}`" class="comments-link">
+                💬 {{ item.comments_count }} commenti
               </NuxtLink>
             </div>
           </div>
         </article>
       </div>
-
-      <!-- PAGINAZIONE -->
-      <div v-if="meta.totalPages > 1" class="flex justify-center items-center gap-3 pt-6 border-t border-slate-800">
-        <button 
-          :disabled="currentPage === 1"
-          @click="currentPage--"
-          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all"
-        >
-          ← Precedente
-        </button>
-        <span class="text-xs font-mono text-slate-400">Pagina {{ currentPage }} di {{ meta.totalPages }}</span>
-        <button 
-          :disabled="currentPage === meta.totalPages"
-          @click="currentPage++"
-          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all"
-        >
-          Successiva →
-        </button>
+      
+      <!-- LINK DI PAGINAZIONE CORRETTO: Punterà a /feed/2, /newest/2, ecc. -->
+      <div v-if="hasMore" class="mt-6 flex justify-center">
+        <NuxtLink :to="`/${currentFeed}/2`" class="more-btn">
+          Vedi altre notizie ➔
+        </NuxtLink>
       </div>
-
     </div>
+
+    <div v-else class="empty-state">
+      <p>📭 Nessuna notizia presente nel Tech News Feed.</p>
+    </div>
+
+    <div v-if="featuredArticles.length > 0" class="vault-recommended-section">
+      <h3 class="recommended-title">🔗 Approfondimenti dal Vault</h3>
+      <div class="recommended-grid">
+        <NuxtLink 
+          v-for="art in featuredArticles" 
+          :key="art.id" 
+          :to="`/blog/${art.slug || art.id}`"
+          class="recommended-card"
+        >
+          <span class="rec-cat">{{ art.categoryName || art.category || 'Tech' }}</span>
+          <h4>{{ art.title }}</h4>
+          <span class="rec-read">Leggi articolo ➔</span>
+        </NuxtLink>
+      </div>
+      
+      <div class="mt-8">
+        <DkpNodesHomeWidget />
+      </div>
+    </div>
+
+    <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
   </div>
 </template>
+
+<style scoped>
+.capitalize { text-transform: capitalize; }
+.feed-page-container { max-width: 1000px; margin: 1.5rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f8fafc; }
+.feed-header { background: rgba(9, 13, 22, 0.85); backdrop-filter: blur(16px); border: 1px solid #1e293b; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.feed-badge { display: inline-block; background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; padding: 0.25rem 0.6rem; border-radius: 6px; margin-bottom: 0.6rem; }
+.feed-title { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.4rem 0; color: #ffffff; }
+.highlight-text { color: #00dc82; }
+.feed-subtitle { font-size: 0.88rem; color: #94a3b8; margin: 0; max-width: 650px; line-height: 1.5; }
+.submit-btn { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.4); font-weight: 700; font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s ease; }
+.submit-btn:hover { background: #00dc82; color: #020420; }
+.feed-list { display: flex; flex-direction: column; gap: 0.8rem; }
+.feed-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 12px; padding: 1.1rem 1.3rem; transition: border-color 0.2s ease; }
+.feed-card:hover { border-color: rgba(0, 220, 130, 0.4); }
+.card-body { display: flex; flex-direction: column; gap: 0.4rem; }
+.title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.item-index { font-size: 0.9rem; color: #00dc82; font-weight: 900; }
+.item-title { font-size: 1.0rem; font-weight: 400; color: #ffffff; text-decoration: none; }
+.item-title:hover { color: #38bdf8; text-decoration: underline; }
+.item-domain { font-size: 0.82rem; color: #64748b; font-weight: 500; }
+.item-meta { font-size: 0.78rem; color: #94a3b8; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.source-pill { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.75rem; }
+.author-tag { color: #a78bfa; font-weight: 600; }
+.points-tag { color: #f59e0b; font-weight: 800; }
+.xp-tag { color: #00dc82; font-weight: 800; }
+.comments-link { color: #38bdf8; text-decoration: none; font-weight: 700; }
+.comments-link:hover { text-decoration: underline; color: #00dc82; }
+.meta-dot { color: #334155; }
+.mt-6 { margin-top: 1.5rem; }
+.flex { display: flex; }
+.justify-center { justify-content: center; }
+.more-btn { background: #090d16; color: #00dc82; border: 1px solid #1e293b; padding: 0.6rem 1.5rem; border-radius: 8px; font-weight: bold; text-decoration: none; transition: all 0.2s; }
+.more-btn:hover { border-color: #00dc82; background: rgba(0, 220, 130, 0.1); }
+.loading-state, .empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; background: #060a12; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 2rem; }
+.vault-recommended-section { margin: 3rem 0; padding-top: 2rem; border-top: 1px solid #1e293b; }
+.recommended-title { font-size: 1.0rem; font-weight: 800; color: #ffffff; margin-bottom: 1rem; }
+.recommended-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.recommended-card { background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; text-decoration: none; display: flex; flex-direction: column; gap: 0.5rem; transition: transform 0.2s, border-color 0.2s; }
+.recommended-card:hover { transform: translateY(-2px); border-color: #00dc82; }
+.rec-cat { font-size: 0.65rem; font-weight: 800; color: #00dc82; text-transform: uppercase; }
+.recommended-card h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin: 0; line-height: 1.3; }
+.rec-read { color: #38bdf8; font-size: 0.75rem; font-weight: 700; margin-top: 0.5rem; }
+.mt-8 { margin-top: 2rem; }
+</style>

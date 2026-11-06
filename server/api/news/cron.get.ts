@@ -1,9 +1,9 @@
 // server/api/news/cron.get.ts
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { sql } from 'drizzle-orm'
-import { ingestHnFeed } from '~/server/utils/hnFetcher'
-import { processUnprocessedStories } from '~/server/utils/hnAiPipeline'
-import { getDb } from '~/server/utils/db'
+import { ingestHnFeed } from '~~/server/utils/hnFetcher'
+import { processUnprocessedStories } from '~~/server/utils/hnAiPipeline'
+import { getDb } from '~~/server/utils/db'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
