@@ -8,9 +8,9 @@ useDkpSeo({
   description: 'Infrastruttura per sviluppatori, strumenti di sicurezza notarizzati e newsroom AI in tempo reale da Hacker News.'
 })
 
-// 1. Recupera i 6 articoli migliori dal motore DKP Nodes
+// 1. Recupera gli ultimi 6 articoli dal motore DKP Nodes senza filtri di score restrittivi
 const { data: newsRes, pending: newsPending } = await useFetch('/api/news', {
-  query: { limit: 6, minScore: 40 }
+  query: { limit: 6 }
 })
 
 const feedStories = computed(() => newsRes.value?.data || [])
