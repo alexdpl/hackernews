@@ -126,7 +126,7 @@ function scrollToSection(id: string) {
                 <h3 class="text-sm font-bold text-white">Pulse Sentinel SAST &amp; DKP Nodes Moderation</h3>
               </div>
               <p class="text-xs text-slate-400 leading-relaxed">
-                Sistema di moderazione intelligente alimentato da <strong class="text-slate-200">Google Gemini 2.0 Flash</strong> (<code class="text-sky-400 font-mono">google/gemini-2.0-flash-exp:free</code>). Analizza i post della community nei DKP Nodes e scansiona il codice prevenendo vulnerabilità prima della pubblicazione.
+                Sistema di moderazione intelligente alimentato da <strong class="text-slate-200">dots-studio/dots-3-note</strong> (<code class="text-sky-400 font-mono">dots-studio/dots-3-note</code>). Analizza i post della community nei DKP Nodes e scansiona il codice prevenendo vulnerabilità prima della pubblicazione.
               </p>
             </div>
 
@@ -159,9 +159,9 @@ function scrollToSection(id: string) {
                 Sandbox interattiva per il testing e la generazione AI in streaming. Alimentata dalla nuova suite di modelli OpenRouter:
               </p>
               <ul class="flex flex-col gap-1.5 mt-2 ml-4 font-mono text-xs text-slate-300 list-disc">
-                <li>⚡ <strong class="text-white">DKP-Flash:</strong> <code class="text-sky-400">google/gemini-2.0-flash</code> — Risposta istantanea e moderazione.</li>
-                <li>💻 <strong class="text-white">DKP-Coder:</strong> <code class="text-sky-400">dots-studio/dots-3-note</code> — Specializzato in blocchi di codice e componenti OpenUI.</li>
-                <li>🧠 <strong class="text-white">DKP-Pro:</strong> <code class="text-sky-400">nvidia/nemotron-3-ultra-550b</code> — Architetture avanzate con output generando anche varianti.</li>
+                <li>⚡ <strong class="text-white">DKP-Flash:</strong> <code class="text-sky-400">dots-studio/dots-3-note</code> — Risposta istantanea e moderazione.</li>
+                <li>💻 <strong class="text-white">DKP-Coder:</strong> <code class="text-sky-400">cohere/north-mini-code</code> — Specializzato in blocchi di codice e componenti OpenUI.</li>
+                <li>🧠 <strong class="text-white">DKP-Pro:</strong> <code class="text-sky-400">nvidia/nemotron-3-ultra-550b</code> — Architetture avanzate con output e possibilità che sviluppi varianti.</li>
               </ul>
             </div>
 

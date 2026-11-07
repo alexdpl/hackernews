@@ -91,8 +91,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // 6. Routing sui modelli gratuiti di OpenRouter
-  let targetModel = 'google/gemini-2.0-flash-exp:free'
-  if (model === 'dkp-coder') targetModel = 'dots-studio/dots-3-note-preview:free'
+  let targetModel = 'dots-studio/dots-3-note-preview:free'
+  if (model === 'dkp-coder') targetModel = 'cohere/north-mini-code:free'
   if (model === 'dkp-pro') targetModel = 'nvidia/nemotron-3-ultra-550b-a55b:free'
 
   try {
