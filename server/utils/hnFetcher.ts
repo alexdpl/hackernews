@@ -1,6 +1,7 @@
 // server/utils/hnFetcher.ts
 import { getDb } from './db'
-import { sql } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
+import { hnStories } from '~/server/db/schema' // Assicurati che lo schema sia importato correttamente, oppure usa la tabella correlata
 
 export interface HnStoryRaw {
   id: number
@@ -69,7 +70,7 @@ export async function fetchHnItem(id: number): Promise<HnStoryRaw | null> {
 }
 
 /**
- * 3. Deduplicazione contro Neon DB via `getDb()`
+ * 3. Deduplicazione contro Neon DB via `inArray` nativo di Drizzle (Risolve il bug del record casting)
  */
 export async function filterNewHnIds(ids: number[]): Promise<{ newIds: number[]; existingIds: number[] }> {
   if (!ids || ids.length === 0) {
@@ -79,15 +80,13 @@ export async function filterNewHnIds(ids: number[]): Promise<{ newIds: number[];
   try {
     const db = getDb()
     
-    // Query nativa Drizzle per il controllo degli array su PostgreSQL/Neon
-    const result = await db.execute(sql`
-      SELECT hn_id 
-      FROM hn_stories 
-      WHERE hn_id = ANY(${ids}::int[])
-    `)
+    // Utilizziamo la query nativa con inArray per evitare errori di tipo con Neon DB
+    const rows = await db
+      .select({ hnId: hnStories.hn_id })
+      .from(hnStories)
+      .where(inArray(hnStories.hn_id, ids))
 
-    const rows: any[] = Array.isArray(result) ? result : (result.rows || [])
-    const existingSet = new Set(rows.map(row => Number(row.hn_id)))
+    const existingSet = new Set(rows.map(row => Number(row.hnId)))
 
     const newIds = ids.filter(id => !existingSet.has(id))
     const existingIds = ids.filter(id => existingSet.has(id))
