@@ -17,10 +17,8 @@ interface BlogPost {
   summary?: string;
   categoryName?: string;
   category?: string;
-  // 👇 AGGIUNGI QUESTE DUE RIGHE 👇
   subcategoryName?: string;
   subCategory?: string;
-  // 👆 ------------------------ 👆
   isVerified?: boolean;
   authorXp?: number;
   authorName?: string;
@@ -113,7 +111,7 @@ const parsedContent = computed(() => {
       },
     );
 
-    // 2. PARSING MARKDOWN
+    // 2. PARSING MARKDOWN (Omesso per brevità: identico al tuo)
     let html = rawContent
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -373,7 +371,7 @@ function handleLike() {
       <article
         class="glass-panel p-6 sm:p-10 rounded-2xl border border-slate-800 bg-[#0b0f19] shadow-2xl relative overflow-hidden"
       >
-     <!-- 🟢 BREADCRUMB NAVBAR SEO-READY (INCOLONNATA) -->
+        <!-- 🟢 BREADCRUMB NAVBAR SEO-READY (INCOLONNATA) -->
         <div class="flex flex-col gap-4 mb-8 relative z-10 border-b border-slate-800 pb-4">
           
           <!-- Riga 1: Briciole di pane (In alto per massima visibilità) -->
@@ -624,9 +622,12 @@ function handleLike() {
             </div>
           </div>
         </div>
-   <div>
-     <DkpNodesHomeWidget />
-    </div>
+
+        <!-- WIDGET INTEGRATO NELLA PAGINA ARTICOLO -->
+        <div class="mb-10 pt-4 border-t border-slate-800/80">
+          <DkpNodesHomeWidget />
+        </div>
+
         <!-- ARTICOLI CORRELATI -->
         <DkpRelatedPosts
           v-if="post && post.id"

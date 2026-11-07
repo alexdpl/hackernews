@@ -12,26 +12,48 @@ const router = useRouter()
 const currentPage = computed(() => Math.max(1, parseInt(route.params.page as string) || 1))
 const itemsPerPage = 15
 
-// 2. Fetch API Dedicato con chiave reattiva per evitare la deduplicazione
-const { data: responseData, pending, error } = await useFetch('/api/ask', {
+// 2. Fetch API Dedicato con chiave reattiva
+const { data: responseData, pending, error } = await useFetch('/api/pulse/stories', {
   key: `ask-page-${currentPage.value}`,
-  query: { page: currentPage, limit: itemsPerPage },
+  query: { type: 'ask', page: currentPage, limit: itemsPerPage },
   watch: [currentPage]
 })
 
+// Logica di condivisione rapida
+const copySuccess = ref<string | null>(null)
+function shareStory(title: string, url?: string, id?: any) {
+  const targetUrl = url && url.startsWith('http') ? url : (typeof window !== 'undefined' ? `${window.location.origin}/news/${id}` : '')
+  if (navigator.clipboard && targetUrl) {
+    navigator.clipboard.writeText(targetUrl)
+    copySuccess.value = String(id)
+    setTimeout(() => { copySuccess.value = null }, 2000)
+  }
+}
+
 // Estrazione dati sicura con normalizzazione al volo
 const askList = computed(() => {
-  const raw = responseData.value?.data || responseData.value?.stories || []
-  return raw.map((item: any) => ({
-    ...item,
-    author: typeof item.author === 'object' ? item.author?.username : (item.author || item.user || 'community_ask'),
-    url: item.url || `/item/${item.id}`
-  }))
+  const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
+  return raw.map((item: any) => {
+    const safeSlug = item.slug || item.hn_id || item.id || `ask-${Math.random().toString(36).substring(2, 7)}`
+    const points = item.points || item.hn_points || 1
+    const computedScore = item.tech_score || Math.min(95, Math.max(45, points * 2 + 50))
+
+    return {
+      ...item,
+      slug: safeSlug,
+      author: typeof item.author === 'object' ? item.author?.username || 'community_ask' : (item.author || item.hn_by || item.user || 'community_ask'),
+      url: item.url || item.original_url || `/news/${safeSlug}`,
+      points,
+      tech_score: computedScore,
+      comments_count: item.comments_count || item.commentsCount || 0,
+      xp_awarded: item.xp_awarded || 20
+    }
+  })
 })
 
 const pagination = computed(() => responseData.value?.pagination || {})
 const totalPages = computed(() => pagination.value?.totalPages || 1)
-const hasMore = computed(() => (currentPage.value < totalPages.value) || responseData.value?.pagination?.hasMore || false)
+const hasMore = computed(() => (currentPage.value < totalPages.value) || responseData.value?.pagination?.hasMore || askList.value.length >= itemsPerPage)
 
 // Navigazione
 function handleNextPage() {
@@ -123,7 +145,7 @@ useSeoMeta({
         <div class="flex flex-col gap-3">
           <article 
             v-for="(item, index) in askList" 
-            :key="item.id || index" 
+            :key="item.id || item.slug || index" 
             class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
           >
             <button 
@@ -134,20 +156,45 @@ useSeoMeta({
               <span class="font-extrabold mt-1 text-xs">{{ item.points || 1 }}</span>
             </button>
 
-            <div class="flex flex-col gap-1.5 flex-1">
-              <div class="flex items-baseline gap-2">
+            <div class="flex flex-col gap-2 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-xs font-mono font-bold text-slate-500">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
-                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
                   {{ item.title }}
-                </a>
+                </NuxtLink>
               </div>
 
               <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold">
+                  🛡️ Score: {{ item.tech_score }}
+                </span>
+                <span>•</span>
                 <span>👤 Chiesto da <strong class="text-purple-400">@{{ item.author }}</strong></span>
+                <span>•</span>
+                <span class="text-amber-400 font-bold">⭐ +{{ item.xp_awarded }} XP</span>
                 <span>•</span>
                 <span class="text-slate-400">⏱️ {{ formatTime(item.createdAt || item.created_at) }}</span>
                 <span>•</span>
-                <span class="text-sky-400">Verified da <strong>DKP Crawler</strong></span>
+
+                <!-- LINK SCHEDA NOTIZIA -->
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 hover:underline font-bold transition-colors">
+                  Leggi scheda ↗
+                </NuxtLink>
+                <span>•</span>
+
+                <!-- LINK COMMENTI ITEM -->
+                <NuxtLink :to="`/item/${item.id || item.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
+                  💬 {{ item.comments_count }} commenti
+                </NuxtLink>
+                <span>•</span>
+
+                <!-- PULSANTE CONDIVISIONE RAPIDA -->
+                <button 
+                  @click="shareStory(item.title, item.url, item.id || item.slug)" 
+                  class="text-slate-400 hover:text-emerald-400 font-bold transition-colors cursor-pointer"
+                >
+                  🔗 {{ copySuccess === String(item.id || item.slug) ? 'Copiato!' : 'Condividi' }}
+                </button>
               </div>
             </div>
           </article>
@@ -155,11 +202,11 @@ useSeoMeta({
 
         <!-- NAVIGAZIONE PAGINAZIONE -->
         <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
-          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             ← Precedente
           </button>
           <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
-          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             Successiva →
           </button>
         </div>
@@ -199,7 +246,7 @@ useSeoMeta({
         <DkpNodesHomeWidget />
       </div>
 
-      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <!-- BANNER DKP ADS STRIP -->
       <DkpAdStrip categoryTag="DKP ASK SPONSORED FEED" />
     </div>
   </div>

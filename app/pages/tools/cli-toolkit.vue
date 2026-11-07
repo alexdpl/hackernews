@@ -7,11 +7,9 @@ const auth = useAuthCore() || {}
 const currentUser = auth.currentUser || ref({ username: 'alexdpl' })
 const userToken = auth.userToken || ref('')
 
-useHead({
+useDkpSeo({
   title: 'DKP CLI Toolkit v2.5-GOLD — DKP Tools',
-  meta: [
-    { name: 'description', content: 'Interfaccia a riga di comando ufficiale per developer: scansioni AI, notarizzazione Vault e gestione API dal terminale.' }
-  ]
+  description: 'Interfaccia a riga di comando ufficiale per developer: scansioni AI, notarizzazione Vault e gestione API dal terminale.'
 })
 
 const activeInstallTab = ref<'npm' | 'pnpm' | 'yarn'>('npm')
@@ -59,7 +57,7 @@ async function handleCommand() {
   if (cmd === 'dkp help' || cmd === 'help') {
     terminalLogs.value.push({
       type: 'output',
-      text: `Comandi DKP CLI v2.5-GOLD disponibili:\n dkp auth login --key <API_KEY>    Autenticazione con chiave API Hub\n dkp ai scan <url>               Scansione vulnerabilità AI repo GitHub\n dkp vault notarize <url>        Notarizzazione diretta dal Cloud\n dkp status                      Stato dei servizi API e latenza\n clear                           Pulisce lo schermo`
+      text: `Comandi DKP CLI v2.5-GOLD disponibili:\n dkp auth login --key <API_KEY>    Autenticazione con chiave API Hub\n dkp ai scan <url>                Scansione vulnerabilità AI repo GitHub\n dkp vault notarize <url>       Notarizzazione diretta dal Cloud\n dkp status                       Stato dei servizi API e latenza\n clear                            Pulisce lo schermo`
     })
     isLoading.value = false
     return
@@ -83,9 +81,9 @@ async function handleCommand() {
   // AI SCAN REALE (Chiama l'endpoint del tool AI-Repo-Scanner)
   if (cmd.startsWith('dkp ai scan')) {
     const url = raw.split(' ').pop()
-   let isValidGithubUrl = false
+    let isValidGithubUrl = false
    
-   if (url) {
+    if (url) {
       try {
         const parsed = new URL(url)
         const host = parsed.hostname.toLowerCase()
@@ -163,12 +161,12 @@ async function handleCommand() {
     return
   }
 
-  // STATUS SERVER REALE (Chiama l'API pubblica di salute del server)
+  // STATUS SERVER REALE
   if (cmd === 'dkp status') {
     terminalLogs.value.push({ type: 'output', text: `🔄 Ping dei servizi DKP...` })
     try {
       const start = performance.now()
-      await $fetch('/api/public/health') // o qualsiasi endpoint leggero che hai
+      await $fetch('/api/public/health')
       const latenza = Math.round(performance.now() - start)
       terminalLogs.value.push({ type: 'success', text: `⚡ DKP API Gateway: ONLINE | Latenza reale: ${latenza}ms | Vault: CONNECTED` })
     } catch {
@@ -185,59 +183,64 @@ async function handleCommand() {
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto my-10 px-6 font-sans text-slate-100">
+  <div class="max-w-6xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">
     
     <!-- HERO HEADER -->
-    <header class="text-center mb-12">
-      <div class="flex items-center justify-center gap-3 mb-4">
-        <h1 class="text-4xl md:text-5xl font-black text-white m-0">⚡ DKP CLI Toolkit</h1>
-        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest">
+    <header class="text-center mb-12 relative">
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-emerald-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+
+      <div class="flex items-center justify-center gap-3 mb-4 flex-wrap relative z-10">
+        <h1 class="text-3xl sm:text-5xl font-black text-white m-0 tracking-tight">⚡ DKP CLI Toolkit</h1>
+        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3.5 py-1 rounded-full text-xs font-black tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.15)] uppercase">
           v2.5-GOLD
         </span>
       </div>
-      <p class="text-slate-400 text-lg max-w-2xl mx-auto m-0">
-        L'interfaccia a riga di comando nativa per sviluppatori. Lancia scansioni AI, notarizza codice sul Vault e interagisci con le API (Reali) direttamente dal tuo terminale virtuale.
+      
+      <p class="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto m-0 leading-relaxed relative z-10">
+        L'interfaccia a riga di comando nativa per sviluppatori. Lancia scansioni AI, notarizza codice sul Vault e interagisci con le API direttamente dal tuo terminale virtuale.
       </p>
     </header>
 
     <!-- INSTALLATION BANNER -->
-    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 mb-10 shadow-xl">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h2 class="text-xl font-black text-white m-0">📦 Installazione Rapida CLI</h2>
-        <div class="flex gap-2">
-          <button @click="activeInstallTab = 'npm'" class="px-4 py-1.5 rounded-lg text-sm font-bold transition-colors" :class="activeInstallTab === 'npm' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500' : 'bg-slate-950 text-slate-400 border border-slate-700 hover:border-emerald-400/50'">npm</button>
-          <button @click="activeInstallTab = 'pnpm'" class="px-4 py-1.5 rounded-lg text-sm font-bold transition-colors" :class="activeInstallTab === 'pnpm' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500' : 'bg-slate-950 text-slate-400 border border-slate-700 hover:border-emerald-400/50'">pnpm</button>
-          <button @click="activeInstallTab = 'yarn'" class="px-4 py-1.5 rounded-lg text-sm font-bold transition-colors" :class="activeInstallTab === 'yarn' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500' : 'bg-slate-950 text-slate-400 border border-slate-700 hover:border-emerald-400/50'">yarn</button>
+    <section class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 mb-10 shadow-xl relative overflow-hidden">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h2 class="text-lg sm:text-xl font-black text-white m-0 flex items-center gap-2">
+          <span>📦</span> Installazione Rapida CLI
+        </h2>
+        <div class="flex gap-2 bg-[#020420] p-1.5 rounded-xl border border-slate-800">
+          <button @click="activeInstallTab = 'npm'" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="activeInstallTab === 'npm' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'">npm</button>
+          <button @click="activeInstallTab = 'pnpm'" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="activeInstallTab === 'pnpm' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'">pnpm</button>
+          <button @click="activeInstallTab = 'yarn'" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer" :class="activeInstallTab === 'yarn' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'">yarn</button>
         </div>
       </div>
 
-      <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex justify-between items-center text-sky-400 font-mono text-sm md:text-base">
-        <code>{{ installCommand }}</code>
-        <button @click="copyInstallCmd" class="bg-emerald-500 text-slate-950 px-4 py-1.5 rounded-lg font-black hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all">
-          {{ isCopied ? '✔ Copiato!' : '📋 Copia' }}
+      <div class="bg-slate-950 border border-slate-800 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center text-sky-400 font-mono text-xs sm:text-sm gap-4 shadow-inner">
+        <code class="overflow-x-auto max-w-full py-1">{{ installCommand }}</code>
+        <button @click="copyInstallCmd" class="w-full sm:w-auto bg-emerald-500 text-slate-950 px-5 py-2 rounded-xl font-black hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all cursor-pointer shrink-0">
+          {{ isCopied ? '✔ Copiato!' : '📋 Copia Comando' }}
         </button>
       </div>
     </section>
 
     <!-- INTERACTIVE TERMINAL EMULATOR -->
     <section class="mb-12">
-      <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl shadow-emerald-500/5">
+      <div class="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl shadow-emerald-500/5">
         <!-- Terminal Header Bar -->
-        <div class="bg-slate-900 border-b border-slate-800 p-3 px-4 flex items-center justify-between">
+        <div class="bg-[#090d16] border-b border-slate-800 p-3.5 px-5 flex items-center justify-between">
           <div class="flex gap-2">
-            <div class="w-3 h-3 rounded-full bg-red-500"></div>
-            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+            <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
           </div>
           <span class="text-xs text-slate-500 font-mono">interactive emulator — dkp-cli v2.5-GOLD</span>
         </div>
 
         <!-- Terminal Body -->
-        <div class="p-5 min-h-[350px] max-h-[500px] overflow-y-auto font-mono text-sm flex flex-col gap-2 custom-scrollbar">
-          <div v-for="(log, idx) in terminalLogs" :key="idx" class="whitespace-pre-wrap break-all"
+        <div class="p-5 sm:p-6 min-h-[380px] max-h-[520px] overflow-y-auto font-mono text-xs sm:text-sm flex flex-col gap-2.5 custom-scrollbar">
+          <div v-for="(log, idx) in terminalLogs" :key="idx" class="whitespace-pre-wrap break-all leading-relaxed"
                :class="{
                  'text-slate-300': log.type === 'output',
-                 'text-sky-400': log.type === 'input',
+                 'text-sky-400 font-bold': log.type === 'input',
                  'text-emerald-400 font-bold': log.type === 'success',
                  'text-red-400 font-bold': log.type === 'error'
                }">
@@ -245,7 +248,7 @@ async function handleCommand() {
           </div>
 
           <!-- Input Line -->
-          <div class="flex items-center gap-2 mt-2" :class="{ 'opacity-50 pointer-events-none': isLoading }">
+          <div class="flex items-center gap-2.5 mt-2 pt-2 border-t border-slate-900" :class="{ 'opacity-50 pointer-events-none': isLoading }">
             <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@local:~$</span>
             <input 
               v-model="commandInput" 
@@ -253,7 +256,7 @@ async function handleCommand() {
               type="text" 
               :placeholder="isLoading ? 'Attendere...' : 'Prova: dkp help, o dkp ai scan https://github.com/nuxt/nuxt'"
               :disabled="isLoading"
-              class="flex-1 bg-transparent border-none outline-none text-white font-mono min-w-0"
+              class="flex-1 bg-transparent border-none outline-none text-white font-mono min-w-0 text-xs sm:text-sm"
               autocomplete="off"
             />
           </div>
@@ -263,41 +266,43 @@ async function handleCommand() {
 
     <!-- CHEAT SHEET TABLE -->
     <section>
-      <h2 class="text-2xl font-black text-white mb-6">📜 Cheat Sheet Comandi CLI</h2>
-      <div class="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl">
-        <table class="w-full text-left border-collapse text-sm">
+      <h2 class="text-xl sm:text-2xl font-black text-white mb-6 flex items-center gap-2">
+        <span>📜</span> Cheat Sheet Comandi CLI
+      </h2>
+      <div class="overflow-x-auto bg-[#090d16] border border-slate-800 rounded-3xl shadow-xl">
+        <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[650px]">
           <thead>
-            <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold">
-              <th class="p-4">Comando</th>
-              <th class="p-4">Descrizione</th>
-              <th class="p-4">Esempio Uso</th>
+            <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+              <th class="p-4 sm:p-5">Comando</th>
+              <th class="p-4 sm:p-5">Descrizione</th>
+              <th class="p-4 sm:p-5">Esempio Uso</th>
             </tr>
           </thead>
-          <tbody class="text-slate-300 divide-y divide-slate-800/50">
-            <tr>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp auth login</code></td>
-              <td class="p-4">Autentica la CLI con la chiave API dell'Hub</td>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp auth login --key dkp_live_xxx</code></td>
+          <tbody class="text-slate-300 divide-y divide-slate-800/60">
+            <tr class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp auth login</code></td>
+              <td class="p-4 sm:p-5 text-slate-300">Autentica la CLI con la chiave API dell'Hub</td>
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp auth login --key dkp_live_xxx</code></td>
             </tr>
-            <tr class="bg-slate-900/50">
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp ai scan</code></td>
-              <td class="p-4">Lancia l'audit di sicurezza Reale su Repo GitHub (Assegna XP!)</td>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp ai scan https://github.com/nuxt/nuxt</code></td>
+            <tr class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp ai scan</code></td>
+              <td class="p-4 sm:p-5 text-slate-300">Lancia l'audit di sicurezza su Repo GitHub (Assegna XP!)</td>
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp ai scan https://github.com/nuxt/nuxt</code></td>
             </tr>
-            <tr>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp vault notarize</code></td>
-              <td class="p-4">Notarizza un link direttamente nel Vault in Cloud</td>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp vault notarize https://miosito.com</code></td>
+            <tr class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp vault notarize</code></td>
+              <td class="p-4 sm:p-5 text-slate-300">Notarizza un link direttamente nel Vault in Cloud</td>
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp vault notarize https://miosito.com</code></td>
             </tr>
-            <tr class="bg-slate-900/50">
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp status</code></td>
-              <td class="p-4">Verifica lo stato e la latenza Reale del Server (Ping)</td>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">dkp status</code></td>
+            <tr class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp status</code></td>
+              <td class="p-4 sm:p-5 text-slate-300">Verifica lo stato e la latenza Reale del Server (Ping)</td>
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">dkp status</code></td>
             </tr>
-            <tr>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">clear</code></td>
-              <td class="p-4">Pulisce lo schermo del terminale emulator</td>
-              <td class="p-4"><code class="text-sky-400 bg-slate-950 px-2 py-1 rounded">clear</code></td>
+            <tr class="hover:bg-slate-900/40 transition-colors">
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">clear</code></td>
+              <td class="p-4 sm:p-5 text-slate-300">Pulisce lo schermo del terminale emulator</td>
+              <td class="p-4 sm:p-5"><code class="text-sky-400 bg-slate-950 px-2.5 py-1 rounded-md border border-slate-800 font-mono text-xs">clear</code></td>
             </tr>
           </tbody>
         </table>
@@ -308,10 +313,10 @@ async function handleCommand() {
 
 <style scoped>
 /* Scrollbar custom per il terminale */
-.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
 
 /* Rimuove l'autofill background di default in Chrome */
 input:-webkit-autofill,

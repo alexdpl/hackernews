@@ -11,12 +11,22 @@ const router = useRouter()
 const currentPage = computed(() => Math.max(1, parseInt(route.params.page as string) || 1))
 const itemsPerPage = 15
 
-// Fetch con chiave unica per la paginazione
-const { data: responseData, pending, error } = await useFetch('/api/show', {
+// Fetch dal DB con type 'show' e chiave reattiva per l'hydration
+const { data: responseData, pending, error } = await useFetch('/api/pulse/stories', {
   key: `show-page-${currentPage.value}`,
-  query: { page: currentPage, limit: itemsPerPage },
+  query: { type: 'show', page: currentPage, limit: itemsPerPage },
   watch: [currentPage]
 })
+
+const copySuccess = ref<string | null>(null)
+function shareStory(title: string, url?: string, id?: any) {
+  const targetUrl = url && url.startsWith('http') ? url : (typeof window !== 'undefined' ? `${window.location.origin}/show/${id}` : '')
+  if (navigator.clipboard && targetUrl) {
+    navigator.clipboard.writeText(targetUrl)
+    copySuccess.value = String(id)
+    setTimeout(() => { copySuccess.value = null }, 2000)
+  }
+}
 
 function getDomain(urlStr: string, domainFallback?: string): string {
   if (domainFallback) return domainFallback
@@ -30,17 +40,29 @@ function getDomain(urlStr: string, domainFallback?: string): string {
 
 // Normalizzazione progetti
 const projectsList = computed(() => {
-  const raw = responseData.value?.data || responseData.value?.stories || []
-  return raw.map((project: any) => ({
-    ...project,
-    author: typeof project.author === 'object' ? project.author?.username : (project.author || 'github_user'),
-    url: project.url || '#'
-  }))
+  const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
+  return raw.map((project: any) => {
+    const safeSlug = project.slug || project.hn_id || project.id || `show-${Math.random().toString(36).substring(2, 7)}`
+    const points = project.points || project.hn_points || 1
+    const computedScore = project.tech_score || Math.min(99, Math.max(55, points * 2 + 50))
+
+    return {
+      ...project,
+      slug: safeSlug,
+      author: typeof project.author === 'object' ? project.author?.username : (project.author || project.hn_by || 'github_user'),
+      url: project.url || project.original_url || `/show/${safeSlug}`,
+      domain: getDomain(project.url || project.original_url, project.domain),
+      points,
+      tech_score: computedScore,
+      xp_awarded: project.xp_awarded || 30,
+      comments_count: project.comments_count || project.commentsCount || 0
+    }
+  })
 })
 
 const pagination = computed(() => responseData.value?.pagination || {})
 const totalPages = computed(() => pagination.value?.totalPages || 1)
-const hasMore = computed(() => (currentPage.value < totalPages.value) || responseData.value?.pagination?.hasMore || false)
+const hasMore = computed(() => (currentPage.value < totalPages.value) || responseData.value?.pagination?.hasMore || projectsList.value.length >= itemsPerPage)
 
 function handleNextPage() {
   if (!hasMore.value || pending.value) return
@@ -94,7 +116,7 @@ onMounted(async () => {
 
 useSeoMeta({
   title: `Show DKP - Pagina ${currentPage.value} - DevKernelPulse`,
-  description: `Scopri la pagina ${currentPage.value} della vetrina dei migliori progetti Open Source.`
+  description: `Scopri la pagina ${currentPage.value} della vetrina dei migliori progetti Open Source su DKP.`
 })
 </script>
 
@@ -126,12 +148,12 @@ useSeoMeta({
         ⚡ Sincronizzazione pagina {{ currentPage }} in corso...
       </div>
 
-      <!-- LISTA PROGETTI SHOWCASE -->
+      <!-- LISTA PROGETTI SHOWCASE PAGINATI -->
       <div v-else-if="projectsList.length > 0" class="flex flex-col gap-4">
         <div class="flex flex-col gap-3">
           <article 
             v-for="(project, index) in projectsList" 
-            :key="project.id || index" 
+            :key="project.id || project.slug || index" 
             class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
           >
             <button 
@@ -142,23 +164,42 @@ useSeoMeta({
               <span class="font-extrabold mt-1 text-xs">{{ project.points || 1 }}</span>
             </button>
 
-            <div class="flex flex-col gap-1.5 flex-1">
+            <div class="flex flex-col gap-2 flex-1">
               <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-xs font-mono font-bold text-slate-500">{{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.</span>
-                <a :href="project.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                <a :href="project.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
                   {{ project.title }}
                 </a>
                 <span class="text-xs font-mono text-sky-400/80">
-                  ({{ getDomain(project.url, project.domain) }}) ↗
+                  ({{ project.domain }}) ↗
                 </span>
               </div>
 
               <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold">
+                  🛡️ Score: {{ project.tech_score }}
+                </span>
+                <span>•</span>
                 <span>👤 Owner: <strong class="text-emerald-400">@{{ project.author }}</strong></span>
                 <span>•</span>
-                <span class="text-slate-400">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
+                <span class="text-amber-400 font-bold">⭐ +{{ project.xp_awarded }} XP</span>
                 <span>•</span>
-                <span class="text-purple-400">Verified da <strong>DKP Crawler</strong></span>
+                <span class="text-slate-400">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
+                
+                <template v-if="project.comments_count > 0">
+                  <span>•</span>
+                  <NuxtLink :to="`/item/${project.id || project.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
+                    💬 {{ project.comments_count }} commenti
+                  </NuxtLink>
+                </template>
+                
+                <span>•</span>
+                <button 
+                  @click="shareStory(project.title, project.url, project.id || project.slug)" 
+                  class="text-slate-400 hover:text-emerald-400 font-bold transition-colors cursor-pointer"
+                >
+                  🔗 {{ copySuccess === String(project.id || project.slug) ? 'Copiato!' : 'Condividi' }}
+                </button>
               </div>
             </div>
           </article>
@@ -166,11 +207,11 @@ useSeoMeta({
 
         <!-- NAVIGAZIONE PAGINAZIONE -->
         <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
-          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             ← Precedente
           </button>
           <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
-          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             Successiva →
           </button>
         </div>

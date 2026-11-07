@@ -13,11 +13,17 @@ const currentFeed = computed(() => (route.params.feed as string) || 'feed')
 const currentPage = computed(() => Math.max(1, parseInt(route.params.page as string) || 1))
 const itemsPerPage = 15
 
+// Mappatura intelligente del tipo di feed per la query backend
+const queryType = computed(() => {
+  const f = currentFeed.value.toLowerCase()
+  return f === 'feed' ? 'news' : f
+})
+
 // Fetch della pagina corrente
 const { data: responseData, pending, error } = await useFetch('/api/pulse/stories', {
   key: `news-${currentFeed.value}-page-${currentPage.value}`,
-  query: { type: currentFeed.value, page: currentPage, limit: itemsPerPage },
-  watch: [currentPage, currentFeed]
+  query: { type: queryType, page: currentPage, limit: itemsPerPage },
+  watch: [currentPage, queryType]
 })
 
 function getDomain(urlStr?: string, domainFallback?: string): string {
@@ -30,20 +36,33 @@ function getDomain(urlStr?: string, domainFallback?: string): string {
   }
 }
 
-// Normalizzazione con Safeguards rigidi su slug ed ID
+// Logica di condivisione rapida
+const copySuccess = ref<string | null>(null)
+function shareStory(title: string, url?: string, id?: any) {
+  const targetUrl = url && url.startsWith('http') ? url : (typeof window !== 'undefined' ? `${window.location.origin}/news/${id}` : '')
+  if (navigator.clipboard && targetUrl) {
+    navigator.clipboard.writeText(targetUrl)
+    copySuccess.value = String(id)
+    setTimeout(() => { copySuccess.value = null }, 2000)
+  }
+}
+
+// Normalizzazione con Safeguards rigidi ed enrichment del Sentinel Score
 const feedList = computed(() => {
-  const raw = responseData.value?.stories || responseData.value?.data || []
+  const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
   return raw.map((item: any) => {
-    // SAFEGUARD SLUG: Prova in ordine slug -> hn_id -> id -> fallback univoco
     const safeSlug = item.slug || item.hn_id || item.id || `news-${Math.random().toString(36).substring(2, 7)}`
+    const points = item.points || item.hn_points || 1
+    const computedScore = item.tech_score || Math.min(95, Math.max(40, points * 2 + 50))
 
     return {
       ...item,
       slug: safeSlug,
-      author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
-      url: item.url || `/news/${safeSlug}`,
-      domain: getDomain(item.url, item.domain),
-      points: item.points || 1,
+      author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || item.hn_by || 'community'),
+      url: item.url || item.original_url || `/news/${safeSlug}`,
+      domain: getDomain(item.url || item.original_url, item.domain),
+      points,
+      tech_score: computedScore,
       comments_count: item.comments_count || item.commentsCount || 0,
       xp_awarded: item.xp_awarded || 15
     }
@@ -52,7 +71,7 @@ const feedList = computed(() => {
 
 const pagination = computed(() => responseData.value?.pagination || {})
 const totalPages = computed(() => pagination.value?.totalPages || 1)
-const hasMore = computed(() => currentPage.value < totalPages.value)
+const hasMore = computed(() => currentPage.value < totalPages.value || feedList.value.length >= itemsPerPage)
 
 function handleNextPage() {
   if (!hasMore.value || pending.value) return
@@ -81,9 +100,9 @@ onMounted(async () => {
 })
 
 useHead({
-  title: `Feed ${currentFeed.value} - Pagina ${currentPage.value} - DevKernelPulse`,
+  title: `Feed ${currentFeed.value.toUpperCase()} - Pagina ${currentPage.value} - DevKernelPulse`,
   meta: [
-    { name: 'description', content: `Pagina ${currentPage.value} delle ultime notizie tech verificate dal crawler.` }
+    { name: 'description', content: `Pagina ${currentPage.value} delle ultime notizie tech verificate dal crawler Sentinel.` }
   ]
 })
 </script>
@@ -98,10 +117,10 @@ useHead({
           <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit mb-2">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-              ⚡ DKP TECH NEWS FEED • v2.5-GOLD
+              ⚡ DKP CRAWLER STREAM • v2.5-GOLD
             </span>
           </div>
-          <h1 class="text-2xl font-bold text-white">🌍 Tech News <span class="text-emerald-400 capitalize">{{ currentFeed }}</span></h1>
+          <h1 class="text-2xl font-bold text-white">🌍 Tech Stream <span class="text-emerald-400 capitalize">{{ currentFeed }}</span></h1>
           <p class="text-xs text-slate-400 mt-1">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong> del feed crawler.</p>
         </div>
 
@@ -122,13 +141,13 @@ useHead({
           <article 
             v-for="(item, index) in feedList" 
             :key="item.id || item.slug || index" 
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex flex-col gap-2 transition-all shadow-md group"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex flex-col gap-3 transition-all shadow-md group"
           >
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="text-xs font-mono font-bold text-emerald-400 shrink-0">
                 {{ ((currentPage - 1) * itemsPerPage) + index + 1 }}.
               </span>
-              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-sky-400 transition-colors">
+              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
                 {{ item.title }}
               </a>
               <span v-if="item.domain" class="text-xs font-mono text-slate-500">
@@ -137,8 +156,8 @@ useHead({
             </div>
 
             <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
-              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 rounded text-[10px] font-bold">
-                📡 {{ item.domain }}
+              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold">
+                🛡️ Score: {{ item.tech_score }}
               </span>
               <span>•</span>
               <span class="text-purple-400">👤 @{{ item.author }}</span>
@@ -148,27 +167,37 @@ useHead({
               <span class="text-emerald-400 font-bold">⭐ +{{ item.xp_awarded }} XP</span>
               <span>•</span>
               
-              <!-- SAFEGUARD SCHEDA NOTIZIA TRINITY AI -->
+              <!-- SCHEDA NOTIZIA TRINITY AI -->
               <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 hover:underline font-bold transition-colors">
                 Leggi scheda ↗
               </NuxtLink>
               <span>•</span>
 
-              <!-- SAFEGUARD COMMENTI ITEM -->
+              <!-- COMMENTI ITEM -->
               <NuxtLink :to="`/item/${item.id || item.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
                 💬 {{ item.comments_count }} commenti
               </NuxtLink>
+
+              <span>•</span>
+
+              <!-- CONDIVISIONE RAPIDA -->
+              <button 
+                @click="shareStory(item.title, item.url, item.id || item.slug)" 
+                class="text-slate-400 hover:text-emerald-400 font-bold transition-colors cursor-pointer"
+              >
+                🔗 {{ copySuccess === String(item.id || item.slug) ? 'Copiato!' : 'Condividi' }}
+              </button>
             </div>
           </article>
         </div>
 
         <!-- NAVIGAZIONE PAGINAZIONE -->
         <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
-          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="handlePrevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             ← Precedente
           </button>
           <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
-          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="handleNextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             Successiva →
           </button>
         </div>
@@ -208,7 +237,7 @@ useHead({
         <DkpNodesHomeWidget />
       </div>
 
-      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <!-- BANNER DKP ADS STRIP -->
       <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
     </div>
   </div>

@@ -10,13 +10,14 @@ const isAuthenticated = auth.isAuthenticated || ref(true)
 const currentUserId = computed(() => currentUser.value?.id || 1)
 const usernameDisplay = computed(() => currentUser.value?.username || 'guest')
 
-useHead({
+useDkpSeo({
   title: 'Terminal Web Shell v2.5-GOLD — DKP Tools',
   meta: [{ name: 'description', content: 'Shell CLI in-browser e simulazione SDK DKP v2.5-GOLD' }]
 })
 
 const commandInput = ref('')
 const terminalContainer = ref<HTMLElement | null>(null)
+const cmdInputRef = ref<HTMLInputElement | null>(null)
 const isLoading = ref(false)
 
 const history = ref<Array<{ cmd: string; res: string; isErr?: boolean }>>([
@@ -30,6 +31,12 @@ function scrollToBottom() {
       terminalContainer.value.scrollTop = terminalContainer.value.scrollHeight
     }
   })
+}
+
+function focusInput() {
+  if (cmdInputRef.value) {
+    cmdInputRef.value.focus()
+  }
 }
 
 async function executeCommand() {
@@ -71,39 +78,52 @@ async function executeCommand() {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto my-10 px-6 font-sans text-slate-100">
+  <div class="max-w-5xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">
     
-    <div class="mb-8">
-      <div class="flex justify-between items-center mb-3">
-        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase">
+    <!-- HEADER SEZIONE -->
+    <div class="mb-10 text-center sm:text-left relative">
+      <div class="absolute top-0 left-0 w-full h-32 bg-indigo-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+
+      <div class="flex flex-col sm:flex-row sm:justify-between items-center mb-4 gap-4 relative z-10">
+        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)]">
           💻 DKP WEB SHELL v2.5-GOLD
         </span>
-        <NuxtLink to="/" class="text-sky-400 text-sm font-bold hover:underline">← Torna all'Ecosistema</NuxtLink>
+        <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors">
+          ← Torna al Toolkit
+        </NuxtLink>
       </div>
-      <h1 class="text-4xl font-black text-white mb-2">Terminal <span class="text-indigo-400">Web Shell</span></h1>
-      <p class="text-slate-400 text-lg">
+
+      <h1 class="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">
+        Terminal <span class="text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">Web Shell</span>
+      </h1>
+      
+      <p class="text-slate-400 text-base sm:text-lg max-w-3xl mx-auto sm:mx-0 leading-relaxed relative z-10">
         Shell CLI interattiva per l'esecuzione rapida di comandi, esplorazione SDK e accumulo punti XP via console.
       </p>
     </div>
 
     <!-- TERMINAL EMULATOR -->
-    <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/10">
+    <div class="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl shadow-indigo-500/10 relative">
       
       <!-- Top Bar -->
-      <div class="bg-slate-900 border-b border-slate-800 p-3 px-5 flex items-center justify-between">
+      <div class="bg-[#090d16] border-b border-slate-800 p-3.5 px-5 flex items-center justify-between">
         <div class="flex gap-2">
-          <div class="w-3.5 h-3.5 rounded-full bg-red-500"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-yellow-500"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-emerald-500"></div>
+          <div class="w-3.5 h-3.5 rounded-full bg-red-500/85"></div>
+          <div class="w-3.5 h-3.5 rounded-full bg-yellow-500/85"></div>
+          <div class="w-3.5 h-3.5 rounded-full bg-emerald-500/85"></div>
         </div>
         <span class="text-xs text-slate-500 font-mono tracking-wide">dkp-sh — @{{ usernameDisplay }}</span>
       </div>
 
       <!-- Terminal Body -->
-      <div ref="terminalContainer" class="p-6 min-h-[400px] max-h-[600px] overflow-y-auto font-mono text-[0.92rem] flex flex-col gap-4 custom-scrollbar" @click="() => { const input = $refs.cmdInput; if(input) (input as HTMLInputElement).focus() }">
+      <div 
+        ref="terminalContainer" 
+        class="p-5 sm:p-6 min-h-[420px] max-h-[600px] overflow-y-auto font-mono text-[0.9rem] sm:text-[0.92rem] flex flex-col gap-4 custom-scrollbar cursor-text" 
+        @click="focusInput"
+      >
         
         <!-- Storico Comandi -->
-        <div v-for="(item, idx) in history" :key="idx" class="flex flex-col gap-1">
+        <div v-for="(item, idx) in history" :key="idx" class="flex flex-col gap-1.5">
           <!-- Prompt Line -->
           <div class="flex gap-2 text-white">
             <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>
@@ -119,16 +139,16 @@ async function executeCommand() {
         </div>
 
         <!-- Current Input Line -->
-        <div class="flex items-center gap-2 mt-2">
+        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-900/60">
           <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>
           <input 
-            ref="cmdInput"
+            ref="cmdInputRef"
             v-model="commandInput" 
             @keyup.enter="executeCommand" 
             :disabled="isLoading"
             type="text" 
             placeholder="Scrivi 'help', 'dkp info' o prova l'easter egg..."
-            class="flex-1 bg-transparent border-none text-sky-300 outline-none w-full font-mono placeholder:text-slate-700" 
+            class="flex-1 bg-transparent border-none text-sky-300 outline-none w-full font-mono placeholder:text-slate-700 text-[0.9rem] sm:text-[0.92rem]" 
             autofocus
             autocomplete="off"
             spellcheck="false"

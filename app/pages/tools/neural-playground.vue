@@ -26,7 +26,7 @@ function triggerToast(msg: string) {
   setTimeout(() => showToast.value = false, 3500)
 }
 
-// --- MOTORE CHAT NATIVO DKP (Senza dipendenze fragili da useChat) ---
+// --- MOTORE CHAT NATIVO DKP ---
 const messages = ref<Array<{ id: string; role: 'user' | 'assistant'; content: string }>>([])
 const input = ref('')
 const isLoading = ref(false)
@@ -70,7 +70,7 @@ async function onSubmit(e?: Event) {
   const aiMessageIndex = messages.value.length - 1
 
   try {
-    // 3. Chiamata al nostro gateway backend protetto
+    // 3. Chiamata al gateway backend protetto
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: {
@@ -101,12 +101,11 @@ async function onSubmit(e?: Event) {
 
         const chunk = decoder.decode(value, { stream: true })
         
-        // Parsing intelligente dei chunk di streaming Vercel/H3
+        // Parsing intelligente dei chunk di streaming
         const lines = chunk.split('\n')
         for (const line of lines) {
           if (line.startsWith('0:')) {
             try {
-              // Rimuove il prefisso "0:" e decodifica la stringa JSON
               const textContent = JSON.parse(line.slice(2))
               messages.value[aiMessageIndex].content += textContent
             } catch {
@@ -126,7 +125,6 @@ async function onSubmit(e?: Event) {
     isLoading.value = false
   }
 }
-
 
 // --- OPENUI EXTRACTION ENGINE ---
 const lastAiMessage = computed(() => messages.value.filter(m => m.role === 'assistant').pop()?.content || '')
@@ -152,7 +150,7 @@ const renderedHtmlContent = computed(() => {
   const tailwindScript = '<script src="https://cdn.tailwindcss.com"><' + '/script>'
 
   if (!code) {
-    return '<!DOCTYPE html><html><head>' + tailwindScript + '</head><body class="bg-slate-950 text-slate-400 p-8 text-center font-sans"><h3>In attesa di codice OpenUI...</h3><p class="text-sm mt-2">Chiedi a DKP-Coder di generare una card o una dashboard.</p></body></html>'
+    return '<!DOCTYPE html><html><head>' + tailwindScript + '</head><body class="bg-slate-950 text-slate-400 p-8 text-center font-sans"><h3 class="text-white font-bold text-lg">In attesa di codice OpenUI...</h3><p class="text-sm mt-2">Chiedi a DKP-Coder di generare una card o una dashboard.</p></body></html>'
   }
 
   if (code.toLowerCase().includes('<!doctype') || code.toLowerCase().includes('<html')) {
@@ -196,68 +194,72 @@ async function notarizeToVault() {
     
     <!-- TOAST -->
     <Transition name="fade">
-      <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-lg shadow-2xl font-bold z-50">
+      <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-2xl font-bold text-sm z-50">
         {{ toastMessage }}
       </div>
     </Transition>
 
     <!-- HEADER -->
-    <div class="mb-4 flex justify-between items-center flex-shrink-0">
+    <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 flex-shrink-0">
       <div>
         <div class="flex items-center gap-2">
-          <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest">
+          <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-3.5 py-1 rounded-full text-[11px] font-black tracking-widest uppercase">
             🧠 DKP NEURAL ENGINE v2.5-GOLD + OPENUI
           </span>
         </div>
-        <h1 class="text-3xl font-black text-white mt-1">Neural Playground &amp; <span class="text-purple-400">OpenUI Studio</span></h1>
+        <h1 class="text-2xl sm:text-3xl font-black text-white mt-1.5 tracking-tight">
+          Neural Playground &amp; <span class="text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.3)]">OpenUI Studio</span>
+        </h1>
       </div>
-      <NuxtLink to="/" class="text-sky-400 text-sm font-bold hover:underline">← Torna all'Ecosistema</NuxtLink>
+      <NuxtLink to="/tools" class="text-sky-400 text-xs sm:text-sm font-bold hover:text-sky-300 hover:underline transition-colors">
+        ← Torna al Toolkit
+      </NuxtLink>
     </div>
 
     <!-- MAIN GRID 3 COLONNE -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
       
       <!-- COLONNA 1: CONFIGURAZIONE & MODELLI -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4 overflow-y-auto">
-        <h2 class="text-sm font-black uppercase text-slate-400 tracking-wider">1. Configurazione Gateway</h2>
+      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+        <h2 class="text-xs font-black uppercase text-slate-400 tracking-wider">1. Configurazione Gateway</h2>
         
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-bold text-emerald-400">🔑 DKP API Key</label>
-          <input v-model="dkpApiKey" type="password" placeholder="dkp_live_..." class="bg-slate-950 border border-slate-700 text-white p-2.5 rounded-xl text-sm focus:border-emerald-400 outline-none font-mono" />
+          <label class="text-xs font-bold text-emerald-400 flex items-center gap-1"><span>🔑</span> DKP API Key</label>
+          <input v-model="dkpApiKey" type="password" placeholder="dkp_live_..." class="bg-slate-950 border border-slate-700/80 text-white p-3 rounded-xl text-xs sm:text-sm focus:border-emerald-400 outline-none font-mono shadow-inner placeholder:text-slate-600" />
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-bold text-slate-400">🤖 DKP Trinity Model</label>
-          <select v-model="selectedModel" class="bg-slate-950 border border-slate-700 text-white p-2.5 rounded-xl text-sm focus:border-purple-400 outline-none cursor-pointer">
+          <label class="text-xs font-bold text-slate-400 flex items-center gap-1"><span>🤖</span> DKP Trinity Model</label>
+          <select v-model="selectedModel" class="bg-slate-950 border border-slate-700/80 text-white p-3 rounded-xl text-xs sm:text-sm focus:border-purple-400 outline-none cursor-pointer shadow-inner">
             <option value="dkp-flash">⚡ DKP-Flash - Veloce</option>
             <option value="dkp-coder">💻 DKP-Coder - CodIx</option>
             <option value="dkp-pro">🧠 DKP-Pro - Avanzato</option>
           </select>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-bold text-slate-400 flex justify-between">
+            <label class="text-xs font-bold text-slate-400 flex justify-between items-center">
               <span>Temp</span>
               <span class="text-purple-400 font-mono">{{ temperature.toFixed(1) }}</span>
             </label>
-            <input v-model.number="temperature" type="range" min="0" max="1" step="0.1" class="w-full h-1.5 bg-slate-700 rounded accent-purple-500 mt-2" />
+            <input v-model.number="temperature" type="range" min="0" max="1" step="0.1" class="w-full h-1.5 bg-slate-800 rounded-lg accent-purple-500 mt-2 cursor-pointer" />
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-bold text-slate-400">Max Tokens</label>
-            <input v-model.number="maxTokens" type="number" step="128" min="256" max="4096" class="bg-slate-950 border border-slate-700 text-white p-2 rounded-xl font-mono text-xs focus:border-purple-400 outline-none" />
+            <input v-model.number="maxTokens" type="number" step="128" min="256" max="4096" class="bg-slate-950 border border-slate-700/80 text-white p-2.5 rounded-xl font-mono text-xs focus:border-purple-400 outline-none shadow-inner" />
           </div>
         </div>
 
-        <div class="flex flex-col gap-1.5 flex-1">
+        <div class="flex flex-col gap-1.5 flex-1 min-h-[120px]">
           <label class="text-xs font-bold text-slate-400">System Prompt (OpenUI Enabled)</label>
-          <textarea v-model="systemPrompt" class="w-full h-full min-h-[100px] bg-slate-950 border border-slate-700 text-sky-400 p-3 rounded-xl font-mono text-xs focus:border-purple-400 outline-none resize-none"></textarea>
+          <textarea v-model="systemPrompt" class="w-full h-full min-h-[110px] bg-slate-950 border border-slate-700/80 text-sky-400 p-3 rounded-xl font-mono text-xs focus:border-purple-400 outline-none resize-none shadow-inner leading-relaxed"></textarea>
         </div>
       </div>
 
       <!-- COLONNA 2: CHAT TERMINAL STREAMING -->
-      <div class="bg-[#060a12] border border-slate-800 rounded-2xl shadow-xl flex flex-col overflow-hidden relative">
-        <div class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center z-10 flex-shrink-0">
+      <div class="bg-[#060a12] border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
+        <div class="bg-[#090d16] border-b border-slate-800 px-4 py-3 flex justify-between items-center z-10 flex-shrink-0">
           <span class="text-xs font-mono text-slate-400 flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Chat &amp; Prompt Stream
@@ -265,58 +267,58 @@ async function notarizeToVault() {
           <button 
             @click="notarizeToVault" 
             :disabled="isNotarizing || !lastAiMessage" 
-            class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1 text-xs font-bold rounded-lg hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+            class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
           >
             🛡️ Salva nel Vault
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-          <div v-if="messages.length === 0" class="m-auto text-center text-slate-500 text-sm max-w-xs">
+        <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
+          <div v-if="messages.length === 0" class="m-auto text-center text-slate-500 text-sm max-w-xs px-4">
             <span class="text-3xl mb-2 block">💬</span>
-            Chiedi a <strong>DKP-Coder</strong> di creare una card, una tabella o una dashboard con Tailwind per vederla apparire nella Preview OpenUI a destra.
+            Chiedi a <strong class="text-slate-300">DKP-Coder</strong> di creare una card, una tabella o una dashboard con Tailwind per vederla apparire nella Preview OpenUI a destra.
           </div>
 
           <div v-for="message in messages" :key="message.id" :class="['flex gap-3 max-w-[95%]', message.role === 'user' ? 'ml-auto flex-row-reverse' : '']">
-            <div :class="['w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 border', message.role === 'user' ? 'bg-sky-500/20 border-sky-500/40' : 'bg-purple-500/20 border-purple-500/40']">
+            <div :class="['w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0 border shadow-sm', message.role === 'user' ? 'bg-sky-500/20 border-sky-500/40 text-sky-300' : 'bg-purple-500/20 border-purple-500/40 text-purple-300']">
               {{ message.role === 'user' ? '🧑‍💻' : '🤖' }}
             </div>
-            <div :class="['p-3 rounded-xl text-xs leading-relaxed whitespace-pre-wrap font-mono', message.role === 'user' ? 'bg-slate-800 text-sky-100 rounded-tr-sm' : 'bg-slate-900 border border-slate-800 text-emerald-400 rounded-tl-sm shadow']">
+            <div :class="['p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap font-mono shadow-inner', message.role === 'user' ? 'bg-slate-800 text-sky-100 rounded-tr-sm' : 'bg-slate-900 border border-slate-800 text-emerald-400 rounded-tl-sm']">
               {{ message.content }}
             </div>
           </div>
 
-          <div v-if="isLoading" class="flex items-center gap-2 text-purple-400 font-bold text-xs bg-slate-900/50 p-2.5 rounded-lg w-max border border-purple-500/20">
-            ⚡ Generazione in corso...
-            <button @click="stop" class="ml-2 text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30">Ferma</button>
+          <div v-if="isLoading" class="flex items-center gap-2 text-purple-400 font-bold text-xs bg-slate-900/60 p-3 rounded-xl w-max border border-purple-500/30 shadow-sm">
+            <span>⚡ Generazione in corso...</span>
+            <button @click="stop" class="ml-2 text-[10px] bg-red-500/20 text-red-400 px-2.5 py-1 rounded-lg border border-red-500/30 font-bold cursor-pointer hover:bg-red-500/30 transition-colors">Ferma</button>
           </div>
         </div>
 
-        <form @submit="onSubmit" class="p-3 bg-slate-900 border-t border-slate-800 flex-shrink-0">
-          <div class="relative">
+        <form @submit="onSubmit" class="p-3 bg-[#090d16] border-t border-slate-800 flex-shrink-0">
+          <div class="relative flex items-center">
             <textarea 
               v-model="input" 
               @keydown.enter.exact.prevent="onSubmit"
               placeholder="Es: Crea una card utente con Tailwind... (Invio per inviare)" 
-              class="w-full bg-slate-950 border border-slate-700 text-white pl-3 pr-12 py-3 rounded-xl outline-none resize-none text-xs focus:border-purple-400"
+              class="w-full bg-slate-950 border border-slate-700/80 text-white pl-4 pr-14 py-3 rounded-2xl outline-none resize-none text-xs focus:border-purple-400 shadow-inner placeholder:text-slate-600 leading-relaxed"
               rows="2"
             ></textarea>
-            <button type="submit" :disabled="isLoading || !input?.trim()" class="absolute right-2.5 top-2.5 bottom-2.5 bg-purple-500 text-white font-black px-3 rounded-lg hover:bg-purple-400 disabled:opacity-50 text-xs">➔</button>
+            <button type="submit" :disabled="isLoading || !input?.trim()" class="absolute right-2.5 bg-purple-500 text-white font-black p-2.5 rounded-xl hover:bg-purple-400 disabled:opacity-40 text-xs transition-all shadow-md cursor-pointer">➔</button>
           </div>
         </form>
       </div>
 
       <!-- COLONNA 3: OPENUI LIVE PREVIEW -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+      <div class="bg-[#090d16] border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         
         <!-- Tabs Anteprima vs Codice Puro -->
-        <div class="bg-slate-950 border-b border-slate-800 px-4 py-2.5 flex justify-between items-center flex-shrink-0">
+        <div class="bg-slate-950 border-b border-slate-800 px-4 py-3 flex justify-between items-center flex-shrink-0">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-black text-purple-400">⚡ OpenUI Studio</span>
+            <span class="text-xs font-black text-purple-400 uppercase tracking-wider">⚡ OpenUI Studio</span>
           </div>
-          <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
-            <button @click="activeTab = 'preview'" :class="['px-3 py-1 text-xs font-bold rounded-md transition-colors', activeTab === 'preview' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white']">Preview Live</button>
-            <button @click="activeTab = 'code'" :class="['px-3 py-1 text-xs font-bold rounded-md transition-colors', activeTab === 'code' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white']">Codice Sorgente</button>
+          <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button @click="activeTab = 'preview'" :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'preview' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-white']">Preview Live</button>
+            <button @click="activeTab = 'code'" :class="['px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'code' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-white']">Codice Sorgente</button>
           </div>
         </div>
 
@@ -324,7 +326,7 @@ async function notarizeToVault() {
         <div class="flex-1 overflow-hidden bg-slate-950 flex flex-col relative">
           
           <!-- TAB 1: IFRAME LIVE PREVIEW -->
-          <div v-show="activeTab === 'preview'" class="w-full h-full bg-white rounded-b-2xl overflow-hidden relative">
+          <div v-show="activeTab === 'preview'" class="w-full h-full bg-white overflow-hidden relative">
             <iframe 
               :srcdoc="renderedHtmlContent" 
               sandbox="allow-scripts" 
@@ -333,7 +335,7 @@ async function notarizeToVault() {
           </div>
 
           <!-- TAB 2: CODICE RAW FORMATTATO -->
-          <div v-show="activeTab === 'code'" class="w-full h-full p-4 overflow-auto">
+          <div v-show="activeTab === 'code'" class="w-full h-full p-4 overflow-auto custom-scrollbar">
             <pre class="text-emerald-400 font-mono text-xs whitespace-pre-wrap leading-relaxed">{{ extractedCode || '// Nessun blocco di codice rilevato nella risposta dell\'IA.\n// Chiedi a DKP-Coder di generare un componente HTML/Tailwind.' }}</pre>
           </div>
 
@@ -348,7 +350,9 @@ async function notarizeToVault() {
 <style scoped>
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #060a12; }
-::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
 </style>

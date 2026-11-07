@@ -1,18 +1,19 @@
+<!-- app/pages/tools/ai-scanner.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-// 1. Estrazione ultra-sicura con Fallback (Previene qualsiasi crash)
+// 1. Estrazione ultra-sicura con Fallback
 const auth = useAuthCore() || {}
 const currentUser = auth.currentUser || ref({ id: 1 })
 const isAuthenticated = auth.isAuthenticated || ref(true)
-const userQuota = auth.userQuota // Può essere undefined, lo gestiamo sotto!
+const userQuota = auth.userQuota // Può essere undefined, gestito sotto
 const consumeQuota = auth.consumeQuota || (() => {})
 
 const currentUserId = computed(() => currentUser.value?.id || 1)
 
-useHead({
+useDkpSeo({
   title: 'AI Code Scanner v2.5-GOLD — DKP Tools',
-  meta: [{ name: 'description', content: 'Analisi vulnerabilità di sicurezza (OWASP), credenziali esposte e debito tecnico.' }]
+  description: 'Analisi vulnerabilità di sicurezza (OWASP), credenziali esposte e debito tecnico negli snippet di codice.'
 })
 
 const rawCode = ref('')
@@ -23,6 +24,7 @@ const scanReport = ref<any>(null)
 
 const showToast = ref(false)
 const toastMessage = ref('')
+
 function triggerToast(msg: string) {
   toastMessage.value = msg
   showToast.value = true
@@ -31,7 +33,7 @@ function triggerToast(msg: string) {
 
 // 2. Controllo Quota Blindato (nessun .value diretto senza check)
 const hasEnoughQuota = computed(() => {
-  if (!userQuota || !userQuota.value) return true // Se non c'è, passa dritto!
+  if (!userQuota || !userQuota.value) return true 
   return userQuota.value.remaining > 0
 })
 
@@ -40,7 +42,7 @@ async function runScanner() {
   if (!rawCode.value.trim()) return
 
   // 3. Controllo Auth blindato
-  if (auth.isAuthenticated && auth.isAuthenticated.value === false) {
+  if (isAuthenticated.value === false) {
     errorMessage.value = 'Autenticazione richiesta per eseguire lo scanner.'
     return
   }
@@ -61,7 +63,7 @@ async function runScanner() {
 
     if (res && res.success) {
       scanReport.value = res.data
-      if (auth.consumeQuota) auth.consumeQuota(1)
+      consumeQuota(1)
       triggerToast('✅ Audit completato! +30 XP registrati sul profilo.')
     } else {
       errorMessage.value = res?.error || 'Errore durante l\'analisi.'
@@ -100,108 +102,151 @@ async function notarizeToVault() {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto my-10 px-6 font-sans text-slate-100">
+  <div class="max-w-7xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">
     
-    <!-- TOAST -->
+    <!-- TOAST NOTIFICATION -->
     <Transition name="fade">
-      <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(16,185,129,0.2)] font-bold z-50">
+      <div v-if="showToast" class="fixed top-20 sm:top-5 right-1/2 translate-x-1/2 sm:translate-x-0 sm:right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.25)] font-bold text-sm z-50 whitespace-nowrap text-center">
         {{ toastMessage }}
       </div>
     </Transition>
 
-    <div class="mb-8">
-      <div class="flex justify-between items-center mb-3">
-        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest">
+    <!-- HEADER SEZIONE -->
+    <div class="mb-10 text-center sm:text-left relative">
+      <div class="absolute top-0 left-0 w-full h-32 bg-sky-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+      
+      <div class="flex flex-col sm:flex-row sm:justify-between items-center mb-4 gap-4 relative z-10">
+        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-4 py-1.5 rounded-full text-xs font-black tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.15)] uppercase">
           🤖 DKP CORE TOOL v2.5-GOLD
         </span>
-        <NuxtLink to="/" class="text-sky-400 text-sm font-bold hover:underline">← Torna all'Ecosistema</NuxtLink>
+        <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors">
+          ← Torna al Toolkit
+        </NuxtLink>
       </div>
-      <h1 class="text-4xl font-black text-white mb-2">🔍 AI Code Scanner & <span class="text-emerald-400">Security Audit</span></h1>
-      <p class="text-slate-400 text-lg max-w-3xl">
+      
+      <h1 class="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">
+        🔍 AI Code Scanner & <span class="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Security Audit</span>
+      </h1>
+      
+      <p class="text-slate-400 text-base sm:text-lg max-w-3xl mx-auto sm:mx-0 leading-relaxed relative z-10">
         Analizza i tuoi snippet per individuare vulnerabilità di sicurezza (OWASP), credenziali esposte e calcolare il debito tecnico.
       </p>
     </div>
 
     <!-- QUOTA BANNER -->
-    <div v-if="userQuota" class="bg-slate-900 border border-slate-800 px-6 py-4 rounded-xl flex justify-between items-center mb-8 text-sm">
+    <div v-if="userQuota" class="bg-[#090d16] border border-slate-800 px-6 py-4 rounded-xl flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 shadow-lg">
       <div class="flex items-center gap-2">
-        <span class="text-slate-400">⚡ Quota API Rimanente:</span>
-        <strong class="font-black" :class="userQuota.remaining <= 2 ? 'text-red-400' : 'text-emerald-400'">
+        <span class="text-slate-400 text-sm">⚡ Quota API Rimanente:</span>
+        <strong class="font-black text-lg" :class="userQuota.remaining <= 2 ? 'text-red-400 drop-shadow-[0_0_10px_rgba(248,113,113,0.3)]' : 'text-emerald-400'">
           {{ userQuota.remaining }} / {{ userQuota.limit }} req
         </strong>
       </div>
-      <NuxtLink to="/shop" class="text-emerald-400 font-bold hover:underline">Aumenta Quota ↗</NuxtLink>
+      <NuxtLink to="/shop" class="text-emerald-400 text-sm font-bold hover:text-emerald-300 hover:underline transition-colors">
+        Aumenta Quota ↗
+      </NuxtLink>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <!-- Input Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
-        <h2 class="text-xl text-emerald-400 font-black mb-6">⚡ Codice Sorgente da Scansionare</h2>
+      
+      <!-- INPUT CARD -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col">
+        <h2 class="text-lg sm:text-xl text-emerald-400 font-black mb-6 flex items-center gap-2">
+          <span>⚡</span> Codice Sorgente da Scansionare
+        </h2>
         
         <textarea 
           v-model="rawCode" 
           rows="14" 
           placeholder="// Incolla qui il codice TypeScript, JavaScript, Python o SQL da analizzare..."
-          class="w-full bg-slate-950 border border-slate-700 text-sky-400 p-4 rounded-xl font-mono text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
+          class="w-full bg-[#020420] border border-slate-700/80 text-sky-400 p-5 rounded-2xl font-mono text-sm leading-relaxed focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 outline-none transition-all resize-none shadow-inner placeholder:text-slate-600 flex-1"
         ></textarea>
 
-        <div v-if="errorMessage" class="bg-red-500/15 border border-red-500 text-red-400 p-3 rounded-lg mt-4 font-bold text-sm">
+        <div v-if="errorMessage" class="bg-red-500/15 border border-red-500/40 text-red-400 p-4 rounded-xl mt-5 font-bold text-sm">
           ⚠️ {{ errorMessage }}
         </div>
 
         <button 
           @click="runScanner" 
           :disabled="!rawCode.trim() || isScanning || !hasEnoughQuota" 
-          class="w-full bg-emerald-500 text-slate-950 font-black py-4 rounded-xl mt-6 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all disabled:opacity-40"
+          class="w-full bg-emerald-500 text-slate-950 font-black py-4 rounded-xl mt-6 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all disabled:opacity-40 disabled:hover:shadow-none hover:-translate-y-0.5 text-sm sm:text-base"
         >
           {{ isScanning ? '🔎 Analisi AI in corso...' : '🚀 Avvia Audit di Sicurezza' }}
         </button>
       </div>
 
-      <!-- Report Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl flex flex-col">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl text-white font-black">📊 Report Audit & Metriche</h2>
-          <button v-if="scanReport" @click="notarizeToVault" :disabled="isNotarizing" class="bg-sky-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs hover:shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-all disabled:opacity-50">
+      <!-- REPORT CARD -->
+      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col relative overflow-hidden">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <h2 class="text-lg sm:text-xl text-white font-black flex items-center gap-2">
+            <span>📊</span> Report Audit & Metriche
+          </h2>
+          <button 
+            v-if="scanReport" 
+            @click="notarizeToVault" 
+            :disabled="isNotarizing" 
+            class="w-full sm:w-auto bg-sky-400 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm hover:shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-all disabled:opacity-50"
+          >
             {{ isNotarizing ? 'Notarizzazione...' : '🛡️ Notarizza nel Vault' }}
           </button>
         </div>
 
         <template v-if="scanReport">
-          <div class="grid grid-cols-3 gap-4 mb-8">
-            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
-              <span class="block text-[0.65rem] text-slate-400 uppercase font-black mb-1">Security Grade</span>
-              <span class="text-3xl font-black" :class="{'text-emerald-400': scanReport.securityLevel === 'A+', 'text-yellow-400': scanReport.securityLevel === 'B', 'text-orange-400': scanReport.securityLevel === 'C', 'text-red-500': scanReport.securityLevel === 'F'}">{{ scanReport.securityLevel }}</span>
+          <!-- KPI GRID -->
+          <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-center shadow-inner">
+              <span class="block text-[9px] sm:text-[10px] text-slate-500 uppercase font-black mb-1.5 tracking-widest">Security Grade</span>
+              <span class="text-2xl sm:text-3xl font-black" :class="{
+                'text-emerald-400': scanReport.securityLevel === 'A+', 
+                'text-yellow-400': scanReport.securityLevel === 'B', 
+                'text-orange-400': scanReport.securityLevel === 'C', 
+                'text-red-500': scanReport.securityLevel === 'F'
+              }">
+                {{ scanReport.securityLevel }}
+              </span>
             </div>
-            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
-              <span class="block text-[0.65rem] text-slate-400 uppercase font-black mb-1">Health Score</span>
-              <span class="text-3xl font-black" :class="scanReport.score >= 80 ? 'text-emerald-400' : 'text-red-400'">{{ scanReport.score }}/100</span>
+            
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-center shadow-inner">
+              <span class="block text-[9px] sm:text-[10px] text-slate-500 uppercase font-black mb-1.5 tracking-widest">Health Score</span>
+              <span class="text-2xl sm:text-3xl font-black" :class="scanReport.score >= 80 ? 'text-emerald-400' : 'text-red-400'">
+                {{ scanReport.score }}<span class="text-xs text-slate-500 font-bold">/100</span>
+              </span>
             </div>
-            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-center">
-              <span class="block text-[0.65rem] text-slate-400 uppercase font-black mb-1">Debito Tecnico</span>
-              <span class="text-3xl font-black text-sky-400">~{{ scanReport.metrics.techDebtHours }}h</span>
+            
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl text-center shadow-inner">
+              <span class="block text-[9px] sm:text-[10px] text-slate-500 uppercase font-black mb-1.5 tracking-widest">Tech Debt</span>
+              <span class="text-2xl sm:text-3xl font-black text-sky-400">
+                ~{{ scanReport.metrics?.techDebtHours || 0 }}<span class="text-xs">h</span>
+              </span>
             </div>
           </div>
 
-          <div class="flex-1">
-            <h3 class="text-sm text-slate-300 font-bold mb-4">📌 Rilievi Trovati ({{ scanReport.issues.length }})</h3>
+          <!-- ISSUES LIST -->
+          <div class="flex-1 flex flex-col min-h-0">
+            <h3 class="text-xs sm:text-sm text-slate-300 font-bold mb-4 uppercase tracking-wider">
+              📌 Rilievi Trovati ({{ scanReport.issues?.length || 0 }})
+            </h3>
             
-            <div v-if="scanReport.issues.length === 0" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl text-sm font-bold">
-              ✅ Nessuna vulnerabilità nota rilevata! Il codice è pulito e sicuro.
+            <div v-if="!scanReport.issues || scanReport.issues.length === 0" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-5 rounded-2xl text-sm font-bold flex items-center gap-3">
+              <span class="text-xl">✅</span> Nessuna vulnerabilità nota rilevata! Il codice è pulito e sicuro.
             </div>
             
-            <div class="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+            <div v-else class="flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar flex-1 max-h-[350px] sm:max-h-full">
               <div 
                 v-for="(issue, index) in scanReport.issues" 
                 :key="index" 
-                class="p-4 rounded-xl border"
+                class="p-4 sm:p-5 rounded-xl border transition-colors hover:bg-opacity-20"
                 :class="{
                   'bg-red-500/10 border-red-500/30 text-red-200': issue.type === 'danger',
                   'bg-sky-400/10 border-sky-400/30 text-sky-200': issue.type === 'info',
                   'bg-yellow-400/10 border-yellow-400/30 text-yellow-200': issue.type === 'warning'
                 }"
               >
-                <h4 class="font-bold mb-1 text-sm" :class="{'text-red-400': issue.type === 'danger', 'text-sky-400': issue.type === 'info', 'text-yellow-400': issue.type === 'warning'}">
+                <h4 class="font-bold mb-2 text-sm" :class="{
+                  'text-red-400': issue.type === 'danger', 
+                  'text-sky-400': issue.type === 'info', 
+                  'text-yellow-400': issue.type === 'warning'
+                }">
                   {{ issue.title }}
                 </h4>
                 <p class="text-xs m-0 leading-relaxed opacity-90">{{ issue.desc }}</p>
@@ -210,22 +255,43 @@ async function notarizeToVault() {
           </div>
         </template>
 
-        <div v-else class="flex flex-col items-center justify-center flex-1 py-12 text-slate-500">
-          <span class="text-5xl mb-4">🛡️</span>
-          <p class="text-center text-sm font-medium">Incolla un frammento di codice a sinistra e clicca su <br><strong class="text-slate-300">"Avvia Audit"</strong> per generare la diagnosi.</p>
+        <!-- EMPTY STATE -->
+        <div v-else class="flex flex-col items-center justify-center flex-1 py-16 text-slate-500 text-center">
+          <div class="w-20 h-20 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+            <span class="text-4xl">🛡️</span>
+          </div>
+          <p class="text-sm font-medium leading-relaxed max-w-xs">
+            Incolla un frammento di codice a sinistra e clicca su <strong class="text-slate-300">"Avvia Audit"</strong> per generare la diagnosi di sicurezza.
+          </p>
         </div>
+
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease, transform 0.4s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
+/* Transizioni Fade per Toast */
+.fade-enter-active, .fade-leave-active { 
+  transition: opacity 0.4s ease, transform 0.4s ease; 
+}
+.fade-enter-from, .fade-leave-to { 
+  opacity: 0; 
+  transform: translateY(10px) scale(0.98); 
+}
 
-/* Custom Scrollbar per la lista issues */
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+/* Custom Scrollbar snella per lo scanner */
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 5px; 
+}
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: #1e293b; 
+  border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+  background: #334155; 
+}
 </style>

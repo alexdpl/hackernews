@@ -175,331 +175,123 @@ const filteredTools = computed(() => {
 </script>
 
 <template>
-  <div class="tools-page-container">
-    
-    <!-- HERO HEADER -->
-    <header class="tools-hero">
-      <div class="hero-badge">
-        <span class="badge-status gold">🛠️ DKP DEVELOPER ECOSYSTEM SUITE</span>
-      </div>
-      <h1>Strumenti Professionali & <span class="highlight">Utility v2.5-GOLD</span></h1>
-      <p class="subtitle">
-        Una suite integrata di strumenti avanzati per l'audit del codice, AI testing, gestione API e creazione contenuti.
-      </p>
+  <div class="min-h-screen bg-[#020420] text-slate-50 px-4 sm:px-6 py-10 sm:py-16 font-sans">
+    <div class="max-w-6xl mx-auto flex flex-col gap-10">
+      
+      <!-- HERO HEADER -->
+      <header class="bg-[#090d16] border border-slate-800 rounded-3xl p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
+        <!-- Glow background effect -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 
-      <!-- SEARCH & FILTER BAR -->
-      <div class="tools-search-bar">
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="Cerca uno strumento (es. Scanner, Playground, CLI...)" 
-          class="search-input"
-        />
-        <select v-model="selectedCategory" class="category-select">
-          <option value="all">Tutte le Categorie</option>
-          <option value="Security & Monitoring">🔒 Security & Monitoring</option>
-          <option value="Developer Services">🔑 Developer Services</option>
-          <option value="Code Quality & AI">🧠 Code Quality & AI</option>
-          <option value="Content Creation">✍️ Content Creation</option>
-          <option value="DevOps & CLI">⚡ DevOps & CLI</option>
-        </select>
-      </div>
-    </header>
-
-    <!-- GRID DEI TOOLS -->
-    <div class="tools-grid">
-      <div v-for="tool in filteredTools" :key="tool.id" class="tool-card">
+        <div class="mb-5 relative z-10">
+          <span class="inline-flex bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-4 py-1.5 rounded-full text-xs font-extrabold tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            🛠️ DKP DEVELOPER ECOSYSTEM SUITE
+          </span>
+        </div>
         
-        <div class="tool-card-header">
-          <div class="tool-icon-box">
-            <span class="tool-emoji">{{ tool.icon }}</span>
+        <h1 class="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">
+          Strumenti Professionali & <span class="text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">Utility v2.5-GOLD</span>
+        </h1>
+        
+        <p class="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed mb-10 relative z-10">
+          Una suite integrata di strumenti avanzati per l'audit del codice, AI testing, gestione API e creazione contenuti.
+        </p>
+
+        <!-- SEARCH & FILTER BAR -->
+        <div class="flex flex-col sm:flex-row gap-4 max-w-3xl mx-auto justify-center relative z-10">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Cerca uno strumento (es. Scanner, Playground, CLI...)" 
+            class="flex-1 w-full sm:min-w-[300px] bg-[#020420] border border-slate-800 text-white px-5 py-3.5 rounded-xl text-sm outline-none focus:border-emerald-400 transition-colors shadow-inner placeholder-slate-500"
+          />
+          <select 
+            v-model="selectedCategory" 
+            class="w-full sm:w-auto bg-[#020420] border border-slate-800 text-slate-300 px-5 py-3.5 rounded-xl text-sm outline-none focus:border-emerald-400 cursor-pointer appearance-none shadow-inner"
+            style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto; padding-right: 2.5rem;"
+          >
+            <option value="all">Tutte le Categorie</option>
+            <option value="Security & Monitoring">🔒 Security & Monitoring</option>
+            <option value="Developer Services">🔑 Developer Services</option>
+            <option value="Code Quality & AI">🧠 Code Quality & AI</option>
+            <option value="Content Creation">✍️ Content Creation</option>
+            <option value="DevOps & CLI">⚡ DevOps & CLI</option>
+          </select>
+        </div>
+      </header>
+
+      <!-- GRID DEI TOOLS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div 
+          v-for="tool in filteredTools" 
+          :key="tool.id" 
+          class="bg-[#090d16] border border-slate-800 rounded-2xl p-7 flex flex-col justify-between shadow-xl transition-all duration-300 hover:border-emerald-500/50 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(16,185,129,0.1)] group relative overflow-hidden"
+        >
+          
+          <div class="flex items-center gap-4 mb-5">
+            <div class="w-12 h-12 shrink-0 bg-[#020420] border border-slate-800 rounded-xl flex items-center justify-center text-2xl group-hover:border-emerald-500/40 transition-colors shadow-inner">
+              <span>{{ tool.icon }}</span>
+            </div>
+            
+            <div class="flex-1 flex flex-col gap-1 overflow-hidden">
+              <span class="text-[10px] sm:text-[11px] font-extrabold text-sky-400 uppercase tracking-widest truncate">
+                {{ tool.category }}
+              </span>
+              <span class="text-[10px] text-slate-500 font-mono truncate">
+                {{ tool.version }}
+              </span>
+            </div>
+
+            <div 
+              :class="[
+                'text-[9px] sm:text-[10px] font-black px-2.5 py-1 rounded-md tracking-wider border shrink-0',
+                tool.status === 'enterprise' 
+                  ? 'bg-sky-500/10 text-sky-400 border-sky-500/30' 
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+              ]"
+            >
+              {{ tool.badgeText }}
+            </div>
           </div>
-          <div class="tool-meta">
-            <span class="tool-category">{{ tool.category }}</span>
-            <span class="tool-version-tag">{{ tool.version }}</span>
+
+          <h2 class="text-xl font-extrabold text-white mb-2 group-hover:text-emerald-400 transition-colors">
+            {{ tool.title }}
+          </h2>
+          
+          <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1">
+            {{ tool.description }}
+          </p>
+
+          <div class="bg-[#020420] border border-slate-800/80 rounded-xl p-4 mb-6 shadow-inner">
+            <h4 class="m-0 mb-3 text-slate-300 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5">
+              <span>🔥</span> Funzionalità Chiave:
+            </h4>
+            <ul class="flex flex-col gap-2 m-0 p-0 list-none">
+              <li v-for="(feat, idx) in tool.features" :key="idx" class="text-[11px] sm:text-xs text-slate-400 flex items-start gap-2 leading-snug">
+                <span class="text-emerald-400 font-bold shrink-0 mt-0.5">▸</span> 
+                <span>{{ feat }}</span>
+              </li>
+            </ul>
           </div>
-          <div class="tool-badge-status" :class="tool.status">
-            {{ tool.badgeText }}
+
+          <div class="flex justify-end mt-auto">
+            <NuxtLink 
+              :to="tool.route" 
+              class="w-full sm:w-auto text-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-5 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all hover:bg-emerald-400 hover:text-slate-950 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+            >
+              <span>{{ tool.linkText }}</span>
+              <span>➔</span>
+            </NuxtLink>
           </div>
         </div>
-
-        <h2 class="tool-title">{{ tool.title }}</h2>
-        <p class="tool-desc">{{ tool.description }}</p>
-
-        <div class="tool-features">
-          <h4>🔥 Funzionalità Chiave:</h4>
-          <ul>
-            <li v-for="(feat, idx) in tool.features" :key="idx">
-              <span class="feat-dot">▸</span> {{ feat }}
-            </li>
-          </ul>
-        </div>
-
-        <div class="tool-card-footer">
-          <NuxtLink :to="tool.route" class="tool-action-btn">
-            {{ tool.linkText }} ➔
-          </NuxtLink>
-        </div>
-
       </div>
-    </div>
 
-    <!-- EMPTY STATE -->
-    <div v-if="filteredTools.length === 0" class="empty-state">
-      <p>Nessuno strumento trovato corrispondente alla ricerca.</p>
-    </div>
+      <!-- EMPTY STATE -->
+      <div v-if="filteredTools.length === 0" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl">
+        <span class="text-4xl block mb-4">🔍</span>
+        <p class="text-slate-400 font-mono text-sm">Nessuno strumento trovato corrispondente alla ricerca.</p>
+      </div>
 
+    </div>
   </div>
 </template>
-
-<style scoped>
-.tools-page-container {
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #f8fafc;
-}
-
-.tools-hero {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
-  text-align: center;
-  margin-bottom: 2.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-}
-
-.hero-badge { margin-bottom: 0.85rem; }
-
-.badge-status.gold {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid #00dc82;
-  padding: 0.35rem 0.85rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  box-shadow: 0 0 15px rgba(0, 220, 130, 0.2);
-}
-
-.tools-hero h1 {
-  font-size: 2.4rem;
-  font-weight: 900;
-  margin: 0 0 0.8rem 0;
-  color: #ffffff;
-}
-
-.highlight {
-  color: #00dc82;
-  text-shadow: 0 0 20px rgba(0, 220, 130, 0.3);
-}
-
-.subtitle {
-  color: #94a3b8;
-  max-width: 700px;
-  margin: 0 auto 2rem auto;
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.tools-search-bar {
-  display: flex;
-  gap: 1rem;
-  max-width: 700px;
-  margin: 0 auto;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 280px;
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #ffffff;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.search-input:focus { border-color: #00dc82; }
-
-.category-select {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  outline: none;
-  cursor: pointer;
-}
-.category-select:focus { border-color: #00dc82; }
-
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.tool-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  padding: 1.75rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  transition: all 0.25s ease;
-}
-
-.tool-card:hover {
-  border-color: #00dc82;
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px rgba(0, 220, 130, 0.15);
-}
-
-.tool-card-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.2rem;
-}
-
-.tool-icon-box {
-  width: 45px;
-  height: 45px;
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-}
-
-.tool-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.tool-category {
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #38bdf8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.tool-version-tag {
-  font-size: 0.7rem;
-  color: #64748b;
-  font-family: monospace;
-}
-
-.tool-badge-status {
-  font-size: 0.68rem;
-  font-weight: 900;
-  padding: 0.2rem 0.55rem;
-  border-radius: 6px;
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  letter-spacing: 0.04em;
-}
-.tool-badge-status.enterprise {
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.3);
-}
-
-.tool-title {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #ffffff;
-  margin: 0 0 0.6rem 0;
-}
-
-.tool-desc {
-  color: #94a3b8;
-  font-size: 0.88rem;
-  line-height: 1.6;
-  margin-bottom: 1.25rem;
-}
-
-.tool-features {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.tool-features h4 {
-  margin: 0 0 0.5rem 0;
-  color: #cbd5e1;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.tool-features ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.tool-features li {
-  font-size: 0.82rem;
-  color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.feat-dot {
-  color: #00dc82;
-  font-weight: bold;
-}
-
-.tool-card-footer {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.tool-action-btn {
-  background: rgba(0, 220, 130, 0.1);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 800;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-.tool-action-btn:hover {
-  background: #00dc82;
-  color: #020420;
-  box-shadow: 0 0 15px rgba(0, 220, 130, 0.4);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #64748b;
-  font-size: 1rem;
-}
-</style>

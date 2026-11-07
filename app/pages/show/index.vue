@@ -4,10 +4,21 @@ import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
-// 1. Fetch dall'endpoint dedicato /api/show con paginazione a 15
-const { data: responseData, pending } = await useFetch('/api/show', {
-  query: { page: 1, limit: 15 }
+// 1. Fetch dall'endpoint unificato DB Neon per type 'show'
+const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
+  query: { type: 'show', page: 1, limit: 15 }
 })
+
+// Helper per condividere rapidamente (Copia negli appunti)
+const copySuccess = ref<string | null>(null)
+function shareStory(title: string, url?: string, id?: any) {
+  const targetUrl = url && url.startsWith('http') ? url : (typeof window !== 'undefined' ? `${window.location.origin}/show/${id}` : '')
+  if (navigator.clipboard && targetUrl) {
+    navigator.clipboard.writeText(targetUrl)
+    copySuccess.value = String(id)
+    setTimeout(() => { copySuccess.value = null }, 2000)
+  }
+}
 
 // Helper sicuro per l'estrazione del dominio
 function getDomain(urlStr: string, domainFallback?: string): string {
@@ -20,20 +31,32 @@ function getDomain(urlStr: string, domainFallback?: string): string {
   }
 }
 
-// Estrazione sicura con normalizzazione al volo di link e autore
+// Estrazione sicura con normalizzazione al volo
 const projectsList = computed(() => {
-  const raw = responseData.value?.data || responseData.value?.stories || []
-  return raw.map((project: any) => ({
-    ...project,
-    author: typeof project.author === 'object' ? project.author?.username : (project.author || 'github_user'),
-    url: project.url || '#'
-  }))
+  const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
+  return raw.map((project: any) => {
+    const safeSlug = project.slug || project.hn_id || project.id || `show-${Math.random().toString(36).substring(2, 7)}`
+    const points = project.points || project.hn_points || 1
+    const computedScore = project.tech_score || Math.min(99, Math.max(55, points * 2 + 50))
+
+    return {
+      ...project,
+      slug: safeSlug,
+      author: typeof project.author === 'object' ? project.author?.username : (project.author || project.hn_by || 'github_user'),
+      url: project.url || project.original_url || `/show/${safeSlug}`,
+      domain: getDomain(project.url || project.original_url, project.domain),
+      points,
+      tech_score: computedScore,
+      xp_awarded: project.xp_awarded || 30,
+      comments_count: project.comments_count || project.commentsCount || 0
+    }
+  })
 })
 
 const pagination = computed(() => responseData.value?.pagination || {})
-const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || responseData.value?.pagination?.hasMore || false)
+const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || responseData.value?.pagination?.hasMore || projectsList.value.length >= 15)
 
-// Funzioni specifiche della Vetrina Show (Voti e Formattazione tempo)
+// Gestione dei voti nel frontend
 const voteProject = (project: any) => {
   if (project.voted) {
     project.points = (project.points || 1) - 1
@@ -83,7 +106,7 @@ useSeoMeta({
       
       <!-- HEADER SHOWCASE UNIFICATO -->
       <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl relative overflow-hidden">
-        <div class="flex flex-col gap-2 max-w-2xl">
+        <div class="flex flex-col gap-2 max-w-2xl relative z-10">
           <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
@@ -98,7 +121,7 @@ useSeoMeta({
           </p>
         </div>
 
-        <NuxtLink to="/submit?type=show" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0 flex items-center gap-1.5">
+        <NuxtLink to="/submit?type=show" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0 flex items-center gap-1.5 relative z-10">
           <span>🚀</span> Invia Progetto (+30 XP)
         </NuxtLink>
       </div>
@@ -112,7 +135,7 @@ useSeoMeta({
         <div class="flex flex-col gap-3">
           <article 
             v-for="(project, index) in projectsList" 
-            :key="project.id || index" 
+            :key="project.id || project.slug || index" 
             class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
           >
             <!-- VOTING WIDGET -->
@@ -126,25 +149,42 @@ useSeoMeta({
             </button>
 
             <!-- CONTENUTO SHOW -->
-            <div class="flex flex-col gap-1.5 flex-1">
+            <div class="flex flex-col gap-2 flex-1">
               <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-xs font-mono font-bold text-slate-500">{{ index + 1 }}.</span>
-                <a :href="project.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                <a :href="project.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
                   {{ project.title }}
                 </a>
                 <span class="text-xs font-mono text-sky-400/80">
-                  ({{ getDomain(project.url, project.domain) }}) ↗
+                  ({{ project.domain }}) ↗
                 </span>
               </div>
 
               <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold">
+                  🛡️ Score: {{ project.tech_score }}
+                </span>
+                <span>•</span>
                 <span>👤 Owner: <strong class="text-emerald-400">@{{ project.author }}</strong></span>
                 <span>•</span>
-                <span class="text-amber-400 font-bold">⭐ +{{ project.xp_awarded || 30 }} XP</span>
+                <span class="text-amber-400 font-bold">⭐ +{{ project.xp_awarded }} XP</span>
                 <span>•</span>
                 <span class="text-slate-400">⏱️ {{ formatTime(project.createdAt || project.created_at) }}</span>
+                
+                <template v-if="project.comments_count > 0">
+                  <span>•</span>
+                  <NuxtLink :to="`/item/${project.id || project.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
+                    💬 {{ project.comments_count }} commenti
+                  </NuxtLink>
+                </template>
+                
                 <span>•</span>
-                <span class="text-purple-400">Verified da <strong>DKP Crawler</strong></span>
+                <button 
+                  @click="shareStory(project.title, project.url, project.id || project.slug)" 
+                  class="text-slate-400 hover:text-emerald-400 font-bold transition-colors cursor-pointer"
+                >
+                  🔗 {{ copySuccess === String(project.id || project.slug) ? 'Copiato!' : 'Condividi' }}
+                </button>
               </div>
             </div>
           </article>
@@ -161,7 +201,7 @@ useSeoMeta({
       <!-- EMPTY STATE FALLBACK -->
       <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
         <p>📭 Nessun progetto presente nella vetrina Showcase.</p>
-        <div class="flex items-center gap-3 text-xs">
+        <div class="flex items-center gap-3 text-xs flex-wrap justify-center">
           <NuxtLink to="/admin/crawler" class="text-sky-400 underline font-bold">🤖 Avvia Crawler GitHub Trending</NuxtLink>
           <span class="text-slate-600">•</span>
           <NuxtLink to="/submit?type=show" class="text-emerald-400 underline font-bold">Invia il tuo primo progetto!</NuxtLink>

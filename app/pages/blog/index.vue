@@ -31,7 +31,7 @@ const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 9 // 🟢 9 articoli per pagina (griglie perfette da 3x3)
 
-// Funzione di sicurezza per normalizzare i tag di qualsiasi articolo (vecchio o nuovo)
+// Funzione di sicurezza per normalizzare i tag di qualsiasi articolo
 function parseTags(tagsRaw: any): string[] {
   if (Array.isArray(tagsRaw)) {
     const expanded: string[] = []
@@ -188,8 +188,10 @@ function changePage(page: number) {
           <button v-if="searchQuery" @click="searchQuery = ''; currentPage = 1" class="clear-search-btn" type="button">×</button>
         </div>
       </div>
-<!-- 🟢 BANNER DKP ADS STRIP (Fuso con le info estese e link funzionanti) -->
+
+      <!-- 🟢 BANNER DKP ADS STRIP -->
       <DkpAdStrip />
+
       <!-- BARRA CATEGORIE DINAMICHE -->
       <nav class="categories-bar">
         <button 
@@ -254,20 +256,18 @@ function changePage(page: number) {
       <div v-else class="blog-grid">
         <article v-for="post in paginatedPosts" :key="post.id" class="post-card group hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all">
           
-          <!-- 🟢 FIX 1: Header Card su 2 livelli per non accavallare -->
+          <!-- Header Card -->
           <div class="mb-4 flex flex-col gap-2.5 border-b border-slate-800/50 pb-3">
-            <!-- Riga 1: Categoria con troncamento per testi lunghi -->
             <div class="flex w-full">
               <span class="cat-badge truncate max-w-full" :title="getCategoryName(post.categoryObject || post.category)">
                 {{ getCategoryName(post.categoryObject || post.category) }}
               </span>
             </div>
-            <!-- Riga 2: Verified (se c'è) e Tempo di Lettura Reale -->
             <div class="flex items-center justify-between w-full">
               <span v-if="post.isVerified" class="text-[10px] sm:text-[11px] text-emerald-400 font-bold border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded shadow-sm flex items-center gap-1" title="Verificato dal Vault DKP">
                 🛡️ Verified
               </span>
-              <div v-else></div> <!-- Spazio vuoto se non verificato per spingere il tempo a destra -->
+              <div v-else></div> 
               <span class="font-mono text-[10px] sm:text-xs text-slate-400">
                 ⏱️ {{ calculateReadTime(post) }} min
               </span>
@@ -284,7 +284,7 @@ function changePage(page: number) {
           <!-- Estratto -->
           <p class="post-excerpt">{{ post.excerpt || post.summary || 'Nessuna anteprima disponibile.' }}</p>
 
-          <!-- 🟢 FIX 2: TAGS ROW con parseTags(post.tags) invocato correttamente -->
+          <!-- TAGS ROW -->
           <div v-if="post.tags && parseTags(post.tags).length > 0" class="tags-row mt-2">
             <span v-for="tag in parseTags(post.tags)" :key="tag" class="tag-badge">#{{ tag }}</span>
           </div>
@@ -318,11 +318,12 @@ function changePage(page: number) {
           </div>
         </article>
       </div>
-	  <div>
-	  <DkpNodesHomeWidget />
-	  </div>
-<!-- 🟢 BANNER DKP ADS STRIP (Fuso con le info estese e link funzionanti) -->
-      <DkpAdStrip />
+      
+      <!-- WIDGET INTEGRATO NELLA NEWSROOM -->
+      <div class="mt-8 border-t border-slate-800/80 pt-8">
+        <DkpNodesHomeWidget />
+      </div>
+
       <!-- 🟢 CONTROLLI PAGINAZIONE NUMERATA -->
       <div v-if="totalPages > 1" class="pagination-container">
         <button 

@@ -4,23 +4,45 @@ import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
-// 1. Fetch dall'endpoint dedicato /api/ask con paginazione a 15
-const { data: responseData, pending } = await useFetch('/api/ask', {
-  query: { page: 1, limit: 15 }
+// 1. Fetch dal motore DB Neon (15 discussioni per pagina)
+const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
+  query: { type: 'ask', page: 1, limit: 15 }
 })
 
-// Estrazione dati sicura con normalizzazione al volo di link e autore
+// Logica di condivisione rapida
+const copySuccess = ref<string | null>(null)
+function shareStory(title: string, url?: string, id?: any) {
+  const targetUrl = url && url.startsWith('http') ? url : (typeof window !== 'undefined' ? `${window.location.origin}/news/${id}` : '')
+  if (navigator.clipboard && targetUrl) {
+    navigator.clipboard.writeText(targetUrl)
+    copySuccess.value = String(id)
+    setTimeout(() => { copySuccess.value = null }, 2000)
+  }
+}
+
+// Estrazione dati sicura con normalizzazione al volo di link, score e autore
 const askList = computed(() => {
-  const raw = responseData.value?.data || responseData.value?.stories || []
-  return raw.map((item: any) => ({
-    ...item,
-    author: typeof item.author === 'object' ? item.author?.username || 'community_ask' : (item.author || item.user || 'community_ask'),
-    url: item.url || `/item/${item.id}`
-  }))
+  const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
+  return raw.map((item: any) => {
+    const safeSlug = item.slug || item.hn_id || item.id || `ask-${Math.random().toString(36).substring(2, 7)}`
+    const points = item.points || item.hn_points || 1
+    const computedScore = item.tech_score || Math.min(95, Math.max(45, points * 2 + 50))
+
+    return {
+      ...item,
+      slug: safeSlug,
+      author: typeof item.author === 'object' ? item.author?.username || 'community_ask' : (item.author || item.hn_by || item.user || 'community_ask'),
+      url: item.url || item.original_url || `/news/${safeSlug}`,
+      points,
+      tech_score: computedScore,
+      comments_count: item.comments_count || item.commentsCount || 0,
+      xp_awarded: item.xp_awarded || 20
+    }
+  })
 })
 
 const pagination = computed(() => responseData.value?.pagination || {})
-const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || responseData.value?.pagination?.hasMore || false)
+const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || responseData.value?.pagination?.hasMore || askList.value.length >= 15)
 
 // 2. Articoli Consigliati dal Vault
 const featuredArticles = ref<any[]>([])
@@ -35,7 +57,7 @@ onMounted(async () => {
   }
 })
 
-// Logica Voti
+// Logica Voti Reattiva
 const voteAsk = (item: any) => {
   if (item.voted) {
     item.points = (item.points || 1) - 1
@@ -75,7 +97,7 @@ useHead({
       
       <!-- HEADER DELLA SEZIONE ASK -->
       <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl relative overflow-hidden">
-        <div class="flex flex-col gap-2 max-w-2xl">
+        <div class="flex flex-col gap-2 max-w-2xl relative z-10">
           <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
@@ -90,7 +112,7 @@ useHead({
           </p>
         </div>
 
-        <NuxtLink to="/submit?type=ask" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-1.5">
+        <NuxtLink to="/submit?type=ask" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-1.5 relative z-10">
           <span>💭</span> Fai una Domanda (+15 XP)
         </NuxtLink>
       </div>
@@ -104,7 +126,7 @@ useHead({
         <div class="flex flex-col gap-3">
           <article 
             v-for="(item, index) in askList" 
-            :key="item.id || index" 
+            :key="item.id || item.slug || index" 
             class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-md group"
           >
             <!-- VOTING WIDGET -->
@@ -118,22 +140,45 @@ useHead({
             </button>
 
             <!-- CONTENUTO ASK -->
-            <div class="flex flex-col gap-1.5 flex-1">
-              <div class="flex items-baseline gap-2">
+            <div class="flex flex-col gap-2 flex-1">
+              <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-xs font-mono font-bold text-slate-500">{{ index + 1 }}.</span>
-                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
                   {{ item.title }}
-                </a>
+                </NuxtLink>
               </div>
 
               <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
+                <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold">
+                  🛡️ Score: {{ item.tech_score }}
+                </span>
+                <span>•</span>
                 <span>👤 Chiesto da <strong class="text-purple-400">@{{ item.author }}</strong></span>
                 <span>•</span>
-                <span class="text-amber-400 font-bold">⭐ +{{ item.xp_awarded || 20 }} XP</span>
+                <span class="text-amber-400 font-bold">⭐ +{{ item.xp_awarded }} XP</span>
                 <span>•</span>
                 <span class="text-slate-400">⏱️ {{ formatTime(item.createdAt || item.created_at) }}</span>
                 <span>•</span>
-                <span class="text-sky-400">Verified da <strong>DKP Crawler</strong></span>
+
+                <!-- LINK SCHEDA NOTIZIA -->
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 hover:underline font-bold transition-colors">
+                  Leggi scheda ↗
+                </NuxtLink>
+                <span>•</span>
+
+                <!-- LINK COMMENTI ITEM -->
+                <NuxtLink :to="`/item/${item.id || item.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
+                  💬 {{ item.comments_count }} commenti
+                </NuxtLink>
+                <span>•</span>
+
+                <!-- PULSANTE CONDIVISIONE RAPIDA -->
+                <button 
+                  @click="shareStory(item.title, item.url, item.id || item.slug)" 
+                  class="text-slate-400 hover:text-emerald-400 font-bold transition-colors cursor-pointer"
+                >
+                  🔗 {{ copySuccess === String(item.id || item.slug) ? 'Copiato!' : 'Condividi' }}
+                </button>
               </div>
             </div>
           </article>
@@ -150,7 +195,7 @@ useHead({
       <!-- EMPTY STATE FALLBACK -->
       <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
         <p>📭 Nessuna domanda trovata in Ask DKP.</p>
-        <div class="flex items-center gap-3 text-xs">
+        <div class="flex items-center gap-3 text-xs flex-wrap justify-center">
           <NuxtLink to="/admin/crawler" class="text-sky-400 underline font-bold">🤖 Sincronizza Ask dal Crawler Admin</NuxtLink>
           <span class="text-slate-600">•</span>
           <NuxtLink to="/submit?type=ask" class="text-emerald-400 underline font-bold">Sii il primo ad aprire una discussione!</NuxtLink>
@@ -186,7 +231,7 @@ useHead({
         <DkpNodesHomeWidget />
       </div>
 
-      <!-- 🟢 BANNER DKP ADS STRIP -->
+      <!-- BANNER DKP ADS STRIP -->
       <DkpAdStrip categoryTag="DKP ASK SPONSORED FEED" />
     </div>
   </div>

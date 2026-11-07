@@ -9,9 +9,9 @@ const isAuthenticated = auth.isAuthenticated || ref(true)
 
 const currentUserId = computed(() => currentUser.value?.id || 1)
 
-useHead({
+useDkpSeo({
   title: 'Proof of Code (Vault) v2.5-GOLD — DKP Tools',
-  meta: [{ name: 'description', content: 'Notarizzazione e Hash Crittografico di sorgenti software' }]
+  description: 'Notarizzazione e Hash Crittografico di sorgenti software'
 })
 
 const codeTitle = ref('')
@@ -83,58 +83,72 @@ async function notarizeCode() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto my-10 px-6 font-sans text-slate-100">
+  <div class="max-w-4xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">
     
-    <!-- TOAST -->
+    <!-- TOAST NOTIFICATION -->
     <Transition name="fade">
-      <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(16,185,129,0.2)] font-bold z-50">
+      <div v-if="showToast" class="fixed top-20 sm:top-5 right-1/2 translate-x-1/2 sm:translate-x-0 sm:right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.25)] font-bold text-sm z-50 whitespace-nowrap text-center">
         {{ toastMessage }}
       </div>
     </Transition>
 
-    <div class="mb-8">
-      <div class="flex justify-between items-center mb-3">
-        <span class="bg-blue-500/10 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase">
+    <!-- HEADER SEZIONE -->
+    <div class="mb-10 text-center sm:text-left relative">
+      <div class="absolute top-0 left-0 w-full h-32 bg-blue-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+
+      <div class="flex flex-col sm:flex-row sm:justify-between items-center mb-4 gap-4 relative z-10">
+        <span class="bg-blue-500/10 text-blue-400 border border-blue-500/30 px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase shadow-[0_0_15px_rgba(59,130,246,0.15)]">
           🛡️ DKP Core Tool v2.5-GOLD
         </span>
-        <NuxtLink to="/" class="text-sky-400 text-sm font-bold hover:underline">← Torna all'Ecosistema</NuxtLink>
+        <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors">
+          ← Torna al Toolkit
+        </NuxtLink>
       </div>
-      <h1 class="text-4xl font-black text-white mb-2">Proof of Code <span class="text-blue-400">(Vault)</span></h1>
-      <p class="text-slate-400 text-lg">
+
+      <h1 class="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">
+        Proof of Code <span class="text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">(Vault)</span>
+      </h1>
+      
+      <p class="text-slate-400 text-base sm:text-lg max-w-3xl mx-auto sm:mx-0 leading-relaxed relative z-10">
         Notarizzazione immutabile di frammenti di codice e calcolo dell'impronta digitale SHA-256 su Neon DB Serverless.
       </p>
     </div>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl flex flex-col gap-6">
+    <!-- CARD FORM PRINCIPALE -->
+    <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl flex flex-col gap-6 relative">
       
+      <!-- TITOLO INPUT -->
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-bold text-slate-400">Titolo del Sorgente / Modulo</label>
+        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Titolo del Sorgente / Modulo</label>
         <input 
           v-model="codeTitle" 
           type="text" 
           placeholder="es. Algorithm_JWT_Validator.ts" 
-          class="w-full bg-slate-950 border border-slate-700 text-white p-3.5 rounded-xl font-medium text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all"
+          class="w-full bg-[#020420] border border-slate-700/80 text-white p-3.5 rounded-xl font-medium text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 outline-none transition-all placeholder:text-slate-600 shadow-inner"
         />
       </div>
 
+      <!-- SORGENTE INPUT -->
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-bold text-slate-400">Codice Sorgente da Certificare</label>
+        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Codice Sorgente da Certificare</label>
         <textarea 
           v-model="sourceSnippet" 
           rows="8" 
-          class="w-full bg-slate-950 border border-slate-700 text-sky-400 p-4 rounded-xl font-mono text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all resize-none" 
+          class="w-full bg-[#020420] border border-slate-700/80 text-sky-400 p-4 rounded-xl font-mono text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400/50 outline-none transition-all resize-none shadow-inner placeholder:text-slate-600 leading-relaxed" 
           placeholder="// Incolla qui il codice da notarizzare nel Vault..."
         ></textarea>
       </div>
 
-      <div v-if="errorMessage" class="bg-red-500/15 border border-red-500 text-red-400 p-3 rounded-lg font-bold text-sm">
+      <!-- ERROR MESSAGE -->
+      <div v-if="errorMessage" class="bg-red-500/15 border border-red-500/40 text-red-400 p-4 rounded-xl font-bold text-sm">
         ⚠️ {{ errorMessage }}
       </div>
 
+      <!-- BOTTONE AZIONE -->
       <button 
         @click="notarizeCode" 
         :disabled="isNotarizing || !sourceSnippet.trim() || !codeTitle.trim()" 
-        class="w-full bg-blue-500 text-slate-950 font-black py-4 rounded-xl hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-40"
+        class="w-full bg-blue-500 text-slate-950 font-black py-4 rounded-xl hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:hover:shadow-none text-sm sm:text-base cursor-pointer"
       >
         <span v-if="isNotarizing">⏳ Generazione Hash & Notarizzazione...</span>
         <span v-else>🔒 Registra nel Vault Crittografico</span>
@@ -142,24 +156,32 @@ async function notarizeCode() {
 
       <!-- CERTIFICATO RISULTATO -->
       <Transition name="fade">
-        <div v-if="notarizationResult" class="bg-slate-950 border border-emerald-500 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.1)] mt-4">
-          <div class="bg-emerald-500/15 text-emerald-400 px-5 py-3 border-b border-emerald-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-            <span class="font-black text-sm uppercase tracking-wide">📜 Certificato di Notarizzazione</span>
-            <span class="text-xs font-mono bg-emerald-500/10 px-2 py-1 rounded">ID: {{ notarizationResult.certificateId }}</span>
+        <div v-if="notarizationResult" class="bg-slate-950 border border-emerald-500/60 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.15)] mt-4">
+          <div class="bg-emerald-500/15 text-emerald-400 px-5 sm:px-6 py-3.5 border-b border-emerald-500/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <span class="font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2">
+              <span>📜</span> Certificato di Notarizzazione
+            </span>
+            <span class="text-[11px] font-mono bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+              ID: {{ notarizationResult.certificateId }}
+            </span>
           </div>
-          <div class="p-5 flex flex-col gap-4 text-sm">
+          
+          <div class="p-5 sm:p-6 flex flex-col gap-4 text-xs sm:text-sm">
             <div>
-              <span class="block text-slate-400 font-bold mb-1">SHA-256 Hash Crittografico:</span>
-              <code class="block w-full bg-slate-900 border border-slate-800 text-sky-400 p-3 rounded-lg break-all font-mono">
+              <span class="block text-slate-400 font-bold mb-1.5 uppercase tracking-wider text-[11px]">SHA-256 Hash Crittografico:</span>
+              <code class="block w-full bg-[#020420] border border-slate-800 text-sky-400 p-3.5 rounded-xl break-all font-mono text-xs shadow-inner">
                 {{ notarizationResult.sha256 }}
               </code>
             </div>
-            <div class="flex items-center justify-between border-t border-slate-800 pt-4">
+            
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-slate-800/80 pt-4 gap-3">
               <div>
-                <span class="block text-slate-400 font-bold mb-1">Timestamp Marcatura (Neon DB):</span>
-                <span class="text-slate-200">{{ new Date(notarizationResult.timestamp).toLocaleString() }}</span>
+                <span class="block text-slate-400 font-bold mb-1 uppercase tracking-wider text-[11px]">Timestamp Marcatura (Neon DB):</span>
+                <span class="text-slate-200 font-mono text-xs">{{ new Date(notarizationResult.timestamp).toLocaleString() }}</span>
               </div>
-              <NuxtLink to="user/dashboard?tab=vault" class="text-emerald-400 font-bold hover:underline text-xs">Vedi nella Dashboard ↗</NuxtLink>
+              <NuxtLink to="/user/dashboard?tab=vault" class="text-emerald-400 font-bold hover:text-emerald-300 hover:underline text-xs transition-colors flex items-center gap-1">
+                <span>Vedi nella Dashboard</span> <span>↗</span>
+              </NuxtLink>
             </div>
           </div>
         </div>
@@ -170,6 +192,11 @@ async function notarizeCode() {
 </template>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease, transform 0.4s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
+.fade-enter-active, .fade-leave-active { 
+  transition: opacity 0.4s ease, transform 0.4s ease; 
+}
+.fade-enter-from, .fade-leave-to { 
+  opacity: 0; 
+  transform: translateY(10px); 
+}
 </style>
