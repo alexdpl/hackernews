@@ -163,6 +163,7 @@ export const vaultCerts = pgTable('vault_certs', {
 export const pulseStories = pgTable('pulse_stories', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
+  slug: text('slug'),
   url: text('url'),
   domain: varchar('domain', { length: 255 }),
   type: varchar('type', { length: 50 }).notNull(),

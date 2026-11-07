@@ -6,10 +6,10 @@
   "description": "DevKernelPulse v2.5.0 GOLD - Kernel Core Engine and Proprietary SaaS Modular Ecosystem",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --host localhost",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-	"build:sdk": "tsc -p sdk/tsconfig.json"
+    "build:sdk": "tsc -p sdk/tsconfig.json"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.104",
@@ -26,7 +26,7 @@
     "drizzle-orm": "^0.45.4",
     "marked": "^18.1.2",
     "nodemailer": "^10.3.0",
-    "nuxt": "^4.6.3",
+    "nuxt": "^4.6.4",
     "ofetch": "^1.5.1",
     "postcss-selector-parser": "6.1.5",
     "postgres": "^3.4.9",

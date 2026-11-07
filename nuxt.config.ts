@@ -5,9 +5,14 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-09-25',
   devtools: { enabled: true },
   
+  devServer: {
+    host: 'localhost',
+    port: 3000
+  },
+
   runtimeConfig: {
     // Credenziali e chiavi server-side protette
-    geminiApiKey: process.env.GEMINI_API_KEY,
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
     databaseUrl: process.env.DATABASE_URL || '',
 
     smtpHost: process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com',
@@ -22,7 +27,7 @@ export default defineNuxtConfig({
       mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'
     }
   },
-  
+
   app: {
     head: {
       htmlAttrs: { lang: 'it' },
@@ -78,7 +83,6 @@ export default defineNuxtConfig({
 
   postcss: {
     plugins: {
-      'tailwindcss/nesting': false,
       tailwindcss: {},
       autoprefixer: {},
     },

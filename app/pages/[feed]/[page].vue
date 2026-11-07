@@ -30,17 +30,24 @@ function getDomain(urlStr?: string, domainFallback?: string): string {
   }
 }
 
+// Normalizzazione con Safeguards rigidi su slug ed ID
 const feedList = computed(() => {
   const raw = responseData.value?.stories || responseData.value?.data || []
-  return raw.map((item: any) => ({
-    ...item,
-    author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
-    url: item.url || `/item/${item.id}`,
-    domain: getDomain(item.url, item.domain),
-    points: item.points || 1,
-    comments_count: item.comments_count || item.commentsCount || 0,
-    xp_awarded: item.xp_awarded || 15
-  }))
+  return raw.map((item: any) => {
+    // SAFEGUARD SLUG: Prova in ordine slug -> hn_id -> id -> fallback univoco
+    const safeSlug = item.slug || item.hn_id || item.id || `news-${Math.random().toString(36).substring(2, 7)}`
+
+    return {
+      ...item,
+      slug: safeSlug,
+      author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
+      url: item.url || `/news/${safeSlug}`,
+      domain: getDomain(item.url, item.domain),
+      points: item.points || 1,
+      comments_count: item.comments_count || item.commentsCount || 0,
+      xp_awarded: item.xp_awarded || 15
+    }
+  })
 })
 
 const pagination = computed(() => responseData.value?.pagination || {})
@@ -114,7 +121,7 @@ useHead({
         <div class="flex flex-col gap-3">
           <article 
             v-for="(item, index) in feedList" 
-            :key="item.id || index" 
+            :key="item.id || item.slug || index" 
             class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex flex-col gap-2 transition-all shadow-md group"
           >
             <div class="flex items-baseline gap-2 flex-wrap">
@@ -140,7 +147,15 @@ useHead({
               <span>•</span>
               <span class="text-emerald-400 font-bold">⭐ +{{ item.xp_awarded }} XP</span>
               <span>•</span>
-              <NuxtLink :to="`/item/${item.id}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
+              
+              <!-- SAFEGUARD SCHEDA NOTIZIA TRINITY AI -->
+              <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 hover:underline font-bold transition-colors">
+                Leggi scheda ↗
+              </NuxtLink>
+              <span>•</span>
+
+              <!-- SAFEGUARD COMMENTI ITEM -->
+              <NuxtLink :to="`/item/${item.id || item.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
                 💬 {{ item.comments_count }} commenti
               </NuxtLink>
             </div>

@@ -3,19 +3,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { ingestHnFeed } from '../../utils/hnFetcher'
 import { getDb } from '../../utils/db'
 import { sql } from 'drizzle-orm'
-
-function generateSlug(title: string, id: number): string {
-  const cleanTitle = title
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .slice(0, 80)
-
-  return `${cleanTitle}-${id}`
-}
+import { slugify } from '../../utils/slugify'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -26,11 +14,17 @@ export default defineEventHandler(async (event) => {
     console.log(`[Crawl Test] Avvio ingestione HN (${type}, limit: ${limit})...`)
 
     const result = await ingestHnFeed(type, limit)
-    const db = getDb()
+    
+    // 🟢 CORRETTO: Aggiunto l'await per inizializzare correttamente il DB
+    const db = await getDb()
+    if (!db) {
+      throw new Error('Database non disponibile')
+    }
+
     const insertedRecords: any[] = []
 
     for (const story of result.newStories) {
-      const storySlug = generateSlug(story.title, story.id)
+      const storySlug = slugify(story.title) || `hn-${story.id}`
       const categoryName = type === 'show' ? 'Show HN' : 'Tech'
 
       const res = await db.execute(sql`

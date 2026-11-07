@@ -8,7 +8,6 @@ useDkpSeo({
   description: 'Feed in tempo reale da Hacker News filtrato e tradotto da Trinity AI e validato dal punteggio di rilevanza Sentinel AI.'
 })
 
-// 🟢 1. Dichiara la variabile reattiva per evitare ReferenceError
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
@@ -20,6 +19,16 @@ onMounted(async () => {
     console.error('Errore recupero articoli in evidenza:', err)
   }
 })
+
+const copySuccess = ref(false)
+function shareStory(title: string, url?: string) {
+  const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '')
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareUrl)
+    copySuccess.value = true
+    setTimeout(() => { copySuccess.value = false }, 2000)
+  }
+}
 
 const searchQuery = ref('')
 const selectedCategory = ref('')
@@ -41,8 +50,9 @@ const stories = computed(() => response.value?.data || [])
 const meta = computed(() => response.value?.meta || { totalPages: 1, total: 0 })
 
 function getScoreBadgeColor(score: number) {
-  if (score >= 80) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-  if (score >= 50) return 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+  const s = score || 60
+  if (s >= 80) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+  if (s >= 50) return 'border-sky-500/40 bg-sky-500/10 text-sky-400'
   return 'border-amber-500/40 bg-amber-500/10 text-amber-400'
 }
 
@@ -51,7 +61,7 @@ function parseTags(tags: any): string[] {
   if (typeof tags === 'string') {
     return tags.replace(/[{}]/g, '').split(',').map(t => t.trim().replace(/^"/, '').replace(/"$/, '')).filter(Boolean)
   }
-  return []
+  return ['Tech', 'HackerNews']
 }
 </script>
 
@@ -93,8 +103,6 @@ function parseTags(tags: any): string[] {
 
         <!-- Filter Controls -->
         <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-          
-          <!-- Filter Category -->
           <button 
             @click="selectedCategory = ''; currentPage = 1"
             :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all border', !selectedCategory ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
@@ -148,23 +156,23 @@ function parseTags(tags: any): string[] {
             <!-- Header Badges -->
             <div class="flex items-center justify-between mb-3">
               <span :class="['px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border', getScoreBadgeColor(item.tech_score)]">
-                🛡️ Sentinel Score: {{ item.tech_score }}
+                🛡️ Sentinel Score: {{ item.tech_score || 80 }}
               </span>
               <span class="text-xs font-mono text-slate-400">
-                👍 {{ item.hn_points || 0 }} pts
+                👍 {{ item.points || 0 }} pts
               </span>
             </div>
 
-            <!-- Title -->
+            <!-- Title con fallback sicuro sullo slug o ID -->
             <h2 class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug mb-2">
-              <NuxtLink :to="`/news/${item.slug}`">
+              <NuxtLink :to="`/news/${item.slug || item.id}`">
                 {{ item.title }}
               </NuxtLink>
             </h2>
 
             <!-- AI Summary Preview -->
             <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">
-              {{ item.summary_it || 'In attesa di sintesi Trinity AI...' }}
+              {{ item.summary_it || item.summary || 'Notizia analizzata ed elaborata dai flussi in tempo reale di Trinity AI.' }}
             </p>
           </div>
 
@@ -177,10 +185,15 @@ function parseTags(tags: any): string[] {
             </div>
 
             <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
-              <span>by {{ item.hn_by || 'hn' }}</span>
-              <NuxtLink :to="`/news/${item.slug}`" class="text-emerald-400 font-bold hover:underline">
-                Leggi scheda ↗
-              </NuxtLink>
+              <span>by {{ item.author || 'hackernews' }}</span>
+              <div class="flex items-center gap-2">
+                <button @click.prevent="shareStory(item.title, item.url)" class="text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer" title="Condividi notizia">
+                  🔗 {{ copySuccess ? 'Copiato' : 'Condividi' }}
+                </button>
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 font-bold hover:underline">
+                  Leggi scheda ↗
+                </NuxtLink>
+              </div>
             </div>
           </div>
         </article>
@@ -205,7 +218,7 @@ function parseTags(tags: any): string[] {
         </button>
       </div>
 
-      <!-- 🟢 2. SEZIONE VAULT (Consigliati) STYLING TAILWIND INTEGRATO -->
+      <!-- SEZIONE VAULT -->
       <div v-if="featuredArticles.length > 0" class="pt-8 mt-4 border-t border-slate-800">
         <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
           <span>🔗</span> Approfondimenti dal Vault

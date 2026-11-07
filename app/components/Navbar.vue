@@ -93,7 +93,8 @@ watch(isAuthenticated, (newVal) => {
 
 // 🟢 CATEGORIE E FEED CORRETTI CON ROTTE UNIFICATE v2.5-GOLD
 const newsCategories = [
-  { name: 'Global Tech Feed', description: 'Ultime notizie dal Web (Crawler)', icon: '🌍', route: '/' },
+  { name: 'Hacker News AI', description: 'Notizie HN analizzate da Trinity AI', icon: '🤖', route: '/news' },
+  { name: 'Global Tech Feed', description: 'Ultime notizie dal Web (Crawler)', icon: '🌍', route: '/feed' },
   { name: 'Blog Vault & Guide', description: 'Ultimi Articoli editoriali', icon: '📚', route: '/newest' },
   { name: 'Ask DKP', description: 'Domande, supporto e discussioni', icon: '💭', route: '/ask' },
   { name: 'Show DKP', description: 'Showcase progetti della community', icon: '🚀', route: '/show' },

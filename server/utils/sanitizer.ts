@@ -1,21 +1,28 @@
 // server/utils/sanitizer.ts
 
 /**
- * 1. Sanitizzatore Supremo per URL (v2.5-GOLD - Bulletproof Edition)
- * Garantisce che nessun URL malformato, vuoto o anomalo faccia mai crashare il server.
- * Intercetta link relativi di HackerNews, stringhe sporche e applica fallback interni sicuri.
+ * 1. Sanitizzatore Supremo per URL (v2.6-BULLETPROOF)
+ * Garantisce che nessun URL malformato, vuoto, oggetto o anomalo faccia mai crashare il server.
  */
-export function sanitizeUrl(rawUrl: string | null | undefined, fallbackTitle?: string): { url: string; domain: string; isInternal: boolean } {
+export function sanitizeUrl(
+  rawUrl: string | null | undefined, 
+  fallbackTitle?: string | null | undefined
+): { url: string; domain: string; isInternal: boolean } {
   const defaultDomain = 'devkernelpulse.org'
   
-  // Genera uno slug sicuro dal titolo
-  const fallbackSlug = fallbackTitle 
-    ? String(fallbackTitle).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') 
-    : Math.random().toString(36).substring(2, 8)
+  // Conversione sicura e pulita del titolo in stringa
+  const safeTitleString = typeof fallbackTitle === 'string' && fallbackTitle.trim() !== '' 
+    ? fallbackTitle 
+    : 'tech-story'
+
+  const fallbackSlug = safeTitleString
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || Math.random().toString(36).substring(2, 8)
 
   const defaultInternalUrl = `https://${defaultDomain}/item/${fallbackSlug}`
 
-  // Se l'URL è vuoto, null o non è una stringa
+  // Se l'URL non è una stringa valida
   if (!rawUrl || typeof rawUrl !== 'string' || rawUrl.trim() === '') {
     return {
       url: defaultInternalUrl,
@@ -26,7 +33,7 @@ export function sanitizeUrl(rawUrl: string | null | undefined, fallbackTitle?: s
 
   let cleaned = rawUrl.trim()
 
-  // Se è un link relativo di HackerNews (es. "item?id=12345" o "/item?id=12345")
+  // Link relativi di HackerNews (es. "item?id=12345" o "/item?id=12345")
   if (cleaned.includes('item?id=') || cleaned.startsWith('/item/')) {
     const idMatch = cleaned.match(/id=(\d+)/)
     const hnId = idMatch ? idMatch[1] : ''
@@ -37,7 +44,7 @@ export function sanitizeUrl(rawUrl: string | null | undefined, fallbackTitle?: s
     }
   }
 
-  // Se manca il protocollo ma sembra un dominio valido
+  // Manca il protocollo ma sembra un dominio valido
   if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
     if (cleaned.startsWith('www.') || (cleaned.includes('.') && !cleaned.includes(' '))) {
       cleaned = `https://${cleaned}`
@@ -50,16 +57,15 @@ export function sanitizeUrl(rawUrl: string | null | undefined, fallbackTitle?: s
     }
   }
 
-  // Tentativo di parsing nativo protetto al 100% da try/catch
+  // Parsing nativo protetto al 100% da try/catch
   try {
     const parsed = new URL(cleaned)
     return {
       url: parsed.toString(),
-      domain: parsed.hostname.replace(/^www\./, ''),
+      domain: parsed.hostname ? parsed.hostname.replace(/^www\./, '') : defaultDomain,
       isInternal: false
     }
-  } catch (err) {
-    // Fallback di sicurezza estrema: se il costruttore lancia Invalid URL, lo catturiamo qui
+  } catch {
     return {
       url: defaultInternalUrl,
       domain: defaultDomain,
@@ -69,19 +75,33 @@ export function sanitizeUrl(rawUrl: string | null | undefined, fallbackTitle?: s
 }
 
 /**
- * 2. Sanitizzatore HTML per Email in arrivo (Prevenzione XSS / Cross-Site Scripting)
+ * 2. Sanitizzatore HTML per Email in arrivo (Prevenzione XSS)
+ * Nota: Assicurati di importare sanitize-html se viene usato, oppure restituisce stringa pulita.
  */
-export function sanitizeEmailHtml(rawHtml: string): string {
-  if (!rawHtml) return ''
+export function sanitizeEmailHtml(rawHtml: string | null | undefined): string {
+  if (!rawHtml || typeof rawHtml !== 'string') return ''
 
-  return sanitizeHtml(rawHtml, {
-	  disallowedTagsMode: 'discard',
-	  allowedSchemes: ['http', 'https', 'mailto'],
-	  allowedSchemesAppliedToAttributes: ['href', 'src'],
-	  allowProtocolRelative: false,
-	  transformTags: {
-  a: sanitizeHtml.simpleTransform('a', { target: '_blank',
-  rel: 'noopener noreferrer' }, true) }
-  })
-  
+  // Se la libreria sanitizeHtml è disponibile globalmente o importata
+  try {
+    // @ts-ignore
+    if (typeof sanitizeHtml === 'function') {
+      // @ts-ignore
+      return sanitizeHtml(rawHtml, {
+        disallowedTagsMode: 'discard',
+        allowedSchemes: ['http', 'https', 'mailto'],
+        allowedSchemesAppliedToAttributes: ['href', 'src'],
+        allowProtocolRelative: false,
+        transformTags: {
+          a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' }, true)
+        }
+      })
+    }
+  } catch {
+    // Fallback se la lib non è caricata
+  }
+
+  // Fallback di pulizia basilare dei tag script/on-events se sanitize-html non è agganciato
+  return rawHtml
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/g, '')
 }

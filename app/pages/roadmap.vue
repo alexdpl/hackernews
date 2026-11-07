@@ -82,7 +82,7 @@ const milestones = ref<RoadmapMilestone[]>([
     quarter: 'Q1 2027',
     phaseTitle: 'DKP Public SDK & Developer Ecosystem',
     version: 'v3.0-BETA',
-    status: 'completed', // 🟢 AGGIORNATO A COMPLETED
+    status: 'completed',
     progress: 100,
     description: 'Rilascio ufficiale del pacchetto NPM @devkernelpulse/sdk. Permette a chiunque di integrare Vault, AI e NewsRoom nelle proprie app.',
     features: [
@@ -97,7 +97,7 @@ const milestones = ref<RoadmapMilestone[]>([
     quarter: 'Q2 2027',
     phaseTitle: 'Autonomous Neural Agents & Auto-Patching',
     version: 'v3.2',
-    status: 'in-progress', // ⚡ PASSATO IN CORSO
+    status: 'in-progress',
     progress: 15,
     description: 'Evoluzione del Neural Playground in un agente autonomo capace di PR su GitHub.',
     features: [
@@ -138,107 +138,135 @@ const overallCompletion = computed(() => {
 </script>
 
 <template>
-  <div class="roadmap-page-container">
-    <header class="roadmap-hero">
-      <div class="hero-badge">
-        <span class="badge-status gold">🚀 DKP ECOSYSTEM ROADMAP 2026-2027</span>
-      </div>
-      <h1>Piano di Sviluppo &amp; <span class="highlight">Vision v3.0</span></h1>
-      <p class="subtitle">
-        Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, lancio SDK ufficiale e la nuova visione strategica.
-      </p>
-
-      <div class="overall-progress-card">
-        <div class="progress-info">
-          <span>Stato Avanzamento Globale Ecosistema:</span>
-          <strong class="progress-percent">{{ overallCompletion }}%</strong>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
+    <div class="max-w-5xl mx-auto flex flex-col gap-10">
+      
+      <!-- HERO ROADMAP -->
+      <header class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-10 text-center flex flex-col items-center gap-6 shadow-2xl relative overflow-hidden">
+        <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/40 px-3.5 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[10px] sm:text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">
+            🚀 DKP ECOSYSTEM ROADMAP 2026-2027
+          </span>
         </div>
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill" :style="{ width: overallCompletion + '%' }"></div>
+
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+          Piano di Sviluppo &amp; <span class="text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]">Vision v3.0</span>
+        </h1>
+
+        <p class="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+          Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, lancio SDK ufficiale e la nuova visione strategica.
+        </p>
+
+        <!-- CARTELLO PROGRESSO GLOBALE -->
+        <div class="bg-[#020420] border border-slate-800 rounded-xl p-5 w-full max-w-xl flex flex-col gap-2.5 shadow-md">
+          <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-300">
+            <span>Stato Avanzamento Globale Ecosistema:</span>
+            <strong class="text-emerald-400 font-mono text-base">{{ overallCompletion }}%</strong>
+          </div>
+          <div class="h-2 bg-slate-800 rounded-full overflow-hidden w-full">
+            <div 
+              class="h-full bg-gradient-to-r from-sky-400 to-emerald-400 rounded-full transition-all duration-500" 
+              :style="{ width: overallCompletion + '%' }"
+            ></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- BARRA FILTRI -->
+      <div class="flex justify-center">
+        <div class="flex gap-2 flex-wrap justify-center font-mono text-xs">
+          <button 
+            type="button" 
+            @click="activeFilter = 'all'" 
+            :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'all' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
+          >
+            Tutte le Fasi
+          </button>
+          <button 
+            type="button" 
+            @click="activeFilter = 'completed'" 
+            :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'completed' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
+          >
+            🟢 Completati (Lanciati)
+          </button>
+          <button 
+            type="button" 
+            @click="activeFilter = 'in-progress'" 
+            :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'in-progress' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
+          >
+            ⚡ In Corso
+          </button>
+          <button 
+            type="button" 
+            @click="activeFilter = 'upcoming'" 
+            :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'upcoming' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
+          >
+            🔮 Visione Futura
+          </button>
         </div>
       </div>
-    </header>
 
-    <div class="controls-bar">
-      <div class="filter-pills">
-        <button type="button" @click="activeFilter = 'all'" class="pill" :class="{ active: activeFilter === 'all' }">Tutte le Fasi</button>
-        <button type="button" @click="activeFilter = 'completed'" class="pill" :class="{ active: activeFilter === 'completed' }">🟢 Completati (Lanciati)</button>
-        <button type="button" @click="activeFilter = 'in-progress'" class="pill" :class="{ active: activeFilter === 'in-progress' }">⚡ In Corso</button>
-        <button type="button" @click="activeFilter = 'upcoming'" class="pill" :class="{ active: activeFilter === 'upcoming' }">🔮 Visione Futura</button>
-      </div>
-    </div>
+      <!-- TIMELINE LIST -->
+      <div class="relative pl-8 sm:pl-10 before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800 flex flex-col gap-8">
+        
+        <div v-for="item in filteredMilestones" :key="item.id" class="relative group">
+          
+          <!-- TIMELINE MARKER DOT -->
+          <div class="absolute -left-8 sm:-left-10 top-6 -translate-x-1/2 z-10">
+            <span 
+              :class="[
+                'block w-4 h-4 rounded-full border-4 bg-[#020420] transition-all',
+                item.status === 'completed' ? 'border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)]' : '',
+                item.status === 'in-progress' ? 'border-amber-400 bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]' : '',
+                item.status === 'upcoming' ? 'border-sky-400 bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.8)]' : ''
+              ]"
+            ></span>
+          </div>
 
-    <div class="timeline-wrapper">
-      <div v-for="item in filteredMilestones" :key="item.id" class="timeline-item" :class="item.status">
-        <div class="timeline-marker"><span class="marker-dot"></span></div>
-        <article class="milestone-card">
-          <div class="card-header">
-            <div class="quarter-box">
-              <span class="quarter-text">{{ item.quarter }}</span>
-              <span class="version-tag">{{ item.version }}</span>
+          <!-- MILESTONE CARD -->
+          <article class="bg-[#090d16] border border-slate-800 hover:border-sky-500/50 rounded-2xl p-6 sm:p-8 shadow-xl transition-all hover:-translate-y-0.5 flex flex-col gap-4">
+            
+            <div class="flex justify-between items-center flex-wrap gap-3 font-mono">
+              <div class="flex items-center gap-2.5">
+                <span class="text-base font-extrabold text-white">{{ item.quarter }}</span>
+                <span class="px-2 py-0.5 bg-sky-500/10 text-sky-400 border border-sky-500/30 rounded text-[11px] font-bold">
+                  {{ item.version }}
+                </span>
+              </div>
+
+              <div 
+                :class="[
+                  'text-xs font-bold px-3 py-1 rounded-lg border',
+                  item.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : '',
+                  item.status === 'in-progress' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : '',
+                  item.status === 'upcoming' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : ''
+                ]"
+              >
+                <template v-if="item.status === 'completed'">🟢 COMPLETATO (100%)</template>
+                <template v-else-if="item.status === 'in-progress'">⚡ IN CORSO ({{ item.progress }}%)</template>
+                <template v-else>🔮 IN ARRIVO</template>
+              </div>
             </div>
-            <div class="status-badge" :class="item.status">
-              <template v-if="item.status === 'completed'">🟢 COMPLETATO (100%)</template>
-              <template v-else-if="item.status === 'in-progress'">⚡ IN CORSO ({{ item.progress }}%)</template>
-              <template v-else>🔮 IN ARRIVO</template>
+
+            <h2 class="text-xl sm:text-2xl font-bold text-white">{{ item.phaseTitle }}</h2>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">{{ item.description }}</p>
+
+            <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2 mt-2">
+              <h4 class="text-xs font-mono font-bold text-sky-400 uppercase tracking-wider">📋 Deliverables &amp; Moduli:</h4>
+              <ul class="flex flex-col gap-2 text-xs sm:text-sm text-slate-300">
+                <li v-for="(feat, idx) in item.features" :key="idx" class="flex items-center gap-2">
+                  <span class="text-emerald-400 font-bold font-mono">▹</span>
+                  <span>{{ feat }}</span>
+                </li>
+              </ul>
             </div>
-          </div>
-          <h2 class="milestone-title">{{ item.phaseTitle }}</h2>
-          <p class="milestone-desc">{{ item.description }}</p>
-          <div class="features-box">
-            <h4>📋 Deliverables &amp; Moduli:</h4>
-            <ul class="features-list">
-              <li v-for="(feat, idx) in item.features" :key="idx"><span class="check-icon">▹</span> {{ feat }}</li>
-            </ul>
-          </div>
-        </article>
+
+          </article>
+        </div>
+
       </div>
+
     </div>
   </div>
 </template>
-
-<style scoped>
-/* (Mantieni esattamente lo stesso CSS che avevamo già per la roadmap, non cambia nulla nel design) */
-.roadmap-page-container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; font-family: system-ui, sans-serif; color: #f8fafc; }
-.roadmap-hero { background: #090d16; border: 1px solid #1e293b; border-radius: 16px; padding: 2.5rem 2rem; text-align: center; margin-bottom: 2.5rem; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); }
-.hero-badge { margin-bottom: 0.85rem; }
-.badge-status.gold { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid #00dc82; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; }
-.roadmap-hero h1 { font-size: 2.4rem; font-weight: 900; margin: 0 0 0.8rem 0; color: #ffffff; }
-.highlight { color: #00dc82; text-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
-.subtitle { color: #94a3b8; max-width: 680px; margin: 0 auto 2rem auto; font-size: 1rem; line-height: 1.6; }
-.overall-progress-card { background: #020420; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; max-width: 600px; margin: 0 auto; }
-.progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; font-size: 0.88rem; color: #cbd5e1; font-weight: 700; }
-.progress-percent { color: #00dc82; font-size: 1.2rem; font-weight: 900; }
-.progress-bar-track { height: 8px; background: #1e293b; border-radius: 999px; overflow: hidden; }
-.progress-bar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #00dc82); border-radius: 999px; transition: width 0.5s ease; }
-.controls-bar { margin-bottom: 2.5rem; display: flex; justify-content: center; }
-.filter-pills { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-.pill { background: #090d16; border: 1px solid #1e293b; color: #cbd5e1; padding: 0.5rem 1.1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
-.pill:hover { border-color: #00dc82; color: #00dc82; }
-.pill.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.12); }
-.timeline-wrapper { position: relative; padding-left: 2rem; }
-.timeline-wrapper::before { content: ''; position: absolute; left: 9px; top: 10px; bottom: 10px; width: 2px; background: #1e293b; }
-.timeline-item { position: relative; margin-bottom: 2rem; }
-.timeline-marker { position: absolute; left: -2rem; top: 1.5rem; transform: translateX(-50%); z-index: 2; }
-.marker-dot { display: block; width: 16px; height: 16px; border-radius: 50%; background: #020420; border: 3px solid #64748b; }
-.timeline-item.completed .marker-dot { border-color: #00dc82; background: #00dc82; box-shadow: 0 0 12px #00dc82; }
-.timeline-item.in-progress .marker-dot { border-color: #facc15; background: #facc15; box-shadow: 0 0 12px #facc15; }
-.timeline-item.upcoming .marker-dot { border-color: #38bdf8; background: #38bdf8; box-shadow: 0 0 12px #38bdf8; }
-.milestone-card { background: #090d16; border: 1px solid #1e293b; border-radius: 14px; padding: 1.75rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); transition: all 0.2s ease; }
-.milestone-card:hover { border-color: #38bdf8; transform: translateY(-2px); }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; }
-.quarter-box { display: flex; align-items: center; gap: 0.6rem; }
-.quarter-text { font-size: 1.1rem; font-weight: 900; color: #ffffff; }
-.version-tag { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.72rem; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 4px; }
-.status-badge { font-size: 0.75rem; font-weight: 800; padding: 0.25rem 0.65rem; border-radius: 6px; }
-.status-badge.completed { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.status-badge.in-progress { background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); }
-.status-badge.upcoming { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
-.milestone-title { font-size: 1.3rem; font-weight: 800; margin: 0 0 0.6rem 0; color: #ffffff; }
-.milestone-desc { color: #94a3b8; font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.25rem; }
-.features-box { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 1rem 1.25rem; }
-.features-box h4 { margin: 0 0 0.6rem 0; color: #38bdf8; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; }
-.features-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.45rem; }
-.features-list li { font-size: 0.88rem; color: #cbd5e1; display: flex; align-items: center; gap: 0.5rem; }
-.check-icon { color: #00dc82; font-weight: bold; }
-</style>
