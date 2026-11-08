@@ -9,9 +9,9 @@ import DkpPulseManager from '~/components/dashboard/DkpPulseManager.vue'
 import DkpCommentsManager from '~/components/dashboard/DkpCommentsManager.vue'
 import DkpNodesManager from '~/components/dashboard/DkpNodesManager.vue'
 
-useHead({
+useDkpSeo({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.5-GOLD',
-  meta: [{ name: 'description', content: 'Gestisci il tuo profilo, gli articoli pubblicati e le tue API keys su DevKernelPulse.' }]
+  description: 'Gestisci il tuo profilo, gli articoli pubblicati e le tue API keys su DevKernelPulse.'
 })
 
 const route = useRoute()
@@ -24,7 +24,6 @@ const activeTab = computed({
   set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-// AGGIUNTO 'nodes' ALLE SUB-TABS DEI CONTENUTI
 const contentTab = ref<'blog' | 'pulse' | 'nodes' | 'comments'>('blog')
 
 // --- STATI CONTENUTI SEPARATI ---
@@ -102,6 +101,13 @@ const userProfileData = ref({
   nextLevelXp: 500,
   progress: 0,
   badges: ['Developer VIP Member']
+})
+
+// Gestione Fallback Avatar per evitare il bug visivo dell'immagine rotta
+const avatarError = ref(false)
+const userInitials = computed(() => {
+  const name = currentUser.value?.username || userProfileData.value.username || 'DKP'
+  return name.slice(0, 2).toUpperCase()
 })
 
 const xpHistoryList = ref<any[]>([])
@@ -357,215 +363,238 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
 </script>
 
 <template>
-  <div class="dashboard-page">
-    <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-text">{{ toastMessage }}</span>
-        </div>
+  <div class="min-h-screen bg-[#020420] text-slate-100 font-sans px-4 sm:px-6 py-8 sm:py-12">
+    
+    <!-- TOAST NOTIFICATION -->
+    <Transition name="fade">
+      <div v-if="showToast" class="fixed top-20 sm:top-5 right-1/2 translate-x-1/2 sm:translate-x-0 sm:right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.25)] font-bold text-sm z-50 whitespace-nowrap text-center">
+        {{ toastMessage }}
       </div>
     </Transition>
 
-    <div class="dashboard-container">
+    <div class="max-w-6xl mx-auto flex flex-col gap-6">
       
       <!-- HEADER USER CARD -->
-      <div class="user-header-card">
-        <div class="header-main-info">
-          <div class="user-avatar-wrap">
-            <img :src="profileForm.avatar" alt="Avatar Utente" class="user-avatar" />
-            <span class="online-indicator"></span>
+      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative overflow-hidden">
+        <div class="absolute -top-10 right-0 w-80 h-40 bg-emerald-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+        
+        <div class="flex items-center gap-5 relative z-10">
+          
+          <!-- AVATAR CON FALLBACK ROBUSTO -->
+          <div class="relative shrink-0">
+            <img 
+              v-if="profileForm.avatar && !avatarError" 
+              :src="profileForm.avatar" 
+              alt="Avatar Utente" 
+              @error="avatarError = true"
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-emerald-400 p-0.5 bg-slate-950 object-cover shadow-[0_0_20px_rgba(16,185,129,0.25)]" 
+            />
+            <div 
+              v-else 
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-emerald-400 bg-gradient-to-br from-emerald-500/20 to-purple-600/30 flex items-center justify-center text-emerald-400 font-black text-xl sm:text-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+            >
+              {{ userInitials }}
+            </div>
+            <span class="absolute bottom-0 right-0 w-4 h-4 bg-emerald-400 border-2 border-[#090d16] rounded-full shadow-[0_0_10px_rgba(16,185,129,0.8)]" title="Online"></span>
           </div>
-          <div class="user-details">
-            <h1 class="user-title">
-              Pannello Riservato <span class="username-highlight">@{{ currentUser?.username || 'alexdpl' }}</span>
+
+          <div class="flex flex-col gap-1.5">
+            <h1 class="text-xl sm:text-3xl font-black text-white tracking-tight">
+              Pannello Riservato <span class="text-sky-400 drop-shadow-[0_0_10px_rgba(56,189,248,0.3)]">@{{ currentUser?.username || 'alexdpl' }}</span>
             </h1>
-            <div class="user-badges">
-             <span v-for="badge in userProfileData.badges" :key="badge" class="role-badge">🛡️ {{ badge }}</span>
-             <span class="points-badge">⚡ {{ userProfileData.xp }} Punti DKP</span>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="badge in userProfileData.badges" :key="badge" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 text-xs font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                🛡️ {{ badge }}
+              </span>
+              <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+                ⚡ {{ userProfileData.xp }} Punti DKP
+              </span>
             </div>
           </div>
         </div>
 
-        <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="public-profile-btn">
+        <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="w-full sm:w-auto bg-slate-950 border border-emerald-500/40 text-emerald-400 font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500/10 transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.25)] text-center shrink-0 relative z-10">
           🌐 Vedi Profilo Pubblico
         </NuxtLink>
       </div>
 
-      <!-- TABS -->
-      <nav class="tabs-navigation grid-nav">
-        <button class="tab-item" :class="{ active: activeTab === 'profile' }" @click="activeTab = 'profile'">
+      <!-- TABS NAVIGATION BAR -->
+      <nav class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 bg-[#090d16] p-2 border border-slate-800 rounded-2xl shadow-xl">
+        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'profile' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'profile'">
           ⚙️ Profilo &amp; Social
         </button>
-        <button class="tab-item" :class="{ active: activeTab === 'content' }" @click="activeTab = 'content'">
+        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'content' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'content'">
           📰 I Miei Contenuti
         </button>
-        <button class="tab-item" :class="{ active: activeTab === 'vault' }" @click="activeTab = 'vault'">
+        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'vault' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'vault'">
           🛡️ Proof of Code Vault
         </button>
-        <button class="tab-item" :class="{ active: activeTab === 'api' }" @click="activeTab = 'api'">
+        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'api' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'api'">
           🔑 DKP API Console
         </button>
-        <button class="tab-item" :class="{ active: activeTab === 'gamification' }" @click="activeTab = 'gamification'">
+        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'gamification' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'gamification'">
           🏆 Gamification &amp; XP
         </button>
-        <NuxtLink to="/bounties" class="tab-item bounty-link">
-          🎯 Bounty Board &amp; $PULSE
+        <NuxtLink to="/bounties" class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all text-center truncate">
+          🎯 Bounty &amp; $PULSE
         </NuxtLink>
       </nav>
 
       <!-- PANNELLO 1: PROFILO -->
-      <section v-if="activeTab === 'profile'" class="tab-panel">
-        <div class="panel-card">
-          <h2 class="section-title">Informazioni Developer</h2>
-          <p class="section-sub">Personalizza l'aspetto del tuo profilo pubblico e collega i tuoi canali social.</p>
+      <section v-if="activeTab === 'profile'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <h2 class="text-xl font-black text-white mb-1">Informazioni Developer</h2>
+        <p class="text-slate-400 text-xs sm:text-sm mb-6">Personalizza l'aspetto del tuo profilo pubblico e collega i tuoi canali social.</p>
 
-          <form @submit.prevent="saveProfile" class="form-layout">
-            <div class="form-group full-width">
-              <label>URL Avatar Personalizzato</label>
-              <input v-model="profileForm.avatar" type="url" class="dkp-input" />
-            </div>
+        <form @submit.prevent="saveProfile" class="flex flex-col gap-5">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">URL Avatar Personalizzato</label>
+            <input v-model="profileForm.avatar" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+          </div>
 
-            <div class="form-group full-width">
-              <label>Biografia Developer</label>
-              <textarea v-model="profileForm.bio" rows="3" class="dkp-input textarea"></textarea>
-            </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Biografia Developer</label>
+            <textarea v-model="profileForm.bio" rows="3" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all resize-none leading-relaxed"></textarea>
+          </div>
 
-            <div class="social-grid">
-              <div class="form-group">
-                <label>Profilo GitHub</label>
-                <input v-model="profileForm.github" type="url" class="dkp-input" />
-              </div>
-              <div class="form-group">
-                <label>Profilo X / Twitter</label>
-                <input v-model="profileForm.twitter" type="url" class="dkp-input" />
-              </div>
-              <div class="form-group">
-                <label>Profilo LinkedIn</label>
-                <input v-model="profileForm.linkedin" type="url" class="dkp-input" />
-              </div>
-              <div class="form-group">
-                <label>Profilo Reddit</label>
-                <input v-model="profileForm.reddit" type="url" placeholder="https://reddit.com/user/username" class="dkp-input" />
-              </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo GitHub</label>
+              <input v-model="profileForm.github" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
             </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo X / Twitter</label>
+              <input v-model="profileForm.twitter" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo LinkedIn</label>
+              <input v-model="profileForm.linkedin" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo Reddit</label>
+              <input v-model="profileForm.reddit" type="url" placeholder="https://reddit.com/user/username" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+            </div>
+          </div>
 
-            <div class="form-footer">
-              <button type="submit" class="dkp-btn-success">Salva Modifiche</button>
-              <span v-if="profileSaved" class="save-toast">✓ Profilo Aggiornato!</span>
-            </div>
-          </form>
-        </div>
+          <div class="flex items-center gap-4 mt-2">
+            <button type="submit" class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all text-xs sm:text-sm cursor-pointer">
+              Salva Modifiche
+            </button>
+            <span v-if="profileSaved" class="text-emerald-400 font-bold text-xs">✓ Profilo Aggiornato!</span>
+          </div>
+        </form>
       </section>
 
       <!-- PANNELLO 2: GESTIONE CONTENUTI -->
-      <section v-if="activeTab === 'content'" class="tab-panel">
+      <section v-if="activeTab === 'content'" class="flex flex-col gap-6">
         
         <!-- Sub-Tabs di Navigazione Contenuti -->
-        <div class="content-tabs-nav mb-6 grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-900 border border-slate-800 p-2 rounded-xl">
-          <button @click="contentTab = 'blog'" :class="['content-tab-btn', { active: contentTab === 'blog' }]">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-[#090d16] border border-slate-800 p-2 rounded-2xl shadow-xl">
+          <button @click="contentTab = 'blog'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'blog' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
             📝 Articoli Blog
           </button>
-          <button @click="contentTab = 'pulse'" :class="['content-tab-btn', { active: contentTab === 'pulse' }]">
+          <button @click="contentTab = 'pulse'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'pulse' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
             🚀 Condivisioni (HN)
           </button>
-          <button @click="contentTab = 'nodes'" :class="['content-tab-btn', { active: contentTab === 'nodes' }]">
+          <button @click="contentTab = 'nodes'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'nodes' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
             🌐 Forum (Nodes)
           </button>
-          <button @click="contentTab = 'comments'" :class="['content-tab-btn', { active: contentTab === 'comments' }]">
+          <button @click="contentTab = 'comments'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'comments' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
             💬 Commenti Articoli
           </button>
         </div>
 
         <!-- 2A. TAB BLOG EDITORIALE -->
-        <div v-if="contentTab === 'blog'">
-          <div class="bg-slate-900 border border-emerald-500/30 rounded-lg p-4 mb-6">
+        <div v-if="contentTab === 'blog'" class="flex flex-col gap-6">
+          <div class="bg-[#090d16] border border-emerald-500/30 rounded-2xl p-4">
             <details class="group cursor-pointer">
-              <summary class="text-emerald-400 font-bold flex justify-between items-center list-none outline-none">
+              <summary class="text-emerald-400 font-bold text-xs sm:text-sm flex justify-between items-center list-none outline-none">
                 <span>💡 Guida rapida all'Editor DKP &amp; Markdown</span>
                 <span class="group-open:rotate-180 transition-transform">▼</span>
               </summary>
-              <div class="mt-4 text-sm text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="mt-4 text-xs sm:text-sm text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-slate-800">
                 <div>
                   <strong class="text-white">Formattazione Testo:</strong>
-                  <ul class="list-disc pl-4 mt-2 space-y-1">
-                    <li><code>**grassetto**</code> per evidenziare</li>
-                    <li><code>*corsivo*</code> o <code>_corsivo_</code></li>
-                    <li><code>[Titolo Link](https://url...)</code> per i collegamenti esterni</li>
-                    <li><code># Titolo Principale</code>, <code>## Sottotitolo</code> per gerarchia</li>
-                    <li>Inizia la riga con <code>- </code> o <code>* </code> per gli elenchi puntati</li>
+                  <ul class="list-disc pl-4 mt-2 space-y-1 text-slate-400 text-xs">
+                    <li><code class="text-sky-300">**grassetto**</code> per evidenziare</li>
+                    <li><code class="text-sky-300">*corsivo*</code> o <code class="text-sky-300">_corsivo_</code></li>
+                    <li><code class="text-sky-300">[Titolo Link](https://url...)</code> per i collegamenti esterni</li>
+                    <li><code class="text-sky-300"># Titolo Principale</code>, <code class="text-sky-300">## Sottotitolo</code> per gerarchia</li>
+                    <li>Inizia la riga con <code class="text-sky-300">- </code> o <code class="text-sky-300">* </code> per gli elenchi puntati</li>
                   </ul>
                 </div>
                 <div>
                   <strong class="text-white">Blocchi di Codice &amp; Citazioni:</strong>
-                  <p class="mt-2 text-xs leading-relaxed">
-                    Usa tre apici inversi (backtick) <code>```</code> seguiti dall'estensione (es. <code>ts</code>, <code>vue</code>, <code>go</code>) per inserire blocchi di codice nativi con syntax highlighting.<br><br>
-                    Per inserire una citazione in evidenza (Blockquote), usa il simbolo <code>> </code> all'inizio della riga.
+                  <p class="mt-2 text-xs leading-relaxed text-slate-400">
+                    Usa tre apici inversi <code class="text-sky-300">```</code> seguiti dall'estensione (es. <code class="text-sky-300">ts</code>, <code class="text-sky-300">vue</code>, <code class="text-sky-300">go</code>) per inserire blocchi di codice nativi.<br><br>
+                    Per inserire una citazione in evidenza (Blockquote), usa il simbolo <code class="text-sky-300">> </code> all'inizio della riga.
                   </p>
                 </div>
               </div>
             </details>
           </div>
 
-          <div class="panel-card">
-            <div class="panel-header-action flex-wrap gap-4">
+          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div>
-                <h2 class="section-title">Gestione Post &amp; Blog</h2>
-                <p class="section-sub">Crea, modifica e gestisci gli articoli pubblicati nell'ecosistema DevKernelPulse.</p>
+                <h2 class="text-xl font-black text-white">Gestione Post &amp; Blog</h2>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">Crea, modifica e gestisci gli articoli pubblicati nell'ecosistema DevKernelPulse.</p>
               </div>
               
-              <div class="flex items-center gap-3 w-full md:w-auto">
-                  <input 
-                      v-model="searchQuery" 
-                      type="text" 
-                      placeholder="Cerca per titolo o #tag..." 
-                      class="dkp-input text-sm w-full md:w-64"
-                  />
-                  <button @click="openNewArticleModal" class="dkp-btn-success whitespace-nowrap">+ Nuovo Post</button>
+              <div class="flex items-center gap-3 w-full sm:w-auto">
+                <input 
+                  v-model="searchQuery" 
+                  type="text" 
+                  placeholder="Cerca per titolo o #tag..." 
+                  class="bg-[#020420] border border-slate-700/80 text-white p-2.5 rounded-xl text-xs w-full sm:w-64 outline-none focus:border-emerald-400"
+                />
+                <button @click="openNewArticleModal" class="bg-emerald-500 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all whitespace-nowrap cursor-pointer">
+                  + Nuovo Post
+                </button>
               </div>
             </div>
 
-            <div class="table-container">
-              <table class="dkp-table">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
-                  <tr>
-                    <th>Titolo Articolo</th>
-                    <th>Categoria &amp; Sottocategoria</th>
-                    <th>Tag</th>
-                    <th>Stato</th>
-                    <th>Data</th>
-                    <th>Gestione Rapida (2x2)</th>
+                  <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    <th class="p-3">Titolo Articolo</th>
+                    <th class="p-3">Categoria &amp; Sottocategoria</th>
+                    <th class="p-3">Tag</th>
+                    <th class="p-3">Stato</th>
+                    <th class="p-3">Data</th>
+                    <th class="p-3">Gestione Rapida</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-slate-800/60 text-slate-300">
                   <tr v-if="filteredAndPaginatedPosts.items.length === 0">
-                    <td colspan="6" class="text-center py-6 text-gray-500 italic">
+                    <td colspan="6" class="text-center py-8 text-slate-500 italic">
                       <span v-if="searchQuery">Nessun articolo trovato per "{{ searchQuery }}".</span>
                       <span v-else>Nessun articolo pubblicato. Clicca su "+ Nuovo Post" per iniziare.</span>
                     </td>
                   </tr>
-                  <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id">
-                    <td class="font-bold">{{ art.title }}</td>
-                    <td>
-                      <span class="text-emerald font-semibold">{{ art.category }}</span>
-                      <span v-if="art.subCategory" class="sub-label"> → {{ art.subCategory }}</span>
+                  <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id" class="hover:bg-slate-900/40 transition-colors">
+                    <td class="p-3 font-bold text-white">{{ art.title }}</td>
+                    <td class="p-3">
+                      <span class="text-emerald-400 font-semibold">{{ art.category }}</span>
+                      <span v-if="art.subCategory" class="text-slate-500 text-xs"> → {{ art.subCategory }}</span>
                     </td>
-                    <td>
-                      <div class="tags-row">
-                        <span v-for="t in art.tags" :key="t" class="mini-tag">#{{ t }}</span>
+                    <td class="p-3">
+                      <div class="flex flex-wrap gap-1">
+                        <span v-for="t in art.tags" :key="t" class="bg-[#020420] text-sky-400 border border-slate-800 text-[10px] px-2 py-0.5 rounded font-mono">#{{ t }}</span>
                       </div>
                     </td>
-                    <td>
-                      <span :class="['status-pill', art.status]">
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase" :class="art.status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'">
                         {{ art.status === 'published' ? 'Pubblicato' : 'Bozza' }}
                       </span>
                     </td>
-                    <td style="white-space: nowrap;">{{ art.date }}</td>
-                    <td class="actions-cell">
-                      <div class="action-grid-2x2">
-                        <button @click="editArticle(art)" class="btn-action edit" title="Apri Editor Avanzato">✏️ Edit</button>
-                        <button @click="deleteArticle(art.id)" class="btn-action delete" title="Elimina dal Vault">🗑️ Del</button>
-                        <button @click="quickUpdateStatus(art, 'published')" class="btn-action publish" title="Metti Online Ora">🚀 Pubblica</button>
-                        <button @click="quickUpdateStatus(art, 'draft')" class="btn-action draft" title="Nascondi e Metti in Bozza">📝 Bozza</button>
+                    <td class="p-3 whitespace-nowrap text-xs text-slate-400">{{ art.date }}</td>
+                    <td class="p-3">
+                      <div class="grid grid-cols-2 gap-1.5 w-36">
+                        <button @click="editArticle(art)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2 rounded text-[10px] font-bold hover:bg-sky-500/20 cursor-pointer">✏️ Edit</button>
+                        <button @click="deleteArticle(art.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2 rounded text-[10px] font-bold hover:bg-red-500/20 cursor-pointer">🗑️ Del</button>
+                        <button @click="quickUpdateStatus(art, 'published')" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 py-1 px-2 rounded text-[10px] font-bold hover:bg-emerald-500/20 cursor-pointer">🚀 Pubblica</button>
+                        <button @click="quickUpdateStatus(art, 'draft')" class="bg-amber-500/10 text-amber-400 border border-amber-500/30 py-1 px-2 rounded text-[10px] font-bold hover:bg-amber-500/20 cursor-pointer">📝 Bozza</button>
                       </div>
                     </td>
                   </tr>
@@ -573,70 +602,65 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
               </table>
             </div>
 
-            <div v-if="filteredAndPaginatedPosts.totalPages > 1" class="flex justify-between items-center mt-6 pt-4 border-t border-gray-800 text-sm">
+            <div v-if="filteredAndPaginatedPosts.totalPages > 1" class="flex justify-between items-center mt-6 pt-4 border-t border-slate-800 text-xs">
               <button 
-                  @click="changePage(currentPage - 1)" 
-                  :disabled="currentPage === 1"
-                  class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="changePage(currentPage - 1)" 
+                :disabled="currentPage === 1"
+                class="px-3.5 py-2 bg-[#020420] border border-slate-800 text-emerald-400 font-bold rounded-xl hover:border-emerald-500 transition disabled:opacity-40 cursor-pointer"
               >
-                  ← Precedente
+                ← Precedente
               </button>
-              <span class="text-gray-400 font-mono">
-                  Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di {{ filteredAndPaginatedPosts.totalPages }}
+              <span class="text-slate-400 font-mono">
+                Pagina <strong class="text-emerald-400">{{ currentPage }}</strong> di {{ filteredAndPaginatedPosts.totalPages }}
               </span>
               <button 
-                  @click="changePage(currentPage + 1)" 
-                  :disabled="currentPage === filteredAndPaginatedPosts.totalPages"
-                  class="px-4 py-2 bg-gray-900 border border-gray-800 text-emerald-400 font-bold rounded-lg hover:border-emerald-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="changePage(currentPage + 1)" 
+                :disabled="currentPage === filteredAndPaginatedPosts.totalPages"
+                class="px-3.5 py-2 bg-[#020420] border border-slate-800 text-emerald-400 font-bold rounded-xl hover:border-emerald-500 transition disabled:opacity-40 cursor-pointer"
               >
-                  Successiva →
+                Successiva →
               </button>
             </div>
           </div>
         </div>
 
         <!-- 2B. TAB PULSE MANAGER (News / Ask / Show HN) -->
-        <div v-if="contentTab === 'pulse'">
-          
-          <div class="panel-card mb-6">
-            <div class="panel-header-action flex-wrap gap-4">
-              <div>
-                <h2 class="section-title">I Tuoi Link e Repository</h2>
-                <p class="section-sub">Gestisci le news, i tool e i progetti che hai condiviso nella sezione principale.</p>
-              </div>
-            </div>
+        <div v-if="contentTab === 'pulse'" class="flex flex-col gap-6">
+          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+            <h2 class="text-xl font-black text-white mb-1">I Tuoi Link e Repository</h2>
+            <p class="text-slate-400 text-xs sm:text-sm mb-6">Gestisci le news, i tool e i progetti che hai condiviso nella sezione principale.</p>
 
-            <div class="table-container">
-              <table class="dkp-table">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
-                  <tr>
-                    <th>Titolo &amp; Link</th>
-                    <th>Tipo</th>
-                    <th>Karma</th>
-                    <th>Commenti</th>
-                    <th>Data</th>
-                    <th>Azioni</th>
+                  <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                    <th class="p-3">Titolo &amp; Link</th>
+                    <th class="p-3">Tipo</th>
+                    <th class="p-3">Karma</th>
+                    <th class="p-3">Commenti</th>
+                    <th class="p-3">Data</th>
+                    <th class="p-3">Azioni</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-slate-800/60 text-slate-300">
                   <tr v-if="hnArticles.length === 0">
-                    <td colspan="6" class="text-center py-6 text-gray-500 italic">
+                    <td colspan="6" class="text-center py-8 text-slate-500 italic">
                       Nessun contenuto HN condiviso. Visita la NewsRoom per postare la tua prima repository!
                     </td>
                   </tr>
-                  <tr v-for="link in hnArticles" :key="link.id">
-                    <td class="font-bold">
+                  <tr v-for="link in hnArticles" :key="link.id" class="hover:bg-slate-900/40 transition-colors">
+                    <td class="p-3 font-bold text-white">
                       {{ link.title }}
                       <a v-if="link.url" :href="link.url" target="_blank" class="text-sky-400 text-xs ml-2 hover:underline">🔗 Visita</a>
                     </td>
-                    <td>
-                      <span class="status-pill published uppercase">{{ link.type }}</span>
+                    <td class="p-3">
+                      <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded uppercase">{{ link.type }}</span>
                     </td>
-                    <td class="text-emerald font-bold">🔥 {{ link.points }}</td>
-                    <td>💬 {{ link.commentsCount }}</td>
-                    <td style="white-space: nowrap;">{{ link.date }}</td>
-                    <td class="actions-cell">
-                      <button @click="deleteHnLink(link.id)" class="btn-action delete" title="Elimina Link">🗑️ Del</button>
+                    <td class="p-3 text-emerald-400 font-bold">🔥 {{ link.points }}</td>
+                    <td class="p-3">💬 {{ link.commentsCount }}</td>
+                    <td class="p-3 whitespace-nowrap text-slate-400 text-xs">{{ link.date }}</td>
+                    <td class="p-3">
+                      <button @click="deleteHnLink(link.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-1 rounded text-xs font-bold hover:bg-red-500/20 cursor-pointer">🗑️ Del</button>
                     </td>
                   </tr>
                 </tbody>
@@ -647,7 +671,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
           <DkpPulseManager/>
         </div>
 
-        <!-- 2C. TAB DKP NODES MANAGER (NUOVO) -->
+        <!-- 2C. TAB DKP NODES MANAGER -->
         <div v-if="contentTab === 'nodes'">
           <DkpNodesManager/>
         </div>
@@ -658,33 +682,33 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
         </div>
         
         <!-- MODALE EDITOR POST BLOG -->
-        <div v-if="isEditingArticle" class="dkp-modal-backdrop" @click.self="isEditingArticle = false">
-          <div class="dkp-modal editor-modal">
-            <div class="modal-header-row">
-              <h3 class="modal-title">✏️ Editor Post Blog DKP</h3>
+        <div v-if="isEditingArticle" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="isEditingArticle = false">
+          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+              <h3 class="text-xl font-black text-white">✏️ Editor Post Blog DKP</h3>
               <button 
                 type="button"
                 @click="useAdvancedEditor = !useAdvancedEditor" 
-                class="btn-switch-editor"
+                class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-bold text-xs px-3.5 py-1.5 rounded-xl hover:bg-sky-500/20 transition-all cursor-pointer"
               >
-                {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato (Live Preview)' }}
+                {{ useAdvancedEditor ? '⬅️ Torna a Editor Standard' : '✨ Passa a Editor Avanzato' }}
               </button>
             </div>
 
             <div v-if="useAdvancedEditor">
-             <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
+              <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
             </div>
 
-            <div v-else class="form-layout">
-              <div class="form-group">
-                <label>TITOLO POST *</label>
-                <input v-model="articleForm.title" type="text" class="dkp-input" placeholder="Es. Guida ad Architettura Nuxt 4..." />
+            <div v-else class="flex flex-col gap-4">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">TITOLO POST *</label>
+                <input v-model="articleForm.title" type="text" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" placeholder="Es. Guida ad Architettura Nuxt 4..." />
               </div>
 
-              <div class="grid-2-cols">
-                <div class="form-group">
-                  <label>CATEGORIA *</label>
-                  <select v-model="articleForm.category" @change="onCategoryChange" class="dkp-input">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">CATEGORIA *</label>
+                  <select v-model="articleForm.category" @change="onCategoryChange" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400 cursor-pointer">
                     <option value="" disabled>Seleziona una categoria</option>
                     <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">
                       {{ cat.icon }} {{ cat.name }}
@@ -692,9 +716,9 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
                   </select>
                 </div>
 
-                <div class="form-group">
-                  <label>SOTTOCATEGORIA</label>
-                  <select v-model="articleForm.subCategory" class="dkp-input" :disabled="!currentSubcategories.length">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">SOTTOCATEGORIA</label>
+                  <select v-model="articleForm.subCategory" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400 cursor-pointer" :disabled="!currentSubcategories.length">
                     <option value="" v-if="!currentSubcategories.length">Nessuna Sottocategoria</option>
                     <option v-for="sub in currentSubcategories" :key="sub" :value="sub">
                       {{ sub }}
@@ -703,21 +727,21 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
                 </div>
               </div>
 
-              <div class="form-group">
-                <label>TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">TAGS DELL'ARTICOLO</label>
                 <DkpTagInput v-model="articleForm.tags"/>
               </div>
 
-              <div class="form-group">
-                <label>ESTRATTO BREVE / SUMMARY (PER ANTEPRIME)</label>
-                <textarea v-model="articleForm.summary" rows="2" class="dkp-input" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">ESTRATTO BREVE / SUMMARY</label>
+                <textarea v-model="articleForm.summary" rows="3" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400 resize-none" placeholder="Sintesi per le anteprime nella sezione notizie..."></textarea>
               </div>
             </div>
 
-            <div class="modal-actions-row">
-              <button type="button" @click="isEditingArticle = false" class="btn-cancel">Annulla</button>
-              <button type="button" @click="submitWithStatus('draft')" class="btn-draft">💾 Salva Bozza</button>
-              <button type="button" @click="submitWithStatus('published')" class="btn-publish">🚀 {{ articleForm.id ? 'Aggiorna Articolo' : 'Pubblica Ora' }}</button>
+            <div class="flex justify-end items-center gap-3 border-t border-slate-800 pt-4 mt-2">
+              <button type="button" @click="isEditingArticle = false" class="bg-slate-800 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Annulla</button>
+              <button type="button" @click="submitWithStatus('draft')" class="bg-[#090d16] border border-amber-500/40 text-amber-400 font-extrabold text-xs px-4 py-2.5 rounded-xl cursor-pointer">💾 Salva Bozza</button>
+              <button type="button" @click="submitWithStatus('published')" class="bg-emerald-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer">🚀 {{ articleForm.id ? 'Aggiorna Articolo' : 'Pubblica Ora' }}</button>
             </div>
           </div>
         </div>
@@ -725,292 +749,284 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
       </section>
 
       <!-- PANNELLO 3: API CONSOLE REALE DA NEON DB -->
-      <section v-if="activeTab === 'api'" class="tab-panel">
-        <div class="panel-card">
-          <h2 class="section-title">🔑 DKP API Console &amp; Keys Manager</h2>  
-          <p class="section-sub">Genera e gestisci le tue chiavi API memorizzate in modo sicuro nel database Neon PostgreSQL.</p>
+      <section v-if="activeTab === 'api'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+        <div>
+          <h2 class="text-xl font-black text-white">🔑 DKP API Console &amp; Keys Manager</h2>  
+          <p class="text-slate-400 text-xs sm:text-sm mt-1">Genera e gestisci le tue chiavi API memorizzate in modo sicuro nel database Neon PostgreSQL.</p>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <NuxtLink :to="getApiUrl('/api-console')" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-sky-500/20 transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(56,189,248,0.15)]" external>
+            <span>⚡ Consumo delle API (Interactive Playground) ↗</span>
+          </NuxtLink>
+          <button @click="refreshApiKeys()" class="bg-[#020420] border border-slate-800 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold hover:text-white cursor-pointer">🔄 Aggiorna Lista</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-[#020420] border border-sky-500/30 rounded-2xl p-5 flex flex-col gap-1 shadow-inner">
+            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Chiamate Totali (30 gg)</span>
+            <div class="text-2xl font-black text-sky-400">{{ totalCallsCount }}</div>
+            <span class="text-[11px] text-sky-400 font-bold mt-1">▲ +12% rispetto al mese scorso</span>
+          </div>
+
+          <div class="bg-[#020420] border border-emerald-500/30 rounded-2xl p-5 flex flex-col gap-1 shadow-inner">
+            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Latenza Media API</span>
+            <div class="text-2xl font-black text-emerald-400">{{ realLatency }} ms</div>
+            <span class="text-[11px] text-emerald-400 font-bold mt-1">⚡ Nitro Engine v2.5 Optimal</span>
+          </div>
+
+          <div class="bg-[#020420] border border-purple-500/30 rounded-2xl p-5 flex flex-col gap-1 shadow-inner">
+            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">RAM Heap &amp; Server Uptime</span>
+            <div class="text-2xl font-black text-purple-400">{{ memoryMb }} MB</div>
+            <span class="text-[11px] text-purple-400 font-bold mt-1">🟢 Status: {{ serverStatus }} (Uptime: {{ uptimeSec }}s)</span>
+          </div>
+
+          <div class="bg-[#020420] border border-amber-500/30 rounded-2xl p-5 flex flex-col gap-1 shadow-inner">
+            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Tasso Errori (4xx / 5xx)</span>
+            <div class="text-2xl font-black text-amber-400">{{ errorRate }}</div>
+            <span class="text-[11px] text-amber-400 font-bold mt-1">👑 Sistema Stabile (GodMode Active)</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input v-model="newKeyName" type="text" placeholder="Nome Token (es. App Produzione Mobile)" class="flex-1 bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" />
+          <button @click="generateApiKey" class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl text-xs sm:text-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all cursor-pointer whitespace-nowrap">Genera Nuova API Key</button>
+        </div>
+
+        <div v-if="generatedKeyModal" class="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 flex flex-col gap-3">
+          <p class="text-amber-400 text-xs font-bold m-0">⚠️ Copia la tua API Key ora. Per sicurezza non verrà mai più mostrata in chiaro:</p>
+          <div class="flex items-center justify-between bg-[#020420] border border-slate-800 p-3 rounded-xl gap-4">
+            <code class="text-emerald-400 font-mono text-xs sm:text-sm truncate">{{ generatedKeyModal }}</code>
+            <button @click="copyToClipboard(generatedKeyModal)" class="bg-emerald-500 text-slate-950 font-black px-3 py-1.5 rounded-lg text-xs cursor-pointer shrink-0">
+              {{ copiedKey ? 'Copiato!' : 'Copia' }}
+            </button>
+          </div>
+          <button @click="generatedKeyModal = null" class="self-start text-xs text-slate-400 hover:text-white underline cursor-pointer">Ho salvato la chiave</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <div v-if="isLoadingApiKeys" class="py-8 text-center text-slate-500 font-mono text-xs">
+            Caricamento chiavi API dal database Neon...
+          </div>
+          <div v-else-if="apiKeysList.length === 0" class="py-8 text-center text-slate-500 font-mono text-xs">
+            Nessuna API Key creata. Inserisci un nome in alto per generare la prima chiave.
+          </div>
+          <table v-else class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                <th class="p-3">Nome Token</th>
+                <th class="p-3">Chiave API (Mascherata)</th>
+                <th class="p-3">Creata Il</th>
+                <th class="p-3">Tier / Ruolo</th>
+                <th class="p-3">Utilizzo Reale</th>
+                <th class="p-3">Stato</th>
+                <th class="p-3">Azione</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+              <tr v-for="key in apiKeysList" :key="key.id" class="hover:bg-slate-900/40 transition-colors">
+                <td class="p-3 font-bold text-white">{{ key.name }}</td>
+                <td class="p-3">
+                  <code class="bg-[#020420] text-sky-400 border border-slate-800 px-2.5 py-1 rounded-md font-mono text-xs cursor-pointer" @click="copyToClipboard(key.keyMasked || key.keyPrefix || 'dkp_live_...')">
+                    {{ key.keyMasked || key.keyPrefix || 'dkp_live_...' }}
+                  </code>
+                </td>
+                <td class="p-3 text-xs text-slate-400">{{ new Date(key.createdAt).toLocaleDateString() }}</td>
+                <td class="p-3"><span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-bold px-2 py-0.5 rounded">{{ key.role || 'PRO' }}</span></td>
+                <td class="p-3 font-mono text-xs">{{ key.usageCount || 0 }} req</td>
+                <td class="p-3">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase" :class="key.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'">
+                    {{ key.status }}
+                  </span>
+                </td>
+                <td class="p-3">
+                  <button v-if="key.status === 'ACTIVE'" @click="revokeApiKey(key.id)" class="text-red-400 hover:underline text-xs font-bold cursor-pointer">Revoca</button>
+                  <span v-else class="text-slate-600 text-xs">Revocata</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- PANNELLO 4: PROOF OF CODE VAULT -->
+      <section v-if="activeTab === 'vault'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider">🛡️ DKP Crittografia &amp; Notarizzazione</span>
+            <h2 class="text-xl sm:text-2xl font-black text-white mt-2">Proof of Code Vault</h2>
+            <p class="text-slate-400 text-xs sm:text-sm mt-1">Genera hash crittografici SHA-256 dei tuoi script e repository, notarizzandoli ufficialmente sulla rete DevKernelPulse.</p>
+          </div>
+          <div class="flex flex-col gap-1 text-xs text-slate-400 bg-[#020420] border border-slate-800 p-3 rounded-2xl shrink-0">
+            <span>Certificati Attivi: <strong class="text-white">{{ vaultCertificates.length }}</strong></span>
+            <span>Stato Rete: <strong class="text-emerald-400">🟢 SECURE</strong></span>
+          </div>
+        </div>
+
+        <div class="bg-[#020420] border border-sky-500/30 rounded-2xl p-6 flex flex-col gap-4 shadow-inner">
+          <h3 class="text-base font-black text-white">🔐 Notarizza un Nuovo Blocco di Codice o File</h3>
+          <p class="text-xs text-slate-400">Incolla qui il codice sorgente o la configurazione che desideri blindare nel Vault. Verrà calcolato l'hash crittografico univoco.</p>
           
-          <div class="api-action-header flex justify-between items-center">
-            <NuxtLink :to="getApiUrl('/api-console')" class="dkp-api-link-btn" external>
-              <span>⚡ Consumo delle API (Interactive Playground) ↗</span>
-            </NuxtLink>
-            <button @click="refreshApiKeys()" class="btn-secondary-sm cursor-pointer">🔄 Aggiorna Lista</button>
-          </div>
-
-          <div class="metrics-grid-2x2">
-            <div class="metric-card cyan-border">
-              <span class="card-label">Chiamate Totali (30 gg)</span>
-              <div class="card-value cyan-text">{{ totalCallsCount }}</div>
-              <span class="card-sub cyan">▲ +12% rispetto al mese scorso</span>
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">TITOLO O RIFERIMENTO SCRIPT *</label>
+              <input v-model="vaultNewTitle" type="text" placeholder="Es. SmartContract_Auth_v2.sol" class="w-full bg-[#090d16] border border-slate-700/80 text-white p-3 rounded-xl text-sm outline-none focus:border-sky-400" />
             </div>
-
-            <div class="metric-card green-border">
-              <span class="card-label">Latenza Media API</span>
-              <div class="card-value green-text">{{ realLatency }} ms</div>
-              <span class="card-sub engine">⚡ Nitro Engine v2.5 Optimal</span>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">CODICE SORGENTE O HASH DA NOTARIZZARE *</label>
+              <textarea v-model="vaultNewCode" rows="4" placeholder="Incolla qui il codice o la repo da firmare crittograficamente..." class="w-full bg-[#090d16] border border-slate-700/80 text-sky-400 p-3 rounded-xl font-mono text-xs outline-none focus:border-sky-400 leading-relaxed resize-none"></textarea>
             </div>
-
-            <div class="metric-card purple-border">
-              <span class="card-label">RAM Heap &amp; Server Uptime</span>
-              <div class="card-value purple-text">{{ memoryMb }} MB</div>
-              <span class="card-sub purple">🟢 Status: {{ serverStatus }} (Uptime: {{ uptimeSec }}s)</span>
-            </div>
-
-            <div class="metric-card gold-border">
-              <span class="card-label">Tasso Errori (4xx / 5xx)</span>
-              <div class="card-value gold-text">{{ errorRate }}</div>
-              <span class="card-sub gold">👑 Sistema Stabile (GodMode Active)</span>
-            </div>
-          </div>
-
-          <div class="api-generate-box mt-6">
-            <input v-model="newKeyName" type="text" placeholder="Nome Token (es. App Produzione Mobile)" class="dkp-input flex-grow" />
-            <button @click="generateApiKey" class="dkp-btn-success">Genera Nuova API Key</button>
-          </div>
-
-          <div v-if="generatedKeyModal" class="generated-key-alert">
-            <p class="alert-title">⚠️ Copia la tua API Key ora. Per sicurezza non verrà mai più mostrata in chiaro:</p>
-            <div class="raw-key-box">
-              <code>{{ generatedKeyModal }}</code>
-              <button @click="copyToClipboard(generatedKeyModal)" class="btn-copy">
-                {{ copiedKey ? 'Copiato!' : 'Copia' }}
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <button @click="notarizeNewCode" class="bg-emerald-500 text-slate-950 font-black px-5 py-3 rounded-xl text-xs sm:text-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all cursor-pointer whitespace-nowrap">
+                🛡️ Genera Certificato &amp; Notarizza nel Vault
               </button>
+              <span class="text-xs text-slate-500 font-medium">⚡ Firma crittografica istantanea con timestamp DKP v2.5</span>
             </div>
-            <button @click="generatedKeyModal = null" class="btn-secondary-sm mt-2">Ho salvato la chiave</button>
           </div>
+        </div>
 
-          <div class="table-container">
-            <div v-if="isLoadingApiKeys" class="py-8 text-center text-gray-500 font-mono text-sm">
-              Caricamento chiavi API dal database Neon...
-            </div>
-            <div v-else-if="apiKeysList.length === 0" class="py-8 text-center text-gray-500 font-mono text-sm">
-              Nessuna API Key creata. Inserisci un nome in alto per generare la prima chiave.
-            </div>
-            <table v-else class="dkp-table">
+        <div class="flex flex-col gap-3">
+          <h3 class="text-sm font-black text-white uppercase tracking-wider">📜 I tuoi Certificati Vault Emessi</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
-                <tr>
-                  <th>Nome Token</th>
-                  <th>Chiave API (Mascherata)</th>
-                  <th>Creata Il</th>
-                  <th>Tier / Ruolo</th>
-                  <th>Utilizzo Reale</th>
-                  <th>Stato</th>
-                  <th>Azione</th>
+                <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th class="p-3">Titolo / Script</th>
+                  <th class="p-3">Hash Crittografico (SHA-256)</th>
+                  <th class="p-3">Audit SAST</th>
+                  <th class="p-3">Data Notarizzazione</th>
+                  <th class="p-3">Azioni</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr v-for="key in apiKeysList" :key="key.id">
-                  <td class="font-bold">{{ key.name }}</td>
-                  <td>
-                    <code class="code-badge clickable" @click="copyToClipboard(key.keyMasked || key.keyPrefix || 'dkp_live_...')">
-                      {{ key.keyMasked || key.keyPrefix || 'dkp_live_...' }}
+              <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                <tr v-for="cert in vaultCertificates" :key="cert.id" class="hover:bg-slate-900/40 transition-colors">
+                  <td class="p-3 font-bold text-white">{{ cert.title }}</td>
+                  <td class="p-3">
+                    <code class="bg-[#020420] text-sky-400 border border-slate-800 px-2.5 py-1 rounded-md font-mono text-xs cursor-pointer" @click="copyToClipboard(cert.hash)" title="Clicca per copiare l'hash">
+                      {{ cert.hash }}
                     </code>
                   </td>
-                  <td>{{ new Date(key.createdAt).toLocaleDateString() }}</td>
-                  <td><span class="role-badge">{{ key.role || 'PRO' }}</span></td>
-                  <td>{{ key.usageCount || 0 }} req</td>
-                  <td>
-                    <span :class="['status-pill', key.status === 'ACTIVE' ? 'published' : 'critical']">
-                      {{ key.status }}
+                  <td class="p-3">
+                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2 py-0.5 rounded uppercase">
+                      {{ cert.sastStatus }}
                     </span>
                   </td>
-                  <td>
-                    <button v-if="key.status === 'ACTIVE'" @click="revokeApiKey(key.id)" class="btn-danger-sm">Revoca</button>
-                    <span v-else class="text-disabled">Revocata</span>
+                  <td class="p-3 whitespace-nowrap text-xs text-slate-400">{{ cert.date }}</td>
+                  <td class="p-3">
+                    <button @click="triggerToast(`📄 Certificato ${cert.id} verificato con successo sulla blockchain DKP!`)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded text-xs font-bold hover:bg-sky-500/20 cursor-pointer">
+                      🔍 Verifica
+                    </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </section>
 
-      <!-- PANNELLO 4: PROOF OF CODE VAULT -->
-      <section v-if="activeTab === 'vault'" class="tab-panel">
-        <div class="panel-card vault-card">
-          <div class="vault-header">
-            <div>
-              <span class="badge-tag vault-badge">🛡️ DKP Crittografia &amp; Notarizzazione</span>
-              <h2 class="section-title mt-1">Proof of Code Vault</h2>
-              <p class="section-sub">Genera hash crittografici SHA-256 dei tuoi script e repository, notarizzandoli ufficialmente sulla rete DevKernelPulse.</p>
-            </div>
-            <div class="vault-stats-pill">
-              <span>Certificati Attivi: <strong>{{ vaultCertificates.length }}</strong></span>
-              <span>Stato Rete: <strong class="text-emerald">🟢 SECURE</strong></span>
-            </div>
-          </div>
-
-          <div class="vault-generator-box">
-            <h3 class="box-title">🔐 Notarizza un Nuovo Blocco di Codice o File</h3>
-            <p class="box-desc">Incolla qui il codice sorgente o la configurazione che desideri blindare nel Vault. Verrà calcolato l'hash crittografico univoco.</p>
-            
-            <div class="vault-form-grid">
-              <div class="form-group">
-                <label>TITOLO O RIFERIMENTO SCRIPT *</label>
-                <input v-model="vaultNewTitle" type="text" placeholder="Es. SmartContract_Auth_v2.sol" class="dkp-input" />
-              </div>
-              <div class="form-group">
-                <label>CODICE SORGENTE O HASH DA NOTARIZZARE *</label>
-                <textarea v-model="vaultNewCode" rows="4" placeholder="Incolla qui il codice o la repo da firmare crittograficamente..." class="dkp-input textarea font-mono"></textarea>
-              </div>
-              <div class="vault-action-row">
-                <button @click="notarizeNewCode" class="dkp-btn-success">
-                  🛡️ Genera Certificato &amp; Notarizza nel Vault
-                </button>
-                <span class="vault-hint">⚡ Firma crittografica istantanea con timestamp DKP v2.5</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="vault-certificates-section mt-6">
-            <h3 class="box-title mb-3">📜 I tuoi Certificati Vault Emessi</h3>
-            <div class="table-container">
-              <table class="dkp-table">
-                <thead>
-                  <tr>
-                    <th>Titolo / Script</th>
-                    <th>Hash Crittografico (SHA-256)</th>
-                    <th>Audit SAST</th>
-                    <th>Data Notarizzazione</th>
-                    <th>Azioni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="cert in vaultCertificates" :key="cert.id">
-                    <td class="font-bold">{{ cert.title }}</td>
-                    <td>
-                      <code class="code-badge clickable" @click="copyToClipboard(cert.hash)" title="Clicca per copiare l'hash">
-                        {{ cert.hash }}
-                      </code>
-                    </td>
-                    <td>
-                      <span :class="['status-pill', cert.sastStatus.toLowerCase()]">
-                        {{ cert.sastStatus }}
-                      </span>
-                    </td>
-                    <td>{{ cert.date }}</td>
-                    <td>
-                      <button @click="triggerToast(`📄 Certificato ${cert.id} verificato con successo sulla blockchain DKP!`)" class="btn-action edit">
-                        🔍 Verifica
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
       </section>
 
       <!-- PANNELLO 5: GAMIFICATION & DEVELOPER BETA PROGRAM -->
-      <section v-if="activeTab === 'gamification'" class="tab-panel">
-        <div class="panel-card gamification-card">
-          <div class="gamification-header">
-            <div>
-              <span class="badge-tag">🎮 DKP Freemium Gamification &amp; XP</span>
-              <h2 class="section-title mt-1">Gamification Center &amp; Beta Program</h2>
-              <p class="section-sub">Guadagna XP eseguendo azioni nell'ecosistema, sblocca chiamate API gratuite e conquista lo status esclusivo di pioniere.</p>
-            </div>
-            <div class="user-xp-box">
-              <span class="xp-label">Il tuo XP Totale</span>
-              <span class="xp-value">{{ userProfileData.xp }} <small>XP</small></span>
-              <span class="xp-rank">Rank: <strong>{{ userProfileData.level }}</strong></span>
-            </div>
+      <section v-if="activeTab === 'gamification'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider">🎮 DKP Freemium Gamification &amp; XP</span>
+            <h2 class="text-xl sm:text-2xl font-black text-white mt-2">Gamification Center &amp; Beta Program</h2>
+            <p class="text-slate-400 text-xs sm:text-sm mt-1">Guadagna XP eseguendo azioni nell'ecosistema, sblocca chiamate API gratuite e conquista lo status esclusivo di pioniere.</p>
           </div>
-
-          <div class="beta-pioneer-banner">
-            <div class="beta-content">
-              <div class="beta-badge-row">
-                <span class="pioneer-tag">🚀 PROGRAMMA BETA UFFICIALE</span>
-                <span class="pioneer-counter">42 / 100 Posti Occupati</span>
-              </div>
-              <h3 class="beta-title">Diventa un "Early Pioneer / Core Developer"</h3>
-              <p class="beta-desc">
-                I primi 100 sviluppatori che attivano il programma ricevono permanentemente il badge esclusivo sul profilo pubblico, un boost immediato di <strong>+5.000 chiamate API mensili gratuite</strong> e accesso prioritario ai modelli AI di DKP v2.5.
-              </p>
-              <div class="beta-action-row">
-                <button @click="activateEarlyPioneerBeta" class="dkp-btn-success pulse-animation">
-                  ⚡ Attiva Status "Early Pioneer" (Gratis)
-                </button>
-                <span class="pioneer-perk-hint">✓ Nessuna carta di credito richiesta • Valido per sempre</span>
-              </div>
-            </div>
+          <div class="bg-[#020420] border border-emerald-500/30 rounded-2xl p-4 flex flex-col items-end gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Il tuo XP Totale</span>
+            <span class="text-2xl font-black text-emerald-400">{{ userProfileData.xp }} <small class="text-xs text-slate-400 font-bold">XP</small></span>
+            <span class="text-xs text-slate-300">Rank: <strong class="text-sky-400">{{ userProfileData.level }}</strong></span>
           </div>
-
-          <div class="gamification-grid-2cols">
-            
-            <div class="game-sub-card">
-              <h4 class="sub-card-title">📈 Come accumulare DKP XP</h4>
-              <ul class="xp-sources-list">
-                <li>
-                  <span class="source-icon">📰</span>
-                  <div class="source-info">
-                    <strong>Pubblica un Articolo Tech</strong>
-                    <small>+150 XP per ogni articolo verificato dal Vault AI</small>
-                  </div>
-                </li>
-                <li>
-                  <span class="source-icon">🛡️</span>
-                  <div class="source-info">
-                    <strong>Notarizzazione Proof-of-Code</strong>
-                    <small>+100 XP per ogni hash crittografato salvato nel Vault</small>
-                  </div>
-                </li>
-                <li>
-                  <span class="source-icon">🤖</span>
-                  <div class="source-info">
-                    <strong>Utilizza AI Code Scanner</strong>
-                    <small>+50 XP per ogni audit di sicurezza completato</small>
-                  </div>
-                </li>
-                <li>
-                  <span class="source-icon">💬</span>
-                  <div class="source-info">
-                    <strong>Interazioni Community &amp; Upvote</strong>
-                    <small>+10 XP per ogni commento o apprezzamento ricevuto</small>
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            <div class="game-sub-card">
-              <h4 class="sub-card-title">🎁 Sblocco Crediti API Gratuiti</h4>
-              <p class="sub-card-desc">Più sali di livello con la gamification, più risorse computazionali sblocchi per i tuoi script e tool:</p>
-              
-              <div class="api-tiers-list">
-                <div class="tier-row unlocked">
-                  <div class="tier-info">
-                    <strong>🌱 Newbie Developer (0 - 500 XP)</strong>
-                    <span>1.000 Chiamate API / mese</span>
-                  </div>
-                  <span class="tier-status">Attivo</span>
-                </div>
-                <div class="tier-row unlocked current">
-                  <div class="tier-info">
-                    <strong>🛡️ VIP Developer (500 - 2.000 XP)</strong>
-                    <span>5.000 Chiamate API / mese + Latenza prioritaria</span>
-                  </div>
-                  <span class="tier-status current">Il tuo livello</span>
-                </div>
-                <div class="tier-row">
-                  <div class="tier-info">
-                    <strong>👑 Core Pioneer (2.000+ XP o Beta Tester)</strong>
-                    <span>25.000 Chiamate API / mese + Accesso SDK illimitato</span>
-                  </div>
-                  <span class="tier-status locked">🔒 Locked</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="game-sub-card full-width mt-4">
-            <h4 class="sub-card-title">📜 Storico Attività &amp; Transazioni XP</h4>
-            <UserXpHistory :history="xpHistoryList"/>
-          </div>
-
         </div>
+
+        <div class="bg-gradient-to-r from-emerald-500/10 via-[#020420] to-purple-600/10 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col gap-4">
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 text-xs font-black px-3 py-1 rounded-full uppercase">🚀 PROGRAMMA BETA UFFICIALE</span>
+            <span class="text-emerald-400 font-mono text-xs font-black">42 / 100 Posti Occupati</span>
+          </div>
+          <h3 class="text-xl font-black text-white m-0">Diventa un "Early Pioneer / Core Developer"</h3>
+          <p class="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-4xl m-0">
+            I primi 100 sviluppatori che attivano il programma ricevono permanentemente il badge esclusivo sul profilo pubblico, un boost immediato di <strong class="text-emerald-400">+5.000 chiamate API mensili gratuite</strong> e accesso prioritario ai modelli AI di DKP v2.5.
+          </p>
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mt-2">
+            <button @click="activateEarlyPioneerBeta" class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl text-xs sm:text-sm hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer">
+              ⚡ Attiva Status "Early Pioneer" (Gratis)
+            </button>
+            <span class="text-xs text-slate-500 font-medium">✓ Nessuna carta di credito richiesta • Valido per sempre</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-[#020420] border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-inner">
+            <h4 class="text-sm font-black text-white m-0">📈 Come accumulare DKP XP</h4>
+            <ul class="flex flex-col gap-3">
+              <li class="flex items-center gap-3 bg-[#090d16] border border-slate-800 p-3 rounded-xl">
+                <span class="text-xl">📰</span>
+                <div class="flex flex-col">
+                  <strong class="text-xs text-slate-200">Pubblica un Articolo Tech</strong>
+                  <small class="text-[11px] text-emerald-400 font-bold">+150 XP per ogni articolo verificato dal Vault AI</small>
+                </div>
+              </li>
+              <li class="flex items-center gap-3 bg-[#090d16] border border-slate-800 p-3 rounded-xl">
+                <span class="text-xl">🛡️</span>
+                <div class="flex flex-col">
+                  <strong class="text-xs text-slate-200">Notarizzazione Proof-of-Code</strong>
+                  <small class="text-[11px] text-emerald-400 font-bold">+100 XP per ogni hash crittografato salvato nel Vault</small>
+                </div>
+              </li>
+              <li class="flex items-center gap-3 bg-[#090d16] border border-slate-800 p-3 rounded-xl">
+                <span class="text-xl">🤖</span>
+                <div class="flex flex-col">
+                  <strong class="text-xs text-slate-200">Utilizza AI Code Scanner</strong>
+                  <small class="text-[11px] text-emerald-400 font-bold">+50 XP per ogni audit di sicurezza completato</small>
+                </div>
+              </li>
+              <li class="flex items-center gap-3 bg-[#090d16] border border-slate-800 p-3 rounded-xl">
+                <span class="text-xl">💬</span>
+                <div class="flex flex-col">
+                  <strong class="text-xs text-slate-200">Interazioni Community &amp; Upvote</strong>
+                  <small class="text-[11px] text-emerald-400 font-bold">+10 XP per ogni commento o apprezzamento ricevuto</small>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-[#020420] border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-inner">
+            <h4 class="text-sm font-black text-white m-0">🎁 Sblocco Crediti API Gratuiti</h4>
+            <p class="text-xs text-slate-400 m-0">Più sali di livello con la gamification, più risorse computazionali sblocchi per i tuoi script e tool:</p>
+            
+            <div class="flex flex-col gap-3">
+              <div class="flex justify-between items-center bg-[#090d16] border border-slate-800 p-3 rounded-xl">
+                <div class="flex flex-col">
+                  <strong class="text-xs text-white">🌱 Newbie Developer (0 - 500 XP)</strong>
+                  <span class="text-[11px] text-slate-400">1.000 Chiamate API / mese</span>
+                </div>
+                <span class="text-xs font-bold text-slate-500">Attivo</span>
+              </div>
+              <div class="flex justify-between items-center bg-emerald-500/5 border border-emerald-500/40 p-3 rounded-xl">
+                <div class="flex flex-col">
+                  <strong class="text-xs text-white">🛡️ VIP Developer (500 - 2.000 XP)</strong>
+                  <span class="text-[11px] text-slate-400">5.000 Chiamate API / mese + Latenza prioritaria</span>
+                </div>
+                <span class="text-xs font-black text-emerald-400">Il tuo livello</span>
+              </div>
+              <div class="flex justify-between items-center bg-[#090d16] border border-slate-800 p-3 rounded-xl">
+                <div class="flex flex-col">
+                  <strong class="text-xs text-white">👑 Core Pioneer (2.000+ XP o Beta Tester)</strong>
+                  <span class="text-[11px] text-slate-400">25.000 Chiamate API / mese + Accesso SDK illimitato</span>
+                </div>
+                <span class="text-xs font-bold text-amber-400">🔒 Locked</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-[#020420] border border-slate-800 rounded-2xl p-5 shadow-inner">
+          <h4 class="text-sm font-black text-white mb-4">📜 Storico Attività &amp; Transazioni XP</h4>
+          <UserXpHistory :history="xpHistoryList"/>
+        </div>
+
       </section>
 
     </div>
@@ -1018,226 +1034,11 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchGamification
 </template>
 
 <style scoped>
-.panel-header-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-
-details > summary { list-style: none; }
-details > summary::-webkit-details-marker { display: none; }
-
-.btn-secondary-sm {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 700;
+.fade-enter-active, .fade-leave-active { 
+  transition: opacity 0.4s ease, transform 0.4s ease; 
 }
-
-.dkp-toast-success {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 999999;
-  background: #061811;
-  border: 1px solid #00dc82;
-  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35);
-  padding: 0.8rem 1.2rem;
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  max-width: 420px;
+.fade-enter-from, .fade-leave-to { 
+  opacity: 0; 
+  transform: translateY(-10px); 
 }
-
-.toast-content { display: flex; align-items: center; gap: 0.65rem; color: #f8fafc; font-family: monospace; font-size: 0.85rem; font-weight: 600; }
-
-.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
-
-.dashboard-page { background: #020420; min-height: 100vh; padding: 2rem 1rem; color: #f8fafc; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-.dashboard-container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
-
-.user-header-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.header-main-info { display: flex; align-items: center; gap: 1.25rem; }
-.user-avatar-wrap { position: relative; width: 64px; height: 64px; }
-.user-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #00dc82; }
-.online-indicator { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: #00dc82; border: 2px solid #090d16; border-radius: 50%; }
-.user-title { font-size: 1.4rem; font-weight: 800; margin: 0 0 0.4rem; }
-.username-highlight { color: #38bdf8; }
-.user-badges { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-.role-badge { background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); }
-.points-badge { background: rgba(0, 220, 130, 0.12); color: #00dc82; font-size: 0.78rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); }
-.public-profile-btn { background: transparent; border: 1px solid #00dc82; color: #00dc82; font-weight: 700; font-size: 0.85rem; padding: 0.55rem 1.1rem; border-radius: 8px; text-decoration: none; }
-
-.tabs-navigation { display: flex; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.75rem; }
-.tab-item { background: #090d16; border: 1px solid #1e293b; color: #94a3b8; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; flex: 1 1 auto; text-align: center; }
-.tab-item.active { background: rgba(0, 220, 130, 0.12); border-color: #00dc82; color: #00dc82; }
-.grid-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; } 
-@media (max-width: 768px) { .grid-nav { grid-template-columns: repeat(2, 1fr); } } 
-@media (max-width: 480px) { .grid-nav { grid-template-columns: 1fr; } } 
-.bounty-link { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.4); color: #f59e0b; font-weight: 800; text-decoration: none; display: flex; align-items: center; justify-content: center; } 
-.bounty-link:hover { background: rgba(245, 158, 11, 0.2); border-color: #f59e0b; }
-
-.panel-card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.75rem; position: relative; }
-.section-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.25rem; }
-.section-sub { color: #94a3b8; font-size: 0.88rem; margin: 0 0 1.25rem; }
-
-/* 🟢 STILE SUB-TABS PER CONTENUTI AGGIORNATO */
-.content-tabs-nav { display: flex; gap: 0.5rem; background: rgba(2, 4, 32, 0.5); padding: 0.4rem; border-radius: 10px; border: 1px solid #1e293b; }
-.content-tab-btn { flex: 1; background: transparent; border: none; color: #64748b; font-weight: 800; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; }
-.content-tab-btn:hover { color: #f8fafc; }
-.content-tab-btn.active { background: #00dc82; color: #020420; }
-
-.api-action-header { margin-bottom: 1.25rem; }
-.dkp-api-link-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 800; font-size: 0.9rem; padding: 0.65rem 1.2rem; border-radius: 8px; text-decoration: none; transition: all 0.25s ease-in-out; box-shadow: 0 0 12px rgba(56, 189, 248, 0.15); }
-
-.metrics-grid-2x2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
-@media (max-width: 768px) { .metrics-grid-2x2 { grid-template-columns: 1fr; } }
-
-.metric-card { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
-.metric-card.cyan-border { border-color: rgba(56, 189, 248, 0.3); background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), #020420 80%); }
-.card-value.cyan-text { color: #38bdf8; }
-.card-sub.cyan { color: #38bdf8; }
-.metric-card.green-border { border-color: rgba(0, 220, 130, 0.3); background: radial-gradient(circle at top right, rgba(0, 220, 130, 0.05), #020420 80%); }
-.card-value.green-text { color: #00dc82; }
-.metric-card.purple-border { border-color: rgba(168, 85, 247, 0.3); background: radial-gradient(circle at top right, rgba(168, 85, 247, 0.05), #020420 80%); }
-.card-value.purple-text { color: #a855f7; }
-.card-sub.purple { color: #a855f7; }
-.metric-card.gold-border { border-color: rgba(245, 158, 11, 0.35); background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.05), #020420 80%); }
-.card-value.gold-text { color: #f59e0b; }
-.card-sub.gold { color: #f59e0b; }
-.card-label { font-size: 0.8rem; color: #64748b; font-weight: 600; }
-.card-value { font-size: 1.8rem; font-weight: 900; color: #ffffff; }
-.card-sub { font-size: 0.75rem; font-weight: 700; }
-.card-sub.engine { color: #00dc82; }
-
-.form-layout { display: flex; flex-direction: column; gap: 1.25rem; }
-.social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-.form-group.full-width { grid-column: 1 / -1; }
-.form-group label { font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
-
-.dkp-input { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.88rem; outline: none; }
-.dkp-input:focus { border-color: #00dc82; }
-.form-footer { display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem; }
-.dkp-btn-success { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.65rem 1.3rem; border-radius: 6px; cursor: pointer; }
-.save-toast { color: #00dc82; font-weight: 700; font-size: 0.85rem; }
-
-.api-generate-box { display: flex; gap: 0.75rem; }
-.generated-key-alert { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
-.alert-title { color: #f59e0b; font-size: 0.82rem; font-weight: 700; margin: 0; }
-.raw-key-box { display: flex; align-items: center; justify-content: space-between; background: #020420; border: 1px solid #1e293b; padding: 0.5rem 0.8rem; border-radius: 6px; }
-.raw-key-box code { color: #00dc82; font-family: monospace; font-size: 0.9rem; }
-.btn-copy { background: #00dc82; color: #020420; border: none; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-
-.table-container { overflow-x: auto; margin-top: 1rem; }
-.dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
-.dkp-table th { background: #020420; color: #64748b; padding: 0.75rem; border-bottom: 1px solid #1e293b; text-transform: uppercase; font-size: 0.7rem; }
-.dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-.font-bold { font-weight: 700; color: #ffffff; }
-.text-emerald { color: #00dc82; }
-.sub-label { color: #94a3b8; font-size: 0.8rem; }
-.status-pill { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
-.status-pill.published { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-pill.draft { background: rgba(234, 179, 8, 0.15); color: #eab308; }
-
-.actions-cell { min-width: 170px; }
-.action-grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.btn-action { padding: 5px 6px; font-size: 0.72rem; font-weight: 700; border-radius: 6px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-.btn-action.edit { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
-.btn-action.edit:hover { background: #38bdf8; color: #020420; }
-.btn-action.delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); }
-.btn-action.delete:hover { background: #ef4444; color: #020420; }
-.btn-action.publish { background: rgba(0, 220, 130, 0.1); color: #00dc82; border-color: rgba(0, 220, 130, 0.3); }
-.btn-action.publish:hover { background: #00dc82; color: #020420; }
-.btn-action.draft { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
-.btn-action.draft:hover { background: #f59e0b; color: #020420; }
-.btn-danger-sm { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-.code-badge { background: #020420; color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #1e293b; font-family: monospace; }
-.code-badge.clickable { cursor: pointer; }
-
-.dkp-modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
-.dkp-modal { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 750px; display: flex; flex-direction: column; gap: 1rem; }
-.modal-header-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #1e293b; margin-bottom: 0.5rem; }
-.modal-title { font-size: 1.25rem; font-weight: 800; color: #ffffff; margin: 0; }
-.btn-switch-editor { background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 700; font-size: 0.78rem; padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease-in-out; }
-
-.grid-2-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-@media (max-width: 600px) { .grid-2-cols { grid-template-columns: 1fr; } }
-.mini-tag { background: #020420; color: #38bdf8; border: 1px solid #1e293b; font-size: 0.7rem; padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; margin-right: 0.2rem; }
-.tags-row { display: flex; flex-wrap: wrap; gap: 0.2rem; }
-
-.modal-actions-row { display: flex; justify-content: flex-end; align-items: center; gap: 0.65rem; padding-top: 1rem; border-top: 1px solid #1e293b; margin-top: 1rem; }
-.btn-cancel { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; font-weight: 700; font-size: 0.82rem; padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer; }
-.btn-draft { background: #090d16; color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 800; font-size: 0.82rem; padding: 0.55rem 1.1rem; border-radius: 6px; cursor: pointer; }
-.btn-publish { background: #00dc82; color: #020420; border: none; font-weight: 800; font-size: 0.85rem; padding: 0.6rem 1.3rem; border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px rgba(0, 220, 130, 0.3); }
-
-.nexus-badge-wrap { display: flex; justify-content: center; margin-top: 1.5rem; }
-.pulse-nexus-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: #020420; border: 1px solid #00dc82; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 800; color: #ffffff; }
-.pulse-nexus-badge .dot { width: 7px; height: 7px; background: #00dc82; border-radius: 50%; box-shadow: 0 0 8px #00dc82; }
-.pulse-nexus-badge .ver { background: #00dc82; color: #020420; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.7rem; }
-
-.gamification-card { display: flex; flex-direction: column; gap: 1.5rem; }
-.gamification-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.25rem; }
-.badge-tag { background: rgba(0, 220, 130, 0.12); color: #00dc82; font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); text-transform: uppercase; }
-
-.user-xp-box { background: #020420; border: 1px solid rgba(0, 220, 130, 0.3); border-radius: 10px; padding: 1rem 1.25rem; display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; min-width: 180px; }
-.xp-label { font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
-.xp-value { font-size: 1.6rem; font-weight: 900; color: #00dc82; }
-.xp-value small { font-size: 0.8rem; color: #94a3b8; }
-.xp-rank { font-size: 0.78rem; color: #cbd5e1; }
-.xp-rank strong { color: #38bdf8; }
-
-.beta-pioneer-banner { background: radial-gradient(circle at top right, rgba(0, 220, 130, 0.1), #020420 70%); border: 1px solid rgba(0, 220, 130, 0.4); border-radius: 12px; padding: 1.5rem; box-shadow: 0 0 25px rgba(0, 220, 130, 0.08); }
-.beta-content { display: flex; flex-direction: column; gap: 0.75rem; }
-.beta-badge-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
-.pioneer-tag { background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3); }
-.pioneer-counter { color: #00dc82; font-size: 0.82rem; font-weight: 800; font-family: monospace; }
-.beta-title { font-size: 1.2rem; font-weight: 900; color: #ffffff; margin: 0; }
-.beta-desc { color: #94a3b8; font-size: 0.88rem; line-height: 1.5; margin: 0; max-width: 900px; }
-.beta-desc strong { color: #00dc82; }
-.beta-action-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; }
-.pioneer-perk-hint { font-size: 0.75rem; color: #64748b; font-weight: 600; }
-
-.pulse-animation { animation: pulseGlow 2s infinite; }
-@keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(0, 220, 130, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0, 220, 130, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 220, 130, 0); } }
-
-.gamification-grid-2cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-@media (max-width: 768px) { .gamification-grid-2cols { grid-template-columns: 1fr; } }
-.game-sub-card { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-.sub-card-title { font-size: 0.95rem; font-weight: 800; color: #ffffff; margin: 0; }
-.sub-card-desc { font-size: 0.82rem; color: #94a3b8; margin: 0; line-height: 1.4; }
-
-.xp-sources-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-.xp-sources-list li { display: flex; align-items: center; gap: 0.75rem; background: #090d16; border: 1px solid #1e293b; padding: 0.65rem 0.85rem; border-radius: 8px; }
-.source-icon { font-size: 1.2rem; }
-.source-info { display: flex; flex-direction: column; gap: 0.1rem; }
-.source-info strong { font-size: 0.82rem; color: #f8fafc; font-weight: 700; }
-.source-info small { font-size: 0.72rem; color: #00dc82; font-weight: 600; }
-
-.api-tiers-list { display: flex; flex-direction: column; gap: 0.6rem; }
-.tier-row { display: flex; justify-content: space-between; align-items: center; background: #090d16; border: 1px solid #1e293b; padding: 0.75rem 0.85rem; border-radius: 8px; }
-.tier-row.current { border-color: rgba(0, 220, 130, 0.4); background: rgba(0, 220, 130, 0.04); }
-.tier-info { display: flex; flex-direction: column; gap: 0.15rem; }
-.tier-info strong { font-size: 0.82rem; color: #ffffff; font-weight: 700; }
-.tier-info span { font-size: 0.72rem; color: #94a3b8; }
-.tier-status { font-size: 0.72rem; font-weight: 800; color: #64748b; }
-.tier-status.current { color: #00dc82; }
-.tier-status.locked { color: #f59e0b; }
-
-.vault-card { display: flex; flex-direction: column; gap: 1.5rem; }
-.vault-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #1e293b; padding-bottom: 1.25rem; }
-.vault-badge { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
-.vault-stats-pill { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 0.75rem 1.25rem; display: flex; align-items: center; gap: 1.5rem; font-size: 0.82rem; color: #94a3b8; }
-.vault-stats-pill strong { color: #ffffff; }
-
-.vault-generator-box { background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.05), #020420 70%); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
-.box-title { font-size: 1.05rem; font-weight: 800; color: #ffffff; margin: 0; }
-.box-desc { color: #94a3b8; font-size: 0.85rem; margin: 0 0 0.5rem; }
-.vault-form-grid { display: flex; flex-direction: column; gap: 1rem; }
-.vault-action-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.25rem; }
-.vault-hint { font-size: 0.75rem; color: #64748b; font-weight: 600; }
-.font-mono { font-family: monospace; font-size: 0.85rem; line-height: 1.5; }
-
-.status-pill.passed { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-pill.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.status-pill.critical { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 </style>
