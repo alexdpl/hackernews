@@ -1,6 +1,7 @@
 <!-- app/pages/index.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useDkpSeo({
@@ -8,14 +9,7 @@ useDkpSeo({
   description: 'Infrastruttura per sviluppatori, strumenti di sicurezza notarizzati e newsroom AI in tempo reale da Hacker News.'
 })
 
-// 1. Recupera gli ultimi 6 articoli dal motore DKP Nodes senza filtri di score restrittivi
-const { data: newsRes, pending: newsPending } = await useFetch('/api/news', {
-  query: { limit: 6 }
-})
-
-const feedStories = computed(() => newsRes.value?.data || [])
-
-// 2. Recupero dinamico articoli in evidenza dal Vault
+// Recupero dinamico articoli in evidenza dal Vault (dalla vecchia home)
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
@@ -27,123 +21,72 @@ onMounted(async () => {
     console.error('Errore recupero articoli Vault:', err)
   }
 })
-
-function parseTags(tags: any): string[] {
-  if (Array.isArray(tags)) return tags
-  if (typeof tags === 'string') {
-    return tags.replace(/[{}]/g, '').split(',').map(t => t.trim().replace(/^"/, '').replace(/"$/, '')).filter(Boolean)
-  }
-  return []
-}
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100">
+  <div class="min-h-screen bg-[#020420] text-slate-100 font-sans px-4 sm:px-6 py-12 relative overflow-hidden">
     
-    <!-- HERO SECTION PRINCIPALE -->
-    <section class="relative py-16 sm:py-24 px-4 text-center border-b border-slate-800/80 overflow-hidden">
-      <div class="max-w-4xl mx-auto flex flex-col items-center gap-6 relative z-10">
-        <div class="inline-flex items-center gap-2 bg-[#090d16] border border-emerald-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">
+    <!-- BACKGROUND GLOWS GLOBALI -->
+    <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-emerald-500/10 blur-[120px] rounded-[100%] pointer-events-none"></div>
+
+    <div class="max-w-6xl mx-auto flex flex-col gap-12 sm:gap-16 relative z-10">
+      
+      <!-- HERO SECTION PRINCIPALE (Con i pulsanti della vecchia home) -->
+      <section class="relative py-8 sm:py-16 text-center flex flex-col items-center gap-6 overflow-hidden">
+        <div class="inline-flex items-center gap-2 bg-[#090d16] border border-emerald-500/30 px-5 py-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span class="text-[11px] font-mono font-black text-emerald-400 uppercase tracking-widest">
             DevKernelPulse v2.5 Ecosystem
           </span>
         </div>
 
-        <h1 class="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
-          La Piattaforma per <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">Sviluppatori &amp; Sentinel AI</span>
+        <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
+          La Piattaforma per <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-sky-400 to-purple-400">Sviluppatori &amp; Sentinel AI</span>
         </h1>
 
-        <p class="text-slate-400 text-base sm:text-lg max-w-2xl leading-relaxed">
+        <p class="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
           Notarizzazione del codice, strumenti di sicurezza e aggregatore Hacker News arricchito in tempo reale da Trinity AI.
         </p>
 
-        <div class="flex flex-wrap gap-4 justify-center">
+        <!-- Pulsanti esatti della vecchia home -->
+        <div class="flex flex-wrap gap-4 justify-center mt-2">
           <NuxtLink to="/feed" class="px-6 py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-sm rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]">
             🌍 Esplora DKP Tech Feed
           </NuxtLink>
-          <NuxtLink to="/tools" class="px-6 py-3 bg-[#090d16] border border-slate-700 hover:border-slate-500 text-white font-bold text-sm rounded-xl transition-all">
+          <NuxtLink to="/tools" class="px-6 py-3 bg-[#090d16] border border-slate-700 hover:border-slate-500 text-white font-bold text-sm rounded-xl transition-all shadow-lg">
             🛠️ Developer Tools
           </NuxtLink>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 🟢 SEZIONE DKP NODES: LIVE HACKER NEWS STREAM (FEED INTEGRATO IN HOME) -->
-    <section class="py-16 px-4 max-w-6xl mx-auto flex flex-col gap-12">
-      
-      <div>
-        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 border-b border-slate-800 pb-4">
-          <div>
-            <div class="inline-flex items-center gap-2 text-emerald-400 font-mono text-xs uppercase tracking-widest mb-1">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              DKP Nodes Realtime Stream
-            </div>
-            <h2 class="text-3xl font-extrabold text-white">
-              Hacker News <span class="text-sky-400">AI Feed</span>
-            </h2>
-          </div>
+      <!-- WIDGET NOTIZIE HACKER NEWS (DKP NODES LIVE STREAM) -->
+      <DkpNodesHomeWidget />
 
-          <NuxtLink to="/news" class="text-xs font-mono font-bold text-emerald-400 hover:underline flex items-center gap-1">
-            <span>Vedi tutto l'AI Stream</span>
-            <span>→</span>
-          </NuxtLink>
+      <!-- METRICS GRID -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-emerald-500/30 transition-colors">
+          <span class="text-4xl mb-2">🛡️</span>
+          <h3 class="text-3xl font-black text-white font-mono">1.2M+</h3>
+          <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Linee Codice Notarizzate</p>
         </div>
-
-        <!-- State: Loading -->
-        <div v-if="newsPending" class="text-center py-12 text-emerald-400 font-mono animate-pulse">
-          ⚡ Caricamento flusso in tempo reale...
+        <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-sky-500/30 transition-colors">
+          <span class="text-4xl mb-2">🚀</span>
+          <h3 class="text-3xl font-black text-white font-mono">48K+</h3>
+          <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Bounties Risolte ($PULSE)</p>
         </div>
-
-        <!-- State: Grid Articoli -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <article 
-            v-for="item in feedStories" 
-            :key="item.id"
-            class="bg-[#090d16] border border-slate-800/80 hover:border-emerald-500/40 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-lg group"
-          >
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <span class="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border border-emerald-500/40 bg-emerald-500/10 text-emerald-400">
-                  🛡️ Score: {{ item.tech_score }}
-                </span>
-                <span class="text-xs font-mono text-slate-400">
-                  👍 {{ item.hn_points || 0 }} pts
-                </span>
-              </div>
-
-              <h3 class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug mb-2">
-                <NuxtLink :to="`/news/${item.slug}`">
-                  {{ item.title }}
-                </NuxtLink>
-              </h3>
-
-              <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">
-                {{ item.summary_it || 'In attesa di sintesi Trinity AI...' }}
-              </p>
-            </div>
-
-            <div class="pt-3 border-t border-slate-800/60 flex flex-col gap-3">
-              <div class="flex flex-wrap gap-1.5">
-                <span v-for="tag in parseTags(item.tags)" :key="tag" class="text-[10px] font-mono bg-[#020420] text-sky-400 border border-slate-800 px-2 py-0.5 rounded">
-                  #{{ tag }}
-                </span>
-              </div>
-
-              <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                <span>by {{ item.hn_by || 'hn' }}</span>
-                <NuxtLink :to="`/news/${item.slug}`" class="text-emerald-400 font-bold hover:underline">
-                  Leggi scheda ↗
-                </NuxtLink>
-              </div>
-            </div>
-          </article>
+        <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-purple-500/30 transition-colors">
+          <span class="text-4xl mb-2">📡</span>
+          <h3 class="text-3xl font-black text-white font-mono">Live</h3>
+          <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Threat Stream Attivo</p>
         </div>
-      </div>
+      </section>
 
-      <!-- 🟢 SEZIONE VAULT (Consigliati in Home) -->
-      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800">
-        <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+      <!-- SEZIONE VAULT DEL BLOG (Inserita esattamente prima degli Ads) -->
+      <div v-if="featuredArticles.length > 0" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <h3 class="text-lg font-extrabold text-white mb-4 flex items-center gap-2">
           <span>🔗</span> Approfondimenti dal Vault
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -151,7 +94,7 @@ function parseTags(tags: any): string[] {
             v-for="art in featuredArticles" 
             :key="art.id" 
             :to="`/blog/${art.slug || art.id}`"
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group text-left"
+            class="bg-[#020420] border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group text-left"
           >
             <div>
               <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
@@ -168,10 +111,11 @@ function parseTags(tags: any): string[] {
         </div>
       </div>
 
-      <!-- BANNER AD SPONSORED ECOSYSTEM -->
-      <DkpAdStrip categoryTag="DKP ECOSYSTEM HOME SPONSORED" />
+      <!-- BANNER AD SPONSORED ECOSYSTEM (In fondo prima di chiudere) -->
+      <div class="mt-2 mb-6">
+        <DkpAdStrip categoryTag="DKP ECOSYSTEM HOME SPONSORED" />
+      </div>
 
-    </section>
-
+    </div>
   </div>
 </template>

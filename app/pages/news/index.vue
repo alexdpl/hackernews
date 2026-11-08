@@ -36,24 +36,23 @@ const minTechScore = ref(0)
 const currentPage = ref(1)
 
 const { data: response, pending } = await useFetch('/api/news', {
-  query: {
-    page: currentPage,
+  query: computed(() => ({
+    page: currentPage.value,
     limit: 12,
-    q: searchQuery,
-    minScore: minTechScore,
-    category: selectedCategory
-  },
+    q: searchQuery.value,
+    minScore: minTechScore.value,
+    category: selectedCategory.value
+  })),
   watch: [currentPage, searchQuery, minTechScore, selectedCategory]
 })
 
 const stories = computed(() => response.value?.data || [])
 const meta = computed(() => response.value?.meta || { totalPages: 1, total: 0 })
 
-function getScoreBadgeColor(score: number) {
-  const s = score || 60
-  if (s >= 80) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-  if (s >= 50) return 'border-sky-500/40 bg-sky-500/10 text-sky-400'
-  return 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+function getTypeBadgeColor(type: string) {
+  if (type === 'show') return 'border-purple-500/40 bg-purple-500/15 text-purple-400'
+  if (type === 'ask') return 'border-sky-500/40 bg-sky-500/15 text-sky-400'
+  return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400'
 }
 
 function parseTags(tags: any): string[] {
@@ -110,10 +109,16 @@ function parseTags(tags: any): string[] {
             🔥 Tutti
           </button>
           <button 
-            @click="selectedCategory = 'Show HN'; currentPage = 1"
-            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all border', selectedCategory === 'Show HN' ? 'bg-sky-500/20 text-sky-400 border-sky-500/40' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
+            @click="selectedCategory = 'show'; currentPage = 1"
+            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all border', selectedCategory === 'show' ? 'bg-purple-500/20 text-purple-400 border-purple-500/40' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
           >
             🚀 Show HN
+          </button>
+          <button 
+            @click="selectedCategory = 'ask'; currentPage = 1"
+            :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all border', selectedCategory === 'ask' ? 'bg-sky-500/20 text-sky-400 border-sky-500/40' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
+          >
+            💡 Ask HN
           </button>
 
           <!-- Min Tech Score -->
@@ -155,17 +160,17 @@ function parseTags(tags: any): string[] {
           <div>
             <!-- Header Badges -->
             <div class="flex items-center justify-between mb-3">
-              <span :class="['px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border', getScoreBadgeColor(item.tech_score)]">
-                🛡️ Sentinel Score: {{ item.tech_score || 80 }}
+              <span :class="['px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border', getTypeBadgeColor(item.type)]">
+                {{ item.type === 'show' ? 'SHOW HN' : item.type === 'ask' ? 'ASK HN' : 'NEWS' }}
               </span>
-              <span class="text-xs font-mono text-slate-400">
-                👍 {{ item.points || 0 }} pts
+              <span class="text-xs font-mono text-emerald-400 font-bold">
+                🔥 {{ item.points || 0 }} pts
               </span>
             </div>
 
             <!-- Title con fallback sicuro sullo slug o ID -->
             <h2 class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug mb-2">
-              <NuxtLink :to="`/news/${item.slug || item.id}`">
+              <NuxtLink :to="`/news/${item.slug}`">
                 {{ item.title }}
               </NuxtLink>
             </h2>
@@ -185,12 +190,12 @@ function parseTags(tags: any): string[] {
             </div>
 
             <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
-              <span>by {{ item.author || 'hackernews' }}</span>
-              <div class="flex items-center gap-2">
+              <span class="truncate pr-2">by {{ item.author || 'hackernews' }}</span>
+              <div class="flex items-center gap-2 shrink-0">
                 <button @click.prevent="shareStory(item.title, item.url)" class="text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer" title="Condividi notizia">
                   🔗 {{ copySuccess ? 'Copiato' : 'Condividi' }}
                 </button>
-                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 font-bold hover:underline">
+                <NuxtLink :to="`/news/${item.slug}`" class="text-emerald-400 font-bold hover:underline">
                   Leggi scheda ↗
                 </NuxtLink>
               </div>
@@ -204,7 +209,7 @@ function parseTags(tags: any): string[] {
         <button 
           :disabled="currentPage === 1"
           @click="currentPage--"
-          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all"
+          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer"
         >
           ← Precedente
         </button>
@@ -212,7 +217,7 @@ function parseTags(tags: any): string[] {
         <button 
           :disabled="currentPage === meta.totalPages"
           @click="currentPage++"
-          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all"
+          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer"
         >
           Successiva →
         </button>
