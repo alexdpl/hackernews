@@ -6,7 +6,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Installazione pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # Copy manifest delle dipendenze per sfruttare il layer caching di Docker
 COPY package.json pnpm-lock.yaml ./

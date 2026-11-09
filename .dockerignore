@@ -1,9 +1,6 @@
 node_modules
+.git
 .nuxt
 .output
-.git
-.gitignore
-.env
-.env.*
-README.md
 dist
+.env
