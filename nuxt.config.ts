@@ -9,7 +9,7 @@ export default defineNuxtConfig({
     host: 'localhost',
     port: 3000
   },
-
+ 
   runtimeConfig: {
     // Credenziali e chiavi server-side protette
     geminiApiKey: process.env.GEMINI_API_KEY || '',

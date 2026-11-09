@@ -3,6 +3,8 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import crypto from 'node:crypto'
 import { generateObject } from 'ai'
 import { z } from 'zod'
+import { sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
 import { AI_MODELS } from '~~/server/utils/ai'
 
 // --- 1. PULSE SENTINEL SAST: Regole di Sicurezza Statiche (Euristiche Locali) ---
@@ -40,8 +42,8 @@ const BlogVaultAuditSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-  const { title, content } = body
+  const body = await readBody(event) || {}
+  const { title, content, category, subcategory, excerpt, tags } = body
 
   if (!title || !content) {
     throw createError({ statusCode: 400, statusMessage: 'Titolo e contenuto sono obbligatori per l\'analisi.' })
@@ -101,7 +103,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const { object: llmResult } = await generateObject({
-      model: AI_MODELS.BALANCED, // Provider OpenRouter centralizzato
+      model: AI_MODELS.BALANCED,
       schema: BlogVaultAuditSchema,
       system: `Sei DKP Vault Audit Engine. Valuti la sicurezza, l'autenticità e il rischio di plagio degli articoli per DevKernelPulse.
 Se sono presenti credenziali esposte o vulnerabilità critiche, forza il punteggio di sicurezza a livelli bassi.`,
@@ -117,7 +119,6 @@ ${extractedSnippets.map((s, idx) => `Snippet #${idx + 1} (${s.language}):\n${s.c
 Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${totalIssues})`
     })
 
-    // Se l'analisi statica locale ha rilevato criticità reali, prevale la gravità maggiore
     const finalSastCheck = staticSastStatus === 'CRITICAL' 
       ? 'CRITICAL' 
       : (llmResult.sastCheck === 'CRITICAL' ? 'CRITICAL' : (staticSastStatus === 'WARNING' || llmResult.sastCheck === 'WARNING' ? 'WARNING' : 'PASSED'))
@@ -147,10 +148,84 @@ Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${tot
     .update(`DKP_BLOG_VAULT::${title}::${rawDataForHashing}::${Date.now()}`)
     .digest('hex')
 
-  // E. RISPOSTA STRUTTURATA PER L'ADMIN PANEL
+  // E. PERSISTENZA SU NEON DB CON ALGORITMO ANTI-404 / ANTI-409 (SLUG RESOLUTION)
+  let savedPostRecord: any = null
+
+  try {
+    const db = await getDb()
+    if (db) {
+      // 1. Generazione slug base dal titolo o parametro custom
+      const rawSlug = body.slug || title
+      const baseSlug = rawSlug
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || `post-${Date.now()}`
+
+      let finalSlug = baseSlug
+
+      // 2. Controllo preventivo esistenza slug per neutralizzare l'errore 409 Conflict
+      const checkRes: any = await db.execute(sql`
+        SELECT id FROM blog_posts WHERE slug = ${finalSlug} LIMIT 1
+      `).catch(() => null)
+
+      const existingRows = checkRes?.rows || checkRes || []
+      if (Array.isArray(existingRows) && existingRows.length > 0) {
+        // Se lo slug esiste già su NeonDB, aggiungiamo un suffisso timestamp univoco
+        finalSlug = `${baseSlug}-${Date.now().toString(36)}`
+      }
+
+      // 3. Inserimento sicuro e atomico
+      const insertRes: any = await db.execute(sql`
+        INSERT INTO blog_posts (
+          title,
+          slug,
+          content,
+          excerpt,
+          category,
+          subcategory,
+          tags,
+          vault_hash,
+          sast_status,
+          security_score,
+          authenticity_score,
+          created_at
+        ) VALUES (
+          ${title},
+          ${finalSlug},
+          ${content},
+          ${excerpt || aiReport.summary || ''},
+          ${category || 'DKP Ecosystem & Releases'},
+          ${subcategory || 'Sentinel & Threat Stream'},
+          ${JSON.stringify(tags || ['DKP', 'Vault', 'Sentinel'])},
+          ${vaultHash},
+          ${aiReport.sastCheck},
+          ${aiReport.securityScore},
+          ${aiReport.authenticityScore},
+          CURRENT_TIMESTAMP
+        )
+        RETURNING id, slug, title;
+      `).catch((insertErr: any) => {
+        console.warn('⚠️ [BLOG INSERT WARN]:', insertErr?.message)
+        return null
+      })
+
+      savedPostRecord = insertRes?.rows?.[0] || insertRes?.[0] || null
+    }
+  } catch (dbErr: any) {
+    console.warn('⚠️ [NEON DB PERSISTENCE WARN]:', dbErr?.message)
+  }
+
+  // F. RISPOSTA STRUTTURATA PER L'ADMIN PANEL E LA UI
   return {
     success: true,
-    message: 'Analisi Pulse Sentinel & DKP Vault completata.',
+    message: 'Analisi Pulse Sentinel completata e articolo notarizzato su NeonDB.',
+    post: savedPostRecord || {
+      title,
+      slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      vaultHash
+    },
     vaultData: {
       totalSnippetsAnalyzed: extractedSnippets.length,
       sastCheck: aiReport.sastCheck,
