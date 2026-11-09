@@ -3,13 +3,37 @@ import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { pulseChatMessages, users, xpTransactions } from '~~/drizzle/schema'
 import { parseCookies, defineEventHandler, readBody } from 'h3'
+import { generateText } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
+
+// 🧠 1. SETUP PROVIDER UNIFICATO OPENAI / OPENROUTER
+const apiKey = process.env.PROVIDER_API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY
+const baseURL = process.env.PROVIDER_BASE_URL || 'https://openrouter.ai/api/v1'
+
+const dkpProvider = createOpenAI({
+  baseURL,
+  apiKey,
+})
 
 const PULSE_SYSTEM_PROMPT = `
 Sei "Pulse Nexus v2.5-GOLD", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse (DKP).
 Il tuo ruolo è fare da mentore tech, assistente ed entità di gamification per la community dei dev.
 Rispondi in modo professionale, carismatico, cyberpunk, conciso (max 3-4 frasi) e in italiano.
 Non usare formattazione Markdown complessa.
+
+ALGORITMO NODI DKP:
+1. CRAWLER: Fai riferimento ai dati tech acquisiti in real-time.
+2. FIREWALL: Blocca codice dannoso o richieste non sicure.
+3. VAULT: Suggerisci ai dev di approfondire nel Vault.
 `
+
+// 🛡️ TRINITY AI FALLBACK ARRAY (Tenta in sequenza i nodi fino a trovare quello disponibile)
+const TRINITY_MODELS = [
+  'dots-studio/dots-3-note',
+  'openai/gpt-4o-mini',
+  'meta-llama/llama-3.3-70b-instruct',
+  'gpt-4o-mini'
+]
 
 export default defineEventHandler(async (event) => {
   try {
@@ -40,7 +64,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 🔥 LOGICA XP DINAMICA
+    // 🔥 LOGICA XP DINAMICA (Mantenuta Intatta)
     let xpEarned = 10
     const lowerText = userText.toLowerCase()
     if (lowerText.includes('crawler') || lowerText.includes('auth') || lowerText.includes('neon') || lowerText.includes('drizzle')) xpEarned += 15
@@ -51,7 +75,7 @@ export default defineEventHandler(async (event) => {
     let currentLevel = 1
     let dbInstance: any = null
 
-    // 💾 1. SALVATAGGIO SU NEON DB
+    // 💾 1. SALVATAGGIO MESSAGGIO UTENTE E ACCREDITO XP SU NEON DB
     try {
       dbInstance = await getDb()
       if (dbInstance) {
@@ -87,49 +111,37 @@ export default defineEventHandler(async (event) => {
       console.warn('⚠️ [NEXUS DB WARN]:', dbErr?.message)
     }
 
-    // 🧠 2. CHIAMATA A GEMINI CON MODELLO MULTI-FALLBACK (Evita i blocchi per alto traffico)
+    // 🧠 2. TRINITY ENGINE: PROVA I MODELLI FINO AL PRIMO CHE RISPONDE CON SUCCESSO
     let aiResponseText = ''
-    const modelsToTry = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-pro-latest']
+    let usedModel = ''
 
-    const config = useRuntimeConfig(event)
-    const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY
-
-    if (!geminiApiKey) {
-      throw new Error("API Key mancante nel runtime config o .env")
-    }
-
-    for (const modelName of modelsToTry) {
-      try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`
-
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: `${PULSE_SYSTEM_PROMPT}\n\nUtente (${username}): ${userText}` }
-                ]
-              }
-            ]
+    if (apiKey) {
+      for (const modelId of TRINITY_MODELS) {
+        try {
+          const { text } = await generateText({
+            model: dkpProvider.chat(modelId),
+            system: PULSE_SYSTEM_PROMPT,
+            prompt: `Utente (${username}): ${userText}`,
+            temperature: 0.6,
+            maxTokens: 500,
           })
-        })
 
-        const data: any = await response.json()
-
-        if (data && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-          aiResponseText = data.candidates[0].content.parts[0].text
-          break // Usciamo dal ciclo appena un modello risponde con successo!
+          if (text && text.trim()) {
+            aiResponseText = text.trim()
+            usedModel = modelId
+            break // Risposta ricevuta! Interrompi il ciclo e restituisci la risposta al client.
+          }
+        } catch (modelErr: any) {
+          console.warn(`⚠️ [TRINITY ENGINE WARN]: Nodo '${modelId}' non disponibile. Passo al successivo... (${modelErr?.message || modelErr})`)
         }
-      } catch (err) {
-        console.warn(`⚠️ Tentativo fallito con il modello ${modelName}, passo al successivo...`)
       }
+    } else {
+      console.warn('⚠️ [TRINITY ENGINE WARN]: Nessuna API Key trovata nel .env.')
     }
 
     // 🔄 3. FALLBACK DI EMERGENZA FINALE
     if (!aiResponseText) {
-      aiResponseText = `⚡ [Nexus Core]: I server di Google sono momentaneamente sovraccarichi (High Demand). Ho comunque registrato il tuo messaggio e ti ho accreditato +${xpEarned} XP!`
+      aiResponseText = `⚡ [Pulse Sentinel]: Nodi neurali momentaneamente occupati. Messaggio archiviato con successo e +${xpEarned} XP accreditati!`
     }
 
     // 💾 4. SALVATAGGIO RISPOSTA AI SU NEON DB
@@ -157,13 +169,14 @@ export default defineEventHandler(async (event) => {
         xpEarned,
         timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
       },
+      modelUsed: usedModel,
       totalXp: currentTotalXp,
       level: currentLevel
     }
     
   } catch (fatalErr: any) {
     console.error('💥 [NEXUS FATAL ERROR]:', fatalErr)
-    const fallbackText = '⚡ [Nexus Engine]: Messaggio ricevuto con successo. Sistema v2.5-GOLD operativo (Safe Mode).'
+    const fallbackText = '⚡ [Nexus Engine]: Sistema v2.5-GOLD in Safe Mode.'
     return { 
       success: true, 
       reply: fallbackText,

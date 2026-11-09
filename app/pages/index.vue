@@ -4,12 +4,18 @@ import { ref, onMounted } from 'vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
-useDkpSeo({
+// FIX 1: Utilizzo del composable nativo Nuxt useHead per evitare ReferenceError su useDkpSeo
+useHead({
   title: 'DevKernelPulse — The Developer Ecosystem & AI Tech Stream',
-  description: 'Infrastruttura per sviluppatori, strumenti di sicurezza notarizzati e newsroom AI in tempo reale da Hacker News.'
+  meta: [
+    {
+      name: 'description',
+      content: 'Infrastruttura per sviluppatori, strumenti di sicurezza notarizzati e newsroom AI in tempo reale da Hacker News.'
+    }
+  ]
 })
 
-// Recupero dinamico articoli in evidenza dal Vault (dalla vecchia home)
+// Recupero dinamico articoli in evidenza dal Vault
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
@@ -31,7 +37,7 @@ onMounted(async () => {
 
     <div class="max-w-6xl mx-auto flex flex-col gap-12 sm:gap-16 relative z-10">
       
-      <!-- HERO SECTION PRINCIPALE (Con i pulsanti della vecchia home) -->
+      <!-- HERO SECTION PRINCIPALE -->
       <section class="relative py-8 sm:py-16 text-center flex flex-col items-center gap-6 overflow-hidden">
         <div class="inline-flex items-center gap-2 bg-[#090d16] border border-emerald-500/30 px-5 py-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.15)]">
           <span class="relative flex h-2.5 w-2.5">
@@ -51,9 +57,9 @@ onMounted(async () => {
           Notarizzazione del codice, strumenti di sicurezza e aggregatore Hacker News arricchito in tempo reale da Trinity AI.
         </p>
 
-        <!-- Pulsanti esatti della vecchia home -->
+        <!-- Pulsanti Hero (FIX 2: Rotta corretta /news invece di /feed) -->
         <div class="flex flex-wrap gap-4 justify-center mt-2">
-          <NuxtLink to="/feed" class="px-6 py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-sm rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+          <NuxtLink to="/news" class="px-6 py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-sm rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]">
             🌍 Esplora DKP Tech Feed
           </NuxtLink>
           <NuxtLink to="/tools" class="px-6 py-3 bg-[#090d16] border border-slate-700 hover:border-slate-500 text-white font-bold text-sm rounded-xl transition-all shadow-lg">
@@ -84,7 +90,7 @@ onMounted(async () => {
         </div>
       </section>
 
-      <!-- SEZIONE VAULT DEL BLOG (Inserita esattamente prima degli Ads) -->
+      <!-- SEZIONE VAULT DEL BLOG -->
       <div v-if="featuredArticles.length > 0" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
         <h3 class="text-lg font-extrabold text-white mb-4 flex items-center gap-2">
           <span>🔗</span> Approfondimenti dal Vault
@@ -111,7 +117,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- BANNER AD SPONSORED ECOSYSTEM (In fondo prima di chiudere) -->
+      <!-- BANNER AD SPONSORED ECOSYSTEM -->
       <div class="mt-2 mb-6">
         <DkpAdStrip categoryTag="DKP ECOSYSTEM HOME SPONSORED" />
       </div>

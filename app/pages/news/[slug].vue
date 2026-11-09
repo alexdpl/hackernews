@@ -8,14 +8,25 @@ import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 const route = useRoute()
 const slugParam = computed(() => route.params.slug as string)
 
-// 1. Fetch dettaglio notizia (chiave esplicita per evitare conflitti di cache)
+// 1. Fetch dettaglio notizia (già corretto nel blocco precedente)
 const { data: newsRes, pending, error } = await useFetch(() => `/api/news/${slugParam.value}`, {
   key: `news-detail-${slugParam.value}`
 })
 
+// FIX: Estrattore dinamico e fail-safe del payload
 const story = computed(() => {
-  if (!newsRes.value) return null
-  return (newsRes.value as any).data || newsRes.value
+  const res: any = newsRes.value
+  if (!res) return null
+  
+  // Intercetta tutte le possibili strutture di risposta (Nitro standard, custom object, array)
+  const payload = res.story || res.data || res.news || (Array.isArray(res) ? res[0] : res)
+  
+  // Validazione finale: consideriamo valida la notizia solo se ha almeno un titolo
+  if (payload && payload.title) {
+    return payload
+  }
+  
+  return null
 })
 
 // 2. Gestione Commenti Notizia (lazy per non bloccare il caricamento principale della pagina)

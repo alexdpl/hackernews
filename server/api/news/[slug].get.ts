@@ -11,10 +11,23 @@ export default defineEventHandler(async (event) => {
     }
     
     const cleanParam = decodeURIComponent(param).trim()
+
+    // 🛑 FIX ROUTE COLLISION: Escludiamo parole chiave di sistema 
+    // che non sono mai slug di una singola notizia.
+    const reservedKeywords = ['stream', 'comments', 'latest', 'popular', 'trending']
+    if (reservedKeywords.includes(cleanParam.toLowerCase())) {
+       // Se è una parola riservata, non lanciare un errore 500, ma passa silente 
+       // oppure lancia un 404 specifico gestito in modo pulito senza fare query DB.
+       return {
+         success: false,
+         message: `La rotta /api/news/${cleanParam} è riservata o deve essere gestita da un file specifico (es. stream.get.ts)`
+       }
+    }
     
-    // 🔍 Estrazione intelligente dell'ID numerico dalla fine dello slug (es. "kodivo-821" -> "821")
+    // 🔍 Estrazione intelligente dell'ID numerico dalla fine dello slug
     const parts = cleanParam.split('-')
-    const possibleId = parts[parts.length - 1] || cleanParam
+    const possibleIdStr = parts[parts.length - 1] || cleanParam
+    const possibleId = !isNaN(Number(possibleIdStr)) ? Number(possibleIdStr) : -1
 
     const db = await getDb()
     if (!db) {
@@ -23,7 +36,7 @@ export default defineEventHandler(async (event) => {
 
     let rows: any[] = []
 
-    // Interroghiamo hn_stories cercando per slug esatto, id o hn_id estratto
+    // 1. Interroghiamo hn_stories (La tabella prioritaria)
     try {
       const resHn = await db.execute(sql`
         SELECT 
@@ -39,18 +52,16 @@ export default defineEventHandler(async (event) => {
           created_at AS "createdAt"
         FROM hn_stories
         WHERE slug = ${cleanParam} 
-           OR id::text = ${cleanParam} 
-           OR id::text = ${possibleId}
-           OR hn_id::text = ${possibleId}
-           OR hn_id::text = ${cleanParam}
+           OR id = ${possibleId}
+           OR hn_id = ${possibleId}
         LIMIT 1
       `)
       rows = resHn.rows || resHn || []
     } catch (e) {
-      // Ignora e passa al fallback
+      console.warn('Fallback: hn_stories non trovato, passo a pulse_stories')
     }
 
-    // Fallback su pulse_stories se necessario
+    // 2. Fallback su pulse_stories se la prima tabella è vuota
     if (!rows || rows.length === 0) {
       try {
         const resPulse = await db.execute(sql`
@@ -66,8 +77,7 @@ export default defineEventHandler(async (event) => {
             created_at AS "createdAt"
           FROM pulse_stories
           WHERE slug = ${cleanParam} 
-             OR id::text = ${cleanParam} 
-             OR id::text = ${possibleId}
+             OR id = ${possibleId}
           LIMIT 1
         `)
         rows = resPulse.rows || resPulse || []
@@ -76,6 +86,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // 3. Verifica finale
     if (!rows || rows.length === 0) {
       throw createError({ 
         statusCode: 404, 
@@ -90,18 +101,19 @@ export default defineEventHandler(async (event) => {
     if (titleLower.startsWith('show hn')) detectedType = 'show'
     else if (titleLower.startsWith('ask hn')) detectedType = 'ask'
 
-    const computedScore = Math.min(98, Math.max(45, (item.points || 10) * 2 + 40))
-
+    // Formattazione finale del payload come si aspetta la pagina Vue
     return {
       success: true,
       data: {
         ...item,
         type: detectedType,
-        tech_score: computedScore,
+        points: item.points || item.score || 1,
+        author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
         summary_it: item.text || `Analisi Trinity AI: Notizia proveniente da Hacker News. Impatto architetturale rilevante per gli ingegneri dell'ecosistema DKP.`,
         tags: [
           detectedType === 'show' ? 'ShowHN' : detectedType === 'ask' ? 'AskHN' : 'Tech',
-          'HackerNews'
+          'HackerNews',
+          'TrinityAI'
         ]
       }
     }

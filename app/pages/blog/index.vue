@@ -323,7 +323,8 @@ function changePage(page: number) {
       <div class="mt-8 border-t border-slate-800/80 pt-8">
         <DkpNodesHomeWidget />
       </div>
-
+<!-- 🟢 BANNER DKP ADS STRIP -->
+      <DkpAdStrip />
       <!-- 🟢 CONTROLLI PAGINAZIONE NUMERATA -->
       <div v-if="totalPages > 1" class="pagination-container">
         <button 
