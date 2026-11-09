@@ -6,7 +6,7 @@ interface NewsItem {
   id: number | string
   title: string
   slug: string
-  summary_it?: string
+  summary_it: string
   hn_points: number
   tech_score: number
   type: 'show' | 'ask' | 'news'
@@ -16,36 +16,20 @@ interface NewsItem {
 const stories = ref<NewsItem[]>([])
 const isLoading = ref(true)
 
-async function loadHomeNewsStream() {
-  isLoading.value = true
-  try {
-    // Chiamata all'API v2.5 con focus su Show HN e Ask HN
-    const res: any = await $fetch('/api/news/stream', {
-      query: { limit: 4, type: 'show,ask' }
-    }).catch(() => null)
-
-    const items = res?.data || res?.items || (Array.isArray(res) ? res : [])
-
-    if (items.length > 0) {
-      stories.value = items.map((item: any) => ({
-        id: item.id || item.hn_id,
-        title: item.title,
-        slug: item.slug || `${item.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${item.id}`,
-        summary_it: item.summary_it || item.summary || item.excerpt || 'Analisi ed elaborazione del contenuto via Trinity AI...',
-        hn_points: item.score || item.hn_points || item.points || 0,
-        tech_score: item.tech_score || item.score || 85,
-        type: item.type || (item.title?.toLowerCase().startsWith('show hn') ? 'show' : 'ask'),
-        url: item.url
-      }))
-    } else {
-      populateFallback()
-    }
-  } catch (err) {
-    console.warn('[DkpNodesHomeWidget] Attivazione fallback stream:', err)
-    populateFallback()
-  } finally {
-    isLoading.value = false
+// Helper proprietario DKP per normalizzare gli slug ed evitare link 404
+function normalizeSlug(rawSlug: string | undefined, title: string, id: number | string): string {
+  if (rawSlug && rawSlug.trim()) {
+    const trimmed = rawSlug.trim()
+    if (trimmed.endsWith(`-${id}`)) return trimmed
+    return `${trimmed}-${id}`
   }
+  const cleanTitle = (title || 'news')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${cleanTitle}-${id}`
 }
 
 function populateFallback() {
@@ -53,7 +37,7 @@ function populateFallback() {
     {
       id: 50405263,
       title: 'Show HN: OpenUI Studio v2.5 – Playground reattivo in Tailwind CSS',
-      slug: 'show-hn-openui-studio-v2-50405263',
+      slug: 'show-hn-openui-studio-v2-5-50405263',
       summary_it: 'Nuovo toolkit per la prototipazione rapida di interfacce Vue 3 con rendering nativo Tailwind e idratazione SSR azzerata.',
       hn_points: 142,
       tech_score: 95,
@@ -89,10 +73,51 @@ function populateFallback() {
   ]
 }
 
+async function loadHomeNewsStream() {
+  isLoading.value = true
+  try {
+    const res: any = await $fetch('/api/news/stream', {
+      query: { limit: 4, type: 'show,ask' }
+    }).catch(() => null)
+
+    const items = res?.data || res?.items || (Array.isArray(res) ? res : [])
+
+    if (Array.isArray(items) && items.length > 0) {
+      stories.value = items.map((item: any) => {
+        const itemId = item.id || item.hn_id || item.story_id || Math.floor(Math.random() * 100000)
+        const titleStr = item.title || 'Notizia Hacker News'
+        const lowerTitle = titleStr.toLowerCase()
+
+        let itemType: 'show' | 'ask' | 'news' = 'news'
+        if (item.type === 'show' || lowerTitle.startsWith('show hn')) itemType = 'show'
+        else if (item.type === 'ask' || lowerTitle.startsWith('ask hn')) itemType = 'ask'
+
+        return {
+          id: itemId,
+          title: titleStr,
+          slug: normalizeSlug(item.slug, titleStr, itemId),
+          summary_it: item.summary_it || item.summary || item.excerpt || item.text || 'Analisi ed elaborazione del contenuto via Trinity AI in corso...',
+          hn_points: Number(item.score || item.hn_points || item.points || 0),
+          tech_score: Number(item.tech_score || item.score || 85),
+          type: itemType,
+          url: item.url || undefined
+        }
+      })
+    } else {
+      populateFallback()
+    }
+  } catch (err) {
+    console.warn('[DkpNodesHomeWidget] Attivazione fallback stream:', err)
+    populateFallback()
+  } finally {
+    isLoading.value = false
+  }
+}
+
 function getTypeBadgeColor(type: string) {
-  if (type === 'show') return 'border-purple-500/40 bg-purple-500/15 text-purple-400'
-  if (type === 'ask') return 'border-sky-500/40 bg-sky-500/15 text-sky-400'
-  return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400'
+  if (type === 'show') return 'border-purple-500/40 bg-purple-500/15 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+  if (type === 'ask') return 'border-sky-500/40 bg-sky-500/15 text-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]'
+  return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
 }
 
 onMounted(() => {
@@ -102,7 +127,7 @@ onMounted(() => {
 
 <template>
   <section class="bg-[#090d16] border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden my-6">
-    <!-- Glow accent di sfondo in alto a destra -->
+    <!-- Glow accent di sfondo -->
     <div class="absolute top-0 right-0 w-80 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute bottom-0 left-0 w-60 h-28 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -162,7 +187,7 @@ onMounted(() => {
             <span>Leggi scheda</span>
             <span>↗</span>
           </NuxtLink>
-          <a v-if="item.url" :href="item.url" target="_blank" class="text-[10px] font-mono text-slate-500 hover:text-sky-400 transition-colors">
+          <a v-if="item.url" :href="item.url" target="_blank" rel="noopener noreferrer" class="text-[10px] font-mono text-slate-500 hover:text-sky-400 transition-colors">
             Fonte 🔗
           </a>
         </div>
