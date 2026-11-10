@@ -2,15 +2,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-useDkpSeo({
-  title: 'DKP Nodes & Forum Control Center - DKP Admin',
-  description: 'Gestione Nodi, Subreddits, moderazione discussioni e verifica audit Sentinel AI Vault.'
+useHead({
+  title: 'DKP Nodes & Forum Control Center v2.6 — DKP Admin',
+  meta: [
+    { name: 'description', content: 'Gestione Nodi, Subreddits, moderazione discussioni e verifica audit Sentinel AI Vault.' }
+  ]
 })
 
 const { getMainUrl, getApiUrl } = useDomain()
 
 // --- INTERFACCE DATI ---
-interface DkpNode {
+export interface DkpNode {
   id: number | string
   parentId?: number | string | null
   name: string
@@ -24,7 +26,7 @@ interface DkpNode {
   createdAt?: string
 }
 
-interface ThreadPost {
+export interface ThreadPost {
   id: number
   title: string
   content: string
@@ -46,14 +48,19 @@ interface ThreadPost {
 const nodes = ref<DkpNode[]>([])
 const threads = ref<ThreadPost[]>([])
 const isLoading = ref(false)
+
+// Toast System
 const showToast = ref(false)
 const toastMessage = ref('')
+const toastType = ref<'success' | 'error' | 'warning'>('success')
+
 const searchQuery = ref('')
 const selectedNodeFilter = ref<string>('')
 const activeTab = ref<'all' | 'flagged'>('all')
 
-function triggerToast(msg: string) {
+function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
   toastMessage.value = msg
+  toastType.value = type
   showToast.value = true
   setTimeout(() => { showToast.value = false }, 3500)
 }
@@ -135,7 +142,7 @@ const fetchNodes = async () => {
     if (res?.success) nodes.value = res.data || []
   } catch (err: any) {
     console.error('Errore fetch nodi:', err)
-    triggerToast('Impossibile caricare i Nodi dal DB.')
+    triggerToast('Impossibile caricare i Nodi dal DB.', 'error')
   }
 }
 
@@ -146,7 +153,7 @@ const fetchThreads = async () => {
     if (res?.success) threads.value = res.data || []
   } catch (err: any) {
     console.error('Errore fetch thread:', err)
-    triggerToast('Impossibile caricare le discussioni.')
+    triggerToast('Impossibile caricare le discussioni.', 'error')
   } finally {
     isLoading.value = false
   }
@@ -186,7 +193,7 @@ const openNodeModal = (node: DkpNode | null = null) => {
 
 const saveNode = async () => {
   if (!nodeForm.value.name || !nodeForm.value.slug || !nodeForm.value.description) {
-    return triggerToast('Compila Nome, Slug e Descrizione.')
+    return triggerToast('Compila Nome, Slug e Descrizione.', 'warning')
   }
   isLoading.value = true
   try {
@@ -196,12 +203,12 @@ const saveNode = async () => {
 
     const res: any = await $fetch(url, { method, body: payload })
     if (res?.success) {
-      triggerToast(nodeForm.value.id ? '✅ Nodo aggiornato con successo!' : '🚀 Nuovo Nodo creato!')
+      triggerToast(nodeForm.value.id ? '✅ Nodo aggiornato con successo!' : '🚀 Nuovo Nodo creato!', 'success')
       await fetchNodes()
       isNodeModalOpen.value = false
     }
   } catch (err: any) {
-    triggerToast(`❌ Errore salvataggio nodo: ${err.message || 'DB Error'}`)
+    triggerToast(`❌ Errore salvataggio nodo: ${err.message || 'DB Error'}`, 'error')
   } finally {
     isLoading.value = false
   }
@@ -213,12 +220,12 @@ const deleteNode = async (id: number | string) => {
   try {
     const res: any = await $fetch(`/api/admin/nodes/${id}`, { method: 'DELETE' })
     if (res?.success) {
-      triggerToast('🗑️ Nodo eliminato dal database.')
+      triggerToast('🗑️ Nodo eliminato dal database.', 'success')
       await fetchNodes()
       await fetchThreads()
     }
   } catch (err: any) {
-    triggerToast('❌ Errore durante l eliminazione del nodo.')
+    triggerToast('❌ Errore durante l\'eliminazione del nodo.', 'error')
   } finally {
     isLoading.value = false
   }
@@ -233,10 +240,10 @@ const togglePinThread = async (post: ThreadPost) => {
     })
     if (res?.success) {
       post.isPinned = !post.isPinned
-      triggerToast(post.isPinned ? '📌 Thread fissato in cima' : '📌 Thread sfissato')
+      triggerToast(post.isPinned ? '📌 Thread fissato in cima' : '📌 Thread sfissato', 'success')
     }
   } catch (err) {
-    triggerToast('Errore cambio stato Pin.')
+    triggerToast('Errore cambio stato Pin.', 'error')
   }
 }
 
@@ -248,10 +255,10 @@ const toggleLockThread = async (post: ThreadPost) => {
     })
     if (res?.success) {
       post.isLocked = !post.isLocked
-      triggerToast(post.isLocked ? '🔒 Thread bloccato (Sentinel AI)' : '🔓 Thread sbloccato')
+      triggerToast(post.isLocked ? '🔒 Thread bloccato (Sentinel AI)' : '🔓 Thread sbloccato', 'warning')
     }
   } catch (err) {
-    triggerToast('Errore cambio stato Lock.')
+    triggerToast('Errore cambio stato Lock.', 'error')
   }
 }
 
@@ -261,10 +268,10 @@ const deleteThread = async (id: number) => {
     const res: any = await $fetch(`/api/admin/nodes/posts/${id}`, { method: 'DELETE' })
     if (res?.success) {
       threads.value = threads.value.filter(t => t.id !== id)
-      triggerToast('🗑️ Thread rimosso dal database.')
+      triggerToast('🗑️ Thread rimosso dal database.', 'success')
     }
   } catch (err) {
-    triggerToast('Errore durante l eliminazione del thread.')
+    triggerToast('Errore durante l\'eliminazione del thread.', 'error')
   }
 }
 
@@ -280,528 +287,520 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="admin-page-container">
+  <div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 font-sans">
     
-    <!-- TOAST NOTIFICATION -->
+    <!-- FLOATING TOAST NOTIFICATION -->
     <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-text">{{ toastMessage }}</span>
-        </div>
+      <div 
+        v-if="showToast" 
+        :class="[
+          'fixed top-6 right-6 z-50 p-4 rounded-xl backdrop-blur-md border shadow-2xl max-w-md flex items-center gap-3 font-mono text-xs sm:text-sm font-semibold transition-all',
+          toastType === 'success' ? 'bg-[#041a13]/90 border-emerald-500/50 text-emerald-300 shadow-[0_0_20px_rgba(0,220,130,0.2)]' :
+          toastType === 'error' ? 'bg-[#1e070a]/90 border-rose-500/50 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.2)]' :
+          'bg-[#1a1403]/90 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+        ]"
+      >
+        <span class="text-xl">
+          {{ toastType === 'success' ? '⚡' : toastType === 'error' ? '🚫' : '⚠️' }}
+        </span>
+        <span>{{ toastMessage }}</span>
       </div>
     </Transition>
 
-    <!-- NAVBAR GRID ADMIN UNIFICATA -->
-    <div class="admin-nav-container">
-      <div class="admin-nav-top">
-        <div class="nav-branding">
-          <span class="status-dot green"></span>
-          <span class="nav-title">DKP NODES ADMIN CONTROL CENTER</span>
-        </div>
-        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
-          🏠 Dashboard Main
-        </NuxtLink>
-      </div>
-
-      <!-- GRID MODULI ADMIN -->
-      <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/nodes')" class="nav-tab btn-dashboard active">💬 Gestione Nodi</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" class="nav-tab btn-dashboard">💼 Gestione Jobs</NuxtLink>
-      </nav>
-    </div>
-
-    <!-- HEADER HERO -->
-    <header class="header-section">
-      <div class="badge">
-        <span class="badge-dot"></span>
-        DKP NODES &amp; SUBREDDITS CONTROL CENTER
-      </div>
-      <h1>Gestione <span class="highlight">DKP Nodes &amp; Moderazione</span></h1>
-      <p class="subtitle">
-        Crea e gestisci i Nodi della community, modera le discussioni ed esamina la coda di audit Sentinel AI.
-      </p>
-    </header>
-
-    <!-- MAIN HYBRID GRID (380px / 1fr) -->
-    <div class="hybrid-grid">
+    <div class="max-w-7xl mx-auto flex flex-col gap-6">
       
-      <!-- ================= COLONNA SINISTRA: NODI (GERARCHIA REDDIT / SUBREDDIT) ================= -->
-      <aside class="sidebar-panel">
-        <div class="sidebar-header">
-          <h3 class="flex items-center gap-2">
-            🏷️ Nodi Attivi ({{ nodes.length }})
-          </h3>
-          <button @click="openNodeModal()" class="btn-primary btn-sm">
-            ➕ Nuovo
-          </button>
+      <!-- NAVBAR GRID MODULI ADMIN v2.6 -->
+      <div class="flex flex-col gap-3 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 shadow-xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800/60 font-mono">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#00dc82]"></span>
+            <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP NODES ADMIN CONTROL CENTER</span>
+          </div>
+
+          <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
+            🏠 Dashboard Main
+          </NuxtLink>
         </div>
 
-        <div v-if="!nodes.length" class="empty-state">
-          Nessun nodo registrato. Creane uno nuovo!
+        <!-- GRID NAVIGATION -->
+        <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono">
+          <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            ⚙️ API Gateway
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📧 Mail
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📣 Newsletter
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🤖 Crawler
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📝 Blog
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-sky-300 bg-sky-500/20 border border-sky-500/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]">
+            💬 Gestione Nodi
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🛍️ Shop
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            💼 Jobs
+          </NuxtLink>
+        </nav>
+      </div>
+
+      <!-- HEADER HERO NODES & FORUM v2.6-PURE-SQL -->
+      <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
+        <!-- Glow Cosmico -->
+        <div class="absolute -right-20 -top-20 w-72 h-72 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col gap-2">
+          <div class="flex items-center gap-3 mb-1 flex-wrap font-mono">
+            <span class="bg-gradient-to-r from-sky-500/20 to-teal-500/20 text-sky-400 border border-sky-500/40 px-3 py-0.5 rounded-full text-xs font-black uppercase shadow-[0_0_12px_rgba(56,189,248,0.25)]">
+              DKP NODES &amp; SUBREDDITS CONTROL CENTER v2.6-PURE-SQL
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Gestione <span class="text-emerald-400">DKP Nodes &amp; Moderazione</span>
+          </h1>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
+            Crea e gestisci i Nodi della community, modera le discussioni ed esamina la coda di audit Sentinel AI.
+          </p>
         </div>
+      </header>
 
-        <div v-else class="compact-cat-list">
-          <div 
-            v-for="node in sortedNodes" 
-            :key="node.id" 
-            class="compact-cat-item"
-            :class="{ 'is-subnode': node.parentId }"
-          >
-            <div class="cat-item-top">
-              <div class="cat-info-head">
-                <div class="cat-icon-badge mini" :style="{ backgroundColor: `${node.color || '#38bdf8'}20`, color: node.color || '#38bdf8', borderColor: `${node.color || '#38bdf8'}40` }">
-                  <span class="text-base">{{ node.icon || '💬' }}</span>
+      <!-- MAIN HYBRID GRID (380px / 1fr) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- ================= COLONNA SINISTRA: NODI (GERARCHIA REDDIT / SUBREDDIT) ================= -->
+        <aside class="lg:col-span-5 xl:col-span-4 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+            <h3 class="text-white font-bold text-base flex items-center gap-2">
+              <span>🏷️ Nodi Attivi ({{ nodes.length }})</span>
+            </h3>
+            <button 
+              @click="openNodeModal()" 
+              class="px-3 py-1.5 rounded-lg font-black text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-[0_0_10px_rgba(0,220,130,0.2)] cursor-pointer"
+            >
+              ➕ Nuovo
+            </button>
+          </div>
+
+          <div v-if="!nodes.length" class="p-8 text-center text-slate-500 font-mono text-xs">
+            Nessun nodo registrato. Creane uno nuovo!
+          </div>
+
+          <div v-else class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
+            <div 
+              v-for="node in sortedNodes" 
+              :key="node.id" 
+              :class="[
+                'bg-[#040814] border border-slate-800/90 rounded-xl p-3.5 transition-all hover:border-slate-700',
+                node.parentId ? 'ml-4 border-l-2 border-l-sky-400 bg-[#060b1d]' : ''
+              ]"
+            >
+              <div class="flex justify-between items-start gap-2">
+                <div class="flex items-center gap-2.5">
+                  <div 
+                    class="w-8 h-8 rounded-lg flex items-center justify-center border text-base"
+                    :style="{ backgroundColor: `${node.color || '#38bdf8'}20`, color: node.color || '#38bdf8', borderColor: `${node.color || '#38bdf8'}40` }"
+                  >
+                    <span>{{ node.icon || '💬' }}</span>
+                  </div>
+                  <div class="flex flex-col">
+                    <h4 class="text-white font-bold text-xs sm:text-sm flex items-center gap-1">
+                      <span v-if="node.parentId" class="text-[9px] bg-sky-500/20 text-sky-400 px-1 py-0.2 rounded font-mono font-bold">n/n/</span>
+                      <span v-else class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded font-mono font-bold">n/</span>
+                      {{ node.name }}
+                    </h4>
+                    <span class="text-[10px] text-slate-500 font-mono">
+                      {{ node.parentId ? `/nodes/n/sub/${node.slug}` : `/nodes/n/${node.slug}` }}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h4 class="cat-title-sm flex items-center gap-1">
-                    <span v-if="node.parentId" class="text-[10px] bg-sky-500/20 text-sky-400 px-1 py-0.5 rounded font-mono font-bold">n/n/</span>
-                    <span v-else class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1 py-0.5 rounded font-mono font-bold">n/</span>
-                    {{ node.name }}
-                  </h4>
-                  <span class="cat-slug-sm">
-                    {{ node.parentId ? `/nodes/n/sub/${node.slug}` : `/nodes/n/${node.slug}` }}
-                  </span>
+
+                <div class="flex items-center gap-1 font-mono">
+                  <button @click="openNodeModal(node)" class="p-1.5 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded-lg text-xs transition-all cursor-pointer" title="Modifica Nodo">✏️</button>
+                  <button @click="deleteNode(node.id)" class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer" title="Elimina Nodo">🗑️</button>
                 </div>
               </div>
-              <div class="actions">
-                <button @click="openNodeModal(node)" class="btn-icon" title="Modifica Nodo">✏️</button>
-                <button @click="deleteNode(node.id)" class="btn-icon danger" title="Elimina Nodo">🗑️</button>
-              </div>
-            </div>
-            
-            <p class="text-[11px] text-slate-400 mt-1 mb-2 line-clamp-2">{{ node.description }}</p>
 
-            <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-2 border-t border-slate-800">
-              <span>👥 {{ node.subscribersCount }} Iscritti</span>
-              <span>💬 {{ node.postsCount || 0 }} Thread</span>
-              <span v-if="node.isPrivate" class="text-amber-400 font-bold">🔒 Privato</span>
+              <p class="text-[11px] text-slate-400 my-2 line-clamp-2 leading-relaxed">{{ node.description }}</p>
+
+              <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-2 border-t border-slate-800/60">
+                <span>👥 {{ node.subscribersCount }} Iscritti</span>
+                <span>💬 {{ node.postsCount || 0 }} Thread</span>
+                <span v-if="node.isPrivate" class="text-amber-400 font-bold">🔒 Privato</span>
+              </div>
             </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      <!-- ================= COLONNA DESTRA: THREADS & MODERAZIONE ================= -->
-      <main class="main-panel">
-        <div class="card table-card">
+        <!-- ================= COLONNA DESTRA: THREADS & MODERAZIONE ================= -->
+        <main class="lg:col-span-7 xl:col-span-8 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
           
           <!-- CONTROLLI TAB & FILTRI -->
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-800">
-            <div class="flex items-center gap-2">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800 font-mono text-xs">
+            <div class="flex items-center gap-2 flex-wrap">
               <button 
                 @click="activeTab = 'all'" 
-                :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all', activeTab === 'all' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-white']"
+                :class="[
+                  'px-3 py-2 rounded-xl font-bold transition-all cursor-pointer border',
+                  activeTab === 'all' ? 'bg-sky-500/15 text-sky-400 border-sky-500/40 shadow-[0_0_10px_rgba(56,189,248,0.2)]' : 'bg-[#040814] text-slate-400 border-slate-800 hover:text-white'
+                ]"
               >
                 Tutti i Thread ({{ threads.length }})
               </button>
               <button 
                 @click="activeTab = 'flagged'" 
-                :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5', activeTab === 'flagged' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-white']"
+                :class="[
+                  'px-3 py-2 rounded-xl font-bold transition-all cursor-pointer border flex items-center gap-1.5',
+                  activeTab === 'flagged' ? 'bg-amber-500/15 text-amber-400 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-[#040814] text-slate-400 border-slate-800 hover:text-white'
+                ]"
               >
                 <span>🛡️ Coda Sentinel AI</span>
-                <span v-if="flaggedCount > 0" class="bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-extrabold">
+                <span v-if="flaggedCount > 0" class="bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded-full text-[10px] font-black">
                   {{ flaggedCount }}
                 </span>
               </button>
             </div>
 
             <div class="flex items-center gap-2 w-full sm:w-auto">
-              <select v-model="selectedNodeFilter" class="dkp-input text-xs py-1.5">
+              <select 
+                v-model="selectedNodeFilter" 
+                class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl font-bold outline-none focus:border-sky-500 transition-all text-xs cursor-pointer"
+              >
                 <option value="">Tutti i Nodi</option>
                 <option v-for="n in nodes" :key="n.id" :value="n.slug">n/{{ n.name }}</option>
               </select>
-              <input v-model="searchQuery" type="text" placeholder="Cerca thread o autore..." class="dkp-input text-xs py-1.5" />
+              <input 
+                v-model="searchQuery" 
+                type="text" 
+                placeholder="Cerca thread..." 
+                class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl outline-none focus:border-sky-500 transition-all text-xs w-full sm:w-40" 
+              />
             </div>
           </div>
 
           <!-- TABELLA DISCUSSIONI -->
-          <div v-if="isLoading" class="text-center py-10 text-sky-400 animate-pulse font-mono">
+          <div v-if="isLoading" class="text-center py-12 text-sky-400 animate-pulse font-mono text-xs">
             Sincronizzazione discussioni con Neon DB...
           </div>
 
-          <div v-else class="table-responsive">
-            <table class="dkp-table">
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
-                <tr>
-                  <th>TITOLO DISCUSSIONE</th>
-                  <th>NODO</th>
-                  <th>AUTORE</th>
-                  <th>KARMA</th>
-                  <th>STATO</th>
-                  <th style="text-align: right;">AZIONI MODERAZIONE</th>
+                <tr class="bg-[#040814] text-slate-400 font-extrabold text-[11px] uppercase border-b border-slate-800 font-mono">
+                  <th class="p-3.5">TITOLO DISCUSSIONE</th>
+                  <th class="p-3.5">NODO</th>
+                  <th class="p-3.5">AUTORE</th>
+                  <th class="p-3.5">KARMA</th>
+                  <th class="p-3.5">STATO</th>
+                  <th class="p-3.5 text-right">AZIONI MODERAZIONE</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="post in filteredThreads" :key="post.id" :class="{ 'pending-row': post.isLocked }">
-                  <td class="font-bold">
-                    <NuxtLink :to="`/nodes/thread/${post.id}`" target="_blank" class="hover:text-sky-400">
-                      {{ post.title }}
-                    </NuxtLink>
-                    <span v-if="post.vaultHash" class="ml-2 text-[10px] text-purple-400 font-mono" title="Vault Proof-of-Code Certificato">🛡️ Proof-of-Code</span>
+                <tr 
+                  v-for="post in filteredThreads" 
+                  :key="post.id" 
+                  :class="[
+                    'border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors',
+                    post.isLocked ? 'bg-amber-500/5' : ''
+                  ]"
+                >
+                  <td class="p-3.5">
+                    <div class="flex flex-col">
+                      <NuxtLink :to="`/nodes/thread/${post.id}`" target="_blank" class="font-bold text-white hover:text-sky-400 transition-colors">
+                        {{ post.title }}
+                      </NuxtLink>
+                      <span v-if="post.vaultHash" class="text-[10px] text-purple-400 font-mono mt-0.5" title="Vault Proof-of-Code Certificato">
+                        🛡️ Proof-of-Code
+                      </span>
+                    </div>
                   </td>
-                  <td>
-                    <span class="cat-badge" :style="{ color: post.nodeColor || '#38bdf8' }">
+                  <td class="p-3.5 font-mono">
+                    <span 
+                      class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                      :style="{ backgroundColor: `${post.nodeColor || '#38bdf8'}15`, color: post.nodeColor || '#38bdf8', borderColor: `${post.nodeColor || '#38bdf8'}30` }"
+                    >
                       {{ post.nodeIcon }} n/{{ post.nodeSlug }}
                     </span>
                   </td>
-                  <td class="date-text">@{{ post.authorName }}</td>
-                  <td class="font-mono font-bold" :class="post.karmaScore > 0 ? 'text-emerald-400' : 'text-slate-400'">
+                  <td class="p-3.5 font-mono text-slate-400">@{{ post.authorName }}</td>
+                  <td class="p-3.5 font-mono font-bold" :class="post.karmaScore > 0 ? 'text-emerald-400' : 'text-slate-400'">
                     ▲ {{ post.karmaScore }}
                   </td>
-                  <td>
-                    <span v-if="post.isPinned" class="status-badge success mr-1">📌 Pinned</span>
-                    <span v-if="post.isLocked" class="status-badge warning">🔒 Locked (Sentinel)</span>
-                    <span v-if="!post.isPinned && !post.isLocked" class="status-badge draft">Attivo</span>
+                  <td class="p-3.5 font-mono">
+                    <span v-if="post.isPinned" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mr-1">
+                      📌 Pinned
+                    </span>
+                    <span v-if="post.isLocked" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      🔒 Locked (Sentinel)
+                    </span>
+                    <span v-if="!post.isPinned && !post.isLocked" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">
+                      Attivo
+                    </span>
                   </td>
-                  <td style="text-align: right;">
-                    <div class="action-buttons">
-                      <button v-if="post.vaultHash" @click="inspectVault(post)" class="btn-icon text-purple-400" title="Ispeziona Proof-of-Code Vault">🛡️</button>
-                      <button @click="togglePinThread(post)" class="btn-icon" :title="post.isPinned ? 'Unpin' : 'Pin in Cima'">📌</button>
-                      <button @click="toggleLockThread(post)" class="btn-icon" :title="post.isLocked ? 'Sblocca Discussione' : 'Blocca Discussione'">🔒</button>
-                      <button @click="deleteThread(post.id)" class="btn-icon btn-delete" title="Elimina Thread">🗑️</button>
+                  <td class="p-3.5 text-right font-mono">
+                    <div class="flex justify-end items-center gap-1.5">
+                      <button 
+                        v-if="post.vaultHash" 
+                        @click="inspectVault(post)" 
+                        class="p-1.5 bg-purple-500/15 border border-purple-500/30 hover:bg-purple-500 hover:text-white text-purple-300 rounded-lg text-xs transition-all cursor-pointer" 
+                        title="Ispeziona Proof-of-Code Vault"
+                      >
+                        🛡️
+                      </button>
+                      <button 
+                        @click="togglePinThread(post)" 
+                        class="p-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 rounded-lg text-xs transition-all cursor-pointer" 
+                        :title="post.isPinned ? 'Unpin' : 'Pin in Cima'"
+                      >
+                        📌
+                      </button>
+                      <button 
+                        @click="toggleLockThread(post)" 
+                        class="p-1.5 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 rounded-lg text-xs transition-all cursor-pointer" 
+                        :title="post.isLocked ? 'Sblocca Discussione' : 'Blocca Discussione'"
+                      >
+                        🔒
+                      </button>
+                      <button 
+                        @click="deleteThread(post.id)" 
+                        class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer" 
+                        title="Elimina Thread"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </td>
                 </tr>
 
                 <tr v-if="filteredThreads.length === 0">
-                  <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
+                  <td colspan="6" class="p-12 text-center text-slate-500 font-mono text-xs">
                     📂 Nessun thread trovato per i filtri selezionati.
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </main>
 
+      </div>
+
+      <!-- ================= MODALE CREAZIONE / MODIFICA NODO ================= -->
+      <Transition name="fade">
+        <div 
+          v-if="isNodeModalOpen" 
+          class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4" 
+          @click.self="isNodeModalOpen = false"
+        >
+          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-hidden">
+            
+            <!-- HEADER MODALE -->
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 class="text-cyan-400 font-bold text-base sm:text-lg">
+                💬 {{ nodeForm.id ? "Modifica Nodo DKP" : "Nuovo Nodo (Subreddit)" }}
+              </h3>
+              <button @click="isNodeModalOpen = false" class="text-slate-500 hover:text-white font-bold text-xl cursor-pointer">✕</button>
+            </div>
+
+            <!-- FORM SCROLLABILE -->
+            <div class="flex flex-col gap-4 overflow-y-auto pr-1 font-mono text-xs">
+              
+              <!-- SELETTORE GERARCHIA PADRE -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">TIPO NODO &amp; GERARCHIA *</label>
+                <select 
+                  v-model="nodeForm.parentId" 
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all cursor-pointer"
+                >
+                  <option :value="null">📂 Nodo Principale (n/ reddit)</option>
+                  <option 
+                    v-for="parent in nodes.filter(n => !n.parentId && n.id !== nodeForm.id)" 
+                    :key="parent.id" 
+                    :value="parent.id"
+                  >
+                    ↳ Sub-Nodo di: n/{{ parent.name }} (n/n/ subreddit)
+                  </option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">NOME NODO *</label>
+                  <input 
+                    v-model="nodeForm.name" 
+                    @input="handleNodeNameInput" 
+                    type="text" 
+                    placeholder="Es. devops, rust" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all"
+                    required 
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">URL SLUG *</label>
+                  <input 
+                    v-model="nodeForm.slug" 
+                    type="text" 
+                    placeholder="devops" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all"
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">DESCRIZIONE NODO *</label>
+                <textarea 
+                  v-model="nodeForm.description" 
+                  rows="2" 
+                  placeholder="Di cosa si parla in questo nodo..." 
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-sky-500 transition-all"
+                  required
+                ></textarea>
+              </div>
+
+              <!-- EMOJI PICKER -->
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                  <label class="text-slate-400 font-bold uppercase">ICONA EMOJI NODO *</label>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-500">Custom:</span>
+                    <input 
+                      v-model="nodeForm.icon" 
+                      type="text" 
+                      class="w-10 text-center py-1 bg-[#040814] border border-slate-800 rounded-lg text-sm text-white" 
+                      maxlength="4" 
+                    />
+                  </div>
+                </div>
+
+                <select 
+                  v-model="selectedEmojiCategory" 
+                  class="bg-[#040814] border border-slate-800 text-slate-300 px-3 py-2 rounded-xl outline-none focus:border-sky-500 transition-all cursor-pointer text-xs"
+                >
+                  <option v-for="cat in emojiCategories" :key="cat.id" :value="cat.id">
+                    {{ cat.label }}
+                  </option>
+                </select>
+
+                <div class="grid grid-cols-7 gap-1.5 max-h-28 overflow-y-auto p-2 bg-[#040814] border border-slate-800 rounded-xl">
+                  <button 
+                    v-for="emoji in filteredEmojis" 
+                    :key="emoji" 
+                    type="button" 
+                    @click="nodeForm.icon = emoji" 
+                    :class="[
+                      'p-2 rounded-lg text-base flex items-center justify-center border transition-all cursor-pointer',
+                      nodeForm.icon === emoji ? 'bg-emerald-500/20 border-emerald-500 text-white scale-110' : 'bg-[#080d1a] border-slate-800 hover:border-slate-700'
+                    ]"
+                  >
+                    {{ emoji }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- PALETTE COLORI -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">COLORE ACCENT NODO</label>
+                <div class="flex items-center gap-2">
+                  <span 
+                    v-for="color in presetColors" 
+                    :key="color" 
+                    @click="nodeForm.color = color" 
+                    :style="{ backgroundColor: color }" 
+                    :class="[
+                      'w-6 h-6 rounded-full cursor-pointer transition-all border-2',
+                      nodeForm.color === color ? 'border-white scale-110 shadow-lg' : 'border-transparent'
+                    ]"
+                  ></span>
+                  <input v-model="nodeForm.color" type="color" class="w-8 h-8 rounded bg-transparent border-0 cursor-pointer" title="Seleziona colore personalizzato" />
+                </div>
+              </div>
+
+              <!-- PREVIEW BADGE -->
+              <div class="flex items-center gap-3 bg-[#040814] p-3 rounded-xl border border-slate-800">
+                <span class="text-slate-500 font-bold text-[11px]">Anteprima Live:</span>
+                <span 
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border"
+                  :style="{ backgroundColor: `${nodeForm.color}20`, color: nodeForm.color, borderColor: `${nodeForm.color}40` }"
+                >
+                  <span>{{ nodeForm.icon }}</span>
+                  <span class="font-mono">{{ nodeForm.parentId ? 'n/n/' : 'n/' }}</span>{{ nodeForm.name || "nome-nodo" }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="isPrivateNode" v-model="nodeForm.isPrivate" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                <label for="isPrivateNode" class="text-slate-300 font-bold cursor-pointer">
+                  🔒 Nodo Privato (Visibile solo agli utenti registrati)
+                </label>
+              </div>
+
+            </div>
+
+            <!-- FOOTER -->
+            <div class="border-t border-slate-800 pt-4 flex justify-end gap-3 font-mono">
+              <button @click="isNodeModalOpen = false" type="button" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                Annulla
+              </button>
+              <button @click="saveNode" type="button" :disabled="isLoading" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
+                {{ isLoading ? 'Salvataggio...' : '💾 Salva Nodo' }}
+              </button>
+            </div>
+
+          </div>
         </div>
-      </main>
-    </div>
+      </Transition>
 
-    <!-- ================= MODALE CREAZIONE / MODIFICA NODO (CON GERARCHIA GERARCHICA N/ E N/N/) ================= -->
-    <div v-if="isNodeModalOpen" class="modal-backdrop" @click.self="isNodeModalOpen = false">
-      <div class="modal-box">
-        
-        <!-- HEADER MODALE -->
-        <div class="vault-modal-header">
-          <h3>💬 {{ nodeForm.id ? "Modifica Nodo DKP" : "Nuovo Nodo (Subreddit)" }}</h3>
-          <button class="icon-btn close-x" @click="isNodeModalOpen = false">×</button>
-        </div>
+      <!-- ================= MODALE VAULT PROOF OF CODE ================= -->
+      <Transition name="fade">
+        <div 
+          v-if="isVaultModalOpen && selectedPostForVault" 
+          class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4" 
+          @click.self="isVaultModalOpen = false"
+        >
+          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-4 font-mono">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 class="text-purple-400 font-black text-base flex items-center gap-2">
+                <span>🛡️ DKP Vault Proof-of-Code Certificate</span>
+              </h3>
+              <span class="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded font-bold">
+                NODES SENTINEL AUDIT
+              </span>
+            </div>
 
-        <!-- FORM SCROLLABILE -->
-        <div class="form-stack scrollable-form mt-4">
-          
-          <!-- SELETTORE GERARCHIA PADRE -->
-          <div class="form-group">
-            <label>TIPO NODO &amp; GERARCHIA *</label>
-            <select v-model="nodeForm.parentId" class="dkp-input text-xs bg-[#020420] border-slate-800">
-              <option :value="null">📂 Nodo Principale (n/ reddit)</option>
-              <option 
-                v-for="parent in nodes.filter(n => !n.parentId && n.id !== nodeForm.id)" 
-                :key="parent.id" 
-                :value="parent.id"
-              >
-                ↳ Sub-Nodo di: n/{{ parent.name }} (n/n/ subreddit)
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>NOME NODO *</label>
-            <input v-model="nodeForm.name" @input="handleNodeNameInput" type="text" placeholder="Es. devops, javascript, rust" required />
-          </div>
-
-          <div class="form-group">
-            <label>URL SLUG *</label>
-            <input v-model="nodeForm.slug" type="text" placeholder="devops" required />
-          </div>
-
-          <div class="form-group">
-            <label>DESCRIZIONE NODO *</label>
-            <textarea v-model="nodeForm.description" rows="2" placeholder="Di cosa si parla in questo nodo..." required></textarea>
-          </div>
-
-          <!-- PICKER EMOJI AVANZATO CON CATEGORIE E INPUT LIBERO -->
-          <div class="form-group">
-            <div class="flex justify-between items-center mb-1">
-              <label>ICONA EMOJI NODO *</label>
-              <div class="emoji-custom-input flex items-center gap-2">
-                <span class="text-xs text-slate-400">Emoji Personalizzata:</span>
-                <input v-model="nodeForm.icon" type="text" class="w-12 text-center py-0.5 px-1 bg-slate-900 border border-slate-700 rounded text-sm" max-length="4" />
+            <div class="flex flex-col gap-2 my-2 text-xs">
+              <h4 class="text-white font-bold text-sm">{{ selectedPostForVault.title }}</h4>
+              <p class="text-slate-400">
+                Autore: <strong class="text-white">@{{ selectedPostForVault.authorName }}</strong> • Data: {{ new Date(selectedPostForVault.createdAt).toLocaleDateString('it-IT') }}
+              </p>
+              
+              <div class="bg-[#040814] border border-slate-800 rounded-xl p-3 flex flex-col gap-1 mt-2">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">SHA-256 PROOF-OF-CODE CHECKSUM:</span>
+                <code class="text-purple-400 text-[11px] break-all font-mono font-bold">{{ selectedPostForVault.vaultHash }}</code>
               </div>
             </div>
 
-            <!-- MENU A TENDINA CATEGORIE EMOJI -->
-            <select v-model="selectedEmojiCategory" class="dkp-input text-xs mb-2 bg-[#020420] border-slate-800">
-              <option v-for="cat in emojiCategories" :key="cat.id" :value="cat.id">
-                {{ cat.label }}
-              </option>
-            </select>
-
-            <!-- GRIGLIA EMOJI CON SCROLL -->
-            <div class="icons-grid emoji-scroll-picker">
-              <button 
-                v-for="emoji in filteredEmojis" 
-                :key="emoji" 
-                type="button" 
-                @click="nodeForm.icon = emoji" 
-                :class="['icon-btn emoji-select-btn', { active: nodeForm.icon === emoji }]"
-              >
-                {{ emoji }}
-              </button>
-            </div>
+            <button @click="isVaultModalOpen = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer">
+              Chiudi Report
+            </button>
           </div>
-
-          <!-- PALETTE COLORI PRESET E CUSTOM -->
-          <div class="form-group">
-            <label>COLORE ACCENT NODO</label>
-            <div class="color-picker">
-              <span 
-                v-for="color in presetColors" 
-                :key="color" 
-                @click="nodeForm.color = color" 
-                :style="{ backgroundColor: color }" 
-                :class="['color-dot', { active: nodeForm.color === color }]"
-              ></span>
-              <input v-model="nodeForm.color" type="color" class="color-input" title="Seleziona colore personalizzato" />
-            </div>
-          </div>
-
-          <!-- PREVIEW ANTEPRIMA BADGE -->
-          <div class="badge-preview-box">
-            <span class="preview-label">Anteprima Live Badge:</span>
-            <span class="preview-badge" :style="{ backgroundColor: `${nodeForm.color}20`, color: nodeForm.color, borderColor: `${nodeForm.color}40` }">
-              <span>{{ nodeForm.icon }}</span>
-              <span class="font-mono text-[11px]">{{ nodeForm.parentId ? 'n/n/' : 'n/' }}</span>{{ nodeForm.name || "nome-nodo" }}
-            </span>
-          </div>
-
-          <div class="form-group flex items-center gap-2 mt-1">
-            <input type="checkbox" id="isPrivateNode" v-model="nodeForm.isPrivate" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-            <label for="isPrivateNode" class="normal-case text-xs text-slate-300 cursor-pointer font-bold">
-              🔒 Nodo Privato (Visibile solo agli utenti registrati)
-            </label>
-          </div>
-
         </div>
+      </Transition>
 
-        <!-- FOOTER ANCORATO FISSO IN BASSO -->
-        <div class="modal-footer">
-          <button @click="isNodeModalOpen = false" type="button" class="btn-cancel">Annulla</button>
-          <button @click="saveNode" type="button" class="btn-primary btn-save-cat" :disabled="isLoading">
-            {{ isLoading ? 'Salvataggio...' : '💾 Salva Nodo' }}
-          </button>
-        </div>
-
-      </div>
     </div>
-
-    <!-- MODALE VAULT PROOF OF CODE -->
-    <div v-if="isVaultModalOpen && selectedPostForVault" class="modal-backdrop" @click.self="isVaultModalOpen = false">
-      <div class="modal-box vault-report-modal">
-        <div class="vault-modal-header">
-          <h3>🛡️ DKP Vault Proof-of-Code Certificate</h3>
-          <span class="vault-cert-tag">NODES SENTINEL AUDIT</span>
-        </div>
-
-        <div class="vault-report-content mt-4">
-          <h4 class="report-title">{{ selectedPostForVault.title }}</h4>
-          <p class="report-sub">Autore: <strong>@{{ selectedPostForVault.authorName }}</strong> • Data: {{ new Date(selectedPostForVault.createdAt).toLocaleDateString('it-IT') }}</p>
-          
-          <div class="vault-hash-box">
-            <span class="hash-label">SHA-256 PROOF-OF-CODE CHECKSUM:</span>
-            <code>{{ selectedPostForVault.vaultHash }}</code>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="isVaultModalOpen = false" class="btn-cancel" style="width: 100%;">Chiudi Report</button>
-        </div>
-      </div>
-    </div>
-
   </div>
 </template>
 
 <style scoped>
-/* ==========================================================================
-   STILI NAVBAR ADMIN & COMPONENTI UNIFICATI
-   ========================================================================== */
-.admin-nav-container { display: flex; flex-direction: column; gap: 12px; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
-.admin-nav-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.nav-branding { display: flex; align-items: center; gap: 8px; }
-.status-dot.green { width: 8px; height: 8px; background-color: #00ff87; border-radius: 50%; box-shadow: 0 0 8px #00ff87; }
-.nav-title { color: #00f0ff; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em; text-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
-.admin-grid-nav { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
-.nav-tab { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border-radius: 6px; font-weight: 700; font-size: 0.88rem; text-decoration: none; transition: all 0.2s ease-in-out; cursor: pointer; }
-.btn-dashboard { color: #00ff87; background: rgba(0, 255, 135, 0.04); border: 1px solid rgba(0, 255, 135, 0.3); }
-.btn-dashboard:hover, .btn-dashboard.active { background: rgba(0, 255, 135, 0.12); border-color: #00ff87; box-shadow: 0 0 12px rgba(0, 255, 135, 0.25); transform: translateY(-1px); }
-.btn-dashboard-main { color: #00f0ff; background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.4); }
-
-.dkp-toast-success { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 999999; background: #061811; border: 1px solid #00dc82; box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35); padding: 0.9rem 1.3rem; border-radius: 10px; backdrop-filter: blur(16px); max-width: 420px; }
-.toast-content { color: #f8fafc; font-family: monospace; font-size: 0.85rem; font-weight: 600; }
-
-.admin-page-container { padding: 2rem; background-color: #020420; min-height: 100vh; color: #f8fafc; font-family: system-ui, sans-serif; max-width: 1280px; margin: 0 auto; }
-.header-section { margin-bottom: 2rem; }
-.badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(0, 220, 130, 0.12); color: #00dc82; font-size: 0.75rem; font-weight: 800; padding: 0.3rem 0.75rem; border-radius: 9999px; border: 1px solid rgba(0, 220, 130, 0.3); margin-bottom: 0.75rem; }
-.badge-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #00dc82; box-shadow: 0 0 8px #00dc82; }
-.highlight { color: #00dc82; }
-.subtitle { color: #94a3b8; font-size: 0.9rem; margin: 0; }
-
-.hybrid-grid { display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; align-items: flex-start; }
-@media (max-width: 1024px) { .hybrid-grid { grid-template-columns: 1fr; } .admin-grid-nav { grid-template-columns: repeat(3, 1fr); } }
-
-.sidebar-panel { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; }
-.sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid #1e293b; padding-bottom: 1rem; }
-.sidebar-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }
-
-.compact-cat-list { display: flex; flex-direction: column; gap: 0.75rem; }
-.compact-cat-item { background: #020420; border: 1px solid #1e293b; border-radius: 10px; padding: 0.85rem; }
-.cat-item-top { display: flex; justify-content: space-between; align-items: flex-start; }
-.cat-info-head { display: flex; align-items: center; gap: 0.6rem; }
-.cat-title-sm { margin: 0; font-size: 0.95rem; color: #fff; font-weight: 700; }
-.cat-slug-sm { font-size: 0.7rem; color: #64748b; font-family: monospace; }
-.cat-icon-badge.mini { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid transparent; }
-
-.card { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
-.form-stack { display: flex; flex-direction: column; gap: 1rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
-.form-group label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-.dkp-input, .form-group input, .form-group select, .form-group textarea { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.65rem; border-radius: 8px; outline: none; font-size: 0.875rem; }
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #00dc82; }
-
-.btn-primary { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; }
-.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
-.actions { display: flex; gap: 0.3rem; }
-.btn-icon { background: #1e293b; border: none; color: #fff; padding: 0.25rem 0.4rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-.btn-icon.danger:hover { background: rgba(239, 68, 68, 0.2); }
-
-.table-responsive { overflow-x: auto; }
-.dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
-.dkp-table th { background: #020420; color: #64748b; padding: 0.75rem; border-bottom: 1px solid #1e293b; text-transform: uppercase; font-size: 0.7rem; }
-.dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-.cat-badge { background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
-.status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
-.status-badge.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-badge.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.status-badge.draft { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
-.action-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; }
-
-/* ==========================================================================
-   STILI MODALE FIX SCROLLING & PULSANTE SALVA VISIBILE
-   ========================================================================== */
-.modal-backdrop { 
-  position: fixed; 
-  inset: 0; 
-  background: rgba(0, 0, 0, 0.85); 
-  backdrop-filter: blur(8px); 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  z-index: 20000; 
-  padding: 1rem; 
-}
-
-.modal-box { 
-  background: #090d16; 
-  border: 1px solid #1e293b; 
-  border-radius: 14px; 
-  padding: 1.5rem; 
-  width: 100%; 
-  max-width: 540px; 
-  max-height: 90vh; 
-  display: flex; 
-  flex-direction: column; 
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8); 
-  overflow: hidden; 
-}
-
-.vault-modal-header { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  border-bottom: 1px solid #1e293b; 
-  padding-bottom: 12px; 
-  flex-shrink: 0; 
-}
-
-.vault-modal-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; color: #00f0ff; }
-.close-x { background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; }
-.close-x:hover { color: #fff; }
-
-/* CONTAINER FORM SCROLLABILE */
-.scrollable-form { 
-  flex: 1; 
-  overflow-y: auto; 
-  padding-right: 6px; 
-  margin-bottom: 1rem; 
-}
-
-.scrollable-form::-webkit-scrollbar { width: 6px; }
-.scrollable-form::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-.scrollable-form::-webkit-scrollbar-thumb:hover { background: #00dc82; }
-
-.emoji-scroll-picker { 
-  display: grid; 
-  grid-template-columns: repeat(7, 1fr); 
-  gap: 0.4rem; 
-  max-height: 120px; 
-  overflow-y: auto; 
-  padding: 0.5rem; 
-  background: #020420; 
-  border: 1px solid #1e293b; 
-  border-radius: 8px; 
-}
-
-.emoji-select-btn { 
-  background: #090d16; 
-  border: 1px solid #1e293b; 
-  font-size: 1.25rem; 
-  padding: 0.35rem; 
-  border-radius: 6px; 
-  cursor: pointer; 
-  color: #fff; 
-  transition: all 0.2s ease; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-}
-
-.emoji-select-btn:hover, .emoji-select-btn.active { 
-  border-color: #00dc82; 
-  background: rgba(0, 220, 130, 0.2); 
-  transform: scale(1.1); 
-}
-
-.color-picker { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
-.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
-.color-dot.active { border-color: #ffffff; transform: scale(1.15); box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); }
-.color-input { width: 32px; height: 32px; padding: 0; border: none; background: none; cursor: pointer; }
-
-.badge-preview-box { display: flex; align-items: center; gap: 0.75rem; background: #020420; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #1e293b; }
-.preview-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
-.preview-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8rem; font-weight: 800; border: 1px solid; }
-
-/* FOOTER FISSO IN BASSO */
-.modal-footer { 
-  flex-shrink: 0; 
-  padding-top: 1rem; 
-  border-top: 1px solid rgba(255, 255, 255, 0.08); 
-  display: flex; 
-  gap: 12px; 
-  justify-content: flex-end; 
-}
-
-/* Rientro ed indentazione visiva per i Sub-Nodi n/n/ */
-.compact-cat-item.is-subnode {
-  margin-left: 1.25rem;
-  border-left: 3px solid #38bdf8;
-  background: #050814;
-}
-
-.btn-save-cat { background: #00dc82; color: #020420; font-weight: 900; padding: 0.65rem 1.4rem; border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s; }
-.btn-save-cat:hover { background: #00bf71; transform: translateY(-1px); }
-.btn-cancel { background: #1e293b; color: #cbd5e1; border: none; padding: 0.65rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 700; }
-.btn-cancel:hover { background: #334155; }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

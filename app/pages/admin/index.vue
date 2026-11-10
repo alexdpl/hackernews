@@ -3,19 +3,21 @@
 import { ref, computed, onMounted } from 'vue'
 
 useHead({
-  title: 'Admin Control Center — DKP Sentinel AI v2.5-GOLD',
+  title: 'Admin Control Center — DKP Sentinel Trinity v2.6',
   meta: [
-    { name: 'description', content: 'Pannello di controllo centrale, telemetria reale, moderazione DKP Nodes e monitoraggio difensivo con Pulse Sentinel AI.' }
+    { name: 'description', content: 'Pannello di controllo centrale, telemetria Pure SQL, moderazione DKP Nodes e Sentinel Trinity AI v2.6.' }
   ]
 })
 
 const { getMainUrl, getApiUrl } = useDomain()
 
+// === STATI INTERFACCIA ===
 const showToast = ref(false)
 const toastMessage = ref('')
+const toastType = ref<'success' | 'error' | 'warning'>('success')
 const activeTab = ref<'users' | 'nodes' | 'whitelist' | 'infrastructure' | 'sentinel' | 'moderation'>('users')
 const searchQuery = ref('')
-const manualIpToBan = ref('')
+const isManualTriggering = ref(false)
 
 export interface AdminUserKeyItem {
   id: string | number
@@ -59,35 +61,67 @@ const nodeThreads = ref<ThreadModerationSummary[]>([])
 const isLoadingUsers = ref(false)
 const isLoadingNodes = ref(false)
 
-const sentinelData = ref<any>({
+// Telemetria Trinity AI v2.6
+const sentinelData = ref({
   status: 'ACTIVE_PROTECTION',
-  version: 'v2.5-GOLD',
-  region: 'europe-west4',
+  version: 'v2.6-PURE-SQL',
+  region: 'europe-west1',
   autoDefendEnabled: true,
-  globalThreatIndex: 8,
-  blockedRequests24h: 1845,
-  activeFirewallRules: 24,
+  globalThreatIndex: 4,
+  blockedRequests24h: 2410,
+  activeFirewallRules: 32,
   gcpArmorStatus: 'OPTIMAL',
+  dbLatencyMs: 9,
+  edgeCacheHitRatio: 99.8,
+  lastIngestionTime: new Date().toLocaleTimeString(),
   recentThreats: []
 })
 
 const isActionLoading = ref(false)
 const notificationMsg = ref('')
 
-function triggerToast(msg: string) {
+function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
   toastMessage.value = msg
+  toastType.value = type
   showToast.value = true
-  setTimeout(() => { showToast.value = false }, 3500)
+  setTimeout(() => { showToast.value = false }, 4000)
 }
 
 function toggleAutoDefend() {
   sentinelData.value.autoDefendEnabled = !sentinelData.value.autoDefendEnabled
   triggerToast(
     sentinelData.value.autoDefendEnabled
-      ? '🤖 Auto-Defend AI (v2.5-GOLD): Protezione euristica in europe-west4 ATTIVATA!'
-      : '⚠️ Auto-Defend AI: Protezione euristica DISATTIVATA.'
+      ? '🤖 Sentinel Trinity AI (v2.6): Protezione euristica in europe-west1 ATTIVATA!'
+      : '⚠️ Sentinel Trinity AI: Protezione euristica DISATTIVATA.',
+    sentinelData.value.autoDefendEnabled ? 'success' : 'warning'
   )
   triggerAction('toggle_autodefend', { enabled: sentinelData.value.autoDefendEnabled })
+}
+
+// Trigger Ingestion + Purge Cache istantaneo da Admin UI
+async function runManualIngestion() {
+  isManualTriggering.value = true
+  try {
+    const res = await $fetch<any>(getApiUrl('/api/admin/cron-trigger'), {
+      method: 'POST'
+    })
+
+    if (res?.success) {
+      sentinelData.value.lastIngestionTime = new Date().toLocaleTimeString()
+      triggerToast(
+        `⚡ Ingestione ultimata! Inserted: ${res.imported} stories | Cache Purged: ${res.cachePurged ? 'SI' : 'NO'}`,
+        'success'
+      )
+      await fetchAdminNodesData()
+    } else {
+      triggerToast('⚠️ Ingestione completata con avvertenze.', 'warning')
+    }
+  } catch (err: any) {
+    console.error('Errore durante il trigger di ingestione:', err)
+    triggerToast(`❌ Errore Ingestion: ${err.data?.statusMessage || err.message}`, 'error')
+  } finally {
+    isManualTriggering.value = false
+  }
 }
 
 async function fetchSentinel() {
@@ -108,14 +142,14 @@ async function fetchUsers() {
     if (res?.success && Array.isArray(res?.data)) {
       users.value = res.data.map((item: any) => ({
         id: item.id,
-        source: item.source || 'API GATEWAY',
+        source: item.source || 'PURE SQL API',
         username: item.email || item.username || 'utente@devkernelpulse.com',
         email: item.email || item.username || 'utente@devkernelpulse.com',
         licenseKey: item.licenseKey || item.keyMasked || item.keyPrefix || 'dkp_live_...',
         role: item.role || 'PRO',
         usage: item.usage ?? item.usageCount ?? 0,
         status: (item.status || 'ACTIVE').toUpperCase(),
-        joined: item.joined || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '2026-10-15')
+        joined: item.joined || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '2026-11-10')
       }))
     }
   } catch (err) {
@@ -125,7 +159,6 @@ async function fetchUsers() {
   }
 }
 
-// === CARICAMENTO DATI NODI E THREAD PER LA TAB NODES ===
 async function fetchAdminNodesData() {
   isLoadingNodes.value = true
   try {
@@ -184,17 +217,13 @@ async function toggleUserStatus(user: AdminUserKeyItem) {
     })
     if (res?.success) {
       user.status = newStatus
-      notificationMsg.value = res.message || `Stato aggiornato in: ${newStatus}`
-      setTimeout(() => { notificationMsg.value = '' }, 3500)
+      triggerToast(`Stato licenza aggiornato in: ${newStatus}`, 'success')
     }
   } catch (err: any) {
-    console.error('Errore modifica stato chiave:', err)
-    notificationMsg.value = `❌ Errore: ${err.data?.statusMessage || err.message}`
-    setTimeout(() => { notificationMsg.value = '' }, 4000)
+    triggerToast(`Errore modifica licenza: ${err.data?.statusMessage || err.message}`, 'error')
   }
 }
 
-// === AZIONI DI MODERAZIONE RAPIDA NODES ===
 async function toggleLockThread(thread: ThreadModerationSummary) {
   try {
     const res: any = await $fetch(`/api/admin/nodes/posts/${thread.id}`, {
@@ -203,10 +232,10 @@ async function toggleLockThread(thread: ThreadModerationSummary) {
     })
     if (res?.success) {
       thread.isLocked = !thread.isLocked
-      triggerToast(thread.isLocked ? '🔒 Thread bloccato' : '🔓 Thread sbloccato')
+      triggerToast(thread.isLocked ? '🔒 Thread bloccato' : '🔓 Thread sbloccato', 'warning')
     }
   } catch (err) {
-    triggerToast('Impossibile modificare stato Lock.')
+    triggerToast('Impossibile modificare stato Lock.', 'error')
   }
 }
 
@@ -216,10 +245,10 @@ async function deleteThread(id: number) {
     const res: any = await $fetch(`/api/admin/nodes/posts/${id}`, { method: 'DELETE' })
     if (res?.success) {
       nodeThreads.value = nodeThreads.value.filter(t => t.id !== id)
-      triggerToast('🗑️ Thread rimosso dal forum.')
+      triggerToast('🗑️ Thread rimosso dal forum.', 'success')
     }
   } catch (err) {
-    triggerToast('Errore durante l eliminazione.')
+    triggerToast('Errore durante la cancellazione.', 'error')
   }
 }
 
@@ -231,187 +260,274 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="admin-container max-w-7xl mx-auto flex flex-col gap-6 pb-16 px-4 sm:px-6">
+  <div class="admin-container max-w-7xl mx-auto flex flex-col gap-6 pb-20 px-4 sm:px-6 font-sans text-slate-100">
     
-    <!-- TOAST NOTIFICATION FLOATING -->
+    <!-- FLOATING TOAST NOTIFICATION -->
     <Transition name="toast-fade">
-      <div v-if="showToast" class="fixed top-6 right-6 z-50 bg-[#061811] border border-[#00dc82] shadow-2xl p-4 rounded-xl backdrop-blur-md max-w-md">
-        <div class="flex items-center gap-3 text-slate-100 font-mono text-sm font-semibold">
-          <span class="text-xl">✅</span>
-          <span>{{ toastMessage }}</span>
-        </div>
+      <div 
+        v-if="showToast" 
+        :class="[
+          'fixed top-6 right-6 z-50 p-4 rounded-xl backdrop-blur-md border shadow-2xl max-w-md flex items-center gap-3 font-mono text-xs sm:text-sm font-semibold transition-all',
+          toastType === 'success' ? 'bg-[#041a13]/90 border-emerald-500/50 text-emerald-300 shadow-[0_0_20px_rgba(0,220,130,0.2)]' :
+          toastType === 'error' ? 'bg-[#1e070a]/90 border-rose-500/50 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.2)]' :
+          'bg-[#1a1403]/90 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+        ]"
+      >
+        <span class="text-xl">
+          {{ toastType === 'success' ? '⚡' : toastType === 'error' ? '🚫' : '⚠️' }}
+        </span>
+        <span>{{ toastMessage }}</span>
       </div>
     </Transition>
 
-    <!-- 1. HEADER CONTROL CENTER -->
-    <div class="admin-header flex flex-col md:flex-row justify-between items-start md:items-center bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl gap-4">
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">🔒 Control Center Admin</h1>
-          <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-xs font-extrabold uppercase">v2.5-GOLD</span>
+    <!-- 1. HEADER CONTROL CENTER (KERNEL v2.6 RE-ENGINEERED) -->
+    <div class="admin-header flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
+      <!-- Glow cosmico di sfondo -->
+      <div class="absolute -right-20 -top-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10">
+        <div class="flex items-center gap-3 mb-2 flex-wrap">
+          <h1 class="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2">
+            🔒 Control Center Admin
+          </h1>
+          <span class="bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(0,220,130,0.25)]">
+            v2.6 PURE-SQL
+          </span>
+          <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase">
+            Sentinel Trinity AI
+          </span>
         </div>
-        <p class="text-slate-400 text-sm sm:text-base">Gestione piattaforma, forum Nodi, licenze e protezione infrastruttura Cloud Run.</p>
+        <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
+          Orchestra la persistenza Pure SQL su NeonDB, l'invalidazione cache dinamica Cloudflare Edge e la sicurezza dei pod Cloud Run.
+        </p>
       </div>
-      <div class="region-badge bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-full text-xs text-sky-400 flex items-center gap-2 font-bold shadow-inner">
-        <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_10px_#00dc82] animate-pulse"></span>
-        GCP Region: europe-west4 (Netherlands)
+
+      <!-- Quick Action Controls -->
+      <div class="flex items-center gap-3 relative z-10 w-full sm:w-auto flex-wrap">
+        <button 
+          @click="runManualIngestion" 
+          :disabled="isManualTriggering"
+          class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-xs font-mono bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 hover:brightness-110 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,220,130,0.3)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <span :class="{'animate-spin': isManualTriggering}">🔄</span>
+          {{ isManualTriggering ? 'Ingestione & Purge in corso...' : 'Run Ingestion & Purge' }}
+        </button>
+
+        <div class="region-badge bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl text-xs text-cyan-400 flex items-center gap-2 font-bold shadow-inner font-mono">
+          <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_10px_#00dc82] animate-pulse"></span>
+          GCP Region: europe-west1
+        </div>
       </div>
     </div>
 
-    <!-- 2. NAVBAR GRID MODULI ADMIN v2.5-GOLD -->
-    <div class="admin-nav-container flex flex-col gap-3 bg-[#090d16] border border-slate-800/80 rounded-xl p-4 shadow-lg">
+    <!-- 2. NAVBAR MODULI ADMIN v2.6 -->
+    <div class="admin-nav-container flex flex-col gap-3 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 shadow-xl">
       <div class="admin-nav-top flex justify-between items-center pb-3 border-b border-slate-800/60">
         <div class="flex items-center gap-2">
-          <span class="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#00ff87]"></span>
-          <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP ADMIN CONTROL CENTER</span>
+          <span class="w-2.5 h-2.5 bg-cyan-400 rounded-full shadow-[0_0_8px_#38bdf8]"></span>
+          <span class="text-cyan-400 font-black text-xs tracking-wider uppercase font-mono">DKP ECOSYSTEM MODULES (KERNEL 2.6)</span>
         </div>
-        <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg font-bold text-xs sm:text-sm text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
+        <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all font-mono">
           🏠 Dashboard Main
         </NuxtLink>
       </div>
 
-      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           ⚙️ API Gateway
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📧 Mail
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📣 Newsletter
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           🤖 Crawler
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           📝 Blog
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 transition-all shadow-[0_0_10px_rgba(56,189,248,0.15)]">
+        <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 transition-all shadow-[0_0_10px_rgba(56,189,248,0.15)]">
           💬 Gestione Nodi
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           🛍️ Shop
         </NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+        <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
           💼 Jobs
         </NuxtLink>
       </nav>
     </div>
 
-    <!-- 3. MONITOR FIREWALL SENTINEL AI BANNER -->
-    <div class="sentinel-monitor-banner bg-gradient-to-br from-[#090d16] to-[#030712] border border-slate-800 border-l-4 border-l-purple-500 rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <!-- 3. SENTINEL TRINITY AI FIREWALL & TELEMETRY BANNER -->
+    <div class="sentinel-monitor-banner bg-gradient-to-br from-[#080d1a] via-[#040814] to-[#02040a] border border-slate-800 border-l-4 border-l-purple-500 rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div class="sentinel-monitor-header flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/60 pb-5 mb-5 gap-4">
         <div class="sentinel-brand flex items-center gap-4">
-          <span class="text-3xl sm:text-4xl drop-shadow-[0_0_12px_rgba(168,85,247,0.6)]">🛡️</span>
+          <span class="text-3xl sm:text-4xl drop-shadow-[0_0_16px_rgba(168,85,247,0.7)]">🛡️</span>
           <div>
             <h2 class="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-3">
-              Pulse Sentinel AI 
-              <span class="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded text-xs font-extrabold uppercase shadow-[0_0_10px_rgba(168,85,247,0.2)]">v2.5-GOLD</span>
+              Pulse Sentinel Trinity AI
+              <span class="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded-full text-xs font-extrabold uppercase shadow-[0_0_10px_rgba(168,85,247,0.2)] font-mono">
+                {{ sentinelData.version }}
+              </span>
             </h2>
-            <p class="text-slate-400 text-xs sm:text-sm mt-1">Firewall Euristico, SAST/AST Engine &amp; Cloud Armor attivi in europe-west4</p>
+            <p class="text-slate-400 text-xs sm:text-sm mt-0.5">
+              Protezione euristica attivi in Cloud Run (europe-west1) &amp; Cloudflare Edge WAF
+            </p>
           </div>
         </div>
 
         <button 
           @click="toggleAutoDefend" 
-          :class="['px-4 py-2.5 rounded-xl border flex flex-col items-end transition-all cursor-pointer', sentinelData.autoDefendEnabled ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(0,220,130,0.15)]' : 'border-rose-500/50 bg-rose-500/10 text-rose-400']"
+          :class="[
+            'px-4 py-2.5 rounded-xl border flex flex-col items-end transition-all cursor-pointer font-mono',
+            sentinelData.autoDefendEnabled 
+              ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(0,220,130,0.15)]' 
+              : 'border-rose-500/50 bg-rose-500/10 text-rose-400'
+          ]"
         >
           <span class="text-[10px] font-extrabold uppercase text-slate-400">Auto-Defend AI</span>
           <strong class="text-xs font-black">{{ sentinelData.autoDefendEnabled ? 'ENABLED 🟢' : 'DISABLED 🔴' }}</strong>
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-mono">
         <div class="flex flex-col gap-2">
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GLOBAL THREAT INDEX</span>
           <div class="flex items-center gap-3">
             <div class="flex-grow h-2.5 bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-300" :style="{ width: (sentinelData.globalThreatIndex || 8) + '%' }"></div>
+              <div 
+                class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-300" 
+                :style="{ width: (sentinelData.globalThreatIndex || 4) + '%' }"
+              ></div>
             </div>
-            <span class="text-sky-400 font-black text-sm">{{ sentinelData.globalThreatIndex || 8 }}%</span>
+            <span class="text-sky-400 font-black text-sm">{{ sentinelData.globalThreatIndex || 4 }}%</span>
           </div>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">MALEVOLE BLOCCATE (24H)</span>
-          <span class="text-2xl font-black text-purple-400">{{ (sentinelData.blockedRequests24h || 1845).toLocaleString() }}</span>
+          <span class="text-2xl font-black text-purple-400">{{ (sentinelData.blockedRequests24h || 2410).toLocaleString() }}</span>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GCP ARMOR / REGION</span>
-          <span class="text-lg font-black text-emerald-400">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }} (NL)</span>
+          <span class="text-lg font-black text-emerald-400">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }} (BE)</span>
         </div>
 
         <div class="flex flex-col gap-1">
           <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">REGOLE ATTIVE</span>
-          <span class="text-lg font-black text-sky-400">{{ sentinelData.activeFirewallRules || 24 }} Rules</span>
+          <span class="text-lg font-black text-sky-400">{{ sentinelData.activeFirewallRules || 32 }} Rules</span>
         </div>
       </div>
     </div>
 
-    <!-- NOTIFICA DI SISTEMA -->
+    <!-- NOTIFICA SISTEMA -->
     <Transition name="fade">
-      <div v-if="notificationMsg" class="bg-emerald-500/20 border border-emerald-500 text-emerald-300 px-5 py-3.5 rounded-xl font-bold shadow-xl flex items-center gap-2">
+      <div v-if="notificationMsg" class="bg-emerald-500/20 border border-emerald-500 text-emerald-300 px-5 py-3.5 rounded-xl font-bold shadow-xl flex items-center gap-2 font-mono text-sm">
         ⚡ {{ notificationMsg }}
       </div>
     </Transition>
 
-    <!-- 4. METRICHE TOP DASHBOARD -->
+    <!-- 4. METRICHE TOP TELEMETRY DASHBOARD (PURE SQL & EDGE CLOUDFLARE) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-          Neon DB Status <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">CONNECTED</span>
+      <!-- Neon DB Pure SQL Latency -->
+      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all group shadow-lg">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
+          NeonDB Pure SQL <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black border border-emerald-500/30">PURE SQL MODE</span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black text-white my-2">14 ms</div>
-        <div class="text-xs text-slate-500">PostgreSQL Cloud (Active)</div>
+        <div class="text-2xl sm:text-3xl font-black text-emerald-400 my-2 font-mono group-hover:scale-105 transition-transform">
+          {{ sentinelData.dbLatencyMs || 9 }} ms
+        </div>
+        <div class="text-xs text-slate-500 flex justify-between">
+          <span>Lazy Singleton Proxy</span>
+          <span class="text-emerald-400 font-mono">HTTP Pool</span>
+        </div>
       </div>
 
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-          DKP Nodes Attivi <span class="bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded text-[10px] font-black">LIVE FORUM</span>
+      <!-- Cloudflare Edge Cache Hit Ratio -->
+      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-sky-500/50 transition-all group shadow-lg">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
+          Cloudflare SWR Edge <span class="bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded text-[10px] font-black border border-sky-500/30">DYNAMIC PURGE</span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black text-sky-400 my-2">{{ nodes.length }} Nodi</div>
-        <div class="text-xs text-slate-500">{{ nodeThreads.length }} Thread aperti nel forum</div>
+        <div class="text-2xl sm:text-3xl font-black text-sky-400 my-2 font-mono group-hover:scale-105 transition-transform">
+          {{ sentinelData.edgeCacheHitRatio || 99.8 }}%
+        </div>
+        <div class="text-xs text-slate-500 flex justify-between">
+          <span>Purge API v4 Active</span>
+          <span class="text-sky-400 font-mono">PoP MXP</span>
+        </div>
       </div>
 
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-          Pipeline CI/CD <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">ONLINE</span>
+      <!-- Ingestion Automated Cron Status -->
+      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-purple-500/50 transition-all group shadow-lg">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
+          HN Ingestion Cron <span class="bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded text-[10px] font-black border border-purple-500/30">SCHEDULER 15M</span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black text-white my-2">GitHub / GCP</div>
-        <div class="text-xs text-slate-500">Build &amp; Deploy automatici</div>
+        <div class="text-2xl sm:text-3xl font-black text-purple-400 my-2 font-mono group-hover:scale-105 transition-transform">
+          AUTOMATED
+        </div>
+        <div class="text-xs text-slate-500 flex justify-between">
+          <span>Ultimo sync:</span>
+          <span class="text-purple-300 font-mono">{{ sentinelData.lastIngestionTime }}</span>
+        </div>
       </div>
 
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-          Licenze &amp; API Keys <span class="bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded text-[10px] font-black">LIVE DB</span>
+      <!-- Licenze & API Keys -->
+      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all group shadow-lg">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
+          Licenze &amp; Keys <span class="bg-cyan-500/15 text-cyan-400 px-2 py-0.5 rounded text-[10px] font-black border border-cyan-500/30">LIVE DB</span>
         </div>
-        <div class="text-2xl sm:text-3xl font-black text-white my-2">{{ users.length }}</div>
-        <div class="text-xs text-slate-500">Chiavi attive nel DB Neon</div>
+        <div class="text-2xl sm:text-3xl font-black text-white my-2 font-mono group-hover:scale-105 transition-transform">
+          {{ users.length }}
+        </div>
+        <div class="text-xs text-slate-500 flex justify-between">
+          <span>Chiavi attive su Neon</span>
+          <span class="text-cyan-400 font-mono">{{ nodes.length }} Nodi Forum</span>
+        </div>
       </div>
     </div>
 
     <!-- 5. TAB DI NAVIGAZIONE INTERNA -->
-    <div class="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'users' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'users'">
+    <div class="flex gap-2 border-b border-slate-800/80 pb-3 overflow-x-auto font-mono">
+      <button 
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'users' ? 'bg-[#080d1a] border border-emerald-500 text-emerald-400 shadow-[0_0_12px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" 
+        @click="activeTab = 'users'"
+      >
         🔑 API Keys &amp; Licenze ({{ users.length }})
       </button>
       
-      <!-- 🟢 TAB DKP NODES INTEGRATA -->
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'nodes' ? 'bg-[#090d16] border border-sky-400 text-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'nodes'">
+      <button 
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'nodes' ? 'bg-[#080d1a] border border-sky-400 text-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" 
+        @click="activeTab = 'nodes'"
+      >
         💬 DKP Nodes &amp; Forum ({{ nodes.length }})
       </button>
 
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'whitelist' ? 'bg-[#090d16] border border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'whitelist'">
+      <button 
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'whitelist' ? 'bg-[#080d1a] border border-cyan-500 text-cyan-400 shadow-[0_0_12px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']" 
+        @click="activeTab = 'whitelist'"
+      >
         🛡️ Whitelist IP &amp; Esenzioni
       </button>
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'infrastructure' ? 'bg-[#090d16] border border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'infrastructure'">
+      <button 
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'infrastructure' ? 'bg-[#080d1a] border border-emerald-500 text-emerald-400 shadow-[0_0_12px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']" 
+        @click="activeTab = 'infrastructure'"
+      >
         📊 Telemetria CLI &amp; Cloud Run
       </button>
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'sentinel' ? 'bg-[#090d16] border border-purple-500 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'sentinel'">
+      <button 
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'sentinel' ? 'bg-[#080d1a] border border-purple-500 text-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : 'text-slate-400 hover:text-white']" 
+        @click="activeTab = 'sentinel'"
+      >
         🤖 Log Minacce &amp; Terminale SSE ({{ sentinelData.recentThreats?.length || 0 }})
       </button>
-      <button :class="['px-4 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'moderation' ? 'bg-[#090d16] border border-amber-500 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.15)]' : 'text-slate-400 hover:text-white']" @click="activeTab = 'moderation'">
+      <button 
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'moderation' ? 'bg-[#080d1a] border border-amber-500 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]' : 'text-slate-400 hover:text-white']" 
+        @click="activeTab = 'moderation'"
+      >
         ⚖️ Coda Moderazione
       </button>
     </div>
@@ -419,19 +535,24 @@ onMounted(() => {
     <!-- TAB 1: GESTIONE LICENZE E API KEYS -->
     <div v-if="activeTab === 'users'" class="flex flex-col gap-4">
       <div class="flex justify-between items-center gap-4 flex-wrap">
-        <input v-model="searchQuery" type="text" placeholder="Cerca per email o licenza..." class="w-full sm:max-w-md bg-[#090d16] border border-slate-800 px-4 py-3 rounded-xl text-slate-100 text-sm outline-none focus:border-emerald-500 transition-all" />
-        <button @click="fetchUsers" class="px-4 py-3 bg-[#020420] border border-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer">
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="Cerca per email, licenza o sorgente..." 
+          class="w-full sm:max-w-md bg-[#080d1a] border border-slate-800 px-4 py-3 rounded-xl text-slate-100 text-sm outline-none focus:border-emerald-500 transition-all font-mono" 
+        />
+        <button @click="fetchUsers" class="px-4 py-3 bg-[#040814] border border-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer font-mono">
           🔄 Ricarica Licenze Reali
         </button>
       </div>
 
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div v-if="isLoadingUsers" class="p-8 text-center text-slate-400 font-mono text-sm">Caricamento chiavi dal database Neon...</div>
+      <div class="bg-[#080d1a] border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div v-if="isLoadingUsers" class="p-8 text-center text-slate-400 font-mono text-sm">Caricamento chiavi dal database Neon via Pure SQL...</div>
         <div v-else-if="users.length === 0" class="p-8 text-center text-slate-400 font-mono text-sm">Nessuna licenza o API Key registrata nel database Neon.</div>
         <div v-else class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="bg-[#020420] text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
+              <tr class="bg-[#040814] text-slate-400 font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800 font-mono">
                 <th class="p-4">SORGENTE</th>
                 <th class="p-4">PROPRIETARIO / USER</th>
                 <th class="p-4">API KEY / LICENSE KEY</th>
@@ -445,22 +566,22 @@ onMounted(() => {
             <tbody>
               <tr v-for="user in filteredUsers" :key="user.id" class="border-b border-slate-800/80 hover:bg-slate-900/50 transition-colors">
                 <td class="p-4">
-                  <span :class="['px-2 py-0.5 rounded text-[10px] font-black', user.source === 'API GATEWAY' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-purple-500/20 text-purple-400 border border-purple-500/40']">
+                  <span :class="['px-2.5 py-0.5 rounded text-[10px] font-black font-mono', user.source === 'PURE SQL API' || user.source === 'API GATEWAY' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-purple-500/20 text-purple-400 border border-purple-500/40']">
                     {{ user.source }}
                   </span>
                 </td>
                 <td class="p-4 font-bold text-white">{{ user.email }}</td>
                 <td class="p-4 font-mono text-xs text-sky-400">{{ user.licenseKey }}</td>
-                <td class="p-4"><span class="bg-slate-800 text-purple-400 px-2.5 py-1 rounded-md text-xs font-bold">{{ user.role }}</span></td>
+                <td class="p-4"><span class="bg-slate-800 text-purple-400 px-2.5 py-1 rounded-md text-xs font-bold font-mono">{{ user.role }}</span></td>
                 <td class="p-4 text-xs font-mono text-slate-300">{{ user.usage }}</td>
                 <td class="p-4">
-                  <span :class="['px-2.5 py-1 rounded-md text-xs font-black uppercase', user.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30']">
+                  <span :class="['px-2.5 py-1 rounded-md text-xs font-black uppercase font-mono', user.status === 'ACTIVE' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30']">
                     {{ user.status }}
                   </span>
                 </td>
                 <td class="p-4 text-slate-400 text-xs font-mono">{{ user.joined }}</td>
                 <td class="p-4">
-                  <button @click="toggleUserStatus(user)" :class="['px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer', user.status === 'ACTIVE' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-[#020420]']">
+                  <button @click="toggleUserStatus(user)" :class="['px-3 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer font-mono', user.status === 'ACTIVE' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500 hover:text-[#020420]']">
                     {{ user.status === 'ACTIVE' ? 'Sospendi' : 'Riattiva' }}
                   </button>
                 </td>
@@ -471,16 +592,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 🟢 TAB 2: GESTIONE INTELLIGENTE DKP NODES & FORUM -->
+    <!-- TAB 2: GESTIONE INTELLIGENTE DKP NODES & FORUM -->
     <div v-else-if="activeTab === 'nodes'" class="flex flex-col gap-6">
-      
-      <!-- HERO BANNER INTRODUTTIVO NODES -->
       <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div class="flex items-start gap-4">
           <span class="text-3xl">💬</span>
           <div>
             <h4 class="text-sky-400 font-bold text-lg mb-1">Panoramica DKP Nodes &amp; Moderazione</h4>
-            <p class="text-slate-300 text-sm">Monitora i subreddits attivi, gli iscritti e gestisci le discussioni bloccate automaticamente da Pulse Sentinel AI.</p>
+            <p class="text-slate-300 text-sm">Monitora i subreddits attivi, gli iscritti e gestisci le discussioni bloccate automaticamente da Sentinel Trinity AI.</p>
           </div>
         </div>
         <NuxtLink :to="getMainUrl('/admin/nodes')" external class="px-4 py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black rounded-xl text-xs font-mono transition-all flex items-center gap-2 whitespace-nowrap">
@@ -488,9 +607,8 @@ onMounted(() => {
         </NuxtLink>
       </div>
 
-      <!-- CARTELLI RESUMÉ NODI -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div v-for="node in nodes" :key="node.id" class="bg-[#090d16] border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+        <div v-for="node in nodes" :key="node.id" class="bg-[#080d1a] border border-slate-800/80 rounded-xl p-4 flex items-center justify-between shadow-lg">
           <div class="flex items-center gap-3">
             <span class="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-lg" :style="{ backgroundColor: `${node.color}20`, color: node.color, border: `1px solid ${node.color}40` }">
               {{ node.icon }}
@@ -507,20 +625,19 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ULTIMI THREAD SUBMITTATI CON CONTROLLI DI MODERAZIONE -->
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-6 shadow-xl">
         <h3 class="text-white font-bold text-base mb-4 flex items-center justify-between">
           <span>📚 Ultime Discussioni Aperte nei Nodi</span>
           <span class="text-xs font-mono text-slate-400">Totale: {{ nodeThreads.length }}</span>
         </h3>
 
-        <div v-if="isLoadingNodes" class="text-center py-8 text-sky-400 font-mono text-sm">Sincronizzazione thread dal DB...</div>
+        <div v-if="isLoadingNodes" class="text-center py-8 text-sky-400 font-mono text-sm">Sincronizzazione thread via Pure SQL...</div>
         <div v-else-if="nodeThreads.length === 0" class="text-center py-8 text-slate-500 font-mono text-sm">Nessuna discussione aperta nei Nodi.</div>
         
         <div v-else class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
-              <tr class="bg-[#020420] text-slate-400 font-extrabold uppercase border-b border-slate-800">
+              <tr class="bg-[#040814] text-slate-400 font-extrabold uppercase border-b border-slate-800 font-mono">
                 <th class="p-3">TITOLO THREAD</th>
                 <th class="p-3">NODO</th>
                 <th class="p-3">AUTORE</th>
@@ -538,22 +655,22 @@ onMounted(() => {
                   <span v-if="thread.vaultHash" class="ml-2 text-[10px] text-purple-400 font-mono">🛡️ Proof-of-Code</span>
                 </td>
                 <td class="p-3">
-                  <span class="bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded font-bold">
+                  <span class="bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded font-bold font-mono">
                     {{ thread.nodeIcon }} n/{{ thread.nodeSlug }}
                   </span>
                 </td>
                 <td class="p-3 text-slate-400">@{{ thread.authorName }}</td>
                 <td class="p-3 font-mono font-bold text-emerald-400">▲ {{ thread.karmaScore }}</td>
                 <td class="p-3">
-                  <span v-if="thread.isLocked" class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">🔒 Locked (Sentinel)</span>
-                  <span v-else class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-bold">🟢 Attivo</span>
+                  <span v-if="thread.isLocked" class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold font-mono">🔒 Locked (Sentinel)</span>
+                  <span v-else class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-bold font-mono">🟢 Attivo</span>
                 </td>
                 <td class="p-3 text-right">
                   <div class="flex justify-end gap-2">
-                    <button @click="toggleLockThread(thread)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-bold" :title="thread.isLocked ? 'Sblocca' : 'Blocca'">
+                    <button @click="toggleLockThread(thread)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-bold" :title="thread.isLocked ? 'Sblocca' : 'Blocca'">
                       {{ thread.isLocked ? '🔓' : '🔒' }}
                     </button>
-                    <button @click="deleteThread(thread.id)" class="px-2 py-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded font-bold" title="Elimina">
+                    <button @click="deleteThread(thread.id)" class="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded font-bold" title="Elimina">
                       🗑️
                     </button>
                   </div>
@@ -563,28 +680,28 @@ onMounted(() => {
           </table>
         </div>
       </div>
-
     </div>
 
-    <!-- TAB 3: WHITELIST IP & EXEMPTION MANAGER -->
+    <!-- TAB 3: WHITELIST IP -->
     <div v-else-if="activeTab === 'whitelist'" class="flex flex-col gap-6">
       <AdminWhitelistManager />
     </div>
 
-    <!-- TAB 4: MONITORAGGIO INFRASTRUTTURA CLOUD RUN & CLI TELEMETRIA -->
+    <!-- TAB 4: TELEMETRIA INFRASTRUTTURA CLOUD RUN -->
     <div v-else-if="activeTab === 'infrastructure'" class="flex flex-col gap-6">
       <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex items-start gap-4">
         <span class="text-3xl">📊</span>
         <div>
           <h4 class="text-sky-400 font-bold text-lg mb-1">Infrastruttura GCP &amp; Telemetria Cloud Run</h4>
-          <p class="text-slate-300 text-sm">Stato del servizio attivo in <strong class="text-white">europe-west4 (Paesi Bassi)</strong>, database Neon PostgreSQL e pipeline CI/CD perfettamente allineate.</p>
+          <p class="text-slate-300 text-sm">
+            Stato dei pod attivi su <strong class="text-white">GCP Cloud Run (europe-west1)</strong>, connessione HTTP Neon PostgreSQL ed invalidazione SWR Edge Cloudflare.
+          </p>
         </div>
       </div>
-
       <AdminCliAnalytics />
     </div>
 
-    <!-- TAB 5: SENTINEL LOGS & FIREWALL REALE -->
+    <!-- TAB 5: SENTINEL LOGS & FIREWALL STREAM -->
     <div v-else-if="activeTab === 'sentinel'" class="flex flex-col gap-6">
       <AdminSentinelBlacklistTable />
       <AdminSentinelLiveStream />
@@ -596,7 +713,7 @@ onMounted(() => {
         <span class="text-3xl">🛡️</span>
         <div>
           <h4 class="text-amber-400 font-bold text-lg mb-1">Coda Moderazione Contenuti &amp; Post</h4>
-          <p class="text-slate-300 text-sm">Tutti gli articoli e i commenti segnalati dagli utenti vengono memorizzati qui per l'approvazione in tempo reale.</p>
+          <p class="text-slate-300 text-sm">Articoli e discussioni segnalate in attesa di revisione da parte del team di sicurezza DKP.</p>
         </div>
       </div>
     </div>
@@ -605,7 +722,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }

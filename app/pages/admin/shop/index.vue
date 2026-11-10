@@ -1,820 +1,632 @@
 <!-- app/pages/admin/shop/index.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 
-// definePageMeta({ middleware: 'admin-only' })
-
-useDkpSeo({
-  title: 'Ecosystem Shop SaaS v2.4-GOLD - DKP Admin Control Center',
-  description: 'Gestione catalogo prodotti SaaS, moduli proprietari, licenze ed archivi .ZIP distribuiti.'
+useHead({
+  title: 'API Licenses & Ads Control Center v2.6 — DKP Admin',
+  meta: [
+    { name: 'description', content: 'Gestione licenze API per gli endpoint di piattaforma e monetizzazione Ads/Sponsorizzazioni (Beta).' }
+  ]
 })
 
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
+const { getMainUrl, getApiUrl } = useDomain()
 
-interface Product {
+export interface ShopItem {
   id: number | string
   title: string
-  category: 'SAAS MODULE' | 'CORE PLUGIN' | 'CMS MODULE' | 'AI & TOOLS' | 'FLAGSHIP AI MODULE'
-  categoryClass: string
+  type: 'API_LICENSE' | 'ADS_SPONSOR'
+  category: 'CRAWLER API' | 'JOBS FEED API' | 'MAIL & WEBHOOKS API' | 'NODES API' | 'SPONSORED JOB ADS' | 'NEWSLETTER ADS' | 'BANNER ADS'
   price: number
+  billingCycle: 'MONTHLY' | 'ANNUAL' | 'PER_10K_CALLS' | 'ONE_TIME'
+  quotaLimit: string
   description: string
-  version: string
-  downloads: number
-  filePath: string
-  isPublished?: boolean
+  tier: 'STARTER' | 'PRO' | 'ENTERPRISE' | 'BETA_SPONSOR'
+  activeSubscriptions: number
+  isBeta?: boolean
+  isPublished: boolean
 }
 
-// Stato Reattivo Catalogo
-const products = ref<Product[]>([
+// Stato Reattivo Catalogo Licenze API & Ads
+const products = ref<ShopItem[]>([
   {
     id: 1,
-    title: 'DKP Automated Crawler Engine Pro',
-    category: 'SAAS MODULE',
-    categoryClass: 'badge-saas',
-    price: 199.00,
-    description: 'Modulo di ingestione notizie automatico con integrazione HackerNews, clean-up Neon DB ed API Nitro ad alte prestazioni.',
-    version: 'v2.4-GOLD',
-    downloads: 45,
-    filePath: '/downloads/dkp-automated-crawler-v2.4.zip',
+    title: 'DKP Crawler Engine API - Enterprise Tier',
+    type: 'API_LICENSE',
+    category: 'CRAWLER API',
+    price: 149.00,
+    billingCycle: 'MONTHLY',
+    quotaLimit: '1.000.000 chiamate/mese',
+    description: 'Accesso completo REST & Stream Nitro per ingestione automatizzata news tech, HackerNews, pulizia Neon DB ed AI summarization.',
+    tier: 'ENTERPRISE',
+    activeSubscriptions: 18,
     isPublished: true
   },
   {
     id: 2,
-    title: 'DKP Translator Pro v2.4 Plugin',
-    category: 'CORE PLUGIN',
-    categoryClass: 'badge-core',
-    price: 69.00,
-    description: 'Composable globale e reattivo a 9 lingue con salvataggio cookie/localStorage, supporto Nuxt 3 e Nuxt 4.',
-    version: 'v2.4-GOLD',
-    downloads: 120,
-    filePath: '/downloads/dkp-translator-pro-v2.4.zip',
+    title: 'Tech Jobs Feed API Pro',
+    type: 'API_LICENSE',
+    category: 'JOBS FEED API',
+    price: 79.00,
+    billingCycle: 'MONTHLY',
+    quotaLimit: '250.000 chiamate/mese',
+    description: 'Sincronizzazione in real-time delle offerte di lavoro tech arricchite e verificate da RemoteOK con tag e range salariali.',
+    tier: 'PRO',
+    activeSubscriptions: 34,
     isPublished: true
   },
   {
     id: 3,
-    title: 'DKP Ecosystem Shop Engine',
-    category: 'SAAS MODULE',
-    categoryClass: 'badge-saas',
-    price: 79.00,
-    description: 'Sistema completo di monetizzazione, licenziamento SaaS e download automatico archivi .ZIP proprietari.',
-    version: 'v2.4-GOLD',
-    downloads: 34,
-    filePath: '/downloads/dkp-ecosystem-shop-v2.4.zip',
+    title: 'DKP Mail & Autoresponder Webhook API',
+    type: 'API_LICENSE',
+    category: 'MAIL & WEBHOOKS API',
+    price: 49.00,
+    billingCycle: 'MONTHLY',
+    quotaLimit: '100.000 webhook/mese',
+    description: 'Integrazione diretta con la pipeline email, gestione autoresponder sequenziali e verifica Deliverability DKIM/SPF.',
+    tier: 'STARTER',
+    activeSubscriptions: 52,
     isPublished: true
   },
   {
     id: 4,
-    title: 'DKP Kernel Captcha Engine',
-    category: 'CORE PLUGIN',
-    categoryClass: 'badge-core',
-    price: 39.00,
-    description: 'Sistema anti-bot equazionale proprietario a zero costi esterni per la protezione dei form di sottomissione.',
-    version: 'v2.4-GOLD',
-    downloads: 89,
-    filePath: '/downloads/dkp-kernel-captcha-v2.4.zip',
+    title: 'Sponsored Job Listing (Featured Spot)',
+    type: 'ADS_SPONSOR',
+    category: 'SPONSORED JOB ADS',
+    price: 199.00,
+    billingCycle: 'ONE_TIME',
+    quotaLimit: '30 Giorni in Evidenza',
+    description: 'Posizionamento in cima al Tech Jobs Hub + Badge Gold + Invio dedicato nel digest settimanale della Newsletter.',
+    tier: 'BETA_SPONSOR',
+    activeSubscriptions: 12,
+    isBeta: true,
     isPublished: true
   },
   {
     id: 5,
-    title: 'DKP Native Blog Pro CMS',
-    category: 'CMS MODULE',
-    categoryClass: 'badge-cms',
-    price: 49.00,
-    description: 'Motore CMS nativo per la pubblicazione di articoli tech, guide avanzate ed approfondimenti con supporto SEO.',
-    version: 'v2.4-GOLD',
-    downloads: 27,
-    filePath: '/downloads/dkp-native-blog-pro-v2.4.zip',
+    title: 'DKP Newsletter Header Banner Ad',
+    type: 'ADS_SPONSOR',
+    category: 'NEWSLETTER ADS',
+    price: 299.00,
+    billingCycle: 'ONE_TIME',
+    quotaLimit: '1 Uscita Dedicated (~15k Devs)',
+    description: 'Banner pubblicitario esclusivo posizionato in testa al bollettino settimanale inviato alla community tech DKP.',
+    tier: 'BETA_SPONSOR',
+    activeSubscriptions: 5,
+    isBeta: true,
     isPublished: true
   },
   {
     id: 6,
-    title: 'DKP Neural Playground Suite',
-    category: 'AI & TOOLS',
-    categoryClass: 'badge-ai',
-    price: 89.00,
-    description: 'Pannello di testing prompt e integrazione modelli IA per l\'analisi automatica del codice e generazione contenuti.',
-    version: 'v2.4-GOLD',
-    downloads: 41,
-    filePath: '/downloads/dkp-neural-playground-v2.4.zip',
-    isPublished: true
-  },
-  {
-    id: 7,
-    title: 'DKP Pulse Nexus Pro (AI Agent)',
-    category: 'FLAGSHIP AI MODULE',
-    categoryClass: 'badge-flagship',
-    price: 149.00,
-    description: 'Chat floating glassmorphic in real-time con l\'agente "Pulse Sentinel", motore di Gamification con XP, Livelli e classifica DB.',
-    version: 'v2.4-GOLD',
-    downloads: 112,
-    filePath: '/downloads/dkp-pulse-nexus-pro-v2.4.zip',
+    title: 'DKP Nodes & Forum Sticky Banner Ad',
+    type: 'ADS_SPONSOR',
+    category: 'BANNER ADS',
+    price: 129.00,
+    billingCycle: 'MONTHLY',
+    quotaLimit: '50.000 Impression stimate',
+    description: 'Banner fisso nativo nella sidebar dei Nodi della community con tracciamento click a zero impatto sulle prestazioni.',
+    tier: 'BETA_SPONSOR',
+    activeSubscriptions: 8,
+    isBeta: true,
     isPublished: true
   }
 ])
 
 const isLoading = ref(false)
 const searchQuery = ref('')
-const activeCategoryFilter = ref('ALL')
+const activeTypeFilter = ref<'ALL' | 'API_LICENSE' | 'ADS_SPONSOR'>('ALL')
 
-// Toast Notification System
+// Toast System
 const showToast = ref(false)
 const toastMessage = ref('')
+const toastType = ref<'success' | 'error' | 'warning'>('success')
 
-function triggerToast(msg: string) {
+function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
   toastMessage.value = msg
+  toastType.value = type
   showToast.value = true
-  setTimeout(() => {
-    showToast.value = false
-  }, 3500)
+  setTimeout(() => { showToast.value = false }, 3500)
 }
 
-// Stats Computate Dinamicamente
-const totalDownloads = computed(() => products.value.reduce((acc, p) => acc + p.downloads, 0))
-const totalSuiteValue = computed(() => products.value.reduce((acc, p) => acc + p.price, 0))
+// Computazione Metriche MRR & Subscriptions
+const totalApiSubscriptions = computed(() => 
+  products.value.filter(p => p.type === 'API_LICENSE').reduce((acc, p) => acc + p.activeSubscriptions, 0)
+)
 
-// Modal Form Prodotto (Creazione/Modifica)
+const totalAdsCampaigns = computed(() => 
+  products.value.filter(p => p.type === 'ADS_SPONSOR').reduce((acc, p) => acc + p.activeSubscriptions, 0)
+)
+
+const estimatedMRR = computed(() => {
+  return products.value.reduce((acc, p) => {
+    if (p.billingCycle === 'MONTHLY') return acc + (p.price * p.activeSubscriptions)
+    if (p.billingCycle === 'ANNUAL') return acc + ((p.price / 12) * p.activeSubscriptions)
+    return acc + (p.price * p.activeSubscriptions * 0.25) // Stima conversione per le inserzioni one-time
+  }, 0)
+})
+
+// Modal Form Prodotto / Licenza
 const showModal = ref(false)
 const isEditing = ref(false)
-const currentProduct = ref<Product>({
+const currentItem = ref<ShopItem>({
   id: '',
   title: '',
-  category: 'SAAS MODULE',
-  categoryClass: 'badge-saas',
+  type: 'API_LICENSE',
+  category: 'CRAWLER API',
   price: 49.00,
+  billingCycle: 'MONTHLY',
+  quotaLimit: '100.000 req/mo',
   description: '',
-  version: 'v2.4-GOLD',
-  downloads: 0,
-  filePath: '/downloads/dkp-new-plugin-v2.4.zip',
+  tier: 'PRO',
+  activeSubscriptions: 0,
+  isBeta: false,
   isPublished: true
 })
 
 function openCreateModal() {
   isEditing.value = false
-  currentProduct.value = {
+  currentItem.value = {
     id: Date.now(),
     title: '',
-    category: 'SAAS MODULE',
-    categoryClass: 'badge-saas',
+    type: 'API_LICENSE',
+    category: 'CRAWLER API',
     price: 49.00,
+    billingCycle: 'MONTHLY',
+    quotaLimit: '100.000 chiamate/mese',
     description: '',
-    version: 'v2.4-GOLD',
-    downloads: 0,
-    filePath: '/downloads/dkp-module-v2.4.zip',
+    tier: 'PRO',
+    activeSubscriptions: 0,
+    isBeta: false,
     isPublished: true
   }
   showModal.value = true
 }
 
-function openEditModal(prod: Product) {
+function openEditModal(item: ShopItem) {
   isEditing.value = true
-  currentProduct.value = JSON.parse(JSON.stringify(prod))
+  currentItem.value = JSON.parse(JSON.stringify(item))
   showModal.value = true
 }
 
-// Assegnazione Automatica Classe Badge
-function updateCategoryClass() {
-  switch (currentProduct.value.category) {
-    case 'SAAS MODULE': currentProduct.value.categoryClass = 'badge-saas'; break
-    case 'CORE PLUGIN': currentProduct.value.categoryClass = 'badge-core'; break
-    case 'CMS MODULE': currentProduct.value.categoryClass = 'badge-cms'; break
-    case 'AI & TOOLS': currentProduct.value.categoryClass = 'badge-ai'; break
-    case 'FLAGSHIP AI MODULE': currentProduct.value.categoryClass = 'badge-flagship'; break
-  }
-}
-
-async function saveProduct() {
-  if (!currentProduct.value.title || !currentProduct.value.description) {
-    triggerToast('❌ Compila Titolo e Descrizione del prodotto!')
+async function saveItem() {
+  if (!currentItem.value.title || !currentItem.value.description) {
+    triggerToast('❌ Compila Titolo e Descrizione del piano!', 'warning')
     return
   }
 
-  updateCategoryClass()
   isLoading.value = true
-
   try {
     if (isEditing.value) {
-      const idx = products.value.findIndex(p => p.id === currentProduct.value.id)
-      if (idx !== -1) products.value[idx] = { ...currentProduct.value }
-      triggerToast('✅ Prodotto aggiornato con successo nel catalogo SaaS!')
+      const idx = products.value.findIndex(p => p.id === currentItem.value.id)
+      if (idx !== -1) products.value[idx] = { ...currentItem.value }
+      triggerToast('✅ Piano Licenza/Ads aggiornato con successo!', 'success')
     } else {
-      products.value.unshift({ ...currentProduct.value })
-      triggerToast('🚀 Nuovo modulo pubblicato nello Shop DKP!')
+      products.value.unshift({ ...currentItem.value })
+      triggerToast('🚀 Nuovo pacchetto API/Ads pubblicato nello Shop!', 'success')
     }
     showModal.value = false
   } catch (err: any) {
-    triggerToast('⚠️️ Errore salvataggio prodotto.')
+    triggerToast('⚠️ Errore durante il salvataggio.', 'error')
   } finally {
     isLoading.value = false
   }
 }
 
-function deleteProduct(id: string | number) {
-  if (!confirm('Sei sicuro di voler rimuovere questo modulo dal catalogo Shop?')) return
+function deleteItem(id: string | number) {
+  if (!confirm('Sei sicuro di voler rimuovere questo pacchetto dal catalogo Shop?')) return
   products.value = products.value.filter(p => p.id !== id)
-  triggerToast('🗑️ Prodotto rimosso dal catalogo.')
+  triggerToast('🗑️ Pacchetto rimosso dal catalogo.', 'success')
 }
 
-function initiateCheckout(product: Product) {
-  triggerToast(`💳 Test Stripe Checkout: Inizializzato ordine per ${product.title} (€${product.price.toFixed(2)})`)
+function testCheckout(item: ShopItem) {
+  triggerToast(`💳 Test Checkout Stripe: Inizializzato ordine per ${item.title} (€${item.price.toFixed(2)})`, 'success')
 }
 
 // Prodotti Filtrati
 const filteredProducts = computed(() => {
   return products.value.filter(p => {
-    const matchesCategory = activeCategoryFilter.value === 'ALL' || p.category === activeCategoryFilter.value
+    const matchesType = activeTypeFilter.value === 'ALL' || p.type === activeTypeFilter.value
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
                           p.description.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
                           p.category.toLowerCase().includes(searchQuery.value.toLowerCase())
-    return matchesCategory && matchesSearch
+    return matchesType && matchesSearch
   })
 })
 </script>
 
 <template>
-  <div class="shop-admin-container">
-    <!-- TOAST NOTIFICATION FLOATING -->
+  <div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 font-sans">
+    
+    <!-- FLOATING TOAST NOTIFICATION -->
     <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-text">{{ toastMessage }}</span>
-        </div>
+      <div 
+        v-if="showToast" 
+        :class="[
+          'fixed top-6 right-6 z-50 p-4 rounded-xl backdrop-blur-md border shadow-2xl max-w-md flex items-center gap-3 font-mono text-xs sm:text-sm font-semibold transition-all',
+          toastType === 'success' ? 'bg-[#041a13]/90 border-emerald-500/50 text-emerald-300 shadow-[0_0_20px_rgba(0,220,130,0.2)]' :
+          toastType === 'error' ? 'bg-[#1e070a]/90 border-rose-500/50 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.2)]' :
+          'bg-[#1a1403]/90 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+        ]"
+      >
+        <span class="text-xl">
+          {{ toastType === 'success' ? '⚡' : toastType === 'error' ? '🚫' : '⚠️' }}
+        </span>
+        <span>{{ toastMessage }}</span>
       </div>
     </Transition>
 
-    <!-- NAVBAR GRID ADMIN UNIFICATA v2.4-GOLD -->
-    <div class="admin-nav-container">
-      <div class="admin-nav-top">
-        <div class="nav-branding">
-          <span class="status-dot green"></span>
-          <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
-        </div>
-
-        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
-          🏠 Dashboard Main
-        </NuxtLink>
-      </div>
-
-      <!-- GRID MODULI ADMIN -->
-      <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
-
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
-      </nav>
-    </div>
-
-    <!-- HEADER HERO SHOP SAAS -->
-    <header class="panel-header">
-      <div class="header-title">
-        <div class="hero-badge">
-          <span class="badge-status gold">DKP ECOSYSTEM SHOP v2.4-GOLD</span>
-        </div>
-        <h2>Gestione <span class="highlight">DKP Shop SaaS</span></h2>
-        <p class="sub-lead">
-          Catalogo ufficiale dei plugin proprietari, applicazioni distribuite e monetizzazione dell'ecosistema.
-        </p>
-      </div>
-
-      <div class="header-actions">
-        <button @click="openCreateModal" class="btn-primary-action">
-          ➕ Nuovo Modulo SaaS
-        </button>
-      </div>
-    </header>
-
-    <!-- STATISTICHE PANNELLO -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Prodotti In Catalogo</div>
-        <div class="stat-value">{{ products.length }} Moduli</div>
-        <div class="stat-sub">100% Architettura Modulare Nuxt 4</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-label">Download Totali SaaS</div>
-        <div class="stat-value text-cyan">{{ totalDownloads }}</div>
-        <div class="stat-sub">Archivi .ZIP erogati</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-label">Valore Pacchetto Suite</div>
-        <div class="stat-value text-green">€{{ totalSuiteValue.toFixed(2) }}</div>
-        <div class="stat-sub">Licenze Lifetime Full Access</div>
-      </div>
-    </div>
-
-    <!-- BARRA FILTRI E RICERCA -->
-    <section class="controls-bar">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input v-model="searchQuery" type="text" placeholder="Cerca modulo, plugin o funzionalità..." class="dark-input search-input" />
-      </div>
-
-      <div class="filter-pills">
-        <button 
-          @click="activeCategoryFilter = 'ALL'" 
-          class="pill" 
-          :class="{ active: activeCategoryFilter === 'ALL' }"
-        >
-          Tutti ({{ products.length }})
-        </button>
-        <button 
-          @click="activeCategoryFilter = 'SAAS MODULE'" 
-          class="pill" 
-          :class="{ active: activeCategoryFilter === 'SAAS MODULE' }"
-        >
-          SaaS Modules
-        </button>
-        <button 
-          @click="activeCategoryFilter = 'CORE PLUGIN'" 
-          class="pill" 
-          :class="{ active: activeCategoryFilter === 'CORE PLUGIN' }"
-        >
-          Core Plugins
-        </button>
-        <button 
-          @click="activeCategoryFilter = 'AI & TOOLS'" 
-          class="pill" 
-          :class="{ active: activeCategoryFilter === 'AI & TOOLS' }"
-        >
-          AI & Tools
-        </button>
-      </div>
-    </section>
-
-    <!-- GRIGLIA PRODOTTI SHOP -->
-    <div class="products-grid">
-      <article v-for="product in filteredProducts" :key="product.id" class="product-card">
-        <div class="card-header">
-          <span :class="['category-badge', product.categoryClass]">{{ product.category }}</span>
-          <span class="price">€{{ product.price.toFixed(2) }}</span>
-        </div>
-
-        <h3 class="product-title">{{ product.title }}</h3>
-        <p class="product-desc">{{ product.description }}</p>
-
-        <div class="file-meta">
-          <div class="meta-row">
-            <span>📦 Versione: <strong class="text-white">{{ product.version }}</strong></span>
-            <span>📥 Download: <strong class="text-white">{{ product.downloads }}</strong></span>
+    <div class="max-w-7xl mx-auto flex flex-col gap-6">
+      
+      <!-- NAVBAR GRID MODULI ADMIN v2.6 -->
+      <div class="flex flex-col gap-3 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 shadow-xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800/60 font-mono">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#00dc82]"></span>
+            <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP ADMIN CONTROL CENTER</span>
           </div>
-          <div class="file-path">
-            📁 File: <span class="path-text">{{ product.filePath }}</span>
-          </div>
+
+          <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
+            🏠 Dashboard Main
+          </NuxtLink>
         </div>
 
-        <div class="card-actions-row">
-          <button @click="initiateCheckout(product)" class="btn-buy">
-            💳 Test Licenza / .ZIP
-          </button>
-          <button @click="openEditModal(product)" class="btn-icon edit" title="Modifica Prodotto">✏️</button>
-          <button @click="deleteProduct(product.id)" class="btn-icon delete" title="Elimina Prodotto">🗑️</button>
-        </div>
-      </article>
-
-      <div v-if="filteredProducts.length === 0" class="empty-shop">
-        📭 Nessun modulo trovato corrispondente ai criteri di ricerca.
+        <!-- GRID NAVIGATION -->
+        <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono">
+          <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            ⚙️ API Gateway
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📧 Mail
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📣 Newsletter
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🤖 Crawler
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📝 Blog
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 transition-all">
+            💬 Gestione Nodi
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-300 bg-emerald-500/20 border border-emerald-500/50 shadow-[0_0_10px_rgba(0,220,130,0.2)]">
+            🛍️ Shop (API &amp; Ads)
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            💼 Jobs
+          </NuxtLink>
+        </nav>
       </div>
-    </div>
 
-    <!-- MODAL CREAZIONE / MODIFICA PRODOTTO -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>{{ isEditing ? '✏️ Modifica Prodotto SaaS' : '➕ Aggiungi Nuovo Modulo in Catalogo' }}</h3>
-          <button @click="showModal = false" class="btn-close">&times;</button>
-        </div>
+      <!-- HEADER HERO API LICENSES & ADS v2.6-PURE-SQL -->
+      <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
+        <div class="absolute -right-20 -top-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div class="modal-body">
-          <div class="input-grid">
-            <div class="input-group full-width">
-              <label>Titolo Modulo / Plugin *</label>
-              <input v-model="currentProduct.title" type="text" placeholder="es. DKP Automated Crawler Engine Pro" class="dark-input" />
-            </div>
-
-            <div class="input-group">
-              <label>Categoria Categoria *</label>
-              <select v-model="currentProduct.category" @change="updateCategoryClass" class="dark-input">
-                <option value="SAAS MODULE">SaaS Module</option>
-                <option value="CORE PLUGIN">Core Plugin</option>
-                <option value="CMS MODULE">CMS Module</option>
-                <option value="AI & TOOLS">AI & Tools</option>
-                <option value="FLAGSHIP AI MODULE">Flagship AI Module</option>
-              </select>
-            </div>
-
-            <div class="input-group">
-              <label>Prezzo Licenza (€) *</label>
-              <input v-model.number="currentProduct.price" type="number" step="0.01" class="dark-input" />
-            </div>
-
-            <div class="input-group">
-              <label>Versione Release</label>
-              <input v-model="currentProduct.version" type="text" placeholder="v2.4-GOLD" class="dark-input" />
-            </div>
-
-            <div class="input-group">
-              <label>Percorso Archivo .ZIP</label>
-              <input v-model="currentProduct.filePath" type="text" placeholder="/downloads/dkp-module.zip" class="dark-input" />
-            </div>
-
-            <div class="input-group full-width">
-              <label>Descrizione Dettagliata Modulo</label>
-              <textarea v-model="currentProduct.description" rows="3" placeholder="Descrivi le funzionalità principali e i benefit del plugin..." class="dark-input textarea"></textarea>
-            </div>
+        <div class="relative z-10 flex flex-col gap-2">
+          <div class="flex items-center gap-3 mb-1 flex-wrap font-mono">
+            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-0.5 rounded-full text-xs font-black uppercase shadow-[0_0_12px_rgba(0,220,130,0.25)]">
+              DKP ECOSYSTEM SHOP v2.6-PURE-SQL
+            </span>
+            <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">
+              📢 ADS SYSTEM (BETA ACTIVE)
+            </span>
           </div>
+          <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Licenze <span class="text-emerald-400">API &amp; Piattaforma Ads</span>
+          </h1>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
+            Gestisci i piani di licenza API per gli endpoint dell'ecosistema e monetizza la community con il nuovo motore pubblicitario Ads (Beta).
+          </p>
         </div>
 
-        <div class="modal-footer">
-          <button @click="showModal = false" class="btn-secondary">Annulla</button>
-          <button @click="saveProduct" :disabled="isLoading" class="btn-primary-action">
-            💾 {{ isEditing ? 'Aggiorna Modulo' : 'Pubblica in Shop' }}
+        <div class="relative z-10 font-mono w-full sm:w-auto">
+          <button 
+            @click="openCreateModal" 
+            class="w-full sm:w-auto px-5 py-3 rounded-xl font-black text-xs sm:text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-[0_0_20px_rgba(0,220,130,0.25)] flex items-center justify-center gap-2 cursor-pointer"
+          >
+            ➕ Crea Piano API / Spot Ads
           </button>
         </div>
-      </div>
+      </header>
+
+      <!-- STATISTICHE PANNELLO -->
+      <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono">
+        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/40 transition-all shadow-lg">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Licenze API Attive</span>
+          <div class="text-3xl font-black text-emerald-400 my-2">{{ totalApiSubscriptions }} Chiavi</div>
+          <span class="text-[11px] text-slate-500">Crawler, Jobs, Mail &amp; Webhooks</span>
+        </div>
+
+        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-amber-500/40 transition-all shadow-lg">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Campagne Ads (Beta)</span>
+          <div class="text-3xl font-black text-amber-400 my-2">{{ totalAdsCampaigns }} Inserzioni</div>
+          <span class="text-[11px] text-slate-500">Jobs Featured, Newsletter &amp; Banners</span>
+        </div>
+
+        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-sky-500/40 transition-all shadow-lg">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stima Run-Rate MRR</span>
+          <div class="text-3xl font-black text-sky-400 my-2">€{{ estimatedMRR.toFixed(2) }}/mo</div>
+          <span class="text-[11px] text-slate-500">Monetizzazione Ecosistema DKP</span>
+        </div>
+      </section>
+
+      <!-- BARRA FILTRI E RICERCA -->
+      <section class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+        <div class="relative flex-1">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Cerca piano API, endpoint o tipologia di Ads..." 
+            class="w-full bg-[#040814] border border-slate-800 pl-11 pr-4 py-3 rounded-xl text-slate-100 text-xs sm:text-sm outline-none focus:border-emerald-500 transition-all font-mono"
+          />
+        </div>
+
+        <div class="flex items-center gap-1.5 font-mono text-xs flex-wrap">
+          <button 
+            @click="activeTypeFilter = 'ALL'" 
+            :class="[
+              'px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer border',
+              activeTypeFilter === 'ALL' 
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(0,220,130,0.2)]' 
+                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+            ]"
+          >
+            Tutti ({{ products.length }})
+          </button>
+          <button 
+            @click="activeTypeFilter = 'API_LICENSE'" 
+            :class="[
+              'px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer border',
+              activeTypeFilter === 'API_LICENSE' 
+                ? 'bg-sky-500/15 text-sky-400 border-sky-500/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]' 
+                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+            ]"
+          >
+            🔑 Licenze API
+          </button>
+          <button 
+            @click="activeTypeFilter = 'ADS_SPONSOR'" 
+            :class="[
+              'px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer border',
+              activeTypeFilter === 'ADS_SPONSOR' 
+                ? 'bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' 
+                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+            ]"
+          >
+            📢 Ads &amp; Sponsor (Beta)
+          </button>
+        </div>
+      </section>
+
+      <!-- GRIGLIA PRODOTTI SHOP (API & ADS) -->
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <article 
+          v-for="item in filteredProducts" 
+          :key="item.id" 
+          :class="[
+            'bg-[#080d1a] border rounded-2xl p-6 shadow-xl flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 group relative overflow-hidden',
+            item.type === 'ADS_SPONSOR' ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-800/80 hover:border-emerald-500/50'
+          ]"
+        >
+          <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center font-mono">
+              <div class="flex items-center gap-1.5">
+                <span 
+                  :class="[
+                    'px-2.5 py-0.5 rounded text-[10px] font-black border uppercase',
+                    item.type === 'API_LICENSE' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  ]"
+                >
+                  {{ item.category }}
+                </span>
+                <span v-if="item.isBeta" class="px-2 py-0.5 rounded text-[9px] font-extrabold bg-amber-500 text-slate-950 uppercase">
+                  BETA
+                </span>
+              </div>
+              <div class="flex flex-col items-end">
+                <span class="text-2xl font-black text-emerald-400 font-mono">€{{ item.price.toFixed(2) }}</span>
+                <span class="text-[10px] text-slate-500 uppercase font-bold font-mono">
+                  {{ item.billingCycle === 'MONTHLY' ? '/mese' : item.billingCycle === 'ANNUAL' ? '/anno' : 'una tantum' }}
+                </span>
+              </div>
+            </div>
+
+            <h3 class="text-white font-bold text-lg group-hover:text-emerald-400 transition-colors">{{ item.title }}</h3>
+            <p class="text-slate-400 text-xs leading-relaxed line-clamp-3">{{ item.description }}</p>
+
+            <div class="bg-[#040814] border border-slate-800/80 rounded-xl p-3 font-mono text-[11px] flex flex-col gap-1.5">
+              <div class="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                <span>⚡ Quota/Limiti: <strong class="text-white font-bold">{{ item.quotaLimit }}</strong></span>
+              </div>
+              <div class="flex justify-between text-slate-400 pt-0.5">
+                <span>📊 Sub/Slot Attivi: <strong class="text-emerald-400 font-bold">{{ item.activeSubscriptions }}</strong></span>
+                <span>Tier: <strong class="text-sky-400 font-bold">{{ item.tier }}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 mt-6 font-mono">
+            <button 
+              @click="testCheckout(item)" 
+              class="flex-1 py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(0,220,130,0.2)] cursor-pointer"
+            >
+              💳 Test Order Stripe
+            </button>
+            <button 
+              @click="openEditModal(item)" 
+              class="p-2.5 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded-xl text-xs transition-all cursor-pointer" 
+              title="Modifica Piano"
+            >
+              ✏️
+            </button>
+            <button 
+              @click="deleteItem(item.id)" 
+              class="p-2.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-xl text-xs transition-all cursor-pointer" 
+              title="Elimina Piano"
+            >
+              🗑️
+            </button>
+          </div>
+        </article>
+
+        <div v-if="filteredProducts.length === 0" class="col-span-full p-12 text-center text-slate-500 font-mono text-xs">
+          📭 Nessun pacchetto trovato corrispondente ai criteri di ricerca.
+        </div>
+      </section>
+
+      <!-- MODAL CREAZIONE / MODIFICA PIANO -->
+      <Transition name="fade">
+        <div 
+          v-if="showModal" 
+          class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4"
+          @click.self="showModal = false"
+        >
+          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-hidden">
+            
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                <span>{{ isEditing ? '✏️ Modifica Piano API / Spot Ads' : '➕ Nuovo Piano API / Inserzione Ads' }}</span>
+              </h3>
+              <button @click="showModal = false" class="text-slate-500 hover:text-white font-bold text-xl cursor-pointer">✕</button>
+            </div>
+
+            <div class="flex flex-col gap-4 overflow-y-auto pr-1 font-mono text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Tipologia Offerta *</label>
+                  <select 
+                    v-model="currentItem.type" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                  >
+                    <option value="API_LICENSE">🔑 Licenza API Ecosistema</option>
+                    <option value="ADS_SPONSOR">📢 Inserzione Advertising (Ads)</option>
+                  </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Categoria *</label>
+                  <select 
+                    v-model="currentItem.category" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                  >
+                    <template v-if="currentItem.type === 'API_LICENSE'">
+                      <option value="CRAWLER API">Crawler Engine API</option>
+                      <option value="JOBS FEED API">Tech Jobs Feed API</option>
+                      <option value="MAIL & WEBHOOKS API">Mail &amp; Webhooks API</option>
+                      <option value="NODES API">Nodes &amp; Forum API</option>
+                    </template>
+                    <template v-else>
+                      <option value="SPONSORED JOB ADS">Sponsored Job Listing</option>
+                      <option value="NEWSLETTER ADS">Newsletter Header Ad</option>
+                      <option value="BANNER ADS">DKP Nodes Sidebar Banner</option>
+                    </template>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">Titolo Offerta / Piano *</label>
+                <input 
+                  v-model="currentItem.title" 
+                  type="text" 
+                  placeholder="es. DKP Crawler Engine API - Enterprise Tier" 
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Prezzo (€) *</label>
+                  <input 
+                    v-model.number="currentItem.price" 
+                    type="number" 
+                    step="0.01" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Ciclo Fatturazione</label>
+                  <select 
+                    v-model="currentItem.billingCycle" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                  >
+                    <option value="MONTHLY">Mensile (/mo)</option>
+                    <option value="ANNUAL">Annuale (/yr)</option>
+                    <option value="PER_10K_CALLS">Per 10k Chiamate</option>
+                    <option value="ONE_TIME">Una Tantum</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Quota / Limite di Utilizzo</label>
+                  <input 
+                    v-model="currentItem.quotaLimit" 
+                    type="text" 
+                    placeholder="es. 1.000.000 chiamate/mese" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Livello Tier</label>
+                  <select 
+                    v-model="currentItem.tier" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                  >
+                    <option value="STARTER">Starter</option>
+                    <option value="PRO">Pro</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                    <option value="BETA_SPONSOR">Beta Sponsor</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">Descrizione Breve</label>
+                <textarea 
+                  v-model="currentItem.description" 
+                  rows="3" 
+                  placeholder="Descrivi i vantaggi della licenza o le metriche di reach dell'inserzione..." 
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+                <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <input v-model="currentItem.isBeta" type="checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" />
+                  <span>📢 Contrassegna come Funzionalità Ads Beta</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <input v-model="currentItem.isPublished" type="checkbox" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                  <span>🌐 Pubblica Immediatamente nello Shop DKP</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="border-t border-slate-800 pt-4 flex justify-end gap-3 font-mono">
+              <button @click="showModal = false" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                Annulla
+              </button>
+              <button @click="saveItem" :disabled="isLoading" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
+                💾 {{ isEditing ? 'Aggiorna Offerta' : 'Pubblica in Shop' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ==========================================================================
-   STILI NAVBAR ADMIN UNIFICATA v2.4-GOLD
-   ========================================================================== */
-.admin-nav-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
-
-.admin-nav-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.nav-branding { display: flex; align-items: center; gap: 8px; }
-
-.status-dot.green {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff87;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00ff87;
-}
-
-.nav-title {
-  color: #00f0ff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
-.admin-grid-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-dashboard {
-  color: #00ff87;
-  background: rgba(0, 255, 135, 0.04);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-}
-
-.btn-dashboard:hover,
-.btn-dashboard.active {
-  background: rgba(0, 255, 135, 0.12);
-  border-color: #00ff87;
-  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-dashboard-main {
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.06);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-}
-
-.btn-dashboard-main:hover {
-  background: rgba(0, 240, 255, 0.16);
-  border-color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-@media (max-width: 1024px) {
-  .admin-grid-nav { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 580px) {
-  .admin-grid-nav { grid-template-columns: 1fr; }
-}
-
-/* ==========================================================================
-   TOAST NOTIFICATION FLOATING
-   ========================================================================== */
-.dkp-toast-success {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 999999;
-  background: #061811;
-  border: 1px solid #00dc82;
-  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35);
-  padding: 0.9rem 1.3rem;
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  max-width: 420px;
-}
-
-.toast-content {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: #f8fafc;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
-
-/* ==========================================================================
-   LAYOUT PANNELLO & HERO
-   ========================================================================== */
-.shop-admin-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding-bottom: 4rem;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.hero-badge { margin-bottom: 0.5rem; }
-
-.badge-status.gold {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid #00dc82;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
-}
-
-.panel-header h2 { font-size: 1.8rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #ffffff; }
-.highlight { color: #00dc82; }
-.sub-lead { color: #94a3b8; font-size: 0.92rem; margin: 0; }
-
-.btn-primary-action {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 900;
-  border: none;
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.88rem;
-  transition: all 0.2s ease;
-}
-
-.btn-primary-action:hover { box-shadow: 0 0 18px rgba(0, 220, 130, 0.4); transform: translateY(-1px); }
-
-.btn-secondary {
-  background: #020420;
-  color: #f8fafc;
-  font-weight: 700;
-  border: 1px solid #1e293b;
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.88rem;
-}
-
-/* STATS GRID */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.stat-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.25rem;
-}
-
-.stat-label { color: #64748b; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
-.stat-value { color: #fff; font-size: 1.8rem; font-weight: 900; margin-bottom: 0.2rem; }
-.stat-value.text-cyan { color: #38bdf8; }
-.stat-value.text-green { color: #00dc82; }
-.stat-sub { color: #475569; font-size: 0.78rem; }
-
-/* CONTROLS BAR */
-.controls-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  flex: 1;
-  min-width: 280px;
-}
-
-.search-icon { color: #64748b; margin-right: 0.5rem; }
-
-.dark-input {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.65rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  outline: none;
-  width: 100%;
-}
-
-.dark-input:focus { border-color: #00dc82; }
-.search-input { background: transparent !important; border: none !important; padding: 0 !important; }
-
-.filter-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-.pill {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  padding: 0.45rem 1rem;
-  border-radius: 20px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.pill:hover { border-color: #00dc82; color: #00dc82; }
-.pill.active { border-color: #00dc82; color: #00dc82; background: rgba(0, 220, 130, 0.12); box-shadow: 0 0 10px rgba(0, 220, 130, 0.2); }
-
-/* PRODUCTS GRID */
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 1.5rem;
-}
-
-.product-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.2s ease;
-}
-
-.product-card:hover { border-color: #38bdf8; transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); }
-
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; }
-
-.category-badge { font-size: 0.68rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: 4px; letter-spacing: 0.04em; }
-.badge-saas { background: rgba(0, 220, 130, 0.12); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.badge-core { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
-.badge-cms { background: rgba(167, 139, 250, 0.12); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.3); }
-.badge-ai { background: rgba(244, 114, 182, 0.12); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); }
-.badge-flagship { background: linear-gradient(90deg, rgba(167,139,250,0.15), rgba(244,114,182,0.15)); color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.4); }
-
-.price { font-size: 1.4rem; font-weight: 900; color: #38bdf8; }
-.product-title { font-size: 1.15rem; font-weight: 800; margin: 0 0 0.4rem 0; color: #fff; }
-.product-desc { font-size: 0.88rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.25rem; flex-grow: 1; }
-
-.file-meta { background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 0.75rem 0.9rem; margin-bottom: 1.2rem; font-size: 0.78rem; color: #64748b; }
-.meta-row { display: flex; justify-content: space-between; margin-bottom: 0.35rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.35rem; }
-.text-white { color: #f8fafc; }
-.path-text { color: #00dc82; font-family: monospace; }
-
-.card-actions-row { display: flex; gap: 0.5rem; align-items: center; }
-
-.btn-buy {
-  flex: 1;
-  background: #00dc82;
-  color: #020420;
-  border: none;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-weight: 900;
-  font-size: 0.88rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-buy:hover { box-shadow: 0 0 16px rgba(0, 220, 130, 0.3); transform: translateY(-1px); }
-
-.btn-icon {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  color: #fff;
-  transition: all 0.2s ease;
-}
-
-.btn-icon:hover { border-color: #00dc82; transform: translateY(-1px); }
-
-.empty-shop { grid-column: 1 / -1; text-align: center; padding: 3rem; color: #64748b; font-size: 0.9rem; }
-
-/* MODAL STYLES */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 4, 32, 0.85);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 1.5rem;
-}
-
-.modal-content {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 640px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; color: #ffffff; font-size: 1.15rem; }
-.btn-close { background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; }
-.modal-body { padding: 1.5rem; overflow-y: auto; }
-
-.input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-@media (max-width: 580px) { .input-grid { grid-template-columns: 1fr; } }
-
-.input-group { display: flex; flex-direction: column; gap: 0.35rem; }
-.input-group.full-width { grid-column: 1 / -1; }
-.input-group label { font-size: 0.78rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
-
-.textarea { resize: vertical; }
-
-.modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid #1e293b; display: flex; justify-content: flex-end; gap: 0.75rem; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

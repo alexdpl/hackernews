@@ -1,86 +1,90 @@
 <!-- app/pages/admin/blog/index.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import { useBlog } from '~/composables/useBlog'
 
-useDkpSeo({
-  title: "Taxonomy & Publishing v2.5-GOLD - DKP Admin Center",
-  description:
-    "Gestione categorie, sottocategorie e pubblicazione diretta articoli nell'ecosistema DevKernelPulse con Vault AI.",
-});
+useHead({
+  title: 'Taxonomy & Publishing v2.6 — DKP Admin Center',
+  meta: [
+    { name: 'description', content: 'Gestione categorie, sottocategorie e pubblicazione diretta articoli nell\'ecosistema DevKernelPulse con Vault AI.' }
+  ]
+})
 
-const { getMainUrl, getApiUrl } = useDomain();
+const { getMainUrl, getApiUrl } = useDomain()
 
-// --- 1. IMPORTIAMO IL NOSTRO COMPOSABLE v2.5-GOLD ---
+// --- 1. COMPOSABLE POSTS ---
 const { fetchAdminPosts, isLoading: isBlogLoading } = useBlog()
 
 // --- INTERFACCE DATI ---
 interface Subcategory {
-  id: number | string;
-  categoryId: number | string;
-  name: string;
-  slug: string;
-  description?: string | null;
+  id: number | string
+  categoryId: number | string
+  name: string
+  slug: string
+  description?: string | null
 }
 
 interface Category {
-  id: number | string;
-  name: string;
-  slug: string;
-  description: string | null;
-  icon: string | null;
-  color: string | null;
-  tags?: string[];
-  subcategories?: Subcategory[];
+  id: number | string
+  name: string
+  slug: string
+  description: string | null
+  icon: string | null
+  color: string | null
+  tags?: string[]
+  subcategories?: Subcategory[]
 }
 
 interface VaultReport {
-  authenticityScore: number;
-  securityScore: number;
-  plagiarismRisk: "LOW" | "MEDIUM" | "HIGH";
-  sastCheck: "PASSED" | "WARNING" | "CRITICAL";
-  vaultHashPreview: string;
+  authenticityScore: number
+  securityScore: number
+  plagiarismRisk: 'LOW' | 'MEDIUM' | 'HIGH'
+  sastCheck: 'PASSED' | 'WARNING' | 'CRITICAL'
+  vaultHashPreview: string
 }
 
 interface Post {
-  id: number | string;
-  title: string;
-  slug?: string;
-  excerpt?: string;
-  categoryId: number | string | null;
-  subcategoryId?: number | string | null;
-  authorName?: string;
-  tags?: string[];
-  views: number;
-  likes?: number;
-  date?: string;
-  createdAt?: string;
-  status: "published" | "pending_vault" | "draft";
-  isVerified?: boolean;
-  vaultCertificateId?: string;
-  vaultHash?: string;
-  vaultReport?: VaultReport;
-  category?: any;
+  id: number | string
+  title: string
+  slug?: string
+  excerpt?: string
+  categoryId: number | string | null
+  subcategoryId?: number | string | null
+  authorName?: string
+  tags?: string[]
+  views: number
+  likes?: number
+  date?: string
+  createdAt?: string
+  status: 'published' | 'pending_vault' | 'draft'
+  isVerified?: boolean
+  vaultCertificateId?: string
+  vaultHash?: string
+  vaultReport?: VaultReport
+  category?: any
 }
 
 // --- STATI GLOBALI ---
-const categories = ref<Category[]>([]);
-const isLoading = ref(false);
-const errorMessage = ref("");
-const showToast = ref(false);
-const toastMessage = ref("");
+const categories = ref<Category[]>([])
+const posts = ref<Post[]>([])
+const isLoading = ref(false)
+const errorMessage = ref('')
 
-function triggerToast(msg: string) {
-  toastMessage.value = msg;
-  showToast.value = true;
-  setTimeout(() => {
-    showToast.value = false;
-  }, 3500);
+// Toast System
+const showToast = ref(false)
+const toastMessage = ref('')
+const toastType = ref<'success' | 'error' | 'warning'>('success')
+
+function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
+  toastMessage.value = msg
+  toastType.value = type
+  showToast.value = true
+  setTimeout(() => { showToast.value = false }, 3500)
 }
 
-// --- STATO DEL FORM (Pubblicazione) ---
-const isEditing = ref(false);
+// --- STATO FORM PUBBLICAZIONE ---
+const isEditing = ref(false)
 const newArticle = ref({
   id: null as number | string | null,
   title: '',
@@ -90,56 +94,52 @@ const newArticle = ref({
   tags: [] as string[],
   excerpt: '',
   content: '', 
-  status: 'published' as "published" | "pending_vault" | "draft"
-});
+  status: 'published' as 'published' | 'pending_vault' | 'draft'
+})
 
-// 🟢 COMPUTED: SOTTOCATEGORIE DINAMICHE IN BASE ALLA CATEGORIA SELEZIONATA
+// Sottocategorie dinamiche in base alla categoria selezionata
 const availableSubcategories = computed(() => {
-  if (!newArticle.value.categoryId) return [];
-  const selectedCat = categories.value.find(c => String(c.id) === String(newArticle.value.categoryId));
-  return selectedCat?.subcategories || [];
-});
+  if (!newArticle.value.categoryId) return []
+  const selectedCat = categories.value.find(c => String(c.id) === String(newArticle.value.categoryId))
+  return selectedCat?.subcategories || []
+})
 
-// Funzione chiamata al cambio di categoria per resettare la sottocategoria
 function onCategoryChange() {
-  newArticle.value.subcategoryId = '';
+  newArticle.value.subcategoryId = ''
 }
 
-// --- LISTA POST UNIFICATA ---
-const posts = ref<Post[]>([]);
-
-// 🟢 FUNZIONE: PUBBLICAZIONE ARTICOLO
+// --- PUBBLICAZIONE ARTICOLO & ANALISI VAULT SAST ---
 async function publishArticle() {
   if (!newArticle.value.title || !newArticle.value.categoryId) {
-    return triggerToast('❌ Compila Titolo e Categoria prima di pubblicare.');
+    return triggerToast('❌ Compila Titolo e Categoria prima di pubblicare.', 'warning')
   }
 
-  isLoading.value = true;
+  isLoading.value = true
 
   try {
-    triggerToast('🛡️ Avvio scansione automatica SAST Pulse Sentinel AI...');
-    let vaultData: any = null;
+    triggerToast('🛡️ Avvio scansione automatica SAST Pulse Sentinel AI...', 'warning')
+    let vaultData: any = null
     
     try {
       const vaultRes: any = await $fetch('/api/blog/submit', {
         method: 'POST',
         body: { title: newArticle.value.title, content: newArticle.value.content }
-      });
+      })
       
       if (vaultRes && vaultRes.success) {
-        vaultData = vaultRes.vaultData;
+        vaultData = vaultRes.vaultData
         
         if (vaultData.sastCheck === 'CRITICAL') {
-           triggerToast(`⚠️ Trovate vulnerabilità CRITICHE. L'articolo NON sarà pubblicato online. Verrà salvato in BOZZA.`);
-           newArticle.value.status = 'draft'; // Forza a bozza se critico
+           triggerToast(`⚠️ Trovate vulnerabilità CRITICHE. L'articolo salvato in BOZZA.`, 'error')
+           newArticle.value.status = 'draft'
         } else if (vaultData.sastCheck === 'WARNING') {
-           triggerToast(`⚠️ Pulse Sentinel: Rilevati Warning minori. Sicurezza: ${vaultData.securityScore}/100`);
+           triggerToast(`⚠️ Pulse Sentinel: Rilevati Warning minori. Sicurezza: ${vaultData.securityScore}/100`, 'warning')
         } else {
-           triggerToast(`✅ Pulse Sentinel: Codice Sicuro (100/100). Certificato Hash generato!`);
+           triggerToast(`✅ Pulse Sentinel: Codice Sicuro (100/100). Certificato Hash generato!`, 'success')
         }
       }
     } catch (vaultErr) {
-       console.warn("Vault API non raggiungibile, salto analisi SAST...", vaultErr);
+       console.warn('Vault API non raggiungibile, salto analisi SAST...', vaultErr)
     }
 
     const payload = {
@@ -153,32 +153,32 @@ async function publishArticle() {
       vaultHash: vaultData?.vaultHashPreview || undefined,
       sastStatus: vaultData?.sastCheck || 'PASSED',
       status: newArticle.value.status 
-    };
+    }
 
     if (isEditing.value && newArticle.value.id) {
-       triggerToast('✅ Articolo aggiornato con successo!');
-       await loadPosts(); 
+       triggerToast('✅ Articolo aggiornato con successo!', 'success')
+       await loadPosts() 
     } else {
        const res: any = await $fetch('/api/blog/posts', {
           method: 'POST',
           body: payload
-       });
+       })
 
        if (res && res.success) {
           triggerToast(res.data.status === 'draft' 
             ? '📝 Salvato in Bozza (Intervento Sentinel)' 
-            : '🚀 Articolo pubblicato e Notarizzato con DKP Vault!');
-          await loadPosts(); 
+            : '🚀 Articolo pubblicato e Notarizzato con DKP Vault!', 'success')
+          await loadPosts() 
        } else {
-          throw new Error("Errore durante il salvataggio.");
+          throw new Error('Errore durante il salvataggio.')
        }
     }
-    resetForm();
+    resetForm()
   } catch (error: any) {
-    console.error("Errore salvataggio post:", error);
-    triggerToast(`❌ Errore durante la pubblicazione: ${error.message || 'Errore DB'}`);
+    console.error('Errore salvataggio post:', error)
+    triggerToast(`❌ Errore durante la pubblicazione: ${error.message || 'Errore DB'}`, 'error')
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
 }
 
@@ -193,121 +193,118 @@ function editPost(post: Post) {
     excerpt: post.excerpt || '',
     content: (post as any).content || '', 
     status: post.status
-  };
-  isEditing.value = true;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  isEditing.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 async function deletePost(id: number | string) {
-  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo dal DB Neon?')) return;
+  if (!confirm('⚠️ Sei sicuro di voler eliminare definitivamente questo articolo dal DB Neon?')) return
   
-  isLoading.value = true;
+  isLoading.value = true
   try {
-     const res: any = await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' });
+     const res: any = await $fetch(`/api/blog/posts/${id}`, { method: 'DELETE' })
      if (res && res.success) {
-        posts.value = posts.value.filter(p => String(p.id) !== String(id));
-        triggerToast('🗑️ Articolo eliminato dal Database.');
-        if (String(newArticle.value.id) === String(id)) resetForm();
+        posts.value = posts.value.filter(p => String(p.id) !== String(id))
+        triggerToast('🗑️ Articolo eliminato dal Database.', 'success')
+        if (String(newArticle.value.id) === String(id)) resetForm()
      } else {
-        throw new Error("Impossibile eliminare");
+        throw new Error('Impossibile eliminare')
      }
   } catch (error: any) {
-     console.error("Errore eliminazione:", error);
-     triggerToast('❌ Errore durante l\'eliminazione. Riprova.');
+     console.error('Errore eliminazione:', error)
+     triggerToast('❌ Errore durante l\'eliminazione. Riprova.', 'error')
   } finally {
-     isLoading.value = false;
+     isLoading.value = false
   }
 }
 
 function resetForm() {
-  newArticle.value = { id: null, title: '', categoryId: '', subcategoryId: '', author: 'Alessandro De Paola', tags: [], excerpt: '', content: '', status: 'published' };
-  isEditing.value = false;
+  newArticle.value = { id: null, title: '', categoryId: '', subcategoryId: '', author: 'Alessandro De Paola', tags: [], excerpt: '', content: '', status: 'published' }
+  isEditing.value = false
 }
 
 function getCategoryName(id: number | string | null) {
-  if (!id) return "Non Assegnata";
-  const cat = categories.value.find((c) => String(c.id) === String(id));
-  return cat ? `${cat.icon || "🏷️"} ${cat.name}` : "Non Assegnata";
+  if (!id) return 'Non Assegnata'
+  const cat = categories.value.find((c) => String(c.id) === String(id))
+  return cat ? `${cat.icon || '🏷️'} ${cat.name}` : 'Non Assegnata'
 }
 
-// --- TAXONOMY PRESETS & LOGICA ---
-const presetEmojis = ["💻", "⚙️", "⚡", "🧠", "🛡️", "🔒", "🤖", "☁️", "🐳", "🌐", "📦", "🚀", "📱", "🔑", "📊", "🧬", "🎯", "🛠️", "🔥", "✨", "💡", "📌", "🏆", "📰"];
-const presetColors = ["#00dc82", "#38bdf8", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#06b6d4"];
+// --- TAXONOMY PRESETS & LOGICA MODALI ---
+const presetEmojis = ['💻', '⚙️', '⚡', '🧠', '🛡️', '🔒', '🤖', '☁️', '🐳', '🌐', '📦', '🚀', '📱', '🔑', '📊', '🧬', '🎯', '🛠️', '🔥', '✨', '💡', '📌', '🏆', '📰']
+const presetColors = ['#00dc82', '#38bdf8', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4']
 
-const isCatModalOpen = ref(false);
-const catForm = ref({ id: null as number | string | null, name: "", slug: "", description: "", icon: "🤖", color: "#00dc82", tagInput: "", tags: [] as string[] });
+const isCatModalOpen = ref(false)
+const catForm = ref({ id: null as number | string | null, name: '', slug: '', description: '', icon: '🤖', color: '#00dc82', tagInput: '', tags: [] as string[] })
 
-const isSubModalOpen = ref(false);
-const subForm = ref({ id: null as number | string | null, categoryId: null as number | string | null, categoryName: "", name: "", slug: "", description: "" });
+const isSubModalOpen = ref(false)
+const subForm = ref({ id: null as number | string | null, categoryId: null as number | string | null, categoryName: '', name: '', slug: '', description: '' })
 
-const isVaultReportModalOpen = ref(false);
-const selectedPostForReport = ref<Post | null>(null);
+const isVaultReportModalOpen = ref(false)
+const selectedPostForReport = ref<Post | null>(null)
 
 const addCategoryTag = () => {
-  const val = catForm.value.tagInput.trim().replace(/^#/, "");
+  const val = catForm.value.tagInput.trim().replace(/^#/, '')
   if (val && !catForm.value.tags.includes(val)) {
-    catForm.value.tags.push(val);
-    catForm.value.tagInput = "";
+    catForm.value.tags.push(val)
+    catForm.value.tagInput = ''
   }
-};
+}
 
-const removeCategoryTag = (tag: string) => { catForm.value.tags = catForm.value.tags.filter((t) => t !== tag); };
-const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
-const handleCatNameInput = () => { if (!catForm.value.id) catForm.value.slug = autoSlug(catForm.value.name); };
-const handleSubNameInput = () => { if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name); };
+const removeCategoryTag = (tag: string) => { catForm.value.tags = catForm.value.tags.filter((t) => t !== tag) }
+const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '')
+const handleCatNameInput = () => { if (!catForm.value.id) catForm.value.slug = autoSlug(catForm.value.name) }
+const handleSubNameInput = () => { if (!subForm.value.id) subForm.value.slug = autoSlug(subForm.value.name) }
 
-// --- 🔗 INTERAZIONE REALE CON API CATEGORIE NEON DB ---
+// API CATEGORIE
 const fetchCategories = async () => {
-  isLoading.value = true;
-  errorMessage.value = "";
+  isLoading.value = true
+  errorMessage.value = ''
   try {
-    const res: any = await $fetch("/api/blog/categories");
+    const res: any = await $fetch('/api/blog/categories')
     if (res && res.success) {
-      categories.value = res.data || [];
+      categories.value = res.data || []
     } else {
-      categories.value = [];
+      categories.value = []
     }
   } catch (err: any) {
-    console.error("Errore fetch Categorie", err);
-    triggerToast("Impossibile caricare le categorie dal database.");
-  } finally {
-    isLoading.value = false;
+    console.error('Errore fetch Categorie', err)
+    triggerToast('Impossibile caricare le categorie dal database.', 'error')
+  } font-bold {
+    isLoading.value = false
   }
-};
+}
 
-// 🟢 CARICAMENTO POST TRAMITE COMPOSABLE
 const loadPosts = async () => {
   try {
-    const data = await fetchAdminPosts();
-    posts.value = data;
+    const data = await fetchAdminPosts()
+    posts.value = data
   } catch (e) {
-    console.error("Errore fetch posts:", e);
+    console.error('Errore fetch posts:', e)
   }
-};
+}
 
-// 🔓 MODAL SBLOCCATI
 const openCatModal = (cat: Category | null = null) => {
   if (cat) {
-    catForm.value = { ...cat, tags: cat.tags ? [...cat.tags] : [], tagInput: "" };
+    catForm.value = { ...cat, tags: cat.tags ? [...cat.tags] : [], tagInput: '' }
   } else {
-    catForm.value = { id: null, name: "", slug: "", description: "", icon: "🤖", color: "#00dc82", tags: [], tagInput: "" };
+    catForm.value = { id: null, name: '', slug: '', description: '', icon: '🤖', color: '#00dc82', tags: [], tagInput: '' }
   }
-  isCatModalOpen.value = true;
-};
+  isCatModalOpen.value = true
+}
 
 const openSubModal = (category: Category, sub: Subcategory | null = null) => {
   if (sub) {
-    subForm.value = { ...sub, categoryName: category.name };
+    subForm.value = { ...sub, categoryName: category.name }
   } else {
-    subForm.value = { id: null, categoryId: category.id, categoryName: category.name, name: "", slug: "", description: "" };
+    subForm.value = { id: null, categoryId: category.id, categoryName: category.name, name: '', slug: '', description: '' }
   }
-  isSubModalOpen.value = true;
-};
+  isSubModalOpen.value = true
+}
 
-// 💾 SALVATAGGIO REALE CATEGORIA
 const saveCategory = async () => {
-  if (!catForm.value.name || !catForm.value.slug) return triggerToast('Nome e Slug obbligatori');
-  isLoading.value = true;
+  if (!catForm.value.name || !catForm.value.slug) return triggerToast('Nome e Slug obbligatori', 'warning')
+  isLoading.value = true
   try {
     const payload = {
       name: catForm.value.name,
@@ -316,1219 +313,767 @@ const saveCategory = async () => {
       icon: catForm.value.icon,
       color: catForm.value.color,
       tags: catForm.value.tags
-    };
+    }
 
-    const method = catForm.value.id ? 'PUT' : 'POST';
-    const url = catForm.value.id ? `/api/blog/categories/${catForm.value.id}` : '/api/blog/categories';
+    const method = catForm.value.id ? 'PUT' : 'POST'
+    const url = catForm.value.id ? `/api/blog/categories/${catForm.value.id}` : '/api/blog/categories'
 
-    const res: any = await $fetch(url, { method, body: payload });
+    const res: any = await $fetch(url, { method, body: payload })
     if (res?.success) {
-      triggerToast(catForm.value.id ? 'Categoria Aggiornata' : 'Categoria Creata');
-      await fetchCategories();
-      isCatModalOpen.value = false;
+      triggerToast(catForm.value.id ? 'Categoria Aggiornata' : 'Categoria Creata', 'success')
+      await fetchCategories()
+      isCatModalOpen.value = false
     } else {
-      triggerToast('Errore durante il salvataggio categoria');
+      triggerToast('Errore durante il salvataggio categoria', 'error')
     }
   } catch (e) {
-    console.error(e);
-    triggerToast('Errore API categoria');
+    console.error(e)
+    triggerToast('Errore API categoria', 'error')
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
-// 💾 SALVATAGGIO REALE SOTTOCATEGORIA
 const saveSubcategory = async () => {
-  if (!subForm.value.name || !subForm.value.slug) return triggerToast('Nome e Slug obbligatori');
-  isLoading.value = true;
+  if (!subForm.value.name || !subForm.value.slug) return triggerToast('Nome e Slug obbligatori', 'warning')
+  isLoading.value = true
   try {
     const payload = {
       categoryId: subForm.value.categoryId,
       name: subForm.value.name,
       slug: subForm.value.slug,
       description: subForm.value.description
-    };
+    }
 
-    const method = subForm.value.id ? 'PUT' : 'POST';
-    const url = subForm.value.id ? `/api/blog/subcategories/${subForm.value.id}` : '/api/blog/subcategories';
+    const method = subForm.value.id ? 'PUT' : 'POST'
+    const url = subForm.value.id ? `/api/blog/subcategories/${subForm.value.id}` : '/api/blog/subcategories'
 
-    const res: any = await $fetch(url, { method, body: payload });
+    const res: any = await $fetch(url, { method, body: payload })
     if (res?.success) {
-      triggerToast(subForm.value.id ? 'Sottocategoria Aggiornata' : 'Sottocategoria Creata');
-      await fetchCategories();
-      isSubModalOpen.value = false;
+      triggerToast(subForm.value.id ? 'Sottocategoria Aggiornata' : 'Sottocategoria Creata', 'success')
+      await fetchCategories()
+      isSubModalOpen.value = false
     } else {
-      triggerToast('Errore durante il salvataggio sottocategoria');
+      triggerToast('Errore durante il salvataggio sottocategoria', 'error')
     }
   } catch (e) {
-    console.error(e);
-    triggerToast('Errore API sottocategoria');
+    console.error(e)
+    triggerToast('Errore API sottocategoria', 'error')
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
-// 🗑️ ELIMINAZIONE REALE CATEGORIA/SOTTOCATEGORIA
-const deleteItem = async (id: number | string, type: "category" | "subcategory") => {
-  if (!confirm(`Sei sicuro di voler eliminare questa ${type}?`)) return;
-  isLoading.value = true;
+const deleteItem = async (id: number | string, type: 'category' | 'subcategory') => {
+  if (!confirm(`Sei sicuro di voler eliminare questa ${type}?`)) return
+  isLoading.value = true
   try {
-    // Passiamo sempre l'id alla rotta delle categorie specificando il type via query string
-    const url = `/api/blog/categories/${id}?type=${type}`;
-    const res: any = await $fetch(url, { method: 'DELETE' });
+    const url = `/api/blog/categories/${id}?type=${type}`
+    const res: any = await $fetch(url, { method: 'DELETE' })
     if (res?.success) {
-      triggerToast(`${type === 'category' ? 'Categoria' : 'Sottocategoria'} eliminata con successo.`);
-      await fetchCategories();
+      triggerToast(`${type === 'category' ? 'Categoria' : 'Sottocategoria'} eliminata con successo.`, 'success')
+      await fetchCategories()
     } else {
-      triggerToast('Errore durante l eliminazione.');
+      triggerToast('Errore durante l\'eliminazione.', 'error')
     }
   } catch (e: any) {
-    console.error("Errore API eliminazione:", e);
-    triggerToast(`❌ Errore API eliminazione: ${e.message || 'Errore DB'}`);
+    console.error('Errore API eliminazione:', e)
+    triggerToast(`❌ Errore API eliminazione: ${e.message || 'Errore DB'}`, 'error')
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
 const inspectVaultReport = (post: Post) => {
-  selectedPostForReport.value = post;
-  isVaultReportModalOpen.value = true;
-};
+  selectedPostForReport.value = post
+  isVaultReportModalOpen.value = true
+}
 
 onMounted(() => {
-  fetchCategories();
-  loadPosts(); 
-});
+  fetchCategories()
+  loadPosts()
+})
 </script>
 
 <template>
-  <div class="admin-page-container">
-    <!-- TOAST NOTIFICATION FLOATING -->
+  <div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 font-sans">
+    
+    <!-- FLOATING TOAST NOTIFICATION -->
     <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-text">{{ toastMessage }}</span>
+      <div 
+        v-if="showToast" 
+        :class="[
+          'fixed top-6 right-6 z-50 p-4 rounded-xl backdrop-blur-md border shadow-2xl max-w-md flex items-center gap-3 font-mono text-xs sm:text-sm font-semibold transition-all',
+          toastType === 'success' ? 'bg-[#041a13]/90 border-emerald-500/50 text-emerald-300 shadow-[0_0_20px_rgba(0,220,130,0.2)]' :
+          toastType === 'error' ? 'bg-[#1e070a]/90 border-rose-500/50 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.2)]' :
+          'bg-[#1a1403]/90 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+        ]"
+      >
+        <span class="text-xl">
+          {{ toastType === 'success' ? '⚡' : toastType === 'error' ? '🚫' : '⚠️' }}
+        </span>
+        <span>{{ toastMessage }}</span>
+      </div>
+    </Transition>
+
+    <div class="max-w-7xl mx-auto flex flex-col gap-6">
+      
+      <!-- NAVBAR GRID MODULI ADMIN v2.6 -->
+      <div class="flex flex-col gap-3 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 shadow-xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800/60 font-mono">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#00dc82]"></span>
+            <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP ADMIN CONTROL CENTER</span>
+          </div>
+
+          <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
+            🏠 Dashboard Main
+          </NuxtLink>
+        </div>
+
+        <!-- GRID NAVIGATION -->
+        <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono">
+          <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            ⚙️ API Gateway
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📧 Mail
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📣 Newsletter
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🤖 Crawler
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-300 bg-emerald-500/20 border border-emerald-500/50 shadow-[0_0_10px_rgba(0,220,130,0.2)]">
+            📝 Blog
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 transition-all">
+            💬 Gestione Nodi
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🛍️ Shop
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            💼 Jobs
+          </NuxtLink>
+        </nav>
+      </div>
+
+      <!-- HEADER HERO TAXONOMY & BLOG SYSTEM -->
+      <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
+        <!-- Glow Cosmico -->
+        <div class="absolute -right-20 -top-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col gap-2">
+          <div class="flex items-center gap-3 mb-1 flex-wrap font-mono">
+            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-0.5 rounded-full text-xs font-black uppercase shadow-[0_0_12px_rgba(0,220,130,0.25)]">
+              DKP v2.6-PURE-SQL TAXONOMY &amp; PUBLISHING
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Gestione <span class="text-emerald-400">DKP Blog &amp; Taxonomy</span>
+          </h1>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
+            Amministra le categorie sul Database Neon e pubblica articoli con scansione automatica DKP Vault &amp; Sentinel AI.
+          </p>
+        </div>
+      </header>
+
+      <!-- ALERT ERRORE SE PRESENTE -->
+      <div v-if="errorMessage" class="bg-rose-500/10 border border-rose-500/40 text-rose-300 p-4 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2">
+        <span>⚠️ {{ errorMessage }}</span>
+      </div>
+
+      <!-- MAIN HYBRID GRID (380px / 1fr -> 12 Columns Tailwind) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- ================= COLONNA SINISTRA: CATEGORIE (4 COLS) ================= -->
+        <aside class="lg:col-span-4 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-white font-bold text-base flex items-center gap-2">
+              <span>📂 Categorie ({{ categories.length }})</span>
+            </h3>
+            <button 
+              @click="openCatModal()" 
+              class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-xs font-black transition-all cursor-pointer"
+            >
+              ➕ Nuova
+            </button>
+          </div>
+
+          <!-- Loading state -->
+          <div v-if="isLoading && !categories.length" class="text-center py-8 text-slate-500 font-mono text-xs">
+            ⏳ Caricamento categorie da NeonDB...
+          </div>
+          
+          <!-- Empty state -->
+          <div v-else-if="!categories.length" class="text-center py-8 text-slate-500 font-mono text-xs">
+            Nessuna categoria trovata. Creane una nuova!
+          </div>
+
+          <!-- List Categorie -->
+          <div v-else class="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+            <div 
+              v-for="cat in categories" 
+              :key="cat.id" 
+              class="bg-[#040814] border border-slate-800/80 rounded-xl p-3.5 hover:border-slate-700 transition-all flex flex-col gap-3"
+            >
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2.5">
+                  <div 
+                    class="w-8 h-8 rounded-lg flex items-center justify-center border font-bold text-base"
+                    :style="{
+                      backgroundColor: `${cat.color || '#00dc82'}20`,
+                      color: cat.color || '#00dc82',
+                      borderColor: `${cat.color || '#00dc82'}40`,
+                    }"
+                  >
+                    {{ cat.icon || "🏷️" }}
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-xs sm:text-sm leading-tight">{{ cat.name }}</h4>
+                    <span class="text-[10px] text-slate-500 font-mono">/{{ cat.slug }}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1">
+                  <button 
+                    @click="openCatModal(cat)" 
+                    class="p-1 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded transition-all cursor-pointer text-xs" 
+                    title="Modifica Categoria"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    @click="deleteItem(cat.id, 'category')" 
+                    class="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-all cursor-pointer text-xs" 
+                    title="Elimina Categoria"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              <!-- Sottocategorie mini -->
+              <div class="border-t border-slate-800/60 pt-2 flex flex-col gap-1.5">
+                <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 font-bold">
+                  <span>Sottocategorie ({{ cat.subcategories?.length || 0 }})</span>
+                  <button @click="openSubModal(cat)" class="text-emerald-400 hover:underline cursor-pointer">
+                    + Aggiungi
+                  </button>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5">
+                  <span 
+                    v-for="sub in cat.subcategories" 
+                    :key="sub.id" 
+                    class="bg-[#080d1a] border border-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-300 font-mono flex items-center gap-1"
+                    :title="sub.description || ''"
+                  >
+                    {{ sub.name }}
+                    <button 
+                      @click="deleteItem(sub.id, 'subcategory')" 
+                      class="text-rose-400 hover:text-rose-300 ml-0.5 cursor-pointer font-bold" 
+                      title="Elimina Sottocategoria"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- ================= COLONNA DESTRA: TABS PUBBLICAZIONE & LISTA POSTS (8 COLS) ================= -->
+        <main class="lg:col-span-8 flex flex-col gap-6">
+
+          <div v-if="isBlogLoading" class="text-center py-12 text-emerald-400 font-mono text-sm animate-pulse">
+            Caricamento articoli da NeonDB...
+          </div>
+
+          <div v-else class="flex flex-col gap-6">
+            
+            <!-- FORM PUBBLICAZIONE / MODIFICA -->
+            <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col gap-5">
+              <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                <h3 class="text-white font-bold text-base sm:text-lg">
+                  {{ isEditing ? '✏️ Modifica Articolo' : '✍️ Pubblica Nuovo Articolo (Vault Auto-Scan)' }}
+                </h3>
+              </div>
+
+              <form @submit.prevent="publishArticle" class="flex flex-col gap-4">
+                
+                <div class="flex flex-col gap-1.5 font-mono">
+                  <label class="text-slate-400 text-xs font-bold uppercase tracking-wider">Titolo Articolo *</label>
+                  <input 
+                    v-model="newArticle.title" 
+                    type="text" 
+                    class="bg-[#040814] border border-slate-800 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold outline-none focus:border-emerald-500 transition-all"
+                    placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4" 
+                    required 
+                  />
+                </div>
+
+                <!-- ROW CATEGORIA E SOTTOCATEGORIA -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
+                  <div class="flex flex-col gap-1.5">
+                    <label class="text-slate-400 text-xs font-bold uppercase tracking-wider">Categoria *</label>
+                    <select 
+                      v-model="newArticle.categoryId" 
+                      @change="onCategoryChange" 
+                      class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                      required
+                    >
+                      <option value="" disabled>Seleziona categoria</option>
+                      <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                        {{ cat.icon || "🏷️" }} {{ cat.name }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div class="flex flex-col gap-1.5">
+                    <label class="text-slate-400 text-xs font-bold uppercase tracking-wider">Sottocategoria</label>
+                    <select 
+                      v-model="newArticle.subcategoryId" 
+                      class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer disabled:opacity-40"
+                      :disabled="!availableSubcategories.length"
+                    >
+                      <option value="">Nessuna (Generale)</option>
+                      <option v-for="sub in availableSubcategories" :key="sub.id" :value="sub.id">
+                        {{ sub.name }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- ROW STATUS ED AUTORE -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
+                  <div class="flex flex-col gap-1.5">
+                    <label class="text-slate-400 text-xs font-bold uppercase tracking-wider">Status</label>
+                    <select 
+                      v-model="newArticle.status" 
+                      class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                    >
+                      <option value="published">Online (Published)</option>
+                      <option value="draft">Bozza (Draft)</option>
+                    </select>
+                  </div>
+
+                  <div class="flex flex-col gap-1.5">
+                    <label class="text-slate-400 text-xs font-bold uppercase tracking-wider">Autore</label>
+                    <input 
+                      v-model="newArticle.author" 
+                      type="text" 
+                      class="bg-[#040814] border border-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <!-- COMPONENTE TAG INPUT -->
+                <div class="flex flex-col gap-1.5 font-mono">
+                  <label class="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                    TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)
+                  </label>
+                  <DkpTagInput v-model="newArticle.tags" />
+                </div>
+
+                <!-- ESTRATTO BREVE -->
+                <div class="flex flex-col gap-1.5 font-mono">
+                  <label class="text-slate-400 text-xs font-bold uppercase tracking-wider">Estratto Breve / Summary</label>
+                  <textarea 
+                    v-model="newArticle.excerpt" 
+                    rows="2"
+                    class="bg-[#040814] border border-slate-800 text-white px-4 py-2.5 rounded-xl text-xs outline-none focus:border-emerald-500 transition-all"
+                    placeholder="Sintesi per le anteprime nella sezione notizie..."
+                  ></textarea>
+                </div>
+
+                <!-- PULSANTI DINAMICI -->
+                <div class="flex items-center gap-3 mt-2 font-mono">
+                  <button 
+                    v-if="isEditing" 
+                    type="button" 
+                    @click="resetForm" 
+                    class="px-4 py-3 bg-rose-500/10 border border-rose-500/40 text-rose-300 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    ❌ Annulla Modifica
+                  </button>
+                  
+                  <button 
+                    type="submit" 
+                    :disabled="isLoading"
+                    class="flex-1 py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,220,130,0.25)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Salva & Pubblica con Vault' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- TABELLA GESTIONE ARTICOLI -->
+            <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
+              <h3 class="text-white font-bold text-base sm:text-lg">
+                📚 Gestione Pubblicazioni ({{ posts.length }})
+              </h3>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                  <thead>
+                    <tr class="bg-[#040814] text-slate-400 font-extrabold text-[11px] uppercase border-b border-slate-800 font-mono">
+                      <th class="p-3">Titolo Articolo</th>
+                      <th class="p-3">Categoria</th>
+                      <th class="p-3">Stato</th>
+                      <th class="p-3">Data</th>
+                      <th class="p-3">Metriche</th>
+                      <th class="p-3 text-right">Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr 
+                      v-for="post in posts" 
+                      :key="post.id" 
+                      :class="[
+                        'border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors',
+                        post.status === 'pending_vault' ? 'bg-amber-500/5' : ''
+                      ]"
+                    >
+                      <td class="p-3 font-bold text-white max-w-xs truncate">{{ post.title }}</td>
+                      <td class="p-3">
+                        <span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded text-[10px] font-bold font-mono">
+                          {{ getCategoryName(post.category || post.categoryId) }}
+                        </span>
+                      </td>
+                      <td class="p-3 font-mono">
+                        <span 
+                          v-if="post.status === 'published'" 
+                          class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase"
+                        >Online</span>
+                        <span 
+                          v-else-if="post.status === 'pending_vault'" 
+                          class="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase"
+                        >Vault (Analisi)</span>
+                        <span v-else class="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[10px] font-black uppercase">Bozza</span>
+                      </td>
+                      <td class="p-3 text-slate-400 font-mono text-xs">
+                        {{ post.date || (post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '') }}
+                      </td>
+                      <td class="p-3 font-mono text-xs text-slate-400">
+                        👁️ {{ post.views || 0 }} <span class="text-rose-400 ml-1">❤️ {{ post.likes || 0 }}</span>
+                      </td>
+                      <td class="p-3 text-right font-mono">
+                        <div class="flex justify-end items-center gap-1.5">
+                          <button 
+                            v-if="post.vaultReport" 
+                            @click="inspectVaultReport(post)" 
+                            class="p-1.5 bg-cyan-500/15 border border-cyan-500/30 hover:bg-cyan-500 hover:text-slate-950 text-cyan-400 rounded-lg text-xs transition-all cursor-pointer" 
+                            title="Ispeziona Report Vault"
+                          >
+                            🛡️
+                          </button>
+                          <button 
+                            @click="editPost(post)" 
+                            class="p-1.5 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded-lg text-xs transition-all cursor-pointer" 
+                            title="Modifica Articolo"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            @click="deletePost(post.id)" 
+                            class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer" 
+                            title="Elimina Articolo"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr v-if="posts.length === 0">
+                      <td colspan="6" class="p-8 text-center text-slate-500 font-mono text-xs">
+                        📂 Nessun articolo presente nel Database Neon. Usa il form per crearne uno nuovo.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+
+    </div>
+
+    <!-- ================= MODALE 1: VERIFICATION REPORT DKP VAULT ================= -->
+    <Transition name="fade">
+      <div 
+        v-if="isVaultReportModalOpen && selectedPostForReport" 
+        class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4"
+        @click.self="isVaultReportModalOpen = false"
+      >
+        <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-cyan-400 font-black text-lg flex items-center gap-2">
+              <span>🛡️ DKP Vault Verification Report</span>
+            </h3>
+            <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
+              SAST AUDIT ENGINE
+            </span>
+          </div>
+
+          <div class="flex flex-col gap-3 font-mono text-xs">
+            <h4 class="text-white font-bold text-sm">{{ selectedPostForReport.title }}</h4>
+            <p class="text-slate-400 text-xs">
+              Autore: <strong class="text-slate-200">@{{ selectedPostForReport.authorName || 'user_community' }}</strong> • Data: {{ selectedPostForReport.date || 'Recente' }}
+            </p>
+
+            <div class="grid grid-cols-3 gap-2 my-2">
+              <div class="bg-[#040814] border border-slate-800 p-2.5 rounded-xl flex flex-col gap-1">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">Autenticità</span>
+                <span class="text-emerald-400 text-base font-black">{{ selectedPostForReport.vaultReport?.authenticityScore || 95 }}%</span>
+              </div>
+              <div class="bg-[#040814] border border-slate-800 p-2.5 rounded-xl flex flex-col gap-1">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">SAST Check</span>
+                <span class="text-sky-400 text-base font-black">{{ selectedPostForReport.vaultReport?.sastCheck || 'PASSED' }}</span>
+              </div>
+              <div class="bg-[#040814] border border-slate-800 p-2.5 rounded-xl flex flex-col gap-1">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">Rischio Plagio</span>
+                <span class="text-purple-400 text-base font-black">{{ selectedPostForReport.vaultReport?.plagiarismRisk || 'LOW' }}</span>
+              </div>
+            </div>
+
+            <div class="bg-[#040814] border border-slate-800 p-3 rounded-xl flex flex-col gap-1.5">
+              <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">HASH SHA-256 VAULT PREVIEW:</span>
+              <code class="text-emerald-400 text-[11px] break-all">
+                {{ selectedPostForReport.vaultReport?.vaultHashPreview || selectedPostForReport.vaultHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }}
+              </code>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800 pt-4 flex justify-end font-mono">
+            <button @click="isVaultReportModalOpen = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
+              Chiudi Report
+            </button>
+          </div>
         </div>
       </div>
     </Transition>
 
-    <!-- NAVBAR GRID ADMIN UNIFICATA v2.4-GOLD -->
-    <div class="admin-nav-container">
-      <div class="admin-nav-top">
-        <div class="nav-branding">
-          <span class="status-dot green"></span>
-          <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
-        </div>
+    <!-- ================= MODALE 2: CATEGORIA ================= -->
+    <Transition name="fade">
+      <div 
+        v-if="isCatModalOpen" 
+        class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4"
+        @click.self="isCatModalOpen = false"
+      >
+        <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5 max-h-[85vh] overflow-hidden">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-white font-bold text-base">
+              📁 {{ catForm.id ? "Modifica Categoria" : "Nuova Categoria" }}
+            </h3>
+            <button @click="isCatModalOpen = false" class="text-slate-500 hover:text-white font-bold cursor-pointer">×</button>
+          </div>
 
-        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
-          🏠 Dashboard Main
-        </NuxtLink>
-      </div>
+          <div class="flex flex-col gap-4 overflow-y-auto pr-1 font-mono text-xs">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">Nome Categoria *</label>
+              <input 
+                v-model="catForm.name" 
+                @input="handleCatNameInput"
+                type="text" 
+                class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                placeholder="Es. Cybersecurity & Vault"
+                required
+              />
+            </div>
 
-      <!-- GRID MODULI ADMIN -->
-      <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">URL Slug *</label>
+              <input 
+                v-model="catForm.slug" 
+                type="text" 
+                class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                placeholder="cybersecurity-vault"
+                required
+              />
+            </div>
 
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/jobs')" class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
-      </nav>
-    </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">Descrizione Breve (SEO)</label>
+              <textarea 
+                v-model="catForm.description" 
+                rows="2" 
+                class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                placeholder="Breve panoramica della categoria..."
+              ></textarea>
+            </div>
 
-    <!-- HEADER HERO TAXONOMY & BLOG SYSTEM -->
-    <header class="header-section">
-      <div class="badge">
-        <span class="badge-dot"></span>
-        DKP v2.5-GOLD TAXONOMY &amp; PUBLISHING
-      </div>
-      <h1>Gestione <span class="highlight">DKP Blog &amp; Taxonomy</span></h1>
-      <p class="subtitle">
-        Amministra le categorie sul Database Neon e pubblica articoli con scansione automatica DKP Vault & Sentinel AI.
-      </p>
-    </header>
-
-    <!-- ALERT ERROR (SE PRESENTE) -->
-    <div v-if="errorMessage" class="alert error">⚠️ {{ errorMessage }}</div>
-
-    <!-- MAIN HYBRID GRID (380px / 1fr) -->
-    <div class="hybrid-grid">
-      <!-- ================= COLONNA SINISTRA: CATEGORIE ================= -->
-      <aside class="sidebar-panel">
-        <div class="sidebar-header">
-          <h3 class="flex items-center gap-2">
-            📂 Categorie ({{ categories.length }})
-          </h3>
-          <button @click="openCatModal()" class="btn-primary btn-sm">
-            ➕ Nuova
-          </button>
-        </div>
-
-        <div v-if="isLoading && !categories.length" class="loading-state">
-          ⏳ Caricamento categorie da Neon DB...
-        </div>
-        <div v-else-if="!categories.length" class="empty-state">
-          Nessuna categoria trovata. Creane una nuova!
-        </div>
-
-        <div v-else class="compact-cat-list">
-          <div v-for="cat in categories" :key="cat.id" class="compact-cat-item">
-            <div class="cat-item-top">
-              <div class="cat-info-head">
-                <div
-                  class="cat-icon-badge mini"
-                  :style="{
-                    backgroundColor: `${cat.color || '#00dc82'}20`,
-                    color: cat.color || '#00dc82',
-                    borderColor: `${cat.color || '#00dc82'}40`,
-                  }"
+            <!-- EMOJI PICKER GRID -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">Seleziona Icona Emoji</label>
+              <div class="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-28 overflow-y-auto bg-[#040814] border border-slate-800 p-2 rounded-xl">
+                <button 
+                  v-for="emoji in presetEmojis" 
+                  :key="emoji" 
+                  type="button" 
+                  @click="catForm.icon = emoji"
+                  :class="[
+                    'p-2 text-base rounded-lg border transition-all cursor-pointer text-center',
+                    catForm.icon === emoji ? 'bg-emerald-500/20 border-emerald-500 text-white' : 'border-transparent hover:bg-slate-800'
+                  ]"
                 >
-                  <span class="text-base">{{ cat.icon || "🏷️" }}</span>
-                </div>
-                <div>
-                  <h4 class="cat-title-sm">{{ cat.name }}</h4>
-                  <span class="cat-slug-sm">/{{ cat.slug }}</span>
-                </div>
-              </div>
-              <div class="actions">
-                <button
-                  @click="openCatModal(cat)"
-                  class="btn-icon"
-                  title="Modifica Categoria"
-                >
-                  ✏️
-                </button>
-                <button
-                  @click="deleteItem(cat.id, 'category')"
-                  class="btn-icon danger"
-                  title="Elimina Categoria"
-                >
-                  🗑️
+                  {{ emoji }}
                 </button>
               </div>
             </div>
 
-            <!-- Sottocategorie Compatte -->
-            <div class="subcategories-mini">
-              <div class="sub-header-mini">
-                <span>Sottocategorie ({{ cat.subcategories?.length || 0 }})</span>
-                <button @click="openSubModal(cat)" class="btn-link">
-                  + Aggiungi
+            <!-- TAGS INPUT CATEGORIA -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">Tag Categoria (Premi invio per aggiungere)</label>
+              <div class="flex gap-2">
+                <input 
+                  v-model="catForm.tagInput" 
+                  @keydown.enter.prevent="addCategoryTag"
+                  type="text" 
+                  class="bg-[#040814] border border-slate-800 text-white px-3 py-2 rounded-xl flex-1 outline-none focus:border-emerald-500 transition-all"
+                  placeholder="Es. Docker, Rust..."
+                />
+                <button type="button" @click="addCategoryTag" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl font-bold cursor-pointer">
+                  + Tag
                 </button>
               </div>
-              <div class="sub-badges">
-                <span
-                  v-for="sub in cat.subcategories"
-                  :key="sub.id"
-                  class="sub-badge mini-badge"
-                  :title="sub.description || ''"
-                >
-                  {{ sub.name }}
-                  <button
-                    @click="deleteItem(sub.id, 'subcategory')"
-                    class="sub-del-mini"
-                    title="Elimina Sottocategoria"
-                  >
-                    &times;
-                  </button>
+              <div class="flex flex-wrap gap-1.5 mt-1 bg-[#040814] border border-slate-800/80 p-2 rounded-xl min-h-[40px]">
+                <span v-for="tag in catForm.tags" :key="tag" class="bg-sky-500/15 border border-sky-500/30 text-sky-400 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                  #{{ tag }} 
+                  <button type="button" @click="removeCategoryTag(tag)" class="text-rose-400 hover:text-rose-300 font-bold cursor-pointer">&times;</button>
                 </span>
               </div>
             </div>
-          </div>
-        </div>
-      </aside>
 
-      <!-- ================= COLONNA DESTRA: TABS PUBBLICAZIONE ================= -->
-      <main class="main-panel">
-
-        <div v-if="isBlogLoading" class="text-center py-10 text-emerald-400 animate-pulse">Caricamento DB Neon...</div>
-
-        <!-- FORM PUBBLICAZIONE & TABELLA GESTIONE ARTICOLI -->
-        <div v-else>
-          
-          <!-- Form Pubblicazione/Modifica Articolo -->
-          <div class="card mb-6">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-2">
-              <h3 class="card-title m-0">
-                {{ isEditing ? '✏️ Modifica Articolo' : '✍️ Pubblica Nuovo Articolo (Vault Auto-Scan)' }}
-              </h3>
-            </div>
-            
-            <form @submit.prevent="publishArticle" class="form-stack">
-              <div class="form-group">
-                <label>Titolo Articolo *</label>
-                <input
-                  v-model="newArticle.title"
-                  type="text"
-                  class="dkp-input"
-                  placeholder="Es. Guida ad Architettura Micro-Kernel Nuxt 4"
-                  required
-                />
-              </div>
-
-              <!-- 🟢 ROW CATEGORIA E SOTTOCATEGORIA -->
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Categoria *</label>
-                  <select v-model="newArticle.categoryId" @change="onCategoryChange" class="dkp-input" required>
-                    <option value="" disabled>Seleziona una categoria</option>
-                    <option
-                      v-for="cat in categories"
-                      :key="cat.id"
-                      :value="cat.id"
-                    >
-                      {{ cat.icon || "🏷️" }} {{ cat.name }}
-                    </option>
-                  </select>
-                </div>
-                
-                <div class="form-group">
-                  <label>Sottocategoria (Opzionale)</label>
-                  <select v-model="newArticle.subcategoryId" class="dkp-input" :disabled="!availableSubcategories.length">
-                    <option value="">Nessuna (Generale)</option>
-                    <option
-                      v-for="sub in availableSubcategories"
-                      :key="sub.id"
-                      :value="sub.id"
-                    >
-                      {{ sub.name }}
-                    </option>
-                  </select>
+            <!-- COLOR PICKER & PREVIEW -->
+            <div class="flex flex-col gap-2">
+              <label class="text-slate-400 font-bold uppercase">Colore Badge &amp; Accent</label>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                  <span 
+                    v-for="color in presetColors" 
+                    :key="color" 
+                    @click="catForm.color = color" 
+                    :style="{ backgroundColor: color }" 
+                    :class="[
+                      'w-6 h-6 rounded-full cursor-pointer transition-transform border-2',
+                      catForm.color === color ? 'scale-110 border-white' : 'border-transparent'
+                    ]"
+                  ></span>
+                  <input v-model="catForm.color" type="color" class="w-7 h-7 bg-transparent border-0 cursor-pointer" />
                 </div>
               </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Status</label>
-                  <select v-model="newArticle.status" class="dkp-input">
-                    <option value="published">Online (Published)</option>
-                    <option value="draft">Bozza (Draft)</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Autore</label>
-                  <input v-model="newArticle.author" class="dkp-input" type="text" />
-                </div>
-              </div>
-
-              <!-- COMPONENTE TAG -->
-              <div class="form-group full-width mt-2">
-                <label style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">
-                  TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)
-                </label>
-                <DkpTagInput v-model="newArticle.tags" />
-              </div>
-
-              <div class="form-group mt-2">
-                <label>Estratto Breve / Summary</label>
-                <textarea
-                  v-model="newArticle.excerpt"
-                  class="dkp-input"
-                  rows="2"
-                  placeholder="Sintesi per le anteprime nella sezione notizie..."
-                ></textarea>
-              </div>
-
-              <!-- PULSANTI DINAMICI SALVATAGGIO / ANNULLA MODIFICA -->
-              <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                <button v-if="isEditing" type="button" @click="resetForm" class="btn-cancel" style="background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
-                  ❌ Annulla Modifica
-                </button>
-                <button type="submit" class="btn-submit" style="flex: 1;">
-                  {{ isEditing ? '🔄 Salva Modifiche' : '🚀 Salva & Pubblica con Vault' }}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- Tabella Gestione Articoli -->
-          <div class="card table-card">
-            <h3 class="card-title">
-              📚 Gestione Pubblicazioni ({{ posts.length }})
-            </h3>
-            <div class="table-responsive">
-              <table class="dkp-table">
-                <thead>
-                  <tr>
-                    <th>Titolo Articolo</th>
-                    <th>Categoria</th>
-                    <th>Stato</th>
-                    <th>Data</th>
-                    <th>Metriche</th>
-                    <th style="text-align: right;">Azioni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="post in posts"
-                    :key="post.id"
-                    :class="{ 'pending-row': post.status === 'pending_vault' }"
-                  >
-                    <td class="font-bold">{{ post.title }}</td>
-                    <td>
-                      <span class="cat-badge">
-                        {{ getCategoryName(post.category || post.categoryId) }}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        v-if="post.status === 'published'"
-                        class="status-badge success"
-                      >Online</span>
-                      <span
-                        v-else-if="post.status === 'pending_vault'"
-                        class="status-badge warning"
-                      >Vault (Analisi)</span>
-                      <span v-else class="status-badge draft">Bozza</span>
-                    </td>
-                    <td class="date-text">{{ post.date || (post.createdAt ? new Date(post.createdAt).toLocaleDateString() : '') }}</td>
-                    <td class="views-text">👁️ {{ post.views || 0 }} <span class="text-rose-400">❤️ {{ post.likes || 0 }}</span></td>
-                    <td style="text-align: right;">
-                      <div class="action-buttons">
-                        <button v-if="post.vaultReport" @click="inspectVaultReport(post)" class="btn-icon text-blue-400 border-blue-400/30" type="button" title="Ispeziona Report Vault">
-                          🛡️
-                        </button>
-                        <button @click="editPost(post)" class="btn-icon btn-edit" type="button" title="Modifica Articolo">
-                          ✏️
-                        </button>
-                        <button @click="deletePost(post.id)" class="btn-icon btn-delete" type="button" title="Elimina Articolo">
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr v-if="posts.length === 0">
-                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
-                      📂 Nessun articolo presente nel Database Neon. Usa il form per crearne uno nuovo.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
-          </div>
 
-        </div> 
-      </main> 
-    </div>
-  </div>
-
-    <!-- ================= MODALE 1: VERIFICATION REPORT DKP VAULT ================= -->
-    <div
-      v-if="isVaultReportModalOpen && selectedPostForReport"
-      class="modal-backdrop"
-      @click.self="isVaultReportModalOpen = false"
-    >
-      <div class="modal-box vault-report-modal">
-        <div class="vault-modal-header">
-          <h3>🛡️ DKP Vault Verification Report</h3>
-          <span class="vault-cert-tag">AUTOMATED SAST/AST AUDIT ENGINE</span>
-        </div>
-
-        <div class="vault-report-content mt-4">
-          <h4 class="report-title">{{ selectedPostForReport.title }}</h4>
-          <p class="report-sub">
-            Autore: <strong>@{{ selectedPostForReport.authorName || 'user_community' }}</strong> • Data: {{ selectedPostForReport.date || 'Recente' }}
-          </p>
-
-          <div class="report-grid-metrics">
-            <div class="metric-box">
-              <span class="m-label">Score Autenticità</span>
-              <span class="m-val green">{{ selectedPostForReport.vaultReport?.authenticityScore || 95 }}%</span>
-            </div>
-            <div class="metric-box">
-              <span class="m-label">Security SAST Check</span>
-              <span class="m-val blue">{{ selectedPostForReport.vaultReport?.sastCheck || 'PASSED' }}</span>
-            </div>
-            <div class="metric-box">
-              <span class="m-label">Rischio Plagio/AI</span>
-              <span class="m-val purple">{{ selectedPostForReport.vaultReport?.plagiarismRisk || 'LOW' }}</span>
-            </div>
-          </div>
-
-          <div class="vault-hash-box">
-            <span class="hash-label">HASH CRITTOGRAFICO SHA-256 VAULT PREVIEW:</span>
-            <code>{{ selectedPostForReport.vaultReport?.vaultHashPreview || selectedPostForReport.vaultHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' }}</code>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="isVaultReportModalOpen = false" class="btn-cancel" style="width: 100%;">
-            Chiudi Report
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= MODALE 2: CATEGORIA ================= -->
-    <div
-      v-if="isCatModalOpen"
-      class="modal-backdrop"
-      @click.self="isCatModalOpen = false"
-    >
-      <div class="modal-box">
-        <div class="vault-modal-header">
-          <h3>
-            📁 {{ catForm.id ? "Modifica Categoria" : "Nuova Categoria" }}
-          </h3>
-          <button class="icon-btn" @click="isCatModalOpen = false">×</button>
-        </div>
-
-        <div class="form-stack mt-4">
-          <div class="form-group">
-            <label>NOME CATEGORIA *</label>
-            <input
-              v-model="catForm.name"
-              @input="handleCatNameInput"
-              type="text"
-              placeholder="Es. Cybersecurity & Vault"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label>URL SLUG *</label>
-            <input
-              v-model="catForm.slug"
-              type="text"
-              placeholder="cybersecurity-vault"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label>DESCRIZIONE BREVE (SEO)</label>
-            <textarea
-              v-model="catForm.description"
-              rows="2"
-              placeholder="Breve panoramica della categoria..."
-            ></textarea>
-          </div>
-
-          <!-- Selettore Icona Emoji COMPATTO -->
-          <div class="form-group">
-            <label>SELEZIONA ICONA EMOJI</label>
-            <div class="icons-grid emoji-scroll-picker">
-              <button
-                v-for="emoji in presetEmojis"
-                :key="emoji"
-                type="button"
-                @click="catForm.icon = emoji"
-                :class="['icon-btn', { active: catForm.icon === emoji }]"
+            <!-- ANTEPRIMA BADGE LIVE -->
+            <div class="bg-[#040814] border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+              <span class="text-slate-500 font-bold text-[10px] uppercase">Anteprima Live:</span>
+              <span 
+                class="px-3 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5"
+                :style="{
+                  backgroundColor: `${catForm.color}20`,
+                  color: catForm.color,
+                  borderColor: `${catForm.color}40`,
+                }"
               >
-                {{ emoji }}
-              </button>
-            </div>
-          </div>
-
-          <!-- TAG DELLA CATEGORIA -->
-          <div class="form-group">
-            <label>TAG DELLA CATEGORIA (PREMI INVIO PER AGGIUNGERE)</label>
-            <div class="tags-input-wrap">
-              <input
-                v-model="catForm.tagInput"
-                @keydown.enter.prevent="addCategoryTag"
-                type="text"
-                placeholder="Es. Docker, Rust, OAuth2..."
-              />
-              <button type="button" @click="addCategoryTag" class="btn-tag-add">+ Tag</button>
-            </div>
-            <div class="tags-pills-container">
-              <span v-for="tag in catForm.tags" :key="tag" class="tag-pill">
-                #{{ tag }} <button type="button" @click="removeCategoryTag(tag)" class="tag-del">×</button>
+                <span>{{ catForm.icon }}</span>
+                {{ catForm.name || "Nome Categoria" }}
               </span>
             </div>
           </div>
 
-          <!-- Selettore Colore Accent -->
-          <div class="form-group">
-            <label>Colore Badge & Accent</label>
-            <div class="color-picker">
-              <span
-                v-for="color in presetColors"
-                :key="color"
-                @click="catForm.color = color"
-                :style="{ backgroundColor: color }"
-                :class="['color-dot', { active: catForm.color === color }]"
-              ></span>
-              <input
-                v-model="catForm.color"
-                type="color"
-                class="color-input"
-                title="Seleziona colore personalizzato"
+          <div class="border-t border-slate-800 pt-4 flex justify-end gap-3 font-mono">
+            <button @click="isCatModalOpen = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
+              Annulla
+            </button>
+            <button @click="saveCategory" :disabled="isLoading" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
+              💾 Salva Categoria
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ================= MODALE 3: SOTTOCATEGORIA ================= -->
+    <Transition name="fade">
+      <div 
+        v-if="isSubModalOpen" 
+        class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4"
+        @click.self="isSubModalOpen = false"
+      >
+        <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-white font-bold text-base">
+              ➕ {{ subForm.id ? "Modifica Sottocategoria" : "Nuova Sottocategoria" }}
+            </h3>
+            <button @click="isSubModalOpen = false" class="text-slate-500 hover:text-white font-bold cursor-pointer">×</button>
+          </div>
+
+          <p class="text-slate-400 text-xs font-mono">
+            Categoria Padre: <strong class="text-emerald-400">{{ subForm.categoryName }}</strong>
+          </p>
+
+          <div class="flex flex-col gap-4 font-mono text-xs">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">Nome Sottocategoria *</label>
+              <input 
+                v-model="subForm.name" 
+                @input="handleSubNameInput"
+                type="text" 
+                class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                placeholder="Es. Penetration Testing"
+                required
               />
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">URL Slug *</label>
+              <input 
+                v-model="subForm.slug" 
+                type="text" 
+                class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                placeholder="penetration-testing"
+                required
+              />
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-slate-400 font-bold uppercase">Descrizione Breve *</label>
+              <textarea 
+                v-model="subForm.description" 
+                rows="3" 
+                class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                placeholder="Spiega brevemente quali argomenti trattare..."
+              ></textarea>
             </div>
           </div>
 
-          <!-- Anteprima Badge Live -->
-          <div class="badge-preview-box">
-            <span class="preview-label">Anteprima Live:</span>
-            <span
-              class="preview-badge"
-              :style="{
-                backgroundColor: `${catForm.color}20`,
-                color: catForm.color,
-                borderColor: `${catForm.color}40`,
-              }"
-            >
-              <span>{{ catForm.icon }}</span>
-              {{ catForm.name || "Nome Categoria" }}
-            </span>
+          <div class="border-t border-slate-800 pt-4 flex justify-end gap-3 font-mono">
+            <button @click="isSubModalOpen = false" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
+              Annulla
+            </button>
+            <button @click="saveSubcategory" :disabled="isLoading" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
+              💾 Salva Sottocategoria
+            </button>
           </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="saveCategory" class="btn-primary btn-save-cat" :disabled="isLoading">
-            💾 Salva Categoria
-          </button>
-          <button @click="isCatModalOpen = false" class="btn-cancel">
-            Annulla
-          </button>
         </div>
       </div>
-    </div>
+    </Transition>
 
-    <!-- ================= MODALE 3: SOTTOCATEGORIA ================= -->
-    <div
-      v-if="isSubModalOpen"
-      class="modal-backdrop"
-      @click.self="isSubModalOpen = false"
-    >
-      <div class="modal-box">
-        <div class="vault-modal-header">
-          <h3>
-            ➕ {{ subForm.id ? "Modifica Sottocategoria" : "Nuova Sottocategoria" }}
-          </h3>
-          <button class="icon-btn" @click="isSubModalOpen = false">×</button>
-        </div>
-        <p class="modal-sub-info">
-          Categoria Padre:
-          <strong class="highlight text-emerald">{{ subForm.categoryName }}</strong>
-        </p>
-
-        <div class="form-stack">
-          <div class="form-group">
-            <label>NOME SOTTOCATEGORIA *</label>
-            <input
-              v-model="subForm.name"
-              @input="handleSubNameInput"
-              type="text"
-              placeholder="Es. Penetration Testing"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label>URL SLUG *</label>
-            <input
-              v-model="subForm.slug"
-              type="text"
-              placeholder="penetration-testing"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label>DESCRIZIONE BREVE *</label>
-            <textarea
-              v-model="subForm.description"
-              rows="3"
-              placeholder="Spiega brevemente agli utenti quali argomenti trattare in questa sottocategoria..."
-            ></textarea>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="saveSubcategory" class="btn-primary btn-save-cat" :disabled="isLoading">
-            💾 Salva Sottocategoria
-          </button>
-          <button @click="isSubModalOpen = false" class="btn-cancel">
-            Annulla
-          </button>
-        </div>
-      </div>
-    </div>
-  
+  </div>
 </template>
 
 <style scoped>
-/* ==========================================================================
-   STILI NAVBAR ADMIN UNIFICATA v2.4-GOLD
-   ========================================================================== */
-.admin-nav-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
-
-.admin-nav-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.nav-branding {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-dot.green {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff87;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00ff87;
-}
-
-.nav-title {
-  color: #00f0ff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
-.admin-grid-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-dashboard {
-  color: #00ff87;
-  background: rgba(0, 255, 135, 0.04);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-}
-
-.btn-dashboard:hover,
-.btn-dashboard.active {
-  background: rgba(0, 255, 135, 0.12);
-  border-color: #00ff87;
-  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-dashboard-main {
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.06);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-}
-
-.btn-dashboard-main:hover {
-  background: rgba(0, 240, 255, 0.16);
-  border-color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-@media (max-width: 1024px) {
-  .admin-grid-nav {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 580px) {
-  .admin-grid-nav {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ==========================================================================
-   TOAST NOTIFICATION
-   ========================================================================== */
-.dkp-toast-success {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 999999;
-  background: #061811;
-  border: 1px solid #00dc82;
-  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35);
-  padding: 0.9rem 1.3rem;
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  max-width: 420px;
-}
-
-.toast-content {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: #f8fafc;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.toast-fade-enter-active,
-.toast-fade-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.toast-fade-enter-from,
-.toast-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-15px) scale(0.95);
-}
-
-/* ==========================================================================
-   CONTAINER & HEADER HERO
-   ========================================================================== */
-.admin-page-container {
-  padding: 2rem;
-  background-color: #020420;
-  min-height: 100vh;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-.header-section { margin-bottom: 2rem; }
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.3rem 0.75rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  margin-bottom: 0.75rem;
-  letter-spacing: 0.05em;
-}
-
-.badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #00dc82;
-  box-shadow: 0 0 8px #00dc82;
-}
-
-.header-section h1 {
-  font-size: 2rem;
-  font-weight: 800;
-  margin: 0 0 0.5rem 0;
-  letter-spacing: -0.02em;
-}
-.highlight { color: #00dc82; }
-.text-emerald { color: #00dc82; }
-.subtitle { color: #94a3b8; font-size: 0.9rem; margin: 0; }
-
-/* ==========================================================================
-   HYBRID GRID 380px / 1fr
-   ========================================================================== */
-.hybrid-grid {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 1.5rem;
-  align-items: flex-start;
-}
-
-@media (max-width: 1024px) {
-  .hybrid-grid { grid-template-columns: 1fr; }
-}
-
-.sidebar-panel {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.25rem;
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 1rem;
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.loading-state, .empty-state {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #64748b;
-  font-size: 0.88rem;
-}
-
-.compact-cat-list { display: flex; flex-direction: column; gap: 0.75rem; }
-
-.compact-cat-item {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 0.85rem;
-  transition: border-color 0.2s;
-}
-
-.compact-cat-item:hover { border-color: #334155; }
-.cat-item-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
-.cat-info-head { display: flex; align-items: center; gap: 0.6rem; }
-.cat-title-sm { margin: 0; font-size: 0.95rem; color: #fff; font-weight: 700; }
-.cat-slug-sm { font-size: 0.7rem; color: #64748b; font-family: monospace; }
-.cat-icon-badge.mini {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-}
-
-.subcategories-mini { border-top: 1px solid #1e293b; padding-top: 0.5rem; }
-.sub-header-mini { display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-bottom: 0.4rem; font-weight: 700; }
-.sub-badges { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.sub-badge { background: #090d16; border: 1px solid #1e293b; padding: 0.2rem 0.5rem; border-radius: 4px; color: #cbd5e1; display: inline-flex; align-items: center; }
-.mini-badge { padding: 0.15rem 0.4rem; font-size: 0.65rem; }
-.sub-del-mini { background: none; border: none; color: #ef4444; margin-left: 0.2rem; cursor: pointer; padding: 0; font-size: 0.85rem; }
-
-.alert { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 600; }
-.alert.error { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-
-/* ==========================================================================
-   MODALE VERIFICATION REPORT DKP VAULT
-   ========================================================================== */
-.vault-report-modal {
-  max-width: 580px !important;
-}
-
-.vault-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 12px;
-}
-
-.vault-modal-header h3 {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 900;
-  color: #00f0ff;
-}
-
-.vault-cert-tag {
-  font-size: 0.65rem;
-  font-weight: 900;
-  background: rgba(0, 240, 255, 0.1);
-  color: #00f0ff;
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
-
-.report-title {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: #ffffff;
-  margin: 0 0 4px 0;
-}
-
-.report-sub {
-  font-size: 0.8rem;
-  color: #94a3b8;
-  margin: 0 0 16px 0;
-}
-
-.report-grid-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.metric-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 10px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.m-label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-}
-
-.m-val {
-  font-size: 1.1rem;
-  font-weight: 900;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-}
-
-.m-val.green { color: #00dc82; }
-.m-val.blue { color: #38bdf8; }
-.m-val.purple { color: #c084fc; }
-
-.vault-hash-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 12px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hash-label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: #94a3b8;
-  letter-spacing: 0.05em;
-}
-
-.vault-hash-box code {
-  color: #00ff87;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.75rem;
-  word-break: break-all;
-}
-
-/* ==========================================================================
-   CARDS, TABLES & FORM STYLES
-   ========================================================================== */
-.card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-.card-title { margin: 0 0 1.25rem 0; font-size: 1.2rem; font-weight: 800; color: #fff; }
-
-.form-stack { display: flex; flex-direction: column; gap: 1rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.35rem; }
-.form-group label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-
-.form-group input, .form-group select, .form-group textarea {
-  width: 100%;
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.65rem;
-  border-radius: 8px;
-  outline: none;
-  font-size: 0.875rem;
-  box-sizing: border-box;
-}
-
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #00dc82; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
-.btn-primary, .btn-submit {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 800;
-  border: none;
-  padding: 0.65rem 1.25rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary:hover, .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
-.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
-.btn-link { background: none; border: none; color: #00dc82; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
-.btn-link:hover { text-decoration: underline; }
-
-.actions { display: flex; gap: 0.3rem; }
-.btn-icon { background: #1e293b; border: none; color: #fff; padding: 0.25rem 0.4rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-.btn-icon.danger:hover { background: rgba(239, 68, 68, 0.2); }
-
-/* TABELLA PUBBLICAZIONI */
-.table-responsive { overflow-x: auto; }
-.dkp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
-.dkp-table th { background: #020420; color: #64748b; padding: 0.75rem; border-bottom: 1px solid #1e293b; text-transform: uppercase; font-size: 0.7rem; }
-.dkp-table td { padding: 0.75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-.font-bold { font-weight: 700; color: #ffffff; }
-.cat-badge { background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
-.status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; }
-.status-badge.success { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.status-badge.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.status-badge.draft { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
-.date-text, .views-text { color: #94a3b8; font-size: 0.8rem; }
-
-/* AZIONI TABELLA (MODIFICA & ELIMINA) */
-.action-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.btn-icon {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 0.35rem 0.6rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-edit:hover {
-  background: rgba(56, 189, 248, 0.2);
-  border-color: #38bdf8;
-}
-
-.btn-delete:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: #ef4444;
-}
-
-/* ==========================================================================
-   MODALI E SELETTORE EMOJI COMPATTO SCORREVOLE
-   ========================================================================== */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20000;
-  padding: 1rem;
-}
-
-.modal-box {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
-}
-
-.modal-box h3 { margin: 0; font-size: 1.2rem; font-weight: 900; color: #ffffff; }
-.modal-sub-info { font-size: 0.85rem; color: #94a3b8; margin: -0.5rem 0 0.5rem; }
-
-/* Scroll dedicato unicamente per il form all'interno delle modali */
-.modal-box .form-stack {
-  overflow-y: auto;
-  flex: 1;
-  padding-right: 8px;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.modal-box .form-stack::-webkit-scrollbar { width: 6px; }
-.modal-box .form-stack::-webkit-scrollbar-thumb { background: rgba(0, 220, 130, 0.3); border-radius: 4px; }
-.modal-box .form-stack::-webkit-scrollbar-thumb:hover { background: #00dc82; }
-
-.modal-footer {
-  flex-shrink: 0;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  gap: 12px;
-}
-
-/* EMOJI PICKER CON SCROLLBAR COMPATTA (MAX 110PX) */
-.emoji-scroll-picker {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.4rem;
-  max-height: 110px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-}
-
-.emoji-scroll-picker::-webkit-scrollbar { width: 6px; }
-.emoji-scroll-picker::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-.emoji-scroll-picker::-webkit-scrollbar-thumb:hover { background: #00dc82; }
-
-.icon-btn {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  font-size: 1.2rem;
-  padding: 0.4rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: #fff;
-}
-
-.icon-btn:hover, .icon-btn.active {
-  border-color: #00dc82;
-  background: rgba(0, 220, 130, 0.15);
-}
-
-/* INPUT TAGS CATEGORIA */
-.tags-input-wrap { display: flex; gap: 0.5rem; }
-.btn-tag-add { background: #1e293b; color: #38bdf8; border: none; font-weight: 800; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; }
-.tags-pills-container {
-  max-height: 120px;
-  overflow-y: auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  margin-top: 8px;
-}
-
-.tag-pill { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; }
-.tag-del { background: transparent; border: none; color: #ef4444; font-weight: 900; cursor: pointer; padding: 0; line-height: 1; }
-
-/* COLOR PICKER & PREVIEW */
-.color-picker { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
-.color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-.color-dot.active { border-color: #ffffff; transform: scale(1.1); }
-.color-input { width: 32px; height: 32px; padding: 0; border: none; background: none; cursor: pointer; }
-
-.badge-preview-box { display: flex; align-items: center; gap: 0.75rem; background: #020420; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #1e293b; }
-.preview-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
-.preview-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.8rem; font-weight: 800; border: 1px solid; }
-
-.btn-save-cat { background: #00dc82; color: #020420; font-weight: 900; padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer; }
-.btn-cancel { background: #1e293b; color: #cbd5e1; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 700; }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

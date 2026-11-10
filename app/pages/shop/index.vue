@@ -1,92 +1,133 @@
 <!-- app/pages/shop/index.vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
+useHead({
+  title: 'DKP Developer API Gateway & Ads Marketplace v2.6',
+  meta: [
+    { name: 'description', content: 'Accedi alle API proprietarie ad alte prestazioni per Nuxt 4, Crawler, Jobs Feed e al network pubblicitario DKP Ads.' }
+  ]
+})
+
+export interface ShopProduct {
+  id: string
+  title: string
+  type: 'API_LICENSE' | 'ADS_SPONSOR'
+  category: 'CRAWLER API' | 'JOBS FEED API' | 'MAIL & WEBHOOKS API' | 'NODES API' | 'SPONSORED JOB ADS' | 'NEWSLETTER ADS' | 'BANNER ADS'
+  price: number
+  billingCycle: 'MONTHLY' | 'ANNUAL' | 'PER_10K_CALLS' | 'ONE_TIME'
+  rateLimit: string
+  endpoint: string
+  description: string
+  isFeatured?: boolean
+  isBeta?: boolean
+}
+
+// Catalogo Prodotti Pubblico (Sincronizzato con l'Ecosistema API & Ads)
+const products = ref<ShopProduct[]>([
+  {
+    id: 'dkp-api-crawler-ent',
+    title: 'DKP Crawler Engine API',
+    type: 'API_LICENSE',
+    category: 'CRAWLER API',
+    price: 149.00,
+    billingCycle: 'MONTHLY',
+    rateLimit: '1.000.000 req/mo',
+    endpoint: '/api/v2.6/crawler',
+    description: 'Accesso completo REST & Nitro Stream per l\'ingestione automatizzata di notizie tech, HackerNews ed AI summarization.',
+    isFeatured: true,
+    isBeta: false
+  },
+  {
+    id: 'dkp-api-jobs-pro',
+    title: 'Tech Jobs Feed API Pro',
+    type: 'API_LICENSE',
+    category: 'JOBS FEED API',
+    price: 79.00,
+    billingCycle: 'MONTHLY',
+    rateLimit: '250.000 req/mo',
+    endpoint: '/api/v2.6/jobs/feed',
+    description: 'Sincronizzazione in real-time delle offerte di lavoro tech verificate da RemoteOK con tag e range salariali.',
+    isFeatured: false,
+    isBeta: false
+  },
+  {
+    id: 'dkp-api-mail-webhook',
+    title: 'DKP Mail & Webhooks API',
+    type: 'API_LICENSE',
+    category: 'MAIL & WEBHOOKS API',
+    price: 49.00,
+    billingCycle: 'MONTHLY',
+    rateLimit: '100.000 req/mo',
+    endpoint: '/api/v2.6/mail/dispatch',
+    description: 'Integrazione diretta con la pipeline email, gestione autoresponder sequenziali e verifica Deliverability DKIM/SPF.',
+    isFeatured: false,
+    isBeta: false
+  },
+  {
+    id: 'dkp-ads-job-featured',
+    title: 'Sponsored Job Listing (Featured)',
+    type: 'ADS_SPONSOR',
+    category: 'SPONSORED JOB ADS',
+    price: 199.00,
+    billingCycle: 'ONE_TIME',
+    rateLimit: '30 Giorni Highlight',
+    endpoint: '/api/v2.6/ads/jobs',
+    description: 'Posizionamento in cima al Tech Jobs Hub + Badge Gold + Invio dedicato nel digest settimanale della Newsletter.',
+    isFeatured: false,
+    isBeta: true
+  },
+  {
+    id: 'dkp-ads-newsletter-header',
+    title: 'DKP Newsletter Header Ad',
+    type: 'ADS_SPONSOR',
+    category: 'NEWSLETTER ADS',
+    price: 299.00,
+    billingCycle: 'ONE_TIME',
+    rateLimit: '1 Uscita Dedicated (~15k Devs)',
+    endpoint: '/api/v2.6/ads/newsletter',
+    description: 'Banner pubblicitario esclusivo posizionato in testa al bollettino settimanale inviato alla community tech DKP.',
+    isFeatured: false,
+    isBeta: true
+  },
+  {
+    id: 'dkp-ads-nodes-banner',
+    title: 'DKP Nodes Sidebar Banner Ad',
+    type: 'ADS_SPONSOR',
+    category: 'BANNER ADS',
+    price: 129.00,
+    billingCycle: 'MONTHLY',
+    rateLimit: '50.000 Impression stimate',
+    endpoint: '/api/v2.6/ads/nodes',
+    description: 'Banner fisso nativo nella sidebar dei Nodi della community con tracciamento click a zero impatto sulle prestazioni.',
+    isFeatured: false,
+    isBeta: true
+  }
+])
+
+// Filtri & Ricerca
+const searchQuery = ref('')
+const activeTypeFilter = ref<'ALL' | 'API_LICENSE' | 'ADS_SPONSOR'>('ALL')
+
+const filteredProducts = computed(() => {
+  return products.value.filter(p => {
+    const matchesType = activeTypeFilter.value === 'ALL' || p.type === activeTypeFilter.value
+    const matchesSearch = p.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                          p.description.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                          p.category.toLowerCase().includes(searchQuery.value.toLowerCase())
+    return matchesType && matchesSearch
+  })
+})
+
+// Stato Checkout Modal
 const showModal = ref(false)
-const selectedProduct = ref<any>(null)
+const selectedProduct = ref<ShopProduct | null>(null)
 const customerEmail = ref('')
 const paymentProvider = ref<'stripe' | 'paypal'>('stripe')
 const isLoading = ref(false)
 const errorMessage = ref('')
 
-// Pacchetti aggiornati con nuovi Tier API e Moduli ADS in Beta
-const products = ref([
-  {
-    id: 'dkp-api-core-pass',
-    title: 'DKP Core API Starter',
-    category: 'DEVELOPER API',
-    categoryClass: 'badge-core',
-    price: 19.00,
-    rateLimit: '15.000 req/mo',
-    endpoint: '/api/v2.5/core',
-    description: 'Accesso base al Kernel DKP, notarizzazione crittografica Vault e routing standard.',
-    isFeatured: false,
-    isBeta: false
-  },
-  {
-    id: 'dkp-api-neural-pro',
-    title: 'DKP Neural Trinity Pro',
-    category: 'AI & LLM ENGINE',
-    categoryClass: 'badge-ai',
-    price: 49.00,
-    rateLimit: '50.000 req/mo',
-    endpoint: '/api/v2.5/neural',
-    description: 'Accesso completo ai modelli DKP Trinity (MoE, Coder, Pro) e streaming in tempo reale su OpenUI Studio.',
-    isFeatured: true,
-    isBeta: false
-  },
-  {
-    id: 'dkp-api-neural-ultra',
-    title: 'DKP Neural Trinity Ultra',
-    category: 'AI & POWER ENGINE',
-    categoryClass: 'badge-ai',
-    price: 99.00,
-    rateLimit: '250.000 req/mo',
-    endpoint: '/api/v2.5/neural',
-    description: 'Progettato per heavy user e team. Generazione UI intensiva, audit IA illimitati e priorità di calcolo sul Gateway.',
-    isFeatured: false,
-    isBeta: false
-  },
-  {
-    id: 'dkp_ads_starter_100',
-    title: 'DKP Ads Starter Pack',
-    category: 'ADVERTISING',
-    categoryClass: 'badge-ads',
-    price: 9.00,
-    rateLimit: '100 Click/mo',
-    endpoint: '/api/v2.5/ads',
-    description: 'Metti il tuo prodotto davanti agli occhi di migliaia di sviluppatori. 100 Click reali garantiti sul nostro network.',
-    isFeatured: false,
-    isBeta: true
-  },
-  {
-    id: 'dkp-api-ads-network',
-    title: 'DKP Ads Publisher API',
-    category: 'MONETIZATION ADS',
-    categoryClass: 'badge-ads',
-    price: 29.00,
-    rateLimit: 'Illimitato (Publisher)',
-    endpoint: '/api/v2.5/ads/publisher',
-    description: 'Il nostro motore di inserzioni DKP Ads per monetizzare il tuo traffico tech con banner mirati e payout istantanei.',
-    isFeatured: false,
-    isBeta: true
-  },
-  {
-    id: 'dkp-api-enterprise-cluster',
-    title: 'DKP Enterprise Cluster',
-    category: 'ENTERPRISE SLA',
-    categoryClass: 'badge-flagship',
-    price: 199.00,
-    rateLimit: 'Req. Illimitate / SLA 99.99%',
-    endpoint: '/api/v2.5/enterprise',
-    description: 'Infrastruttura GCP dedicata con bilanciamento di carico, HSM crittografato e supporto architetturale prioritario.',
-    isFeatured: false,
-    isBeta: false
-  }
-])
-
-const openCheckoutModal = (product: any) => {
-  if (product.isBeta) return
+const openCheckoutModal = (product: ShopProduct) => {
   selectedProduct.value = product
   errorMessage.value = ''
   showModal.value = true
@@ -109,7 +150,8 @@ const executeCheckout = async () => {
       productId: selectedProduct.value.id,
       productName: selectedProduct.value.title,
       amount: selectedProduct.value.price,
-      customerEmail: customerEmail.value
+      customerEmail: customerEmail.value,
+      type: selectedProduct.value.type
     }
 
     const endpoint = paymentProvider.value === 'stripe' ? '/api/checkout/stripe' : '/api/checkout/paypal'
@@ -122,7 +164,7 @@ const executeCheckout = async () => {
     if (redirectUrl) {
       window.location.href = redirectUrl
     } else {
-      throw new Error('URL di reindirizzamento pagamento non generato')
+      throw new Error('URL di reindirizzamento pagamento non generato dal server.')
     }
   } catch (err: any) {
     console.error('[CHECKOUT ERROR]:', err)
@@ -133,184 +175,249 @@ const executeCheckout = async () => {
 </script>
 
 <template>
-  <div class="shop-container">
-    <!-- Header dello Shop -->
-    <div class="shop-header">
-      <span class="badge-gold">DKP v2.5-GOLD API ECOSYSTEM</span>
-      <h1 class="shop-title">DKP Developer <span class="highlight">API Gateway</span></h1>
-      <p class="shop-subtitle">Accedi alle API proprietarie ad alte prestazioni per Nuxt 4, LLM Trinity e al programma Early Access del network DKP Ads.</p>
-    </div>
+  <div class="min-h-screen bg-[#020420] text-slate-300 py-12 px-4 sm:px-6 font-sans">
+    <div class="max-w-7xl mx-auto flex flex-col gap-10">
+      
+      <!-- HEADER HERO SHOP SAAS & ADS v2.6 -->
+      <header class="text-center flex flex-col items-center gap-4 relative overflow-hidden py-8">
+        <!-- Glows Decorativi di Sfondo -->
+        <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute top-10 right-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-    <!-- Griglia API Prodotti -->
-    <div class="products-grid">
-      <article v-for="product in products" :key="product.id" class="product-card" :class="{ 'featured-card': product.isFeatured }">
-        <div class="card-header">
-          <span :class="['category-badge', product.categoryClass]">{{ product.category }}</span>
-          <span class="price">€{{ product.price.toFixed(2) }}<span class="recurring-text">/mo</span></span>
+        <div class="flex items-center gap-2 font-mono">
+          <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(0,220,130,0.25)]">
+            DKP v2.6-PURE-SQL ECOSYSTEM
+          </span>
+          <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+            📢 ADS &amp; SPONSOR BETA
+          </span>
         </div>
+
+        <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+          DKP Developer <span class="text-emerald-400">API &amp; Ads Marketplace</span>
+        </h1>
         
-        <h3 class="product-title">{{ product.title }}</h3>
-        <p class="product-desc">{{ product.description }}</p>
+        <p class="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed">
+          Accedi agli endpoint API ad alte prestazioni per Crawler, Jobs Feed e Webhooks, oppure promuovi il tuo brand con gli spot pubblicitari del network DKP Ads.
+        </p>
+      </header>
 
-        <div class="file-meta">
-          <div class="meta-row">
-            <span>⚡ rate limit: <strong class="text-white">{{ product.rateLimit }}</strong></span>
-            <span>🔑 auth: <strong class="text-white">Bearer Token</strong></span>
-          </div>
-          <div class="file-path">
-            📁 route base: <span class="path-text">{{ product.endpoint }}</span>
-          </div>
+      <!-- BARRA FILTRI E RICERCA -->
+      <section class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+        <div class="relative flex-1">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Cerca piano API, endpoint o tipologia di Ads..." 
+            class="w-full bg-[#040814] border border-slate-800 pl-11 pr-4 py-3 rounded-xl text-slate-100 text-xs sm:text-sm outline-none focus:border-emerald-500 transition-all font-mono"
+          />
         </div>
 
-        <button 
-          v-if="!product.isBeta"
-          @click="openCheckoutModal(product)" 
-          class="btn-buy" 
-          :class="{ 'btn-gold': product.isFeatured }"
+        <div class="flex items-center gap-2 font-mono text-xs flex-wrap">
+          <button 
+            @click="activeTypeFilter = 'ALL'" 
+            :class="[
+              'px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer border',
+              activeTypeFilter === 'ALL' 
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(0,220,130,0.2)]' 
+                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+            ]"
+          >
+            Tutti ({{ products.length }})
+          </button>
+          <button 
+            @click="activeTypeFilter = 'API_LICENSE'" 
+            :class="[
+              'px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer border',
+              activeTypeFilter === 'API_LICENSE' 
+                ? 'bg-sky-500/15 text-sky-400 border-sky-500/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]' 
+                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+            ]"
+          >
+            🔑 Licenze API
+          </button>
+          <button 
+            @click="activeTypeFilter = 'ADS_SPONSOR'" 
+            :class="[
+              'px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer border',
+              activeTypeFilter === 'ADS_SPONSOR' 
+                ? 'bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' 
+                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+            ]"
+          >
+            📢 Ads &amp; Sponsor (Beta)
+          </button>
+        </div>
+      </section>
+
+      <!-- GRIGLIA PRODOTTI -->
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <article 
+          v-for="product in filteredProducts" 
+          :key="product.id" 
+          :class="[
+            'bg-[#080d1a] border rounded-2xl p-6 shadow-xl flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 group relative overflow-hidden backdrop-blur-md',
+            product.isFeatured ? 'border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.15)]' :
+            product.type === 'ADS_SPONSOR' ? 'border-amber-500/30 hover:border-amber-500/60' :
+            'border-slate-800/80 hover:border-emerald-500/50'
+          ]"
         >
-          🚀 Attiva API Pass
-        </button>
-        <button 
-          v-else 
-          disabled 
-          class="btn-buy btn-disabled"
-        >
-          🚧 In Beta Test
-        </button>
-      </article>
-    </div>
+          <!-- Badge Featured / Glow internal -->
+          <div v-if="product.isFeatured" class="absolute -right-12 -top-12 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
 
-    <!-- 💳 MODAL DI CHECKOUT API -->
-    <Teleport to="body">
-      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-card">
-          <button class="modal-close" @click="closeModal">✕</button>
-          
-          <div class="modal-header">
-            <span class="modal-badge">DKP SECURE GATEWAY</span>
-            <h3>{{ selectedProduct?.title }}</h3>
-            <div class="modal-price">
-              €{{ selectedProduct?.price.toFixed(2) }} /mo 
-              <span class="tax-info">(Fatturazione mensile - Cancelli quando vuoi)</span>
-            </div>
-          </div>
-
-          <form @submit.prevent="executeCheckout" class="modal-form">
-            <div class="form-group">
-              <label for="email">Email per ricezione API Token & Credenziali:</label>
-              <input 
-                id="email" 
-                v-model="customerEmail" 
-                type="email" 
-                placeholder="dev@tuodominio.com" 
-                required 
-                class="form-input"
-              />
-            </div>
-
-            <div class="form-group">
-              <label>Seleziona Gateway di Pagamento:</label>
-              <div class="payment-options">
-                <label :class="['payment-card', { active: paymentProvider === 'stripe' }]">
-                  <input type="radio" v-model="paymentProvider" value="stripe" name="provider" />
-                  <div class="payment-info">
-                    <span class="provider-title">💳 Carta di Credito / Google Pay</span>
-                    <span class="provider-sub">Stripe Secure Checkout</span>
-                  </div>
-                </label>
-
-                <label :class="['payment-card', { active: paymentProvider === 'paypal' }]">
-                  <input type="radio" v-model="paymentProvider" value="paypal" name="provider" />
-                  <div class="payment-info">
-                    <span class="provider-title">🅿️ PayPal</span>
-                    <span class="provider-sub">Abbonamento ricorrente PayPal</span>
-                  </div>
-                </label>
+          <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center font-mono">
+              <div class="flex items-center gap-1.5">
+                <span 
+                  :class="[
+                    'px-2.5 py-0.5 rounded text-[10px] font-black border uppercase',
+                    product.type === 'API_LICENSE' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  ]"
+                >
+                  {{ product.category }}
+                </span>
+                <span v-if="product.isBeta" class="px-2 py-0.5 rounded text-[9px] font-extrabold bg-amber-500 text-slate-950 uppercase">
+                  BETA
+                </span>
+              </div>
+              
+              <div class="flex flex-col items-end">
+                <span class="text-2xl font-black text-sky-400 font-mono">€{{ product.price.toFixed(2) }}</span>
+                <span class="text-[10px] text-slate-500 uppercase font-bold font-mono">
+                  {{ product.billingCycle === 'MONTHLY' ? '/mese' : product.billingCycle === 'ANNUAL' ? '/anno' : 'una tantum' }}
+                </span>
               </div>
             </div>
 
-            <div v-if="errorMessage" class="error-banner">
-              ⚠️ {{ errorMessage }}
+            <h3 class="text-white font-bold text-lg group-hover:text-emerald-400 transition-colors">{{ product.title }}</h3>
+            <p class="text-slate-400 text-xs leading-relaxed line-clamp-3">{{ product.description }}</p>
+
+            <div class="bg-[#040814] border border-slate-800/80 rounded-xl p-3 font-mono text-[11px] flex flex-col gap-1.5">
+              <div class="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                <span>⚡ Rate limit: <strong class="text-white font-bold">{{ product.rateLimit }}</strong></span>
+                <span>🔑 Auth: <strong class="text-white font-bold">Bearer Token</strong></span>
+              </div>
+              <div class="text-slate-400 truncate pt-0.5">
+                📁 Route base: <span class="text-emerald-400 font-bold">{{ product.endpoint }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-800/60 font-mono">
+            <button 
+              @click="openCheckoutModal(product)" 
+              :class="[
+                'w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2',
+                product.isFeatured 
+                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.3)]' 
+                  : product.type === 'ADS_SPONSOR'
+                  ? 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_15px_rgba(0,220,130,0.25)]'
+              ]"
+            >
+              <span v-if="product.type === 'API_LICENSE'">🚀 Attiva API Pass</span>
+              <span v-else>📢 Prenota Spot Ads</span>
+            </button>
+          </div>
+        </article>
+
+        <div v-if="filteredProducts.length === 0" class="col-span-full p-12 text-center text-slate-500 font-mono text-xs">
+          📭 Nessun pacchetto trovato corrispondente ai criteri di ricerca.
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 💳 MODAL DI CHECKOUT API / ADS -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div 
+          v-if="showModal" 
+          class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-md flex items-center justify-center p-4" 
+          @click.self="closeModal"
+        >
+          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 sm:p-8 shadow-2xl flex flex-col gap-6 relative font-sans">
+            <button @click="closeModal" class="absolute top-5 right-5 text-slate-500 hover:text-white font-bold text-xl cursor-pointer">✕</button>
+
+            <div class="flex flex-col gap-2 border-b border-slate-800 pb-4">
+              <span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase font-mono w-fit">
+                DKP SECURE GATEWAY
+              </span>
+              <h3 class="text-white font-black text-xl sm:text-2xl">{{ selectedProduct?.title }}</h3>
+              <div class="text-2xl font-black text-emerald-400 font-mono flex items-baseline gap-2 mt-1">
+                €{{ selectedProduct?.price.toFixed(2) }} 
+                <span class="text-xs text-slate-500 font-normal">
+                  ({{ selectedProduct?.billingCycle === 'MONTHLY' ? 'Fatturazione mensile' : selectedProduct?.billingCycle === 'ANNUAL' ? 'Fatturazione annuale' : 'Pagamento una tantum' }})
+                </span>
+              </div>
             </div>
 
-            <button type="submit" class="btn-checkout-submit" :disabled="isLoading">
-              <span v-if="!isLoading">⚡ Genera Sub & API Key</span>
-              <span v-else>⌛ Connessione al Gateway...</span>
-            </button>
-          </form>
+            <form @submit.prevent="executeCheckout" class="flex flex-col gap-5 font-mono text-xs">
+              <div class="flex flex-col gap-1.5">
+                <label for="email" class="text-slate-400 font-bold uppercase">Email per ricezione API Token &amp; Credenziali *</label>
+                <input 
+                  id="email" 
+                  v-model="customerEmail" 
+                  type="email" 
+                  placeholder="dev@tuodominio.com" 
+                  required 
+                  class="bg-[#040814] border border-slate-800 text-white px-4 py-3 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all text-sm"
+                />
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label class="text-slate-400 font-bold uppercase">Seleziona Gateway di Pagamento *</label>
+                <div class="flex flex-col gap-2.5">
+                  <label 
+                    :class="[
+                      'flex items-center gap-3 bg-[#040814] border rounded-xl p-3.5 cursor-pointer transition-all',
+                      paymentProvider === 'stripe' ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-800 hover:border-slate-700'
+                    ]"
+                  >
+                    <input type="radio" v-model="paymentProvider" value="stripe" name="provider" class="w-4 h-4 accent-emerald-500 cursor-pointer" />
+                    <div class="flex flex-col">
+                      <span class="text-white font-bold text-sm">💳 Carta di Credito / Google Pay</span>
+                      <span class="text-[11px] text-slate-500">Stripe Secure Checkout</span>
+                    </div>
+                  </label>
+
+                  <label 
+                    :class="[
+                      'flex items-center gap-3 bg-[#040814] border rounded-xl p-3.5 cursor-pointer transition-all',
+                      paymentProvider === 'paypal' ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-800 hover:border-slate-700'
+                    ]"
+                  >
+                    <input type="radio" v-model="paymentProvider" value="paypal" name="provider" class="w-4 h-4 accent-emerald-500 cursor-pointer" />
+                    <div class="flex flex-col">
+                      <span class="text-white font-bold text-sm">🅿️ PayPal</span>
+                      <span class="text-[11px] text-slate-500">Pagamento / Abbonamento PayPal</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div v-if="errorMessage" class="bg-rose-500/10 border border-rose-500/30 text-rose-300 p-3 rounded-xl text-xs">
+                ⚠️ {{ errorMessage }}
+              </div>
+
+              <button 
+                type="submit" 
+                :disabled="isLoading" 
+                class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 to-sky-500 hover:from-emerald-400 hover:to-sky-400 text-slate-950 font-black rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(0,220,130,0.3)] cursor-pointer disabled:opacity-50 mt-2"
+              >
+                <span v-if="!isLoading">⚡ Genera Sub &amp; API Key</span>
+                <span v-else>⌛ Connessione al Gateway...</span>
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </div>
 </template>
 
 <style scoped>
-.shop-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #f8fafc; font-family: system-ui, sans-serif; }
-.shop-header { text-align: center; margin-bottom: 3rem; }
-.badge-gold { background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); color: #eab308; padding: 0.3rem 0.8rem; border-radius: 20px; font-weight: 800; font-size: 0.8rem; }
-.shop-title { font-size: 2.8rem; font-weight: 900; margin: 0.8rem 0 0.4rem 0; }
-.highlight { color: #00dc82; }
-.shop-subtitle { color: #94a3b8; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
-
-/* Product Cards */
-.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
-.product-card { background: rgba(9, 13, 22, 0.85); border: 1px solid #1e293b; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; backdrop-filter: blur(10px); transition: all 0.25s ease; }
-.product-card:hover { border-color: #00dc82; box-shadow: 0 10px 30px rgba(0,220,130,0.15); }
-.product-card.featured-card { border-color: #eab308; box-shadow: 0 0 20px rgba(234, 179, 8, 0.15); }
-
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-.category-badge { font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; }
-.badge-core { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
-.badge-ai { background: rgba(244, 114, 182, 0.1); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); }
-.badge-ads { background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); }
-.badge-flagship { background: linear-gradient(90deg, rgba(167,139,250,0.1), rgba(244,114,182,0.1)); color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.4); }
-
-.price { font-size: 1.6rem; font-weight: 900; color: #38bdf8; }
-.recurring-text { font-size: 0.8rem; color: #94a3b8; font-weight: 500; }
-
-.product-title { font-size: 1.2rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #fff; }
-.product-desc { font-size: 0.85rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem; flex-grow: 1; }
-
-.file-meta { background: #060a12; border: 1px solid #1e293b; border-radius: 8px; padding: 0.8rem; margin-bottom: 1.2rem; font-size: 0.75rem; color: #64748b; }
-.meta-row { display: flex; justify-content: space-between; margin-bottom: 0.4rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.4rem; }
-.text-white { color: #f8fafc; }
-.path-text { color: #00dc82; font-family: monospace; }
-
-/* Pulsanti */
-.btn-buy { background: #00dc82; color: #020420; border: none; padding: 0.85rem; border-radius: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: 0.2s; width: 100%; }
-.btn-buy:hover:not(.btn-disabled) { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 220, 130, 0.3); }
-.btn-gold { background: #eab308; color: #020420; }
-.btn-gold:hover:not(.btn-disabled) { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); }
-
-.btn-disabled { background: #1e293b; color: #64748b; cursor: not-allowed; opacity: 0.8; }
-.btn-disabled:hover { transform: none; box-shadow: none; }
-
-/* Modal Styling */
-.modal-overlay { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 1rem; }
-.modal-card { background: #090d16; border: 1px solid #334155; border-radius: 20px; width: 100%; max-width: 520px; padding: 2rem; position: relative; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
-.modal-close { position: absolute; top: 1.2rem; right: 1.2rem; background: transparent; border: none; color: #64748b; font-size: 1.2rem; cursor: pointer; }
-.modal-close:hover { color: #fff; }
-
-.modal-badge { font-size: 0.65rem; font-weight: 900; background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; letter-spacing: 1px; }
-.modal-header h3 { font-size: 1.3rem; margin: 0.5rem 0; color: #fff; }
-.modal-price { font-size: 1.6rem; font-weight: 900; color: #00dc82; margin-bottom: 1.5rem; }
-.tax-info { font-size: 0.75rem; color: #64748b; font-weight: 400; }
-
-.form-group { margin-bottom: 1.2rem; text-align: left; }
-.form-group label { display: block; font-size: 0.8rem; color: #cbd5e1; font-weight: 600; margin-bottom: 0.5rem; }
-.form-input { width: 100%; background: #020420; border: 1px solid #334155; border-radius: 8px; padding: 0.8rem 1rem; color: #fff; font-size: 0.9rem; outline: none; }
-.form-input:focus { border-color: #00dc82; }
-
-.payment-options { display: flex; flex-direction: column; gap: 0.8rem; }
-.payment-card { display: flex; align-items: center; background: #020420; border: 1px solid #334155; border-radius: 10px; padding: 0.8rem 1rem; cursor: pointer; transition: 0.2s; }
-.payment-card.active { border-color: #00dc82; background: rgba(0, 220, 130, 0.05); }
-.payment-card input { margin-right: 0.8rem; accent-color: #00dc82; }
-.payment-info { display: flex; flex-direction: column; }
-.provider-title { font-weight: 700; color: #fff; font-size: 0.85rem; }
-.provider-sub { font-size: 0.7rem; color: #64748b; }
-
-.error-banner { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; }
-.btn-checkout-submit { background: linear-gradient(135deg, #00dc82, #38bdf8); color: #020420; border: none; padding: 1rem; border-radius: 10px; font-weight: 900; font-size: 0.95rem; cursor: pointer; width: 100%; transition: 0.2s; }
-.btn-checkout-submit:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 0 25px rgba(0, 220, 130, 0.4); }
-.btn-checkout-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

@@ -2,14 +2,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-useDkpSeo({
-  title: 'Tech Jobs Hub v2.4-GOLD - DKP Admin Center',
-  description: 'Gestione offerte di lavoro tech, pubblicazione annunci e sincronizzazione automatica.'
+useHead({
+  title: 'Tech Jobs Hub v2.6 — DKP Admin Center',
+  meta: [
+    { name: 'description', content: 'Gestione offerte di lavoro tech, pubblicazione annunci e sincronizzazione automatica.' }
+  ]
 })
 
-const { getMainUrl, getMailUrl } = useDomain()
+const { getMainUrl, getApiUrl } = useDomain()
 
-interface Job {
+export interface Job {
   id?: string | number
   title: string
   company: string
@@ -35,7 +37,7 @@ const jobs = ref<Job[]>([
     tags: 'Vue.js, Nuxt 3, TypeScript, Tailwind',
     salary: '€65.000 - €85.000 / anno',
     applyUrl: 'https://careers.pulsetech.io',
-    description: 'Ricerchiamo uno sviluppatore Senior Nuxt per scalare le nostre architetture distribuite SaaS v2.4.',
+    description: 'Ricerchiamo uno sviluppatore Senior Nuxt per scalare le nostre architetture distribuite SaaS v2.6.',
     isFeatured: true,
     isActive: true,
     createdAt: '2026-10-01'
@@ -79,9 +81,11 @@ const currentJob = ref<Job>({
 // Gestione Toast Notifiche
 const showToast = ref(false)
 const toastMessage = ref('')
+const toastType = ref<'success' | 'error' | 'warning'>('success')
 
-function triggerToast(msg: string) {
+function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
   toastMessage.value = msg
+  toastType.value = type
   showToast.value = true
   setTimeout(() => {
     showToast.value = false
@@ -134,7 +138,7 @@ function openEditModal(job: Job) {
 // Salva o Aggiorna Lavoro
 async function saveJob() {
   if (!currentJob.value.title || !currentJob.value.company || !currentJob.value.applyUrl) {
-    triggerToast('❌ Compila Titolo, Azienda e Link di Candidatura!')
+    triggerToast('❌ Compila Titolo, Azienda e Link di Candidatura!', 'warning')
     return
   }
 
@@ -147,7 +151,7 @@ async function saveJob() {
       })
       const index = jobs.value.findIndex(j => j.id === currentJob.value.id)
       if (index !== -1) jobs.value[index] = { ...currentJob.value }
-      triggerToast('✅ Offerta di lavoro aggiornata con successo!')
+      triggerToast('✅ Offerta di lavoro aggiornata con successo!', 'success')
     } else {
       const newId = Date.now()
       const newJobEntry = { ...currentJob.value, id: newId, createdAt: new Date().toISOString().split('T')[0] }
@@ -157,11 +161,11 @@ async function saveJob() {
       }).catch(() => null)
       
       jobs.value.unshift(newJobEntry)
-      triggerToast('🚀 Nuovo annuncio di lavoro pubblicato!')
+      triggerToast('🚀 Nuovo annuncio di lavoro pubblicato!', 'success')
     }
     showModal.value = false
   } catch (err: any) {
-    triggerToast(`❌ Errore salvataggio: ${err.message || 'Server error'}`)
+    triggerToast(`❌ Errore salvataggio: ${err.message || 'Server error'}`, 'error')
   } finally {
     isLoading.value = false
   }
@@ -175,9 +179,9 @@ async function toggleStatus(job: Job, field: 'isActive' | 'isFeatured') {
       method: 'PATCH',
       body: { [field]: job[field] }
     })
-    triggerToast(`Stato ${field === 'isActive' ? 'Pubblicazione' : 'In Evidenza'} aggiornato!`)
+    triggerToast(`Stato ${field === 'isActive' ? 'Pubblicazione' : 'In Evidenza'} aggiornato!`, 'success')
   } catch (err) {
-    triggerToast(`Stato ${field === 'isActive' ? 'Pubblicazione' : 'In Evidenza'} modificato localmente.`)
+    triggerToast(`Stato ${field === 'isActive' ? 'Pubblicazione' : 'In Evidenza'} modificato localmente.`, 'warning')
   }
 }
 
@@ -188,26 +192,26 @@ async function deleteJob(id: string | number) {
   try {
     await $fetch(`/api/admin/jobs/${id}`, { method: 'DELETE' })
     jobs.value = jobs.value.filter(j => j.id !== id)
-    triggerToast('🗑️ Annuncio rimosso con successo.')
+    triggerToast('🗑️ Annuncio rimosso con successo.', 'success')
   } catch (err) {
     jobs.value = jobs.value.filter(j => j.id !== id)
-    triggerToast('🗑️ Annuncio rimosso dal pannello.')
+    triggerToast('🗑️ Annuncio rimosso dal pannello.', 'warning')
   }
 }
 
 // Importazione Diretta dal Crawler
 async function syncJobsFromCrawler() {
   isLoading.value = true
-  triggerToast('⏳ Avvio ingestione offerte Tech Jobs da RemoteOK...')
+  triggerToast('⏳ Avvio ingestione offerte Tech Jobs da RemoteOK...', 'warning')
   try {
     const res: any = await $fetch('/api/admin/crawler/run', {
       method: 'POST',
       body: { section: 'jobs', limit: 10 }
     })
-    triggerToast(`💼 Crawler completato: ${res.addedCount ?? 0} nuove offerte importate!`)
-    fetchJobs()
+    triggerToast(`💼 Crawler completato: ${res.addedCount ?? 0} nuove offerte importate!`, 'success')
+    await fetchJobs()
   } catch (err) {
-    triggerToast('❌ Errore durante l\'esecuzione del crawler jobs.')
+    triggerToast('❌ Errore durante l\'esecuzione del crawler jobs.', 'error')
   } finally {
     isLoading.value = false
   }
@@ -226,745 +230,388 @@ const filteredJobs = computed(() => {
 </script>
 
 <template>
-  <div class="jobs-admin-panel">
-    <!-- TOAST NOTIFICATION -->
+  <div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 font-sans">
+    
+    <!-- FLOATING TOAST NOTIFICATION -->
     <Transition name="toast-fade">
-      <div v-if="showToast" class="dkp-toast-success">
-        <div class="toast-content">
-          <span class="toast-icon">✅</span>
-          <span class="toast-text">{{ toastMessage }}</span>
-        </div>
+      <div 
+        v-if="showToast" 
+        :class="[
+          'fixed top-6 right-6 z-50 p-4 rounded-xl backdrop-blur-md border shadow-2xl max-w-md flex items-center gap-3 font-mono text-xs sm:text-sm font-semibold transition-all',
+          toastType === 'success' ? 'bg-[#041a13]/90 border-emerald-500/50 text-emerald-300 shadow-[0_0_20px_rgba(0,220,130,0.2)]' :
+          toastType === 'error' ? 'bg-[#1e070a]/90 border-rose-500/50 text-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.2)]' :
+          'bg-[#1a1403]/90 border-amber-500/50 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+        ]"
+      >
+        <span class="text-xl">
+          {{ toastType === 'success' ? '⚡' : toastType === 'error' ? '🚫' : '⚠️' }}
+        </span>
+        <span>{{ toastMessage }}</span>
       </div>
     </Transition>
 
-    <!-- NAVBAR GRID ADMIN UNIFICATA v2.4-GOLD -->
-    <div class="admin-nav-container">
-      <div class="admin-nav-top">
-        <div class="nav-branding">
-          <span class="status-dot green"></span>
-          <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
+    <div class="max-w-7xl mx-auto flex flex-col gap-6">
+      
+      <!-- NAVBAR GRID MODULI ADMIN v2.6 -->
+      <div class="flex flex-col gap-3 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 shadow-xl">
+        <div class="flex justify-between items-center pb-3 border-b border-slate-800/60 font-mono">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#00dc82]"></span>
+            <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP ADMIN CONTROL CENTER</span>
+          </div>
+
+          <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
+            🏠 Dashboard Main
+          </NuxtLink>
         </div>
 
-        <NuxtLink to="/admin" class="nav-tab btn-dashboard-main" exact-active-class="active">
-          🏠 Dashboard Main
-        </NuxtLink>
+        <!-- GRID NAVIGATION -->
+        <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono">
+          <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            ⚙️ API Gateway
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📧 Mail
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📣 Newsletter
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🤖 Crawler
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            📝 Blog
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 transition-all">
+            💬 Gestione Nodi
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
+            🛍️ Shop
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-300 bg-emerald-500/20 border border-emerald-500/50 shadow-[0_0_10px_rgba(0,220,130,0.2)]">
+            💼 Jobs
+          </NuxtLink>
+        </nav>
       </div>
 
-      <!-- GRID MODULI ADMIN -->
-      <nav class="admin-grid-nav">
-        <NuxtLink to="/admin/api-gateway" class="nav-tab btn-dashboard" active-class="active">⚙️ API Gateway</NuxtLink>
-        <NuxtLink to="/admin/mail" class="nav-tab btn-dashboard" active-class="active">📧 Mail Center</NuxtLink>
-        <NuxtLink to="/admin/newsletter" class="nav-tab btn-dashboard" active-class="active">📣 Newsletter</NuxtLink>
-        <NuxtLink to="/admin/autoresponder" class="nav-tab btn-dashboard" active-class="active">📡 Autoresponder</NuxtLink>
-        <NuxtLink to="/admin/crawler" class="nav-tab btn-dashboard" active-class="active">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink to="/admin/blog" class="nav-tab btn-dashboard" active-class="active">📝 Gestione Blog</NuxtLink>
-        <NuxtLink to="/admin/shop" class="nav-tab btn-dashboard" active-class="active">🛍️ Gestione Shop</NuxtLink>
-        <NuxtLink to="/admin/jobs" class="nav-tab btn-dashboard" active-class="active">💼 Gestione Jobs</NuxtLink>
-      </nav>
-    </div>
+      <!-- HEADER HERO TECH JOBS HUB v2.6-PURE-SQL -->
+      <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
+        <!-- Glow Cosmico -->
+        <div class="absolute -right-20 -top-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-    <!-- HEADER HERO TECH JOBS HUB v2.4-GOLD -->
-    <header class="panel-header">
-      <div class="header-title">
-        <div class="hero-badge">
-          <span class="badge-status gold">DKP TECH JOBS HUB v2.4-GOLD</span>
+        <div class="relative z-10 flex flex-col gap-2">
+          <div class="flex items-center gap-3 mb-1 flex-wrap font-mono">
+            <span class="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-0.5 rounded-full text-xs font-black uppercase shadow-[0_0_12px_rgba(0,220,130,0.25)]">
+              DKP TECH JOBS HUB v2.6-PURE-SQL
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+            Control Center <span class="text-emerald-400">Opportunità Tech</span>
+          </h1>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
+            Pubblica annunci di lavoro tech, gestisci la visibilità in piattaforma e sincronizza i feed in tempo reale da RemoteOK.
+          </p>
         </div>
-        <h2>Control Center <span class="brand-highlight">Opportunità Tech</span></h2>
-        <p class="sub-lead">
-          Pubblica annunci di lavoro tech, gestisci la visibilità in piattaforma e sincronizza i feed da RemoteOK.
-        </p>
-      </div>
 
-      <div class="header-actions">
-        <button @click="syncJobsFromCrawler" :disabled="isLoading" class="btn-secondary">
-          ⚡ Importa da Crawler
-        </button>
-        <button @click="openCreateModal" class="btn-primary-action">
-          ➕ Nuovo Annuncio
-        </button>
-      </div>
-    </header>
+        <div class="flex items-center gap-3 relative z-10 font-mono w-full sm:w-auto flex-wrap">
+          <button 
+            @click="syncJobsFromCrawler" 
+            :disabled="isLoading" 
+            class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-bold text-xs bg-[#040814] border border-slate-800 hover:border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <span :class="{'animate-spin': isLoading}">⚡</span> Importa da Crawler
+          </button>
+          <button 
+            @click="openCreateModal" 
+            class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-black text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-[0_0_15px_rgba(0,220,130,0.3)] flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            ➕ Nuovo Annuncio
+          </button>
+        </div>
+      </header>
 
-    <!-- BARRA DI FILTRO E RICERCA -->
-    <section class="controls-card">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="Cerca per titolo, azienda o tecnologia (es. Vue, Remote)..." 
-          class="dark-input search-input" 
-        />
-      </div>
+      <!-- BARRA DI FILTRO E RICERCA -->
+      <section class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+        <div class="relative flex-1">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Cerca per titolo, azienda o tecnologia (es. Vue, Remote)..." 
+            class="w-full bg-[#040814] border border-slate-800 pl-11 pr-4 py-3 rounded-xl text-slate-100 text-xs sm:text-sm outline-none focus:border-emerald-500 transition-all font-mono"
+          />
+        </div>
 
-      <div class="filter-box">
-        <select v-model="filterType" class="dark-input filter-select">
-          <option value="all">🌐 Tutte le Tipologie</option>
-          <option value="remote">💻 Full Remote</option>
-          <option value="hybrid">🏢 Ibrido</option>
-          <option value="onsite">📍 In Sede</option>
-        </select>
-      </div>
-    </section>
+        <div class="flex items-center gap-3 font-mono text-xs">
+          <label class="text-slate-400 font-bold whitespace-nowrap">Modalità:</label>
+          <select 
+            v-model="filterType" 
+            class="bg-[#040814] border border-slate-800 text-emerald-400 px-3.5 py-3 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+          >
+            <option value="all">🌐 Tutte le Tipologie</option>
+            <option value="remote">💻 Full Remote</option>
+            <option value="hybrid">🏢 Ibrido</option>
+            <option value="onsite">📍 In Sede</option>
+          </select>
+        </div>
+      </section>
 
-    <!-- TABELLA / LISTA JOBS -->
-    <section class="jobs-list-card">
-      <div class="card-header">
-        <h3>📋 Offerte di Lavoro Attive ({{ filteredJobs.length }})</h3>
-      </div>
+      <!-- TABELLA JOBS -->
+      <section class="bg-[#080d1a] border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
+        <div class="p-5 border-b border-slate-800 flex justify-between items-center">
+          <h3 class="text-emerald-400 font-black text-base sm:text-lg flex items-center gap-2">
+            <span>📋 Offerte di Lavoro Attive ({{ filteredJobs.length }})</span>
+          </h3>
+        </div>
 
-      <div class="table-responsive">
-        <table class="jobs-table">
-          <thead>
-            <tr>
-              <th>Ruolo & Azienda</th>
-              <th>Modalità / Location</th>
-              <th>Stack / Tags</th>
-              <th>RAL / Compilazione</th>
-              <th>Stato</th>
-              <th class="text-right">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="job in filteredJobs" :key="job.id" :class="{ 'featured-row': job.isFeatured }">
-              <td>
-                <div class="job-role-info">
-                  <span class="job-title">{{ job.title }}</span>
-                  <span class="job-company">🏢 {{ job.company }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="type-badge" :class="job.type">
-                  {{ job.type.toUpperCase() }}
-                </span>
-                <div class="location-text">{{ job.location }}</div>
-              </td>
-              <td>
-                <div class="tags-wrapper">
-                  <span v-for="tag in job.tags.split(',')" :key="tag" class="tag-pill">
-                    {{ tag.trim() }}
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-[#040814] text-slate-400 font-extrabold text-[11px] uppercase border-b border-slate-800 font-mono">
+                <th class="p-4">Ruolo &amp; Azienda</th>
+                <th class="p-4">Modalità / Location</th>
+                <th class="p-4">Stack / Tags</th>
+                <th class="p-4">RAL / Compilazione</th>
+                <th class="p-4">Stato</th>
+                <th class="p-4 text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="job in filteredJobs" 
+                :key="job.id" 
+                :class="[
+                  'border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors',
+                  job.isFeatured ? 'bg-emerald-500/5' : ''
+                ]"
+              >
+                <td class="p-4">
+                  <div class="flex flex-col">
+                    <strong class="text-white font-bold text-sm">{{ job.title }}</strong>
+                    <span class="text-sky-400 text-xs font-mono">🏢 {{ job.company }}</span>
+                  </div>
+                </td>
+                <td class="p-4 font-mono">
+                  <span 
+                    :class="[
+                      'px-2 py-0.5 rounded text-[10px] font-black uppercase inline-block mb-1 border',
+                      job.type === 'remote' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                      job.type === 'hybrid' ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' :
+                      'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                    ]"
+                  >
+                    {{ job.type.toUpperCase() }}
                   </span>
-                </div>
-              </td>
-              <td>
-                <span class="salary-text">{{ job.salary || 'Non specificata' }}</span>
-              </td>
-              <td>
-                <div class="status-toggles">
-                  <button 
-                    @click="toggleStatus(job, 'isActive')" 
-                    class="badge-toggle"
-                    :class="job.isActive ? 'active' : 'inactive'"
-                  >
-                    {{ job.isActive ? 'Pubblicato' : 'Bozza' }}
-                  </button>
-                  <button 
-                    @click="toggleStatus(job, 'isFeatured')" 
-                    class="badge-toggle star"
-                    :class="{ 'featured': job.isFeatured }"
-                    title="Toggle in Evidenza"
-                  >
-                    ★
-                  </button>
-                </div>
-              </td>
-              <td class="text-right">
-                <div class="action-buttons">
-                  <button @click="openEditModal(job)" class="btn-icon edit" title="Modifica">✏️</button>
-                  <a :href="job.applyUrl" target="_blank" class="btn-icon link" title="Apri Link Candidatura">🔗</a>
-                  <button @click="deleteJob(job.id!)" class="btn-icon delete" title="Elimina Annuncio">🗑️</button>
-                </div>
-              </td>
-            </tr>
+                  <div class="text-[11px] text-slate-400">{{ job.location }}</div>
+                </td>
+                <td class="p-4">
+                  <div class="flex flex-wrap gap-1 max-w-xs font-mono">
+                    <span 
+                      v-for="tag in job.tags.split(',')" 
+                      :key="tag" 
+                      class="bg-[#040814] border border-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]"
+                    >
+                      {{ tag.trim() }}
+                    </span>
+                  </div>
+                </td>
+                <td class="p-4 font-mono">
+                  <span class="text-amber-400 font-bold text-xs">{{ job.salary || 'Non specificata' }}</span>
+                </td>
+                <td class="p-4 font-mono">
+                  <div class="flex items-center gap-1.5">
+                    <button 
+                      @click="toggleStatus(job, 'isActive')" 
+                      :class="[
+                        'px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer',
+                        job.isActive ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-500 border-slate-700'
+                      ]"
+                    >
+                      {{ job.isActive ? 'Pubblicato' : 'Bozza' }}
+                    </button>
+                    <button 
+                      @click="toggleStatus(job, 'isFeatured')" 
+                      :class="[
+                        'px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer',
+                        job.isFeatured ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' : 'bg-slate-800 text-slate-600 border-slate-700'
+                      ]"
+                      title="Toggle in Evidenza"
+                    >
+                      ★
+                    </button>
+                  </div>
+                </td>
+                <td class="p-4 text-right font-mono">
+                  <div class="flex justify-end items-center gap-1.5">
+                    <button 
+                      @click="openEditModal(job)" 
+                      class="p-1.5 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded-lg text-xs transition-all cursor-pointer" 
+                      title="Modifica"
+                    >
+                      ✏️
+                    </button>
+                    <a 
+                      :href="job.applyUrl" 
+                      target="_blank" 
+                      class="p-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 rounded-lg text-xs transition-all cursor-pointer inline-block" 
+                      title="Apri Link Candidatura"
+                    >
+                      🔗
+                    </a>
+                    <button 
+                      @click="deleteJob(job.id!)" 
+                      class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer" 
+                      title="Elimina Annuncio"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
 
-            <tr v-if="filteredJobs.length === 0">
-              <td colspan="6" class="empty-state">
-                Nessun annuncio di lavoro trovato con i filtri selezionati.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- MODAL CREAZIONE / MODIFICA -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>{{ isEditing ? '✏️ Modifica Offerta di Lavoro' : '➕ Crea Nuovo Annuncio Tech' }}</h3>
-          <button type="button" @click="showModal = false" class="btn-close">&times;</button>
+              <tr v-if="filteredJobs.length === 0">
+                <td colspan="6" class="p-12 text-center text-slate-500 font-mono text-xs">
+                  Nessun annuncio di lavoro trovato con i filtri selezionati.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </section>
 
-        <div class="modal-body">
-          <div class="input-grid">
-            <div class="input-group">
-              <label>Titolo Posizione *</label>
-              <input v-model="currentJob.title" type="text" placeholder="es. Senior Frontend Developer" class="dark-input" />
+      <!-- MODAL CREAZIONE / MODIFICA -->
+      <Transition name="fade">
+        <div v-if="showModal" class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4" @click.self="showModal = false">
+          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-hidden">
+            
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 class="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                <span>{{ isEditing ? '✏️ Modifica Offerta di Lavoro' : '➕ Crea Nuovo Annuncio Tech' }}</span>
+              </h3>
+              <button @click="showModal = false" class="text-slate-500 hover:text-white font-bold text-xl cursor-pointer">✕</button>
             </div>
 
-            <div class="input-group">
-              <label>Nome Azienda *</label>
-              <input v-model="currentJob.company" type="text" placeholder="es. Pulse Tech Inc." class="dark-input" />
+            <div class="flex flex-col gap-4 overflow-y-auto pr-1 font-mono text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Titolo Posizione *</label>
+                  <input 
+                    v-model="currentJob.title" 
+                    type="text" 
+                    placeholder="es. Senior Frontend Developer" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Nome Azienda *</label>
+                  <input 
+                    v-model="currentJob.company" 
+                    type="text" 
+                    placeholder="es. Pulse Tech Inc." 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Tipologia Lavoro</label>
+                  <select 
+                    v-model="currentJob.type" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all cursor-pointer"
+                  >
+                    <option value="remote">Full Remote</option>
+                    <option value="hybrid">Ibrido</option>
+                    <option value="onsite">In Sede</option>
+                  </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Sede / Fuso Orario</label>
+                  <input 
+                    v-model="currentJob.location" 
+                    type="text" 
+                    placeholder="es. Remote (Worldwide) o Milano" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">Stack Tecnologico / Tag (separati da virgola)</label>
+                <input 
+                  v-model="currentJob.tags" 
+                  type="text" 
+                  placeholder="es. Vue.js, Nuxt 3, TypeScript, Tailwind" 
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">Range Salariale (Opzionale)</label>
+                  <input 
+                    v-model="currentJob.salary" 
+                    type="text" 
+                    placeholder="es. €50k - €70k / anno" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-slate-400 font-bold uppercase">URL Candidatura *</label>
+                  <input 
+                    v-model="currentJob.applyUrl" 
+                    type="url" 
+                    placeholder="https://company.com/apply" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">Descrizione Breve Posizione</label>
+                <textarea 
+                  v-model="currentJob.description" 
+                  rows="3" 
+                  placeholder="Descrivi i requisiti principali e i benefit dell'opportunità..." 
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-emerald-500 transition-all"
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-2 pt-2 border-t border-slate-800/80">
+                <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <input v-model="currentJob.isFeatured" type="checkbox" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                  <span>⭐ Metti l'annuncio In Evidenza (Featured)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <input v-model="currentJob.isActive" type="checkbox" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                  <span>🌐 Pubblica Immediatamente su DKP Platform</span>
+                </label>
+              </div>
             </div>
 
-            <div class="input-group">
-              <label>Tipologia Lavoro</label>
-              <select v-model="currentJob.type" class="dark-input">
-                <option value="remote">Full Remote</option>
-                <option value="hybrid">Ibrido</option>
-                <option value="onsite">In Sede</option>
-              </select>
-            </div>
-
-            <div class="input-group">
-              <label>Sede / Fuso Orario</label>
-              <input v-model="currentJob.location" type="text" placeholder="es. Remote (Worldwide) o Milano" class="dark-input" />
-            </div>
-
-            <div class="input-group full-width">
-              <label>Stack Tecnologico / Tag (separati da virgola)</label>
-              <input v-model="currentJob.tags" type="text" placeholder="es. Vue.js, Nuxt 3, TypeScript, Tailwind" class="dark-input" />
-            </div>
-
-            <div class="input-group">
-              <label>Range Salariale (Opzionale)</label>
-              <input v-model="currentJob.salary" type="text" placeholder="es. €50k - €70k / anno" class="dark-input" />
-            </div>
-
-            <div class="input-group">
-              <label>URL Candidatura *</label>
-              <input v-model="currentJob.applyUrl" type="url" placeholder="https://company.com/apply" class="dark-input" />
-            </div>
-
-            <div class="input-group full-width">
-              <label>Descrizione Breve Posizione</label>
-              <textarea v-model="currentJob.description" rows="3" placeholder="Descrivi i requisiti principali e i benefit dell'opportunità..." class="dark-input textarea"></textarea>
-            </div>
-
-            <div class="input-group full-width checkbox-group">
-              <label class="checkbox-label">
-                <input v-model="currentJob.isFeatured" type="checkbox" />
-                <span>⭐ Metti l'annuncio In Evidenza (Featured)</span>
-              </label>
-              <label class="checkbox-label">
-                <input v-model="currentJob.isActive" type="checkbox" />
-                <span>🌐 Pubblica Immediatamente su DKP Platform</span>
-              </label>
+            <div class="border-t border-slate-800 pt-4 flex justify-end gap-3 font-mono">
+              <button @click="showModal = false" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                Annulla
+              </button>
+              <button @click="saveJob" :disabled="isLoading" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
+                💾 {{ isEditing ? 'Aggiorna Annuncio' : 'Pubblica Job' }}
+              </button>
             </div>
           </div>
         </div>
+      </Transition>
 
-        <div class="modal-footer">
-          <button type="button" @click="showModal = false" class="btn-secondary">Annulla</button>
-          <button type="button" @click="saveJob" :disabled="isLoading" class="btn-primary-action">
-            💾 {{ isEditing ? 'Aggiorna Annuncio' : 'Pubblica Job' }}
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ==========================================================================
-   STILI NAVBAR ADMIN UNIFICATA v2.4-GOLD
-   ========================================================================== */
-.admin-nav-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #090d16;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 20px;
-}
-
-.admin-nav-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.nav-branding {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.status-dot.green {
-  width: 8px;
-  height: 8px;
-  background-color: #00ff87;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #00ff87;
-}
-
-.nav-title {
-  color: #00f0ff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-}
-
-.admin-grid-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.nav-tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
-.btn-dashboard {
-  color: #00ff87;
-  background: rgba(0, 255, 135, 0.04);
-  border: 1px solid rgba(0, 255, 135, 0.3);
-}
-
-.btn-dashboard:hover,
-.btn-dashboard.active {
-  background: rgba(0, 255, 135, 0.12);
-  border-color: #00ff87;
-  box-shadow: 0 0 12px rgba(0, 255, 135, 0.25);
-  transform: translateY(-1px);
-}
-
-.btn-dashboard-main {
-  color: #00f0ff;
-  background: rgba(0, 240, 255, 0.06);
-  border: 1px solid rgba(0, 240, 255, 0.4);
-}
-
-.btn-dashboard-main:hover {
-  background: rgba(0, 240, 255, 0.16);
-  border-color: #00f0ff;
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-@media (max-width: 1024px) {
-  .admin-grid-nav { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 580px) {
-  .admin-grid-nav { grid-template-columns: 1fr; }
-}
-
-/* ==========================================================================
-   TOAST NOTIFICATION
-   ========================================================================== */
-.dkp-toast-success {
-  position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
-  z-index: 999999;
-  background: #061811;
-  border: 1px solid #00dc82;
-  box-shadow: 0 10px 30px rgba(0, 220, 130, 0.35);
-  padding: 0.9rem 1.3rem;
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  max-width: 420px;
-}
-
-.toast-content {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: #f8fafc;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(-15px) scale(0.95); }
-
-/* ==========================================================================
-   LAYOUT PANNELLO & HEADER HERO
-   ========================================================================== */
-.jobs-admin-panel {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding-bottom: 4rem;
-  color: #f8fafc;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.hero-badge { margin-bottom: 0.5rem; }
-
-.badge-status.gold {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border: 1px solid #00dc82;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  box-shadow: 0 0 10px rgba(0, 220, 130, 0.2);
-}
-
-.panel-header h2 {
-  font-size: 1.8rem;
-  font-weight: 900;
-  margin: 0 0 0.4rem 0;
-  color: #ffffff;
-}
-
-.brand-highlight { color: #00dc82; }
-.sub-lead { color: #94a3b8; font-size: 0.92rem; margin: 0; }
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-primary-action {
-  background: #00dc82;
-  color: #020420;
-  font-weight: 900;
-  border: none;
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.88rem;
-  transition: all 0.2s ease;
-}
-
-.btn-primary-action:hover:not(:disabled) {
-  box-shadow: 0 0 18px rgba(0, 220, 130, 0.4);
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background: #020420;
-  color: #f8fafc;
-  font-weight: 700;
-  border: 1px solid #1e293b;
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.88rem;
-  transition: all 0.2s ease;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: rgba(0, 220, 130, 0.08);
-  border-color: #00dc82;
-  color: #00dc82;
-}
-
-/* CONTROLS CARD */
-.controls-card {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.search-box {
-  flex: 1;
-  position: relative;
-  min-width: 280px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #64748b;
-}
-
-.search-input {
-  width: 100%;
-  padding-left: 2.75rem !important;
-}
-
-.filter-box { width: 220px; }
-
-.dark-input {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  outline: none;
-  width: 100%;
-  transition: border-color 0.2s ease;
-}
-
-.dark-input:focus { border-color: #00dc82; }
-
-/* TABLE CARD */
-.jobs-list-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-.card-header h3 {
-  margin: 0 0 1.25rem 0;
-  color: #00dc82;
-  font-size: 1.15rem;
-  font-weight: 800;
-}
-
-.table-responsive { overflow-x: auto; }
-
-.jobs-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-  text-align: left;
-}
-
-.jobs-table th {
-  padding: 0.85rem 1rem;
-  color: #94a3b8;
-  font-weight: 700;
-  border-bottom: 1px solid #1e293b;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-}
-
-.jobs-table td {
-  padding: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  vertical-align: middle;
-}
-
-.featured-row { background: rgba(0, 220, 130, 0.03); }
-
-.job-role-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.job-title {
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.job-company {
-  font-size: 0.8rem;
-  color: #38bdf8;
-}
-
-.type-badge {
-  display: inline-block;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.2rem;
-}
-
-.type-badge.remote { background: rgba(0, 220, 130, 0.15); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.type-badge.hybrid { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
-.type-badge.onsite { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-
-.location-text { font-size: 0.78rem; color: #64748b; }
-
-.tags-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.tag-pill {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #cbd5e1;
-  font-size: 0.72rem;
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
-}
-
-.salary-text { color: #facc15; font-weight: 700; font-size: 0.82rem; }
-
-.status-toggles { display: flex; gap: 0.4rem; align-items: center; }
-
-.badge-toggle {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #64748b;
-  padding: 0.25rem 0.55rem;
-  border-radius: 6px;
-  font-weight: 800;
-  font-size: 0.72rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.badge-toggle.active {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  border-color: #00dc82;
-}
-
-.badge-toggle.star.featured {
-  background: rgba(250, 204, 21, 0.15);
-  color: #facc15;
-  border-color: #facc15;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: flex-end;
-}
-
-.btn-icon {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 0.85rem;
-  transition: all 0.2s;
-}
-
-.btn-icon:hover {
-  border-color: #00dc82;
-  transform: translateY(-1px);
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem !important;
-  color: #64748b;
-}
-
-/* MODAL STYLES */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 4, 32, 0.85);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 1.5rem;
-}
-
-.modal-content {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-}
-
-.modal-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #1e293b;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 { margin: 0; color: #ffffff; font-size: 1.2rem; }
-
-.btn-close {
-  background: none;
-  border: none;
-  color: #64748b;
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-
-.modal-body {
-  padding: 1.5rem;
-  overflow-y: auto;
-}
-
-.input-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.2rem;
-}
-
-@media (max-width: 600px) {
-  .input-grid { grid-template-columns: 1fr; }
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.input-group.full-width { grid-column: 1 / -1; }
-
-.input-group label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #94a3b8;
-}
-
-.textarea { resize: vertical; }
-
-.checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  margin-top: 0.5rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  font-size: 0.88rem;
-  color: #cbd5e1;
-}
-
-.modal-footer {
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid #1e293b;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
