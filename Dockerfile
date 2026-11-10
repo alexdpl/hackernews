@@ -1,50 +1,40 @@
 # ==========================================
-# STAGE 1: Build Environment
+# STAGE 1: Build & Dependencies
 # ==========================================
 FROM node:20-alpine AS builder
-
 WORKDIR /app
 
-# Installazione pnpm
-RUN corepack enable && corepack prepare pnpm@9 --activate
+# Abilita pnpm nativo
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy manifest delle dipendenze per sfruttare il layer caching di Docker
-COPY package.json pnpm-lock.yaml ./
+# Copia i file dei requisiti e installa le dipendenze
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
-# Installazione dipendenze complete
-RUN pnpm install --no-frozen-lockfile
-
-# Copia del codice sorgente
+# Copia il codice sorgente e compila il bundle di produzione
 COPY . .
-
-# Variabili d'ambiente di build per bypassare i controlli lato Nitro durante la compilazione
 ENV NODE_ENV=production
-ENV NUXT_TELEMETRY_DISABLED=1
-
-# Compilazione del bundle Nitro (.output/server/index.mjs)
-RUN pnpm run build
+RUN pnpm build
 
 # ==========================================
-# STAGE 2: Lightweight Production Runtime
+# STAGE 2: Production Minimal Runner
 # ==========================================
 FROM node:20-alpine AS runner
-
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV PORT=3000
+# Sicurezza: Esegui come utente non-root (Principio di Minimo Privilegio)
+USER node
+
+# Copia SOLTANTO l'output compilato di Nitro
+COPY --chown=node:node --from=builder /app/.output ./.output
+
+# Variabili d'ambiente di Runtime
+ENV PORT=8080
 ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--enable-source-maps --max-old-space-size=4096"
 
-# Creazione utente non-root per massima sicurezza container
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nuxtjs
+EXPOSE 8080
 
-# Copia esclusiva dell'output compilato da Nitro dallo Stage 1
-COPY --from=builder /app/.output ./.output
-
-USER nuxtjs
-
-EXPOSE 3000
-
-# Avvio diretto del server Nitro senza pnpm/npm
+# Avvio diretto del server Nitro Standalone (Senza pnpm/npm sopra)
 CMD ["node", ".output/server/index.mjs"]
