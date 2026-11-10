@@ -12,7 +12,7 @@ useHead({
 const { getMainUrl, getApiUrl } = useDomain()
 
 // --- INTERFACCE DATI ---
-export interface DkpNode {
+interface DkpNode {
   id: number | string
   parentId?: number | string | null
   name: string
@@ -26,7 +26,7 @@ export interface DkpNode {
   createdAt?: string
 }
 
-export interface ThreadPost {
+interface ThreadPost {
   id: number
   title: string
   content: string

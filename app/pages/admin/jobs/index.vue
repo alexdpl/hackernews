@@ -11,7 +11,7 @@ useHead({
 
 const { getMainUrl, getApiUrl } = useDomain()
 
-export interface Job {
+interface Job {
   id?: string | number
   title: string
   company: string

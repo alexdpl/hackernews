@@ -9,7 +9,7 @@ useHead({
   ]
 })
 
-export interface ShopProduct {
+interface ShopProduct {
   id: string
   title: string
   type: 'API_LICENSE' | 'ADS_SPONSOR'

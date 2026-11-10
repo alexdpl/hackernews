@@ -11,7 +11,7 @@ useHead({
 
 const { getMainUrl, getApiUrl } = useDomain()
 
-export interface ShopItem {
+interface ShopItem {
   id: number | string
   title: string
   type: 'API_LICENSE' | 'ADS_SPONSOR'

@@ -267,12 +267,12 @@ const fetchCategories = async () => {
     } else {
       categories.value = []
     }
-  } catch (err: any) {
-    console.error('Errore fetch Categorie', err)
-    triggerToast('Impossibile caricare le categorie dal database.', 'error')
-  } font-bold {
-    isLoading.value = false
-  }
+ } catch (err) {
+      console.error('Errore fetch Categorie', err)
+      triggerToast('Impossibile caricare le categorie dal database.', 'error')
+    } finally {
+      isLoading.value = false
+    }
 }
 
 const loadPosts = async () => {
