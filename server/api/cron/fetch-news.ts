@@ -1,3 +1,4 @@
+
 // server/api/cron/fetch-news.ts
 import { sql } from '~~/server/utils/db'
 
@@ -66,7 +67,6 @@ export default defineEventHandler(async () => {
       const createdAtIso = new Date(story.time * 1000).toISOString()
       const points = story.score || 0
 
-      // Pure SQL nativo ad altissima velocità
       await sql`
         INSERT INTO pulse_stories (title, url, slug, domain, points, type, created_at)
         VALUES (${story.title}, ${storyUrl}, ${slug}, ${domain}, ${points}, 'story', ${createdAtIso}::timestamptz)
@@ -77,10 +77,17 @@ export default defineEventHandler(async () => {
       importedCount++
     }
 
+    // 🚀 INVALIDAZIONE AUTOMATICA MULTI-ROTTA
     let cachePurged = false
     if (importedCount > 0) {
       const baseUrl = process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org'
-      cachePurged = await purgeCloudflareCache([`${baseUrl}/api/news`])
+      
+      // Invalida contemporaneamente l'API news, l'index del blog e l'API blog
+      cachePurged = await purgeCloudflareCache([
+        `${baseUrl}/api/news`,
+        `${baseUrl}/blog`,
+        `${baseUrl}/api/blog`
+      ])
     }
 
     return {
