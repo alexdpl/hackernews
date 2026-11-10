@@ -36,11 +36,11 @@ onMounted(async () => {
         itemType.value = res.itemType || 'API_LICENSE'
         customerEmail.value = res.customerEmail || ''
       } else {
-        apiKey.value = 'dkp_live_sk_2026_99x8a7b6c5d4e3f21'
+        apiKey.value = 'dkp_demo_key_2026_99x8a7b6c5d4e3f21'
       }
     } else {
       // Stripe / Direct Verification: Generazione token verificato dal Webhook
-      apiKey.value = 'dkp_live_sk_2026_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      apiKey.value = 'dkp_demo_key_2026_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
     }
   } catch (err: any) {
     console.error('[SHOP SUCCESS ERROR]:', err)
