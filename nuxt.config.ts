@@ -9,6 +9,23 @@ export default defineNuxtConfig({
     host: 'localhost',
     port: 3000
   },
+  
+  routeRules: {
+    // API Notizie: Cache Edge di 5 min, serve contenuti vecchi mentre aggiorna in background (24h)
+    '/api/news': {
+      headers: {
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400',
+        'CDN-Cache-Control': 'max-age=300, stale-while-revalidate=86400'
+      }
+    },
+    // API Blog: Cache Edge di 1 ora
+    '/api/blog/**': {
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
+        'CDN-Cache-Control': 'max-age=3600, stale-while-revalidate=86400'
+      }
+    }
+  },
  
   runtimeConfig: {
     // Credenziali e chiavi server-side protette
