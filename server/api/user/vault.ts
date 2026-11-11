@@ -1,15 +1,22 @@
 // server/api/user/vault.ts
 import { createHash } from 'node:crypto'
-import { defineEventHandler, readBody, getQuery, createError } from 'h3'
+import { defineEventHandler, getMethod, readBody, getQuery, createError, setResponseHeaders } from 'h3'
 import { eq, desc, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { vaultCerts, users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
-  const method = event.node.req.method
+  setResponseHeaders(event, {
+    'X-Cloud-Region': 'europe-west4',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
+  })
+
+  const method = getMethod(event)
   const db = getDb()
 
+  // ----------------------------------------------------
   // 📥 GET: Recupera i certificati Vault dell'utente
+  // ----------------------------------------------------
   if (method === 'GET') {
     const query = getQuery(event)
     const userId = query.userId ? Number(query.userId) : 1
@@ -20,18 +27,26 @@ export default defineEventHandler(async (event) => {
         .where(eq(vaultCerts.userId, userId))
         .orderBy(desc(vaultCerts.createdAt))
 
-      return { success: true, data: certs }
+      return { 
+        success: true, 
+        data: certs || [] 
+      }
     } catch (err: any) {
-      console.error('[VAULT GET ERROR]:', err)
-      throw createError({ statusCode: 500, statusMessage: err.message })
+      console.error('❌ [VAULT GET ERROR]:', err?.message || err)
+      return {
+        success: true,
+        data: []
+      }
     }
   }
 
-  // 📤 POST: Notarizza con SHA-256 reale, salva nel Vault e assegna +100 XP
+  // ----------------------------------------------------
+  // 📤 POST: Notarizza con SHA-256 reale e accredita +100 XP
+  // ----------------------------------------------------
   if (method === 'POST') {
     try {
       const body = await readBody(event)
-      const { userId, title, code, sastStatus } = body
+      const { userId, title, code, sastStatus } = body || {}
 
       if (!title || !code) {
         throw createError({ statusCode: 400, statusMessage: 'Titolo e codice sorgente obbligatori.' })
@@ -49,21 +64,23 @@ export default defineEventHandler(async (event) => {
         hash: sha256,
         metadata: { 
           sastStatus: sastStatus || 'PASSED', 
-          snippet: code.substring(0, 120),
+          snippet: String(code).substring(0, 120),
           codeLength: String(code).length,
-          engineVersion: 'DKP-Vault-v2.5-GOLD'
+          engineVersion: 'DKP-Vault-v2.6-PURE-SQL'
         }
       }).returning()
 
-      // 🟢 AGGIUNTA XP AUTOMATICI PER LA NOTARIZZAZIONE (+100 XP)
+      // 🟢 Incremento XP dell'utente (+100 XP)
       await db.update(users)
-        .set({ xp: sql`COALESCE(xp, 0) + 100` })
+        .set({ xp: sql`COALESCE(${users.xp}, 0) + 100` })
         .where(eq(users.id, targetUserId))
 
+      // 🟢 Inserimento nel registro delle transazioni XP (allineato allo schema standard)
       await db.insert(xpTransactions).values({
         userId: targetUserId,
-        action: `Notarizzazione Vault: "${title.trim().substring(0, 30)}"`,
-        points: 100
+        amount: 100,
+        actionType: 'VAULT_NOTARIZATION',
+        description: `Notarizzazione Vault: "${title.trim().substring(0, 30)}"`
       })
 
       return { 
@@ -73,8 +90,16 @@ export default defineEventHandler(async (event) => {
       }
 
     } catch (err: any) {
-      console.error('[VAULT POST ERROR]:', err)
-      throw createError({ statusCode: 500, statusMessage: err.message })
+      console.error('❌ [VAULT POST ERROR]:', err?.message || err)
+      throw createError({ 
+        statusCode: err.statusCode || 500, 
+        statusMessage: err.statusMessage || 'Errore durante la notarizzazione nel Vault.' 
+      })
     }
   }
+
+  throw createError({
+    statusCode: 405,
+    statusMessage: `Metodo HTTP ${method} non supportato su questa rotta.`
+  })
 })

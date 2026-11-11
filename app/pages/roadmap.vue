@@ -2,9 +2,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-useDkpSeo({
-  title: 'Roadmap Ecosistema 2026-2027 v2.5-GOLD - DevKernelPulse',
-  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP: SDK Pubblica @devkernelpulse/sdk, Firewall Live SSE, OpenUI Studio e Visione Futura 2027.'
+useHead({
+  title: 'Roadmap Ecosistema 2026-2027 v2.6-PURE-SQL — DevKernelPulse',
+  meta: [
+    { name: 'description', content: 'Piano ufficiale di sviluppo dell\'ecosistema DKP v2.6: SDK Pubblica @devkernelpulse/sdk, Firewall Live SSE, OpenUI Studio e Visione Futura 2027.' }
+  ]
 })
 
 interface RoadmapMilestone {
@@ -65,11 +67,11 @@ const milestones = ref<RoadmapMilestone[]>([
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'Neural Gateway, Trinity & DKP Nodes',
-    version: 'v2.5-GOLD',
+    phaseTitle: 'Neural Gateway, Trinity & DKP Nodes v2.6-PURE-SQL',
+    version: 'v2.6-PURE-SQL',
     status: 'completed',
     progress: 100,
-    description: 'Infrastruttura AI decentralizzata, moderazione automatica Nodes tramite Gemini 2.0 e Paywall Dinamico.',
+    description: 'Infrastruttura AI decentralizzata, moderazione automatica Nodes tramite Gemini 2.0 e Paywall Dinamico basato su PURE-SQL.',
     features: [
       'OpenUI Studio: Generazione Tailwind Live',
       'DKP Trinity Engine (Gemini 2.0, Dots-3, Nemotron-3)',
@@ -146,21 +148,21 @@ const overallCompletion = computed(() => {
         <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/40 px-3.5 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="text-[10px] sm:text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">
-            🚀 DKP ECOSYSTEM ROADMAP 2026-2027
+            🚀 DKP ECOSYSTEM ROADMAP 2026-2027 • v2.6-PURE-SQL
           </span>
         </div>
 
-        <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight font-sans">
           Piano di Sviluppo &amp; <span class="text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]">Vision v3.0</span>
         </h1>
 
-        <p class="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-          Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, lancio SDK ufficiale e la nuova visione strategica.
+        <p class="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed font-sans">
+          Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, lancio SDK ufficiale e la nuova visione strategica basata sullo standard v2.6 PURE-SQL.
         </p>
 
         <!-- CARTELLO PROGRESSO GLOBALE -->
         <div class="bg-[#020420] border border-slate-800 rounded-xl p-5 w-full max-w-xl flex flex-col gap-2.5 shadow-md">
-          <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-300">
+          <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-300 font-sans">
             <span>Stato Avanzamento Globale Ecosistema:</span>
             <strong class="text-emerald-400 font-mono text-base">{{ overallCompletion }}%</strong>
           </div>
@@ -249,13 +251,13 @@ const overallCompletion = computed(() => {
               </div>
             </div>
 
-            <h2 class="text-xl sm:text-2xl font-bold text-white">{{ item.phaseTitle }}</h2>
-            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">{{ item.description }}</p>
+            <h2 class="text-xl sm:text-2xl font-bold text-white font-sans">{{ item.phaseTitle }}</h2>
+            <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">{{ item.description }}</p>
 
             <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2 mt-2">
               <h4 class="text-xs font-mono font-bold text-sky-400 uppercase tracking-wider">📋 Deliverables &amp; Moduli:</h4>
               <ul class="flex flex-col gap-2 text-xs sm:text-sm text-slate-300">
-                <li v-for="(feat, idx) in item.features" :key="idx" class="flex items-center gap-2">
+                <li v-for="(feat, idx) in item.features" :key="idx" class="flex items-center gap-2 font-sans">
                   <span class="text-emerald-400 font-bold font-mono">▹</span>
                   <span>{{ feat }}</span>
                 </li>

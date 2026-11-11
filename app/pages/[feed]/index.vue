@@ -8,19 +8,19 @@ import DkpAdStrip from '~/components/DkpAdStrip.vue'
 const route = useRoute()
 const currentFeed = computed(() => (route.params.feed as string) || 'feed')
 
-// Mappatura intelligente del tipo di feed per la query backend
+// Mappatura del tipo di feed per la query backend
 const queryType = computed(() => {
   const f = currentFeed.value.toLowerCase()
   return f === 'feed' ? 'news' : f
 })
 
-// Fetch dal feed crawler del Neon DB (15 notizie per pagina)
+// Fetch dal feed crawler del DB Neon (15 notizie per pagina)
 const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
   query: { type: queryType, page: 1, limit: 15 },
   watch: [queryType]
 })
 
-// Helper sicuro per l'estrazione del dominio
+// Helper per l'estrazione sicura del dominio
 function getDomain(urlStr?: string, domainFallback?: string): string {
   if (domainFallback) return domainFallback
   if (!urlStr || urlStr.startsWith('/')) return 'devkernelpulse.org'
@@ -42,14 +42,14 @@ function shareStory(title: string, url?: string, id?: any) {
   }
 }
 
-// Normalizzazione con Safeguards rigidi e Sentinel Score
+// Normalizzazione con Safeguards e Sentinel Score
 const feedList = computed(() => {
   const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
   return raw.map((item: any) => {
     const safeSlug = item.slug || item.hn_id || item.id || `news-${Math.random().toString(36).substring(2, 7)}`
     const points = item.points || item.hn_points || 1
     const computedScore = item.tech_score || Math.min(95, Math.max(40, points * 2 + 50))
-    
+
     return {
       ...item,
       slug: safeSlug,
@@ -67,21 +67,35 @@ const feedList = computed(() => {
 const pagination = computed(() => responseData.value?.pagination || {})
 const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || (pagination.value?.totalItems > 15) || responseData.value?.pagination?.hasMore || feedList.value.length >= 15)
 
-// Articoli consigliati dal Vault
+// 4 Articoli consigliati dal Vault
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const res: any = await $fetch('/api/blog/posts')
+    const res: any = await $fetch('/api/blog/posts').catch(() => null)
     const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-    featuredArticles.value = raw.slice(0, 2)
+    if (raw && raw.length > 0) {
+      featuredArticles.value = raw.slice(0, 4)
+    } else {
+      populateFallbackArticles()
+    }
   } catch (err) {
     console.error('Errore recupero articoli Vault:', err)
+    populateFallbackArticles()
   }
 })
 
+function populateFallbackArticles() {
+  featuredArticles.value = [
+    { id: 1, title: 'Guida all\'Architettura Nuxt 4 & Rolldown', category: 'Cloud Native & DevOps', categoryName: 'DevOps', slug: 'nuxt-4-rolldown' },
+    { id: 2, title: 'Integrazione Ollama e LLM Locali in Vue 3', category: 'AI & Machine Learning', categoryName: 'AI / LLM', slug: 'ollama-vue3' },
+    { id: 3, title: 'Notarizzazione Codice & Hashing SHA-256', category: 'Cybersecurity & Vault', categoryName: 'Security', slug: 'vault-sha256' },
+    { id: 4, title: 'Telemetria SSE Live & Worker Nitro v2.6', category: 'Backend Architecture', categoryName: 'Backend', slug: 'sse-nitro-v26' }
+  ]
+}
+
 useHead({
-  title: `DKP Crawler Feed (${currentFeed.value.toUpperCase()}) - v2.5-GOLD`,
+  title: `DKP Crawler Feed (${currentFeed.value.toUpperCase()}) — DevKernelPulse v2.6-PURE-SQL`,
   meta: [
     { name: 'description', content: 'Ultime notizie e articoli dal web raccolti in tempo reale in ordine cronologico da Sentinel AI Crawler.' }
   ]
@@ -98,18 +112,18 @@ useHead({
           <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-              ⚡ DKP CRAWLER STREAM • v2.5-GOLD
+              ⚡ DKP CRAWLER STREAM • v2.6-PURE-SQL
             </span>
           </div>
-          <h1 class="text-3xl font-extrabold text-white tracking-tight">
+          <h1 class="text-3xl font-extrabold text-white tracking-tight font-sans">
             🌍 Tech Stream <span class="text-emerald-400 capitalize">{{ currentFeed }}</span>
           </h1>
-          <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+          <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
             Flusso continuo di risorse e notizie tecnologiche indicizzate ed elaborate in tempo reale dal Sentinel Crawler Engine.
           </p>
         </div>
 
-        <NuxtLink to="/submit" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0 flex items-center gap-1.5 relative z-10">
+        <NuxtLink to="/submit" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0 flex items-center gap-1.5 relative z-10 font-mono">
           <span>⚡</span> Invia Post (+15 XP)
         </NuxtLink>
       </div>
@@ -130,7 +144,7 @@ useHead({
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="text-xs font-mono font-bold text-emerald-400 shrink-0">{{ index + 1 }}.</span>
               
-              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
+              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
                 {{ item.title }}
               </a>
 
@@ -189,27 +203,33 @@ useHead({
         📭 Nessuna notizia presente in questo stream al momento.
       </div>
 
-      <!-- 🟢 SEZIONE VAULT (Consigliati) -->
+      <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
-        <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
-          <span>🔗</span> Approfondimenti dal Vault
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+            <span>🔗</span> Approfondimenti dal Vault
+          </h3>
+          <NuxtLink to="/blog" class="text-xs font-mono font-bold text-emerald-400 hover:underline">
+            Vedi tutti gli articoli ➔
+          </NuxtLink>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <NuxtLink 
             v-for="art in featuredArticles" 
             :key="art.id" 
             :to="`/blog/${art.slug || art.id}`"
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px]"
           >
             <div>
-              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
                 {{ art.categoryName || art.category || 'Tech' }}
               </span>
-              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+              <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
                 {{ art.title }}
               </h4>
             </div>
-            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+            <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-4">
               Leggi articolo ➔
             </span>
           </NuxtLink>

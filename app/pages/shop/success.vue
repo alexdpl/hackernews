@@ -3,7 +3,7 @@
 import { ref, onMounted } from 'vue'
 
 useHead({
-  title: 'Conferma Ordine & Attivazione API Key v2.6 — DKP Ecosystem Shop',
+  title: 'Conferma Ordine & Attivazione API Key — DKP Ecosystem v2.6-PURE-SQL',
   meta: [
     { name: 'description', content: 'Pagamento confermato. Generazione ed attivazione della tua DKP API Key o della campagna Ads.' }
   ]
@@ -60,7 +60,7 @@ const copyKey = () => {
 
 <template>
   <div class="min-h-screen bg-[#020420] text-slate-300 py-12 px-4 sm:px-6 font-sans flex items-center justify-center">
-    <div class="max-w-xl w-full bg-[#080d1a] border border-slate-800/80 rounded-2xl p-6 sm:p-10 shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-md">
+    <div class="max-w-xl w-full bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl flex flex-col items-center text-center relative overflow-hidden backdrop-blur-md">
       
       <!-- Glows Decorativi Cosmici -->
       <div class="absolute -top-20 -right-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -77,20 +77,20 @@ const copyKey = () => {
         </span>
       </div>
 
-      <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+      <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2 font-sans">
         Pagamento &amp; Attivazione Completati!
       </h1>
-      <p class="text-slate-400 text-xs sm:text-sm max-w-md leading-relaxed mb-6">
+      <p class="text-slate-400 text-xs sm:text-sm max-w-md leading-relaxed mb-6 font-sans">
         Grazie per aver scelto l'ecosistema DKP. Il tuo ordine è stato registrato ed il token d'accesso è stato notificato su Neon DB.
       </p>
 
       <!-- STATO CARICAMENTO -->
-      <div v-if="isLoading" class="w-full bg-[#040814] border border-slate-800 rounded-xl p-8 my-4 flex flex-col items-center justify-center gap-3 font-mono text-xs text-sky-400 animate-pulse">
+      <div v-if="isLoading" class="w-full bg-[#020420] border border-slate-800 rounded-xl p-8 my-4 flex flex-col items-center justify-center gap-3 font-mono text-xs text-emerald-400 animate-pulse">
         <span>⌛ Generazione ed hashing della tua API Key in corso su Nitro Gateway...</span>
       </div>
 
       <!-- VISUALIZZAZIONE LICENSE / API KEY -->
-      <div v-else-if="apiKey" class="w-full bg-[#040814] border border-slate-800 rounded-xl p-5 mb-6 text-left font-mono text-xs flex flex-col gap-3">
+      <div v-else-if="apiKey" class="w-full bg-[#020420] border border-slate-800 rounded-xl p-5 mb-6 text-left font-mono text-xs flex flex-col gap-3">
         <div class="flex justify-between items-center border-b border-slate-800 pb-2">
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
             {{ itemType === 'API_LICENSE' ? 'LA TUA API KEY PERSONALE:' : 'TOKEN PROMOZIONALE SPONSORED ADS:' }}
@@ -100,7 +100,7 @@ const copyKey = () => {
           </span>
         </div>
 
-        <div class="flex items-center justify-between bg-[#080d1a] border border-emerald-500/40 rounded-lg p-3 gap-2">
+        <div class="flex items-center justify-between bg-[#090d16] border border-emerald-500/40 rounded-lg p-3 gap-2">
           <code class="text-emerald-400 font-bold text-xs sm:text-sm truncate select-all">{{ apiKey }}</code>
           <button 
             @click="copyKey" 
@@ -110,10 +110,10 @@ const copyKey = () => {
           </button>
         </div>
 
-        <div class="text-[11px] text-slate-400 leading-relaxed pt-1">
+        <div class="text-[11px] text-slate-400 leading-relaxed pt-1 font-sans">
           <p v-if="itemType === 'API_LICENSE'">
             🔑 Utilizza questa chiave nelle tue richieste includendo l'header: <br />
-            <code class="text-sky-400 font-bold">Authorization: Bearer {{ apiKey }}</code>
+            <code class="text-sky-400 font-bold font-mono">Authorization: Bearer {{ apiKey }}</code>
           </p>
           <p v-else>
             📢 La tua campagna pubblicitaria è stata posizionata nella coda di erogazione di DKP Ads. Riceverai un report dettagliato sulle impression e sui click generati.
@@ -137,7 +137,7 @@ const copyKey = () => {
         </NuxtLink>
         <NuxtLink 
           to="/shop" 
-          class="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all text-center border border-slate-700"
+          class="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-[#020420] hover:bg-slate-900 text-slate-200 transition-all text-center border border-slate-800"
         >
           ← Torna allo Shop
         </NuxtLink>

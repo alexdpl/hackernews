@@ -3,7 +3,7 @@
 import { ref, computed } from 'vue'
 
 useHead({
-  title: 'DKP Developer API Gateway & Ads Marketplace v2.6',
+  title: 'DKP Developer API Gateway & Ads Marketplace v2.6-PURE-SQL',
   meta: [
     { name: 'description', content: 'Accedi alle API proprietarie ad alte prestazioni per Nuxt 4, Crawler, Jobs Feed e al network pubblicitario DKP Ads.' }
   ]
@@ -193,24 +193,24 @@ const executeCheckout = async () => {
           </span>
         </div>
 
-        <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">
+        <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight font-sans">
           DKP Developer <span class="text-emerald-400">API &amp; Ads Marketplace</span>
         </h1>
         
-        <p class="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed">
+        <p class="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed font-sans">
           Accedi agli endpoint API ad alte prestazioni per Crawler, Jobs Feed e Webhooks, oppure promuovi il tuo brand con gli spot pubblicitari del network DKP Ads.
         </p>
       </header>
 
       <!-- BARRA FILTRI E RICERCA -->
-      <section class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+      <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
         <div class="relative flex-1">
           <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
           <input 
             v-model="searchQuery" 
             type="text" 
             placeholder="Cerca piano API, endpoint o tipologia di Ads..." 
-            class="w-full bg-[#040814] border border-slate-800 pl-11 pr-4 py-3 rounded-xl text-slate-100 text-xs sm:text-sm outline-none focus:border-emerald-500 transition-all font-mono"
+            class="w-full bg-[#020420] border border-slate-800 pl-11 pr-4 py-3 rounded-xl text-slate-100 text-xs sm:text-sm outline-none focus:border-emerald-500 transition-all font-mono"
           />
         </div>
 
@@ -221,7 +221,7 @@ const executeCheckout = async () => {
               'px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer border',
               activeTypeFilter === 'ALL' 
                 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/50 shadow-[0_0_10px_rgba(0,220,130,0.2)]' 
-                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+                : 'bg-[#020420] text-slate-400 border-slate-800 hover:border-slate-700'
             ]"
           >
             Tutti ({{ products.length }})
@@ -232,7 +232,7 @@ const executeCheckout = async () => {
               'px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer border',
               activeTypeFilter === 'API_LICENSE' 
                 ? 'bg-sky-500/15 text-sky-400 border-sky-500/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]' 
-                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+                : 'bg-[#020420] text-slate-400 border-slate-800 hover:border-slate-700'
             ]"
           >
             🔑 Licenze API
@@ -243,7 +243,7 @@ const executeCheckout = async () => {
               'px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer border',
               activeTypeFilter === 'ADS_SPONSOR' 
                 ? 'bg-amber-500/15 text-amber-400 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]' 
-                : 'bg-[#040814] text-slate-400 border-slate-800 hover:border-slate-700'
+                : 'bg-[#020420] text-slate-400 border-slate-800 hover:border-slate-700'
             ]"
           >
             📢 Ads &amp; Sponsor (Beta)
@@ -257,10 +257,10 @@ const executeCheckout = async () => {
           v-for="product in filteredProducts" 
           :key="product.id" 
           :class="[
-            'bg-[#080d1a] border rounded-2xl p-6 shadow-xl flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 group relative overflow-hidden backdrop-blur-md',
+            'bg-[#090d16] border rounded-2xl p-6 shadow-xl flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 group relative overflow-hidden backdrop-blur-md',
             product.isFeatured ? 'border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.15)]' :
             product.type === 'ADS_SPONSOR' ? 'border-amber-500/30 hover:border-amber-500/60' :
-            'border-slate-800/80 hover:border-emerald-500/50'
+            'border-slate-800 hover:border-emerald-500/50'
           ]"
         >
           <!-- Badge Featured / Glow internal -->
@@ -290,10 +290,10 @@ const executeCheckout = async () => {
               </div>
             </div>
 
-            <h3 class="text-white font-bold text-lg group-hover:text-emerald-400 transition-colors">{{ product.title }}</h3>
-            <p class="text-slate-400 text-xs leading-relaxed line-clamp-3">{{ product.description }}</p>
+            <h3 class="text-white font-bold text-lg group-hover:text-emerald-400 transition-colors font-sans">{{ product.title }}</h3>
+            <p class="text-slate-400 text-xs leading-relaxed line-clamp-3 font-sans">{{ product.description }}</p>
 
-            <div class="bg-[#040814] border border-slate-800/80 rounded-xl p-3 font-mono text-[11px] flex flex-col gap-1.5">
+            <div class="bg-[#020420] border border-slate-800 rounded-xl p-3 font-mono text-[11px] flex flex-col gap-1.5">
               <div class="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
                 <span>⚡ Rate limit: <strong class="text-white font-bold">{{ product.rateLimit }}</strong></span>
                 <span>🔑 Auth: <strong class="text-white font-bold">Bearer Token</strong></span>
@@ -304,7 +304,7 @@ const executeCheckout = async () => {
             </div>
           </div>
 
-          <div class="mt-6 pt-4 border-t border-slate-800/60 font-mono">
+          <div class="mt-6 pt-4 border-t border-slate-800 font-mono">
             <button 
               @click="openCheckoutModal(product)" 
               :class="[
@@ -322,7 +322,7 @@ const executeCheckout = async () => {
           </div>
         </article>
 
-        <div v-if="filteredProducts.length === 0" class="col-span-full p-12 text-center text-slate-500 font-mono text-xs">
+        <div v-if="filteredProducts.length === 0" class="col-span-full p-12 text-center text-slate-500 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800">
           📭 Nessun pacchetto trovato corrispondente ai criteri di ricerca.
         </div>
       </section>
@@ -337,14 +337,14 @@ const executeCheckout = async () => {
           class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-md flex items-center justify-center p-4" 
           @click.self="closeModal"
         >
-          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 sm:p-8 shadow-2xl flex flex-col gap-6 relative font-sans">
+          <div class="bg-[#090d16] border border-slate-800 rounded-2xl w-full max-w-lg p-6 sm:p-8 shadow-2xl flex flex-col gap-6 relative font-sans">
             <button @click="closeModal" class="absolute top-5 right-5 text-slate-500 hover:text-white font-bold text-xl cursor-pointer">✕</button>
 
             <div class="flex flex-col gap-2 border-b border-slate-800 pb-4">
               <span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase font-mono w-fit">
                 DKP SECURE GATEWAY
               </span>
-              <h3 class="text-white font-black text-xl sm:text-2xl">{{ selectedProduct?.title }}</h3>
+              <h3 class="text-white font-black text-xl sm:text-2xl font-sans">{{ selectedProduct?.title }}</h3>
               <div class="text-2xl font-black text-emerald-400 font-mono flex items-baseline gap-2 mt-1">
                 €{{ selectedProduct?.price.toFixed(2) }} 
                 <span class="text-xs text-slate-500 font-normal">
@@ -362,7 +362,7 @@ const executeCheckout = async () => {
                   type="email" 
                   placeholder="dev@tuodominio.com" 
                   required 
-                  class="bg-[#040814] border border-slate-800 text-white px-4 py-3 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all text-sm"
+                  class="bg-[#020420] border border-slate-800 text-white px-4 py-3 rounded-xl font-bold outline-none focus:border-emerald-500 transition-all text-sm font-sans"
                 />
               </div>
 
@@ -371,26 +371,26 @@ const executeCheckout = async () => {
                 <div class="flex flex-col gap-2.5">
                   <label 
                     :class="[
-                      'flex items-center gap-3 bg-[#040814] border rounded-xl p-3.5 cursor-pointer transition-all',
+                      'flex items-center gap-3 bg-[#020420] border rounded-xl p-3.5 cursor-pointer transition-all',
                       paymentProvider === 'stripe' ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-800 hover:border-slate-700'
                     ]"
                   >
                     <input type="radio" v-model="paymentProvider" value="stripe" name="provider" class="w-4 h-4 accent-emerald-500 cursor-pointer" />
                     <div class="flex flex-col">
-                      <span class="text-white font-bold text-sm">💳 Carta di Credito / Google Pay</span>
+                      <span class="text-white font-bold text-sm font-sans">💳 Carta di Credito / Google Pay</span>
                       <span class="text-[11px] text-slate-500">Stripe Secure Checkout</span>
                     </div>
                   </label>
 
                   <label 
                     :class="[
-                      'flex items-center gap-3 bg-[#040814] border rounded-xl p-3.5 cursor-pointer transition-all',
+                      'flex items-center gap-3 bg-[#020420] border rounded-xl p-3.5 cursor-pointer transition-all',
                       paymentProvider === 'paypal' ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-800 hover:border-slate-700'
                     ]"
                   >
                     <input type="radio" v-model="paymentProvider" value="paypal" name="provider" class="w-4 h-4 accent-emerald-500 cursor-pointer" />
                     <div class="flex flex-col">
-                      <span class="text-white font-bold text-sm">🅿️ PayPal</span>
+                      <span class="text-white font-bold text-sm font-sans">🅿️ PayPal</span>
                       <span class="text-[11px] text-slate-500">Pagamento / Abbonamento PayPal</span>
                     </div>
                   </label>

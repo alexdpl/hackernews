@@ -13,11 +13,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'ID della chiave API obbligatorio' })
   }
 
+  const numericId = Number(id)
+  if (isNaN(numericId)) {
+    throw createError({ statusCode: 400, statusMessage: 'ID della chiave API non valido' })
+  }
+
   try {
     await db
       .update(apiKeys)
       .set({ status: 'REVOKED' })
-      .where(eq(apiKeys.id, id))
+      .where(eq(apiKeys.id, numericId))
 
     return {
       success: true,
@@ -27,7 +32,7 @@ export default defineEventHandler(async (event) => {
     console.error('❌ Errore revoca API Key:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: `Errore revoca chiave: ${error.message}`
+      statusMessage: `Errore revoca chiave: ${error.message || 'Errore database'}`
     })
   }
 })

@@ -1,6 +1,6 @@
 <!-- app/pages/newest/[page].vue -->
 <script setup lang="ts">
-import { computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
@@ -62,13 +62,38 @@ function prevPage() {
   }
 }
 
-onUnmounted(() => {
-  if (responseData.value) responseData.value = null
+// 4 Articoli consigliati dal Vault
+const featuredArticles = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const res: any = await $fetch('/api/blog/posts').catch(() => null)
+    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
+    if (raw && raw.length > 0) {
+      featuredArticles.value = raw.slice(0, 4)
+    } else {
+      populateFallbackArticles()
+    }
+  } catch (err) {
+    console.error('Errore recupero articoli in evidenza:', err)
+    populateFallbackArticles()
+  }
 })
 
-useSeoMeta({
-  title: `Blog Vault - Pagina ${currentPage.value} - DevKernelPulse`,
-  description: `Pagina ${currentPage.value} degli articoli e approfondimenti editoriali del team DevKernelPulse.`
+function populateFallbackArticles() {
+  featuredArticles.value = [
+    { id: 1, title: 'Guida all\'Architettura Nuxt 4 & Rolldown', category: 'Cloud Native & DevOps', categoryName: 'DevOps', slug: 'nuxt-4-rolldown', summary: 'Analisi approfondita del nuovo motore di bundling.' },
+    { id: 2, title: 'Integrazione Ollama e LLM Locali in Vue 3', category: 'AI & Machine Learning', categoryName: 'AI / LLM', slug: 'ollama-vue3', summary: 'Eseguire modelli AI in locale lato client.' },
+    { id: 3, title: 'Notarizzazione Codice & Hashing SHA-256', category: 'Cybersecurity & Vault', categoryName: 'Security', slug: 'vault-sha256', summary: 'Garantire l\'integrità dei moduli software.' },
+    { id: 4, title: 'Telemetria SSE Live & Worker Nitro v2.6', category: 'Backend Architecture', categoryName: 'Backend', slug: 'sse-nitro-v26', summary: 'Streaming in tempo reale per infrastrutture moderne.' }
+  ]
+}
+
+useHead({
+  title: `Blog Vault — Pagina ${currentPage.value} — DevKernelPulse v2.6-PURE-SQL`,
+  meta: [
+    { name: 'description', content: `Pagina ${currentPage.value} degli articoli e approfondimenti editoriali del team DevKernelPulse.` }
+  ]
 })
 </script>
 
@@ -82,11 +107,11 @@ useSeoMeta({
           <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit mb-2">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-              ⚡ DKP BLOG VAULT • v2.5-GOLD
+              ⚡ DKP BLOG VAULT • v2.6-PURE-SQL
             </span>
           </div>
-          <h1 class="text-2xl font-bold text-white">📚 DKP Blog <span class="text-emerald-400">Vault</span></h1>
-          <p class="text-xs text-slate-400 mt-1">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong> degli articoli editoriali.</p>
+          <h1 class="text-2xl font-bold text-white font-sans">📚 DKP Blog <span class="text-emerald-400">Vault</span></h1>
+          <p class="text-xs text-slate-400 mt-1 font-sans">Stai visualizzando la <strong>Pagina {{ currentPage }} di {{ totalPages }}</strong> degli articoli editoriali.</p>
         </div>
 
         <NuxtLink to="/newest" class="text-xs font-mono font-bold text-sky-400 hover:underline">← Torna alla prima pagina</NuxtLink>
@@ -110,7 +135,7 @@ useSeoMeta({
 
             <div class="flex flex-col gap-1.5 flex-1">
               <div class="flex items-baseline gap-2 flex-wrap">
-                <NuxtLink :to="`/blog/${post.slug}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                <NuxtLink :to="`/blog/${post.slug}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors font-sans leading-snug">
                   {{ post.title }}
                 </NuxtLink>
                 <span class="text-xs font-mono text-slate-500">(devkernelpulse.org)</span>
@@ -137,11 +162,11 @@ useSeoMeta({
 
         <!-- BARRA PAGINAZIONE -->
         <div class="flex justify-center items-center gap-4 mt-6 pt-6 border-t border-slate-800 font-mono text-xs">
-          <button @click="prevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="prevPage" :disabled="currentPage <= 1 || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             ← Precedente
           </button>
           <span class="text-slate-400">Pagina {{ currentPage }} / {{ totalPages }}</span>
-          <button @click="nextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all">
+          <button @click="nextPage" :disabled="!hasMore || pending" class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-lg hover:border-emerald-500/40 disabled:opacity-40 transition-all cursor-pointer">
             Successiva →
           </button>
         </div>
@@ -152,7 +177,41 @@ useSeoMeta({
         <NuxtLink to="/newest" class="text-sky-400 underline font-bold">Torna alla prima pagina del Vault</NuxtLink>
       </div>
 
-      <div class="pt-8 border-t border-slate-800">
+      <!-- SEZIONE CONSIGLIATI DAL VAULT (4 SCHEDE GRID) -->
+      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+            <span>🔗</span> Consigliati dal Vault DKP
+          </h3>
+          <NuxtLink to="/blog" class="text-xs font-mono font-bold text-emerald-400 hover:underline">
+            Vedi tutti gli articoli ➔
+          </NuxtLink>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <NuxtLink 
+            v-for="art in featuredArticles" 
+            :key="art.id" 
+            :to="`/blog/${art.slug || art.id}`"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[180px]"
+          >
+            <div>
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                {{ art.categoryName || art.category || 'Tech' }}
+              </span>
+              <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
+                {{ art.title }}
+              </h4>
+              <p class="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed font-sans">
+                {{ art.excerpt || art.summary || 'Approfondimento tecnico verificato.' }}
+              </p>
+            </div>
+            <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-4">
+              Leggi articolo ➔
+            </span>
+          </NuxtLink>
+        </div>
+
         <DkpNodesHomeWidget />
       </div>
 

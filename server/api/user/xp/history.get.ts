@@ -2,15 +2,17 @@
 import { defineEventHandler, getCookie } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { xpTransactions, users } from '~~/drizzle/schema' // Oppure ~~/server/db/schema se preferisci
+import { users, xpTransactions } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
   try {
     const username = getCookie(event, 'dkp_user') || 'alexdpl'
     const db = getDb()
-    
-    const userRecords = await db.select().from(users).where(eq(users.username, username)).limit(1)
-    if (!userRecords.length) return { success: false, data: [] }
+
+    const userRecords = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1)
+    if (!userRecords.length) {
+      return { success: true, data: [] }
+    }
 
     const userId = userRecords[0].id
 
@@ -22,9 +24,10 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      data: history
+      data: history || []
     }
-  } catch (error) {
+  } catch (error: any) {
+    console.warn('❌ Errore lettura storico XP, fallback vuoto:', error)
     return { success: false, data: [] }
   }
 })

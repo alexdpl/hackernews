@@ -1,14 +1,19 @@
 // server/api/user/licenses.get.ts
-import { defineEventHandler, createError, getCookie, getQuery } from 'h3'
+import { defineEventHandler, getQuery, getCookie, setResponseHeaders } from 'h3'
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { licenses } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
+  setResponseHeaders(event, {
+    'X-Cloud-Region': 'europe-west4',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
+  })
+
   const query = getQuery(event)
   const sessionUserCookie = getCookie(event, 'dkp_user_id') || getCookie(event, 'user_id')
   
-  // Fallback flessibile: cookie -> query param -> utente default (1)
+  // Fallback flessibile per l'ID utente: cookie -> query param -> utente default (1)
   const userId = sessionUserCookie 
     ? parseInt(sessionUserCookie, 10) 
     : (query.userId ? parseInt(String(query.userId), 10) : 1)
@@ -29,21 +34,34 @@ export default defineEventHandler(async (event) => {
       .where(eq(licenses.userId, userId))
       .orderBy(desc(licenses.createdAt))
 
-    return {
-      success: true,
-      data: userLicenses.map(lic => ({
+    const formattedData = userLicenses.map(lic => {
+      let expiresStr = 'Lifetime'
+      if (lic.expires) {
+        const d = lic.expires instanceof Date ? lic.expires : new Date(lic.expires)
+        if (!isNaN(d.getTime())) {
+          expiresStr = d.toLocaleDateString('it-IT')
+        }
+      }
+
+      return {
         id: lic.id,
         product: lic.product,
         key: lic.key,
         status: lic.status,
-        expires: lic.expires ? new Date(lic.expires).toLocaleDateString('it-IT') : 'Lifetime'
-      }))
+        expires: expiresStr
+      }
+    })
+
+    return {
+      success: true,
+      data: formattedData
     }
   } catch (error: any) {
-    console.error('❌ Errore recupero licenze utente:', error)
-    throw createError({
-      statusCode: 500,
-      statusMessage: `Errore recupero licenze: ${error.message}`
-    })
+    console.error('❌ Errore recupero licenze utente:', error?.message || error)
+    // Fallback sicuro senza far crollare la dashboard
+    return {
+      success: true,
+      data: []
+    }
   }
 })

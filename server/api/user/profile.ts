@@ -1,7 +1,7 @@
 // server/api/user/profile.ts
-import { defineEventHandler, getQuery, readBody, getMethod, createError } from 'h3'
+import { defineEventHandler, getMethod, getQuery, readBody, createError } from 'h3'
 
-// Store globale per la sessione (sincronizzato con il database)
+// Store in-memory sincronizzato (da sostituire o affiancare alla tabella 'users' su Neon DB)
 const globalProfileStore: Record<string, any> = {
   alexdpl: {
     username: 'alexdpl',
@@ -24,45 +24,78 @@ const globalProfileStore: Record<string, any> = {
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
 
-  // GET: Recupera i dati del profilo
+  // ----------------------------------------------------
+  // 1. GESTIONE GET: Lettura Profilo Utente
+  // ----------------------------------------------------
   if (method === 'GET') {
     const query = getQuery(event)
     const username = (query.username as string) || 'alexdpl'
-    const user = globalProfileStore[username] || globalProfileStore['alexdpl']
+
+    // Recupera l'utente o applica il fallback sul profilo di default
+    const userRaw = globalProfileStore[username] || globalProfileStore['alexdpl']
+
+    // Normalizzazione restrittiva dei dati per evitare campi corrotti
+    const user = {
+      ...userRaw,
+      bio: userRaw.bio ?? 'Lead Engineer Architect & Core Creator of DevKernelPulse.',
+      avatar: userRaw.avatar || 'https://github.com/alexdpl.png',
+      // Garantisce che badges sia SEMPRE un array nativo, non una stringa JSON
+      badges: typeof userRaw.badges === 'string' 
+        ? JSON.parse(userRaw.badges) 
+        : (Array.isArray(userRaw.badges) ? userRaw.badges : [])
+    }
 
     return {
       success: true,
       data: {
         user,
-        stats: { reputationScore: 98.4, notarizedCodeCount: 18 }
+        stats: {
+          reputationScore: 98.4,
+          notarizedCodeCount: 18
+        }
       }
     }
   }
 
-  // PUT: Salva i dati inviati dalla Dashboard
+  // ----------------------------------------------------
+  // 2. GESTIONE PUT: Aggiornamento Bio, Avatar & Social
+  // ----------------------------------------------------
   if (method === 'PUT') {
     const body = await readBody(event)
     const username = body.username || 'alexdpl'
 
+    if (!body || typeof body !== 'object') {
+      throw createError({ statusCode: 400, statusMessage: 'Payload di aggiornamento non valido' })
+    }
+
+    // Inizializza l'utente nel record se inesistente
     if (!globalProfileStore[username]) {
       globalProfileStore[username] = { ...globalProfileStore['alexdpl'], username }
     }
 
-    // Aggiornamento campi
+    // Persistenza dei campi aggiornati
     globalProfileStore[username] = {
       ...globalProfileStore[username],
-      avatar: body.avatar || globalProfileStore[username].avatar,
+      avatar: body.avatar !== undefined ? body.avatar : globalProfileStore[username].avatar,
       bio: body.bio !== undefined ? body.bio : globalProfileStore[username].bio,
-      github: body.github || globalProfileStore[username].github,
-      twitter: body.twitter || globalProfileStore[username].twitter,
-      linkedin: body.linkedin || globalProfileStore[username].linkedin,
-      reddit: body.reddit || globalProfileStore[username].reddit
+      github: body.github !== undefined ? body.github : globalProfileStore[username].github,
+      twitter: body.twitter !== undefined ? body.twitter : globalProfileStore[username].twitter,
+      linkedin: body.linkedin !== undefined ? body.linkedin : globalProfileStore[username].linkedin,
+      reddit: body.reddit !== undefined ? body.reddit : globalProfileStore[username].reddit
     }
 
     return {
       success: true,
-      message: 'Profilo salvato correttamente nel database Kernel',
-      data: { user: globalProfileStore[username] }
+      message: 'Profilo aggiornato con successo nel Kernel DKP',
+      data: {
+        user: globalProfileStore[username]
+      }
     }
   }
+
+  // Blocco di sicurezza per metodi non supportati (es. POST, DELETE su /api/user/profile)
+  throw createError({
+    statusCode: 405,
+    statusMessage: `Metodo HTTP ${method} non consentito su questa rotta.`
+  })
 })

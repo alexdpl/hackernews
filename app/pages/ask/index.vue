@@ -44,18 +44,32 @@ const askList = computed(() => {
 const pagination = computed(() => responseData.value?.pagination || {})
 const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || responseData.value?.pagination?.hasMore || askList.value.length >= 15)
 
-// 2. Articoli Consigliati dal Vault
+// 2. Articoli Consigliati dal Vault (4 schede)
 const featuredArticles = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const res: any = await $fetch('/api/blog/posts')
+    const res: any = await $fetch('/api/blog/posts').catch(() => null)
     const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-    featuredArticles.value = raw.slice(0, 2)
+    if (raw && raw.length > 0) {
+      featuredArticles.value = raw.slice(0, 4)
+    } else {
+      populateFallbackArticles()
+    }
   } catch (err) {
     console.error('Errore recupero articoli in evidenza:', err)
+    populateFallbackArticles()
   }
 })
+
+function populateFallbackArticles() {
+  featuredArticles.value = [
+    { id: 1, title: 'Guida all\'Architettura Nuxt 4 & Rolldown', category: 'Cloud Native & DevOps', categoryName: 'DevOps', slug: 'nuxt-4-rolldown' },
+    { id: 2, title: 'Integrazione Ollama e LLM Locali in Vue 3', category: 'AI & Machine Learning', categoryName: 'AI / LLM', slug: 'ollama-vue3' },
+    { id: 3, title: 'Notarizzazione Codice & Hashing SHA-256', category: 'Cybersecurity & Vault', categoryName: 'Security', slug: 'vault-sha256' },
+    { id: 4, title: 'Telemetria SSE Live & Worker Nitro v2.6', category: 'Backend Architecture', categoryName: 'Backend', slug: 'sse-nitro-v26' }
+  ]
+}
 
 // Logica Voti Reattiva
 const voteAsk = (item: any) => {
@@ -84,7 +98,7 @@ function formatTime(dateStr: string | undefined): string {
 }
 
 useHead({
-  title: 'Ask DKP Community - Q&A & Discussioni v2.5-GOLD',
+  title: 'Ask DKP Community — Q&A & Discussioni v2.6-PURE-SQL',
   meta: [
     { name: 'description', content: 'Fai domande sull\'architettura software, chiedi code review e discuti con gli sviluppatori della community DKP.' }
   ]
@@ -101,18 +115,18 @@ useHead({
           <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-              ⚡ COMMUNITY Q&A • v2.5-GOLD
+              ⚡ COMMUNITY Q&amp;A • v2.6-PURE-SQL
             </span>
           </div>
-          <h1 class="text-3xl font-extrabold text-white tracking-tight">
+          <h1 class="text-3xl font-extrabold text-white tracking-tight font-sans">
             💭 Ask <span class="text-emerald-400">DKP Community</span>
           </h1>
-          <p class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+          <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
             Fai domande sull'architettura software, chiedi code review o apri un dibattito tecnico con la community.
           </p>
         </div>
 
-        <NuxtLink to="/submit?type=ask" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-1.5 relative z-10">
+        <NuxtLink to="/submit?type=ask" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-1.5 relative z-10 font-mono">
           <span>💭</span> Fai una Domanda (+15 XP)
         </NuxtLink>
       </div>
@@ -143,7 +157,7 @@ useHead({
             <div class="flex flex-col gap-2 flex-1">
               <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-xs font-mono font-bold text-slate-500">{{ index + 1 }}.</span>
-                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug">
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
                   {{ item.title }}
                 </NuxtLink>
               </div>
@@ -202,27 +216,33 @@ useHead({
         </div>
       </div>
 
-      <!-- 🟢 SEZIONE VAULT (Consigliati) -->
+      <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
-        <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
-          <span>🔗</span> Approfondimenti dal Vault
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
+            <span>🔗</span> Approfondimenti dal Vault
+          </h3>
+          <NuxtLink to="/blog" class="text-xs font-mono font-bold text-emerald-400 hover:underline">
+            Vedi tutti gli articoli ➔
+          </NuxtLink>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <NuxtLink 
             v-for="art in featuredArticles" 
             :key="art.id" 
             :to="`/blog/${art.slug || art.id}`"
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px]"
           >
             <div>
-              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
                 {{ art.categoryName || art.category || 'Tech' }}
               </span>
-              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
+              <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
                 {{ art.title }}
               </h4>
             </div>
-            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+            <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-4">
               Leggi articolo ➔
             </span>
           </NuxtLink>

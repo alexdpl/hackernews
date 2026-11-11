@@ -2,9 +2,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-useDkpSeo({
-  title: 'Toolkit & Developer Tools v2.5-GOLD - DevKernelPulse',
-  description: 'Suite ufficiale di strumenti professionali DKP: Neural Playground, AI Repo Scanner, Code Vault, CLI Toolkit e API Management.'
+useHead({
+  title: 'Toolkit & Developer Tools v2.6-PURE-SQL — DevKernelPulse',
+  meta: [
+    { name: 'description', content: 'Suite ufficiale di strumenti professionali DKP: Neural Playground, AI Repo Scanner, Code Vault, CLI Toolkit e API Management.' }
+  ]
 })
 
 interface DkpTool {
@@ -27,7 +29,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'ai-repo-scanner',
     title: 'AI Repository Scanner',
     category: 'Code Quality & AI',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'active',
     icon: '🤖',
     description: 'Analizza repository GitHub con intelligenza artificiale. Estrae lo stack tecnologico reale, calcola il Reputation Score e assegna XP sul DB.',
@@ -44,7 +46,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'neural-playground',
     title: 'Neural Playground',
     category: 'Code Quality & AI',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'active',
     icon: '🧠',
     description: 'Ambiente di testing avanzato per Prompt Engineering e interazione diretta con i Modelli IA (LLM) configurati nel sistema.',
@@ -61,7 +63,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'terminal-web-shell',
     title: 'Terminal Web Shell',
     category: 'DevOps & CLI',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'active',
     icon: '💻',
     description: 'Shell CLI direttamente in-browser per gestire i servizi, avviare comandi di sistema e testare l\'SDK DKP con gamification.',
@@ -78,7 +80,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'ai-code-scanner',
     title: 'AI Code Scanner Pro',
     category: 'Security & Monitoring',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'enterprise',
     icon: '🔍',
     description: 'Audit statico e analisi delle vulnerabilità assistita da IA. Trova bug, leak di token e pattern insicuri negli snippet di codice.',
@@ -95,7 +97,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'proof-of-code',
     title: 'Proof of Code (Vault)',
     category: 'Security & Monitoring',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'active',
     icon: '🛡️',
     description: 'Sistema di notarizzazione per snippet di codice. Genera un hash crittografico SHA-256 e salva l\'impronta su Neon DB.',
@@ -112,7 +114,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'code-vault-editor',
     title: 'Code Vault Blog Editor',
     category: 'Content Creation',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'active',
     icon: '✍️',
     description: 'Editor Markdown professionale con supporto per tabelle HTML, toolbar stile Docs e Zen Mode Fullscreen collegato al DB.',
@@ -129,7 +131,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'api-management',
     title: 'API Key Management',
     category: 'Developer Services',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'enterprise',
     icon: '🔑',
     description: 'Gestione granulare delle chiavi API personali con Rate Limiting Nitro integrato. Crea e revoca token in modo sicuro.',
@@ -146,7 +148,7 @@ const toolsList = ref<DkpTool[]>([
     id: 'dkp-cli-toolkit',
     title: 'DKP CLI Toolkit',
     category: 'DevOps & CLI',
-    version: 'v2.5-GOLD',
+    version: 'v2.6-PURE-SQL',
     status: 'active',
     icon: '⚡',
     description: 'Strumento a riga di comando per gestire il deploy rapido, la migrazione dei DB Neon e l\'interazione remota con le API DKP.',
@@ -178,24 +180,39 @@ const filteredTools = computed(() => {
   <div class="min-h-screen bg-[#020420] text-slate-50 px-4 sm:px-6 py-10 sm:py-16 font-sans">
     <div class="max-w-6xl mx-auto flex flex-col gap-10">
       
-      <!-- HERO HEADER -->
+      <!-- HERO HEADER CON 3 BOTTONI ECOSYSTEM E BADGE V2.6 -->
       <header class="bg-[#090d16] border border-slate-800 rounded-3xl p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
         <!-- Glow background effect -->
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 
         <div class="mb-5 relative z-10">
           <span class="inline-flex bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-4 py-1.5 rounded-full text-xs font-extrabold tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            🛠️ DKP DEVELOPER ECOSYSTEM SUITE
+            🛠️ DKP DEVELOPER ECOSYSTEM SUITE v2.6-PURE-SQL
           </span>
         </div>
         
-        <h1 class="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">
-          Strumenti Professionali & <span class="text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">Utility v2.5-GOLD</span>
+        <h1 class="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10 font-sans">
+          Strumenti Professionali & <span class="text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">Utility v2.6</span>
         </h1>
         
-        <p class="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed mb-10 relative z-10">
+        <p class="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed mb-6 relative z-10 font-sans">
           Una suite integrata di strumenti avanzati per l'audit del codice, AI testing, gestione API e creazione contenuti.
         </p>
+
+        <!-- PULSANTI PRINCIPALI DELL'ECOSISTEMA (3 BOTTONI HOME INDEX) -->
+        <div class="flex flex-wrap gap-3 justify-center mb-8 relative z-10 font-mono">
+          <NuxtLink to="/news" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-extrabold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+            🌍 Esplora DKP Tech Feed
+          </NuxtLink>
+
+          <NuxtLink to="/nodes" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg">
+            💬 DKP Talks Hub
+          </NuxtLink>
+
+          <NuxtLink to="/tools" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+            🛠️ Developer Tools
+          </NuxtLink>
+        </div>
 
         <!-- SEARCH & FILTER BAR -->
         <div class="flex flex-col sm:flex-row gap-4 max-w-3xl mx-auto justify-center relative z-10">
@@ -254,27 +271,27 @@ const filteredTools = computed(() => {
             </div>
           </div>
 
-          <h2 class="text-xl font-extrabold text-white mb-2 group-hover:text-emerald-400 transition-colors">
+          <h2 class="text-xl font-extrabold text-white mb-2 group-hover:text-emerald-400 transition-colors font-sans">
             {{ tool.title }}
           </h2>
           
-          <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1">
+          <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1 font-sans">
             {{ tool.description }}
           </p>
 
-          <div class="bg-[#020420] border border-slate-800/80 rounded-xl p-4 mb-6 shadow-inner">
-            <h4 class="m-0 mb-3 text-slate-300 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5">
+          <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 mb-6 shadow-inner">
+            <h4 class="m-0 mb-3 text-slate-300 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 font-mono">
               <span>🔥</span> Funzionalità Chiave:
             </h4>
             <ul class="flex flex-col gap-2 m-0 p-0 list-none">
-              <li v-for="(feat, idx) in tool.features" :key="idx" class="text-[11px] sm:text-xs text-slate-400 flex items-start gap-2 leading-snug">
+              <li v-for="(feat, idx) in tool.features" :key="idx" class="text-[11px] sm:text-xs text-slate-400 flex items-start gap-2 leading-snug font-sans">
                 <span class="text-emerald-400 font-bold shrink-0 mt-0.5">▸</span> 
                 <span>{{ feat }}</span>
               </li>
             </ul>
           </div>
 
-          <div class="flex justify-end mt-auto">
+          <div class="flex justify-end mt-auto font-mono">
             <NuxtLink 
               :to="tool.route" 
               class="w-full sm:w-auto text-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-5 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all hover:bg-emerald-400 hover:text-slate-950 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
