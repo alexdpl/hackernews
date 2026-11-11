@@ -3,22 +3,33 @@ import { fileURLToPath } from 'node:url'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-25',
+
+  future: {
+    compatibilityVersion: 4
+  },
+
   devtools: { enabled: true },
-  
+
   devServer: {
     host: 'localhost',
     port: 3000
   },
-  
+
+  // 🟢 ROUTE RULES: Gestione Caching ed Isolamento API Nitro Engine
   routeRules: {
-    // API Notizie: Cache Edge di 5 min, serve contenuti vecchi mentre aggiorna in background (24h)
+    // API Amministrative: Nessuna cache, bypass completo SSR / Vue Router
+    '/api/admin/**': {
+      cache: false,
+      cors: true
+    },
+    // API Notizie: Cache Edge di 5 min con Stale-While-Revalidate su CDN
     '/api/news': {
       headers: {
         'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400',
         'CDN-Cache-Control': 'max-age=300, stale-while-revalidate=86400'
       }
     },
-    // API Blog: Cache Edge di 1 ora
+    // API Blog: Cache Edge 1h
     '/api/blog/**': {
       headers: {
         'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
@@ -26,9 +37,16 @@ export default defineNuxtConfig({
       }
     }
   },
- 
+
+  // 🟢 NITRO ENGINE CONFIGURATION (Server-Side)
+  nitro: {
+    experimental: {
+      asyncContext: true
+    }
+  },
+
+  // 🟢 RUNTIME CONFIGURATION (Server & Public)
   runtimeConfig: {
-    // Credenziali e chiavi server-side protette
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     databaseUrl: process.env.DATABASE_URL || '',
 
@@ -37,7 +55,7 @@ export default defineNuxtConfig({
     smtpUser: process.env.SMTP_USER || process.env.NUXT_SMTP_USER || '',
     smtpPass: process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || '',
     smtpFrom: process.env.SMTP_FROM || process.env.NUXT_SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>',
-    
+
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org',
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
@@ -45,6 +63,7 @@ export default defineNuxtConfig({
     }
   },
 
+  // 🟢 HEAD & META TAGS SEO
   app: {
     head: {
       htmlAttrs: { lang: 'it' },
@@ -55,16 +74,14 @@ export default defineNuxtConfig({
         { name: 'keywords', content: 'DevKernelPulse, Nuxt 4, OpenUI Studio, OpenRouter, Neon DB, Drizzle ORM, AI Gateway, API Key Management' },
         { name: 'description', content: 'Piattaforma SaaS avanzata per Nuxt 4 con Neural Playground, OpenUI Studio, Proof-of-Code Vault e API Gateway protetto.' },
         
-        // Open Graph per Social & AI Previews (ChatGPT Search, Perplexity, Discord, Telegram)
         { property: 'og:type', content: 'website' },
-        { property: 'og:site_name', content: 'DevKernelPulse v2.5-GOLD' },
+        { property: 'og:site_name', content: 'DevKernelPulse v2.6-PURE-SQL' },
         { property: 'og:title', content: 'DevKernelPulse — The Next-Gen Developer & AI Ecosystem' },
         { property: 'og:description', content: 'Piattaforma SaaS avanzata per Nuxt 4 con Neural Playground, OpenUI Studio, Proof-of-Code Vault e API Gateway protetto.' },
         { property: 'og:image', content: 'https://devkernelpulse.org/og-cover.png' },
         
-        // Twitter Card / X
         { name: 'twitter:card', content: 'summary_large_image' },
-        { name: 'twitter:title', content: 'DevKernelPulse v2.5-GOLD' },
+        { name: 'twitter:title', content: 'DevKernelPulse v2.6-PURE-SQL' },
         { name: 'twitter:description', content: 'Costruisci, proteggi e monetizza le tue app con Nuxt 4 e IA decentralizzata.' },
         { name: 'twitter:image', content: 'https://devkernelpulse.org/og-cover.png' }
       ],
@@ -74,16 +91,16 @@ export default defineNuxtConfig({
     }
   },
 
+  // 🟢 VITE BUNDLER OPTIMIZATION (Risolto NUXT_B7002)
   vite: {
     optimizeDeps: {
-      holdUntilCrawlEnd: true,
       include: [
-        '@vue/devtools-core',
         'prismjs'
       ]
     }
   },
 
+  // 🟢 STYLES & TAILWIND (Risolto NUXT_B7027)
   modules: [
     '@nuxtjs/tailwindcss'
   ],
@@ -91,32 +108,18 @@ export default defineNuxtConfig({
   tailwindcss: {
     cssPath: '~/assets/css/main.css',
     configPath: 'tailwind.config.js',
+    exposeConfig: false,
+    viewer: false
   },
 
   css: [
-    'prismjs/themes/prism-tomorrow.css',
-    '~/assets/css/main.css'
+    'prismjs/themes/prism-tomorrow.css'
   ],
 
-  postcss: {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-    },
-  },
-
-  future: {
-    compatibilityVersion: 4
-  },
-
-  experimental: {
-    appManifest: false
-  },
-
-  // 🟢 ALIAS ESSENZIALI (Drizzle & Core)
+  // 🟢 ALIAS & AUTO-IMPORTS DKP KERNEL
   alias: {
     '~~/drizzle': fileURLToPath(new URL('./drizzle', import.meta.url)),
-    '@core': fileURLToPath(new URL('./devkernelpulse-core', import.meta.url)),
+    '@core': fileURLToPath(new URL('./devkernelpulse-core', import.meta.url))
   },
 
   imports: {

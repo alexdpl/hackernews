@@ -1,7 +1,76 @@
 // server/utils/sanitizer.ts
+import sanitizeHtml from 'sanitize-html'
+import type { IOptions } from 'sanitize-html'
 
 /**
- * 1. Sanitizzatore Supremo per URL (v2.6-BULLETPROOF)
+ * Helper per l'interoperabilità CJS/ESM di sanitize-html in Nitro Server Engine & Vite
+ */
+function getSanitizer(): typeof sanitizeHtml {
+  return typeof sanitizeHtml === 'function'
+    ? sanitizeHtml
+    : (sanitizeHtml as any)?.default || sanitizeHtml
+}
+
+/**
+ * Configurazione opzioni sanitize-html per le email ed i contenuti HTML in arrivo
+ */
+const EMAIL_SANITY_OPTIONS: IOptions = {
+  allowedTags: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a'],
+  allowedAttributes: {
+    a: ['href', 'title', 'rel', 'target']
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+  allowedSchemesAppliedToAttributes: ['href', 'src'],
+  allowProtocolRelative: false,
+  disallowedTagsMode: 'discard',
+  transformTags: {
+    a: (_tagName, attribs) => ({
+      tagName: 'a',
+      attribs: {
+        ...attribs,
+        target: '_blank',
+        rel: 'noopener noreferrer'
+      }
+    })
+  }
+}
+
+/**
+ * 1. Sanitizzatore HTML per Email e Contenuti (Prevenzione XSS)
+ */
+export function sanitizeEmailHtml(rawHtml: string | null | undefined): string {
+  if (!rawHtml || typeof rawHtml !== 'string') return ''
+
+  try {
+    const sanitize = getSanitizer()
+    return sanitize(rawHtml, EMAIL_SANITY_OPTIONS)
+  } catch (err) {
+    console.error('[SANITIZER ERROR]: Fallback attivo per sanificazione HTML', err)
+    
+    // Fallback sicuro con sanitizzazione regex iterativa dei tag script ed event handler
+    let sanitized = rawHtml
+    let previous: string
+    do {
+      previous = sanitized
+      sanitized = sanitized
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/\son\w+="[^"]*"/gi, '')
+        .replace(/\son\w+='[^']*'/gi, '')
+    } while (sanitized !== previous)
+
+    return sanitized
+  }
+}
+
+/**
+ * Alias per la sanitizzazione generica dei contenuti (retrocompatibilità frontend/backend)
+ */
+export function sanitizeContent(rawHtml: string | null | undefined): string {
+  return sanitizeEmailHtml(rawHtml)
+}
+
+/**
+ * 2. Sanitizzatore Supremo per URL (v2.6-BULLETPROOF)
  * Garantisce che nessun URL malformato, vuoto, oggetto o anomalo faccia mai crashare il server.
  */
 export function sanitizeUrl(
@@ -10,7 +79,6 @@ export function sanitizeUrl(
 ): { url: string; domain: string; isInternal: boolean } {
   const defaultDomain = 'devkernelpulse.org'
   
-  // Conversione sicura e pulita del titolo in stringa
   const safeTitleString = typeof fallbackTitle === 'string' && fallbackTitle.trim() !== '' 
     ? fallbackTitle 
     : 'tech-story'
@@ -22,7 +90,6 @@ export function sanitizeUrl(
 
   const defaultInternalUrl = `https://${defaultDomain}/item/${fallbackSlug}`
 
-  // Se l'URL non è una stringa valida
   if (!rawUrl || typeof rawUrl !== 'string' || rawUrl.trim() === '') {
     return {
       url: defaultInternalUrl,
@@ -57,7 +124,6 @@ export function sanitizeUrl(
     }
   }
 
-  // Parsing nativo protetto al 100% da try/catch
   try {
     const parsed = new URL(cleaned)
     return {
@@ -72,36 +138,4 @@ export function sanitizeUrl(
       isInternal: true
     }
   }
-}
-
-/**
- * 2. Sanitizzatore HTML per Email in arrivo (Prevenzione XSS)
- * Nota: Assicurati di importare sanitize-html se viene usato, oppure restituisce stringa pulita.
- */
-export function sanitizeEmailHtml(rawHtml: string | null | undefined): string {
-  if (!rawHtml || typeof rawHtml !== 'string') return ''
-
-  // Se la libreria sanitizeHtml è disponibile globalmente o importata
-  try {
-    // @ts-ignore
-    if (typeof sanitizeHtml === 'function') {
-      // @ts-ignore
-      return sanitizeHtml(rawHtml, {
-        disallowedTagsMode: 'discard',
-        allowedSchemes: ['http', 'https', 'mailto'],
-        allowedSchemesAppliedToAttributes: ['href', 'src'],
-        allowProtocolRelative: false,
-        transformTags: {
-          a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' }, true)
-        }
-      })
-    }
-  } catch {
-    // Fallback se la lib non è caricata
-  }
-
-  // Fallback di pulizia basilare dei tag script/on-events se sanitize-html non è agganciato
-  return rawHtml
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+="[^"]*"/g, '')
 }

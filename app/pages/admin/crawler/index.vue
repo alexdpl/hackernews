@@ -16,6 +16,7 @@ const selectedSection = ref<'news' | 'ask' | 'show' | 'jobs'>('news')
 const selectedLimit = ref(20)
 const statusMessage = ref('Pannello Crawler SaaS v2.6-PURE-SQL pronto all\'uso. Attendi input...')
 const isRunning = ref(false)
+const isLoading = ref(false)
 const latestResult = ref<{ itemsFound: number; section: string; timestamp: string } | null>(null)
 
 // Stato Notifiche Toast
@@ -76,6 +77,27 @@ async function purgeDatabase() {
     triggerToast('❌ Errore durante la rimozione dei duplicati.', 'error')
   } finally {
     isRunning.value = false
+  }
+}
+
+// Pulizia Errori & Log Cron Ingestione (/api/admin/cron-trigger)
+async function purgeIngestionErrors() {
+  isLoading.value = true
+  statusMessage.value = `[${new Date().toLocaleTimeString()}] Invio segnale Purge Log a /api/admin/cron-trigger...`
+  try {
+    const res: any = await $fetch('/api/admin/cron-trigger', {
+      method: 'POST',
+      body: { action: 'purge' }
+    })
+    if (res?.success) {
+      statusMessage.value = res.message || '🧹 Log di ingestione ed errori del Cron purgati con successo.'
+      triggerToast(res.message || '🧹 Log Ingestion azzerati!', 'success')
+    }
+  } catch (err: any) {
+    statusMessage.value = `[ERRORE] ${err.data?.statusMessage || err.message || 'Errore durante la pulizia dei log'}`
+    triggerToast(err?.data?.statusMessage || 'Errore durante la pulizia dei log', 'error')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -181,25 +203,36 @@ async function wipeDatabase() {
             Control Center <span class="text-emerald-400">Ingestione Notizie (RSS/Atom)</span>
           </h1>
           <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
-            Interroga i provider tech globali in parallelo (HackerNews, Dev.to, GitHub, GitLab, Reddit, ProductHunt), popola NeonDB in tempo reale ed elimina automaticamente i doppiani.
+            Interroga i provider tech globali in parallelo (HackerNews, Dev.to, GitHub, GitLab, Reddit, ProductHunt), popola NeonDB in tempo reale ed elimina automaticamente i duplicati.
           </p>
         </div>
 
         <!-- AZIONI MANUTENZIONE DATABASE -->
-        <div class="flex items-center gap-3 relative z-10 font-mono w-full sm:w-auto flex-wrap">
+        <div class="flex items-center gap-2.5 relative z-10 font-mono w-full sm:w-auto flex-wrap">
           <button 
-            @click="purgeDatabase" 
-            :disabled="isRunning" 
-            class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-bold text-xs bg-[#040814] border border-slate-800 hover:border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            type="button"
+            @click.prevent="purgeIngestionErrors" 
+            :disabled="isRunning || isLoading" 
+            class="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl font-bold text-xs bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 text-cyan-300 transition-all shadow-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Reset dello stato errori cron via /api/admin/cron-trigger"
+          >
+            ⚡ Purge Log Cron
+          </button>
+          <button 
+            type="button"
+            @click.prevent="purgeDatabase" 
+            :disabled="isRunning || isLoading" 
+            class="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl font-bold text-xs bg-[#040814] border border-slate-800 hover:border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 transition-all shadow-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             🧹 Purge Duplicati DB
           </button>
           <button 
-            @click="wipeDatabase" 
-            :disabled="isRunning" 
-            class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-bold text-xs bg-rose-500/10 border border-rose-500/40 hover:bg-rose-500 hover:text-white text-rose-400 transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            type="button"
+            @click.prevent="wipeDatabase" 
+            :disabled="isRunning || isLoading" 
+            class="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl font-bold text-xs bg-rose-500/10 border border-rose-500/40 hover:bg-rose-500 hover:text-white text-rose-400 transition-all shadow-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            🗑️ Cancella Tutti i Dati
+            🗑️ Wipe Dati
           </button>
         </div>
       </header>
@@ -234,14 +267,15 @@ async function wipeDatabase() {
           </div>
 
           <button 
-            @click="runSelectedEngine" 
-            :disabled="isRunning" 
+            type="button"
+            @click.prevent="runSelectedEngine" 
+            :disabled="isRunning || isLoading" 
             class="w-full mt-2 py-3.5 px-4 rounded-xl font-black text-xs sm:text-sm font-mono bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 hover:brightness-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(0,220,130,0.25)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            <span v-if="!isRunning">🚀 Avvia Crawler Engine ({{ selectedSection.toUpperCase() }})</span>
+            <span v-if="!isRunning && !isLoading">🚀 Avvia Crawler Engine ({{ selectedSection.toUpperCase() }})</span>
             <span v-else class="flex items-center gap-2">
               <span class="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-              Sincronizzazione in corso...
+              Esecuzione in corso...
             </span>
           </button>
         </section>
@@ -263,9 +297,9 @@ async function wipeDatabase() {
               <div class="text-slate-200">&gt; Categoria sincronizzata su NeonDB: <span class="text-amber-400 font-bold">{{ latestResult.section.toUpperCase() }}</span></div>
             </template>
 
-            <div v-if="isRunning" class="text-purple-400 flex items-center gap-2 mt-2">
+            <div v-if="isRunning || isLoading" class="text-purple-400 flex items-center gap-2 mt-2">
               <span class="w-3 h-3 rounded-full bg-purple-400 animate-ping"></span>
-              Analisi feed RSS/Atom, deduplicazione ed upsert Pure SQL in corso...
+              Operazione Kernel Pure SQL in corso...
             </div>
           </div>
         </section>
