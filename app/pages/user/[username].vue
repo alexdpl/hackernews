@@ -105,15 +105,11 @@ onUnmounted(() => {
 
     <div v-else class="max-w-4xl mx-auto flex flex-col gap-8">
       
-      <!-- HERO PROFILE CARD -->
       <div class="bg-[#080d1a] border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
         <div class="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
-          
           <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-            
-            <!-- AVATAR CON SPUNTINO VERIFICATO NELLA CORNICE -->
             <div class="relative shrink-0">
               <img 
                 v-if="avatar && !avatarError" 
@@ -141,7 +137,6 @@ onUnmounted(() => {
                 </span>
               </div>
 
-              <!-- RENDERING BIOGRAFIA UTENTE -->
               <p class="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-xl font-sans mt-1">
                 {{ bio }}
               </p>
@@ -163,7 +158,6 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <!-- BARRA LINK SOCIAL REALI -->
         <div class="mt-8 pt-6 border-t border-slate-800/80 flex flex-wrap justify-center sm:justify-start gap-3 relative z-10 font-mono">
           <a :href="github" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-emerald-400 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">GitHub</a>
           <a :href="twitter" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-sky-400 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">Twitter / X</a>

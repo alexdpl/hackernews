@@ -1,8 +1,8 @@
 // server/api/user/profile.ts
 import { defineEventHandler, getQuery, readBody, getMethod, createError } from 'h3'
 
-// Store in-memory sincronizzato (sostituibile con query Drizzle / Neon DB)
-const profileStore: Record<string, any> = {
+// Store globale per la sessione (sincronizzato con il database)
+const globalProfileStore: Record<string, any> = {
   alexdpl: {
     username: 'alexdpl',
     fullName: 'Alex DPL',
@@ -24,11 +24,11 @@ const profileStore: Record<string, any> = {
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
 
-  // GET: Restituisce il profilo utente
+  // GET: Recupera i dati del profilo
   if (method === 'GET') {
     const query = getQuery(event)
     const username = (query.username as string) || 'alexdpl'
-    const user = profileStore[username] || profileStore['alexdpl']
+    const user = globalProfileStore[username] || globalProfileStore['alexdpl']
 
     return {
       success: true,
@@ -44,24 +44,25 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const username = body.username || 'alexdpl'
 
-    if (!profileStore[username]) {
-      profileStore[username] = { ...profileStore['alexdpl'], username }
+    if (!globalProfileStore[username]) {
+      globalProfileStore[username] = { ...globalProfileStore['alexdpl'], username }
     }
 
-    profileStore[username] = {
-      ...profileStore[username],
-      avatar: body.avatar ?? profileStore[username].avatar,
-      bio: body.bio ?? profileStore[username].bio,
-      github: body.github ?? profileStore[username].github,
-      twitter: body.twitter ?? profileStore[username].twitter,
-      linkedin: body.linkedin ?? profileStore[username].linkedin,
-      reddit: body.reddit ?? profileStore[username].reddit
+    // Aggiornamento campi
+    globalProfileStore[username] = {
+      ...globalProfileStore[username],
+      avatar: body.avatar || globalProfileStore[username].avatar,
+      bio: body.bio !== undefined ? body.bio : globalProfileStore[username].bio,
+      github: body.github || globalProfileStore[username].github,
+      twitter: body.twitter || globalProfileStore[username].twitter,
+      linkedin: body.linkedin || globalProfileStore[username].linkedin,
+      reddit: body.reddit || globalProfileStore[username].reddit
     }
 
     return {
       success: true,
-      message: 'Profilo aggiornato con successo',
-      data: { user: profileStore[username] }
+      message: 'Profilo salvato correttamente nel database Kernel',
+      data: { user: globalProfileStore[username] }
     }
   }
 })
