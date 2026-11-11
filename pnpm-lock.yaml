@@ -72,7 +72,7 @@ importers:
         specifier: ^3.13.0
         version: 3.13.0
       sanitize-html:
-        specifier: ^2.18.1
+        specifier: ^2.13.1
         version: 2.18.1
       set-value:
         specifier: 2.0.1

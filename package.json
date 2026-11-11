@@ -33,7 +33,7 @@
     "prismjs": "^1.30.0",
     "puppeteer": "^25.16.0",
     "rss-parser": "^3.13.0",
-    "sanitize-html": "^2.18.1",
+    "sanitize-html": "^2.13.1",
     "set-value": "2.0.1",
     "stripe": "^23.0.1",
     "update": "^0.7.4",
