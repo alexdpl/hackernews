@@ -64,7 +64,6 @@ Disallow: /shop/success
 Allow: /about
 Allow: /ask
 Allow: /contact
-Allow: /conctact
 Allow: /features
 Allow: /guidelines
 Allow: /jobs$
@@ -76,7 +75,7 @@ Allow: /show
 Allow: /status
 Allow: /submit
 
-# Documentazione Tecnica v2.5-GOLD
+# Documentazione Tecnica v2.6-PURE-SQL
 Allow: /docs/api
 Allow: /docs/ecosystem
 Allow: /docs/sdk

@@ -1,168 +1,64 @@
 // server/routes/sitemap.xml.ts
-import { getDb } from '../utils/db'
-import { sql } from 'drizzle-orm'
+import { defineEventHandler } from 'h3'
 
 export default defineEventHandler(async (event) => {
-  // 1. Imposta l'header della risposta come XML
-  setHeader(event, 'content-type', 'text/xml; charset=utf-8')
-
   const baseUrl = 'https://devkernelpulse.org'
-  const currentDate = new Date().toISOString()
+  const sql = usePureSql()
 
-  // 2. Rotte statiche dell'Ecosistema DKP v2.5-GOLD
-  const staticRoutes = [
+  const staticPages = [
     '',
-    '/about',
-    '/ask',
-    '/contact',
-    '/features',
-    '/guidelines',
-    '/jobs',
-    '/login',
-    '/newest',
     '/news',
-    '/roadmap',
-    '/show',
-    '/status',
-    '/submit',
-    '/docs/api',
-    '/docs/ecosystem',
-    '/docs/sdk',
-    '/legal/cookies',
-    '/legal/privacy',
-    '/legal/terms',
+    '/nodes',
     '/shop',
-    '/shop/success',
+    '/bounties',
     '/tools',
-    '/tools/ai-repo-scanner',
-    '/tools/ai-scanner',
+    '/tools/terminal',
+    '/tools/openui-studio',
     '/tools/cli-toolkit',
-    '/tools/neural-playground',
     '/tools/proof-of-code',
-    '/tools/terminal'
+    '/tools/ai-scanner',
+    '/tools/ai-repo-scanner'
   ]
 
-  // Array contenitore per tutte le entrate
-  let allUrls: { url: string; lastmod: string; priority: string; changefreq: string }[] = []
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`
 
-  // Aggiungi rotte statiche
-  staticRoutes.forEach((route) => {
-    let priority = '0.8'
-    if (route === '') priority = '1.0'
-    else if (route === '/news' || route.startsWith('/tools') || route.startsWith('/shop') || route.startsWith('/docs')) priority = '0.9'
-
-    allUrls.push({
-      url: `${baseUrl}${route}`,
-      lastmod: currentDate,
-      priority,
-      changefreq: 'daily'
-    })
+  // 1. Pagine Statiche Root
+  staticPages.forEach((route) => {
+    xml += `  <url>\n`
+    xml += `    <loc>${baseUrl}${route}</loc>\n`
+    xml += `    <lastmod>${new Date().toISOString()}</lastmod>\n`
+    xml += `    <changefreq>${route === '' ? 'daily' : 'weekly'}</changefreq>\n`
+    xml += `    <priority>${route === '' ? '1.0' : '0.8'}</priority>\n`
+    xml += `  </url>\n`
   })
 
-  // 3. FETCH DINAMICO: Articoli Blog
+  // 2. Articoli Dinamici Blog (Recuperati da Neon Pure SQL)
   try {
-    const blogRes: any = await $fetch('/api/blog/posts').catch(() => null)
-    const posts = blogRes?.posts || blogRes || []
-    if (Array.isArray(posts)) {
-      posts.forEach((post: any) => {
-        const slug = post.slug || post.id
-        if (slug) {
-          allUrls.push({
-            url: `${baseUrl}/blog/${slug}`,
-            lastmod: post.updatedAt || post.createdAt || currentDate,
-            priority: '0.8',
-            changefreq: 'weekly'
-          })
-        }
-      })
-    }
-  } catch (err) {
-    // Fallback silente
-  }
-
-  // 4. FETCH DINAMICO: Offerte di Lavoro (Jobs)
-  try {
-    const jobsRes: any = await $fetch('/api/jobs').catch(() => null)
-    const jobs = jobsRes?.jobs || jobsRes || []
-    if (Array.isArray(jobs)) {
-      jobs.forEach((job: any) => {
-        if (job.id && job.isActive !== false) {
-          allUrls.push({
-            url: `${baseUrl}/jobs/${job.id}`,
-            lastmod: job.updatedAt || currentDate,
-            priority: '0.7',
-            changefreq: 'daily'
-          })
-        }
-      })
-    }
-  } catch (err) {
-    // Fallback silente
-  }
-
-  // 5. FETCH DINAMICO: Prodotti Shop SaaS
-  try {
-    const shopRes: any = await $fetch('/api/shop/products').catch(() => null)
-    const products = shopRes?.products || shopRes || []
-    if (Array.isArray(products)) {
-      products.forEach((product: any) => {
-        const slug = product.slug || product.id
-        if (slug) {
-          allUrls.push({
-            url: `${baseUrl}/shop/${slug}`,
-            lastmod: currentDate,
-            priority: '0.8',
-            changefreq: 'weekly'
-          })
-        }
-      })
-    }
-  } catch (err) {
-    // Fallback silente
-  }
-
-  // 6. 🟢 FETCH DINAMICO: DKP Nodes (Hacker News AI Stream /news/[slug])
-  try {
-    const db = getDb()
-    const res = await db.execute(sql`
+    const postsData: any = await sql`
       SELECT slug, updated_at, created_at 
-      FROM hn_stories 
-      ORDER BY created_at DESC 
+      FROM blog_posts 
+      WHERE status = 'published'
+      ORDER BY created_at DESC
       LIMIT 1000
-    `)
-    const stories: any[] = Array.isArray(res) ? res : (res.rows || [])
-    if (Array.isArray(stories)) {
-      stories.forEach((story: any) => {
-        if (story.slug) {
-          const dateVal = story.updated_at || story.created_at
-          allUrls.push({
-            url: `${baseUrl}/news/${story.slug}`,
-            lastmod: dateVal ? new Date(dateVal).toISOString() : currentDate,
-            priority: '0.8',
-            changefreq: 'daily'
-          })
-        }
-      })
-    }
+    `
+    const dynamicPosts = Array.isArray(postsData) ? postsData : (postsData.rows || [])
+
+    dynamicPosts.forEach((post) => {
+      const lastModDate = post.updated_at || post.created_at || new Date()
+      xml += `  <url>\n`
+      xml += `    <loc>${baseUrl}/blog/${post.slug}</loc>\n`
+      xml += `    <lastmod>${new Date(lastModDate).toISOString()}</lastmod>\n`
+      xml += `    <changefreq>monthly</changefreq>\n`
+      xml += `    <priority>0.7</priority>\n`
+      xml += `  </url>\n`
+    })
   } catch (err) {
-    // Fallback silente se la tabella non è ancora pronta
+    console.error('❌ [SITEMAP DB ERROR]: Impossibile estrarre i post:', err)
   }
 
-  // 7. Generazione del markup XML
-  const xmlEntries = allUrls
-    .map(
-      (item) => `
-    <url>
-      <loc>${item.url}</loc>
-      <lastmod>${item.lastmod}</lastmod>
-      <changefreq>${item.changefreq}</changefreq>
-      <priority>${item.priority}</priority>
-    </url>`
-    )
-    .join('')
+  xml += `</urlset>`
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${xmlEntries}
-</urlset>`
+  event.node.res.setHeader('Content-Type', 'text/xml')
+  return xml
 })

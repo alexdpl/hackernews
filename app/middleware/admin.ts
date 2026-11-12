@@ -1,10 +1,29 @@
 // app/middleware/admin.ts
-export default defineNuxtRouteMiddleware(to => {
-  // Sostituisci con la logica del tuo stato utente (es. useUser() o useAuth())
-  const user = useState('user').value as { username?: string; role?: string } | null
+export default defineNuxtRouteMiddleware((to) => {
+  if (import.meta.server) return
 
-  // Controlla se l'utente è loggato ed è l'admin (o ha ruolo admin)
-  const isAdmin = user && (user.username === 'alexdpl' || user.role === 'admin')
+  const userState = useState<any>('user', () => null)
+  const dkpUserState = useState<any>('dkp_user', () => null)
+
+  let currentUser = userState.value || dkpUserState.value
+
+  if (!currentUser && typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('dkp_user') || localStorage.getItem('user')
+      if (raw) {
+        currentUser = JSON.parse(raw)
+        userState.value = currentUser
+      }
+    } catch {
+      // Ignora errori di parsing JSON
+    }
+  }
+
+  const username = String(currentUser?.username || '').toLowerCase()
+  const role = String(currentUser?.role || '').toUpperCase()
+  const isAdmin =
+    Boolean(currentUser) &&
+    (username === 'alexdpl' || role === 'ADMIN' || role === 'SUPERADMIN' || currentUser?.isAdmin === true)
 
   if (!isAdmin && to.path.startsWith('/admin')) {
     return navigateTo('/')

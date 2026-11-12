@@ -3,17 +3,14 @@
 import { ref, computed, onMounted } from 'vue'
 
 definePageMeta({
-  title: 'DKP Mail Engine Admin | DevKernelPulse',
   middleware: 'admin-only'
 })
 
 useDkpSeo({
-  title: 'Mail Center v2.5-GOLD - DKP Admin Control Center',
-  description: 'Client Webmail & Mail Ecosystem Control Center.'
+  title: 'Mail Center v2.6-PURE-SQL — DKP Admin Control Center',
+  description: 'Client Webmail & Brevo v3 SMTP Ecosystem Control Center per DevKernelPulse.',
+  noindex: true
 })
-
-const config = useRuntimeConfig()
-const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
 interface MailMessage {
   id: number
@@ -25,9 +22,29 @@ interface MailMessage {
   direction: 'INBOUND' | 'OUTBOUND'
   status: 'UNREAD' | 'READ' | 'ARCHIVED' | 'SENT' | 'FAILED'
   is_starred: boolean
-  reply_to_id?: number
+  reply_to_id?: number | null
   created_at: string
 }
+
+const adminNavItems = [
+  { to: '/admin/api-gateway', label: '⚙️ API Gateway' },
+  { to: '/admin/mail', label: '📧 Mail Center', active: true },
+  { to: '/admin/newsletter', label: '📣 Newsletter' },
+  { to: '/admin/autoresponder', label: '📡 Autoresponder' },
+  { to: '/admin/crawler', label: '🤖 Crawler Engine' },
+  { to: '/admin/blog', label: '📝 Gestione Blog' },
+  { to: '/admin/nodes', label: '💬 Gestione Nodi' },
+  { to: '/admin/shop', label: '🛍️ Gestione Shop' }
+]
+
+const cloudflareAddresses = [
+  'admin@devkernelpulse.org',
+  'info@devkernelpulse.org',
+  'support@devkernelpulse.org',
+  'newsletter@devkernelpulse.org',
+  'noreply@devkernelpulse.org',
+  'alex@devkernelpulse.org'
+]
 
 // State
 const mails = ref<MailMessage[]>([])
@@ -51,33 +68,50 @@ const composeData = ref({
   replyToId: null as number | null
 })
 
-// Fetch Mails
+// Sanitizzazione HTML Anti-XSS per lettura email inbound
+function sanitizeEmailHtml(rawHtml?: string): string {
+  if (!rawHtml) return ''
+  return rawHtml
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?>[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s\S]*?>/gi, '')
+    .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/<a\s+([^>]*href=['"][^'"]+['"][^>]*)>/gi, '<a $1 target="_blank" rel="noopener noreferrer">')
+}
+
+const sanitizedActiveHtml = computed(() => sanitizeEmailHtml(activeMail.value?.body_html))
+
+// Fetch Mails via Nitro Internal Route
 async function fetchMails() {
   isLoading.value = true
   try {
-    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/mail`)
+    const res: any = await $fetch('/api/admin/mail')
     if (res && res.success) {
-      mails.value = res.mails || []
-      unreadCount.value = res.unreadCount || 0
+      mails.value = Array.isArray(res.mails) ? res.mails : []
+      unreadCount.value = Number(res.unreadCount ?? mails.value.filter(m => m.status === 'UNREAD').length)
       if (mails.value.length > 0 && !activeMail.value) {
         activeMail.value = mails.value[0]
       }
     }
-  } catch (err) {
+  } catch {
     if (!mails.value.length) {
       mails.value = [
         {
           id: 1,
           sender: 'support@brevo.com',
-          recipient: 'bc3a58001@smtp-brevo.com',
-          subject: 'Autenticazione SMTP Brevo v2.5-GOLD Completata',
-          body_text: 'Sincronizzazione completata per IP Whitelist VM GCP europe-west4.',
+          recipient: 'noreply@devkernelpulse.org',
+          subject: 'Autenticazione SMTP Brevo API v3 & Pure SQL Attiva',
+          body_text: 'Sincronizzazione completata per il dominio devkernelpulse.org (SPF, DKIM, DMARC verificati) su DKP Kernel v2.6-PURE-SQL.',
           direction: 'INBOUND',
           status: 'UNREAD',
           is_starred: true,
           created_at: new Date().toISOString()
         }
       ]
+      unreadCount.value = 1
+      activeMail.value = mails.value[0]
     }
   } finally {
     isLoading.value = false
@@ -85,28 +119,59 @@ async function fetchMails() {
 }
 
 const filteredMails = computed(() => {
-  return mails.value.filter(m => {
+  return mails.value.filter((m) => {
     if (selectedFilter.value === 'INBOUND' && m.direction !== 'INBOUND') return false
     if (selectedFilter.value === 'OUTBOUND' && m.direction !== 'OUTBOUND') return false
     if (selectedFilter.value === 'STARRED' && !m.is_starred) return false
 
     if (searchQuery.value.trim()) {
       const q = searchQuery.value.toLowerCase()
-      return m.sender.toLowerCase().includes(q) || m.recipient.toLowerCase().includes(q) || m.subject.toLowerCase().includes(q)
+      return (
+        m.sender.toLowerCase().includes(q) ||
+        m.recipient.toLowerCase().includes(q) ||
+        m.subject.toLowerCase().includes(q)
+      )
     }
     return true
   })
 })
 
-function selectMail(mail: MailMessage) {
+async function selectMail(mail: MailMessage) {
   activeMail.value = mail
   if (mail.status === 'UNREAD') {
     mail.status = 'READ'
     if (unreadCount.value > 0) unreadCount.value--
+    await $fetch('/api/admin/mail', {
+      method: 'PATCH',
+      body: { id: mail.id, status: 'READ' }
+    }).catch(() => null)
   }
 }
 
+async function toggleStar(mail: MailMessage) {
+  mail.is_starred = !mail.is_starred
+  await $fetch('/api/admin/mail', {
+    method: 'PATCH',
+    body: { id: mail.id, is_starred: mail.is_starred }
+  }).catch(() => null)
+}
+
+function openNewCompose() {
+  sendSuccessMsg.value = ''
+  sendErrorMsg.value = ''
+  composeData.value = {
+    from: 'info@devkernelpulse.org',
+    to: '',
+    subject: '',
+    html: '',
+    replyToId: null
+  }
+  showComposeModal.value = true
+}
+
 function openReply(mail: MailMessage) {
+  sendSuccessMsg.value = ''
+  sendErrorMsg.value = ''
   composeData.value = {
     from: mail.recipient.includes('@devkernelpulse.org') ? mail.recipient : 'info@devkernelpulse.org',
     to: mail.sender,
@@ -123,24 +188,24 @@ async function handleSendMail() {
   isSending.value = true
 
   try {
-    const res: any = await $fetch(`${config.public.mailUrl}/api/admin/mail/send`, {
+    const res: any = await $fetch('/api/admin/mail/send', {
       method: 'POST',
       body: composeData.value
     })
 
     if (res && res.success) {
-      sendSuccessMsg.value = '⚡ Email inviata con successo!'
+      sendSuccessMsg.value = '⚡ Email inviata con successo tramite Brevo v3!'
       setTimeout(() => {
         showComposeModal.value = false
         sendSuccessMsg.value = ''
         composeData.value = { from: 'info@devkernelpulse.org', to: '', subject: '', html: '', replyToId: null }
         fetchMails()
-      }, 1200)
+      }, 1100)
     } else {
-      sendErrorMsg.value = res?.error || 'Errore durante l\'invio dell\'email.'
+      sendErrorMsg.value = res?.error || res?.statusMessage || 'Errore durante l\'invio dell\'email.'
     }
   } catch (err: any) {
-    sendErrorMsg.value = err.message || 'Errore di connessione al server mail.'
+    sendErrorMsg.value = err?.data?.statusMessage || err?.message || 'Errore di connessione al server mail Nitro.'
   } finally {
     isSending.value = false
   }
@@ -158,221 +223,392 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mail-admin-container">
-    <!-- NAVBAR GRID ADMIN UNIFICATA v2.5-GOLD -->
-    <div class="admin-nav-container">
-      <div class="admin-nav-top">
-        <div class="nav-branding">
-          <span class="status-dot green"></span>
-          <span class="nav-title">DKP ADMIN CONTROL CENTER</span>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-6 max-w-[1440px] mx-auto flex flex-col gap-5 font-sans">
+    
+    <!-- NAVBAR GRID ADMIN UNIFICATA v2.6-PURE-SQL -->
+    <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-xl">
+      <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-slate-800/80">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span>
+          <span class="text-sky-400 font-mono font-black text-xs sm:text-sm tracking-wider uppercase">
+            DKP ADMIN CONTROL CENTER · v2.6-PURE-SQL
+          </span>
         </div>
-        <NuxtLink :to="getMainUrl('/admin')" external class="nav-tab btn-dashboard-main">
+        <NuxtLink
+          to="/admin"
+          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-mono font-bold text-xs text-sky-400 bg-sky-500/10 border border-sky-500/35 hover:bg-sky-500/20 transition-all no-underline"
+        >
           🏠 Dashboard Main
         </NuxtLink>
       </div>
 
-      <nav class="admin-grid-nav">
-        <NuxtLink :to="getApiUrl('/admin/api-gateway')" class="nav-tab btn-dashboard">⚙️ API Gateway</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/mail')" class="nav-tab btn-dashboard active">📧 Mail Center</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-tab btn-dashboard">📣 Newsletter</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-tab btn-dashboard">📡 Autoresponder</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/crawler')" class="nav-tab btn-dashboard">🤖 Crawler Engine</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/blog')" class="nav-tab btn-dashboard">📝 Gestione Blog</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/nodes')" class="nav-tab btn-dashboard">💬 Gestione Nodi</NuxtLink>
-        <NuxtLink :to="getMainUrl('/admin/shop')" class="nav-tab btn-dashboard">🛍️ Gestione Shop</NuxtLink>
+      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+        <NuxtLink
+          v-for="item in adminNavItems"
+          :key="item.to"
+          :to="item.to"
+          class="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg font-mono font-bold text-xs transition-all no-underline truncate"
+          :class="item.active
+            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+            : 'text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/25 hover:bg-emerald-500/15 hover:border-emerald-400'"
+        >
+          {{ item.label }}
+        </NuxtLink>
       </nav>
     </div>
 
     <!-- TOP HEADER TOOLBAR -->
-    <header class="mail-header-bar">
-      <div class="header-left">
-        <h1 class="page-title">
-          ⚡ DKP Mail Engine <span class="badge-v">v2.5-GOLD</span>
+    <header class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shadow-xl">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-black text-white flex flex-wrap items-center gap-2.5 m-0">
+          <span>⚡ DKP Mail Engine</span>
+          <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-xs font-mono px-2.5 py-0.5 rounded-md">
+            v2.6-PURE-SQL
+          </span>
+          <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[11px] font-mono px-2 py-0.5 rounded-md">
+            Brevo SMTP v3
+          </span>
         </h1>
-        <p class="page-subtitle">Client Webmail &amp; Mail Ecosystem Control Center</p>
+        <p class="text-slate-400 text-xs sm:text-sm mt-1 mb-0">
+          Client Webmail &amp; Mail Ecosystem Control Center su Neon PostgreSQL
+        </p>
       </div>
 
-      <div class="header-actions">
-        <div class="stat-card">
-          <span class="stat-num text-neon">{{ unreadCount }}</span>
-          <span class="stat-label">Non Lette</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-num">{{ mails.length }}</span>
-          <span class="stat-label">Totali In-DB</span>
+      <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+        <div class="flex flex-col items-center bg-[#020420] px-4 py-1.5 rounded-xl border border-slate-800">
+          <span class="text-lg font-black font-mono text-emerald-400 leading-tight">{{ unreadCount }}</span>
+          <span class="text-[10px] font-mono uppercase text-slate-400">Non Lette</span>
         </div>
 
-        <button @click="fetchMails" class="btn-secondary" title="Aggiorna Posta">
+        <div class="flex flex-col items-center bg-[#020420] px-4 py-1.5 rounded-xl border border-slate-800">
+          <span class="text-lg font-black font-mono text-white leading-tight">{{ mails.length }}</span>
+          <span class="text-[10px] font-mono uppercase text-slate-400">Totali DB</span>
+        </div>
+
+        <button
+          type="button"
+          @click="fetchMails"
+          title="Aggiorna Posta"
+          class="bg-slate-800/90 hover:bg-slate-700 text-slate-100 font-mono font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all cursor-pointer"
+        >
           🔄 Ricarica
         </button>
 
-        <button @click="showComposeModal = true" class="btn-primary">
+        <button
+          type="button"
+          @click="openNewCompose"
+          class="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-mono font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(52,211,153,0.25)] cursor-pointer"
+        >
           ✏️ Nuova Email
         </button>
       </div>
     </header>
 
     <!-- MAIN MAIL DASHBOARD WORKSPACE -->
-    <div class="mail-workspace">
+    <div class="grid grid-cols-1 lg:grid-cols-[250px_360px_1fr] gap-4 flex-1 min-h-[620px]">
+      
       <!-- SIDEBAR FILTRI -->
-      <aside class="mail-sidebar">
-        <nav class="sidebar-nav">
-          <button @click="selectedFilter = 'ALL'" class="nav-item" :class="{ active: selectedFilter === 'ALL' }">
-            📥 Tutti i Messaggi <span class="count-badge">{{ mails.length }}</span>
+      <aside class="bg-[#090d16] border border-slate-800 rounded-2xl p-4 flex flex-col gap-4">
+        <nav class="flex flex-col gap-1.5 font-mono">
+          <button
+            type="button"
+            @click="selectedFilter = 'ALL'"
+            class="flex justify-between items-center px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+            :class="selectedFilter === 'ALL'
+              ? 'bg-[#020420] text-emerald-400 border-emerald-500/35'
+              : 'bg-transparent text-slate-400 border-transparent hover:bg-[#020420]/60 hover:text-slate-200'"
+          >
+            <span>📥 Tutti i Messaggi</span>
+            <span class="bg-slate-800 text-slate-200 text-[11px] px-2 py-0.5 rounded-full">{{ mails.length }}</span>
           </button>
 
-          <button @click="selectedFilter = 'INBOUND'" class="nav-item" :class="{ active: selectedFilter === 'INBOUND' }">
-            📬 In Arrivo <span v-if="unreadCount > 0" class="count-badge neon">{{ unreadCount }}</span>
+          <button
+            type="button"
+            @click="selectedFilter = 'INBOUND'"
+            class="flex justify-between items-center px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+            :class="selectedFilter === 'INBOUND'
+              ? 'bg-[#020420] text-emerald-400 border-emerald-500/35'
+              : 'bg-transparent text-slate-400 border-transparent hover:bg-[#020420]/60 hover:text-slate-200'"
+          >
+            <span>📬 In Arrivo</span>
+            <span v-if="unreadCount > 0" class="bg-emerald-400 text-slate-950 font-black text-[11px] px-2 py-0.5 rounded-full">
+              {{ unreadCount }}
+            </span>
           </button>
 
-          <button @click="selectedFilter = 'OUTBOUND'" class="nav-item" :class="{ active: selectedFilter === 'OUTBOUND' }">
-            📤 Inviati
+          <button
+            type="button"
+            @click="selectedFilter = 'OUTBOUND'"
+            class="flex justify-between items-center px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+            :class="selectedFilter === 'OUTBOUND'
+              ? 'bg-[#020420] text-emerald-400 border-emerald-500/35'
+              : 'bg-transparent text-slate-400 border-transparent hover:bg-[#020420]/60 hover:text-slate-200'"
+          >
+            <span>📤 Inviati</span>
           </button>
 
-          <button @click="selectedFilter = 'STARRED'" class="nav-item" :class="{ active: selectedFilter === 'STARRED' }">
-            ⭐ Preferiti
+          <button
+            type="button"
+            @click="selectedFilter = 'STARRED'"
+            class="flex justify-between items-center px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border"
+            :class="selectedFilter === 'STARRED'
+              ? 'bg-[#020420] text-emerald-400 border-emerald-500/35'
+              : 'bg-transparent text-slate-400 border-transparent hover:bg-[#020420]/60 hover:text-slate-200'"
+          >
+            <span>⭐ Preferiti</span>
           </button>
 
-          <div class="sidebar-divider"></div>
-          <span class="sidebar-section-title">STRUMENTI MAIL</span>
+          <div class="h-px bg-slate-800 my-2"></div>
+          <span class="text-[10px] font-black text-slate-500 tracking-widest px-2 uppercase">Strumenti Mail</span>
 
-          <NuxtLink :to="getMainUrl('/admin/newsletter')" class="nav-item link-item">
+          <NuxtLink
+            to="/admin/newsletter"
+            class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:bg-[#020420] hover:text-emerald-400 transition-all no-underline"
+          >
             📣 Newsletter &amp; Contatti
           </NuxtLink>
 
-          <NuxtLink :to="getMainUrl('/admin/autoresponder')" class="nav-item link-item">
+          <NuxtLink
+            to="/admin/autoresponder"
+            class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:bg-[#020420] hover:text-emerald-400 transition-all no-underline"
+          >
             📡 Autoresponder Rules
           </NuxtLink>
         </nav>
 
-        <div class="sidebar-divider"></div>
+        <div class="h-px bg-slate-800"></div>
 
-        <div class="quick-addresses-box">
-          <span class="box-title">INDIRIZZI ATTIVI CLOUDFLARE</span>
-          <ul class="address-list">
-            <li><span class="status-dot"></span> admin@devkernelpulse.org</li>
-            <li><span class="status-dot"></span> info@devkernelpulse.org</li>
-            <li><span class="status-dot"></span> support@devkernelpulse.org</li>
-            <li><span class="status-dot"></span> newsletter@devkernelpulse.org</li>
-            <li><span class="status-dot"></span> noreply@devkernelpulse.org</li>
-            <li><span class="status-dot"></span> alex@devkernelpulse.org</li>
+        <div class="bg-[#020420] border border-slate-800/90 rounded-xl p-3.5 flex flex-col gap-2">
+          <span class="text-[10px] font-mono font-black text-slate-400 tracking-wider uppercase">
+            Indirizzi Attivi Cloudflare
+          </span>
+          <ul class="list-none m-0 p-0 flex flex-col gap-1.5 text-[11px] font-mono text-slate-300">
+            <li v-for="addr in cloudflareAddresses" :key="addr" class="flex items-center gap-2 truncate">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+              <span class="truncate">{{ addr }}</span>
+            </li>
           </ul>
         </div>
       </aside>
 
       <!-- PANNELLO LISTA EMAIL -->
-      <div class="mail-list-panel">
-        <div class="search-box">
-          <input v-model="searchQuery" type="text" placeholder="🔍 Cerca per mittente, destinatario o oggetto..." class="search-input" />
+      <div class="bg-[#090d16] border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
+        <div class="p-3 border-b border-slate-800">
+          <input
+            v-model="searchQuery"
+            type="text"
+            aria-label="Cerca messaggi"
+            placeholder="🔍 Cerca mittente, destinatario o oggetto..."
+            class="w-full bg-[#020420] border border-slate-800 focus:border-emerald-400 text-white px-3.5 py-2 rounded-xl text-xs outline-none transition-colors"
+          />
         </div>
 
-        <div v-if="isLoading" class="loading-state">
-          ⚡ Caricamento messaggi dal Kernel DB...
+        <div v-if="isLoading" class="p-8 text-center text-xs font-mono text-slate-400">
+          ⚡ Caricamento messaggi dal Kernel Pure SQL...
         </div>
 
-        <div v-else-if="filteredMails.length === 0" class="empty-state">
-          📭 Nessun messaggio trovato.
+        <div v-else-if="filteredMails.length === 0" class="p-8 text-center text-xs font-mono text-slate-500">
+          📭 Nessun messaggio trovato per questo filtro.
         </div>
 
-        <div v-else class="mail-items-scroll">
-          <div 
-            v-for="m in filteredMails" 
-            :key="m.id" 
-            class="mail-card"
-            :class="{ active: activeMail?.id === m.id, unread: m.status === 'UNREAD', outbound: m.direction === 'OUTBOUND' }"
+        <div v-else class="flex-1 overflow-y-auto divide-y divide-slate-800/80 max-h-[600px]">
+          <div
+            v-for="m in filteredMails"
+            :key="m.id"
             @click="selectMail(m)"
+            class="p-3.5 cursor-pointer transition-colors flex flex-col gap-1.5 hover:bg-[#020420]/70"
+            :class="[
+              activeMail?.id === m.id ? 'bg-[#020420] border-l-4 border-l-emerald-400' : '',
+              m.status === 'UNREAD' ? 'bg-emerald-500/[0.03]' : ''
+            ]"
           >
-            <div class="mail-card-header">
-              <span class="sender-tag">
+            <div class="flex items-center justify-between gap-2 text-[11px] font-mono">
+              <span class="text-sky-400 font-bold truncate">
                 {{ m.direction === 'OUTBOUND' ? 'A: ' + m.recipient : 'Da: ' + m.sender }}
               </span>
-              <span class="mail-date">{{ formatDate(m.created_at) }}</span>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  @click.stop="toggleStar(m)"
+                  :title="m.is_starred ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'"
+                  class="text-xs cursor-pointer bg-transparent border-none p-0"
+                >
+                  {{ m.is_starred ? '⭐' : '☆' }}
+                </button>
+                <span class="text-slate-500 text-[10px]">{{ formatDate(m.created_at) }}</span>
+              </div>
             </div>
 
-            <div class="mail-subject">{{ m.subject }}</div>
-            <div class="mail-preview">{{ m.body_text || 'Messaggio HTML senza anteprima testo' }}</div>
+            <div class="text-xs font-bold text-white truncate">
+              {{ m.subject }}
+            </div>
 
-            <div class="mail-card-footer">
-              <span class="dir-badge" :class="m.direction.toLowerCase()">{{ m.direction }}</span>
-              <span class="status-tag" :class="m.status.toLowerCase()">{{ m.status }}</span>
+            <div class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+              {{ m.body_text || 'Messaggio HTML senza anteprima testo.' }}
+            </div>
+
+            <div class="flex items-center justify-between pt-1 font-mono text-[10px]">
+              <span
+                class="px-2 py-0.5 rounded font-bold uppercase"
+                :class="m.direction === 'INBOUND'
+                  ? 'bg-sky-500/10 text-sky-400 border border-sky-500/25'
+                  : 'bg-purple-500/10 text-purple-400 border border-purple-500/25'"
+              >
+                {{ m.direction }}
+              </span>
+              <span
+                class="px-2 py-0.5 rounded font-bold uppercase"
+                :class="m.status === 'UNREAD'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/35'
+                  : 'bg-slate-800/80 text-slate-400'"
+              >
+                {{ m.status }}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- PANNELLO DETTAGLIO EMAIL -->
-      <main class="mail-detail-panel">
-        <div v-if="!activeMail" class="no-mail-selected">
+      <main class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col">
+        <div v-if="!activeMail" class="m-auto text-center text-slate-500 font-mono text-xs">
           📩 Seleziona un'email dalla lista per visualizzarne il contenuto
         </div>
 
-        <div v-else class="mail-reader">
-          <div class="reader-header">
-            <div class="reader-title-row">
-              <h2 class="reader-subject">{{ activeMail.subject }}</h2>
-              <button @click="openReply(activeMail)" class="btn-primary btn-sm">
-                ↩️ Rispondi
-              </button>
+        <div v-else class="flex flex-col flex-1 gap-4">
+          <div class="border-b border-slate-800 pb-4 flex flex-col gap-3">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <h2 class="text-lg sm:text-xl font-black text-emerald-400 m-0 leading-snug">
+                {{ activeMail.subject }}
+              </h2>
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  @click="toggleStar(activeMail)"
+                  class="bg-[#020420] border border-slate-700 hover:border-amber-400/50 text-xs px-3 py-1.5 rounded-lg cursor-pointer"
+                >
+                  {{ activeMail.is_starred ? '⭐ Preferito' : '☆ Segna' }}
+                </button>
+                <button
+                  type="button"
+                  @click="openReply(activeMail)"
+                  class="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-mono font-black text-xs px-3.5 py-1.5 rounded-lg cursor-pointer"
+                >
+                  ↩️ Rispondi
+                </button>
+              </div>
             </div>
 
-            <div class="reader-meta">
-              <div class="meta-line"><span class="meta-label">Da:</span> <strong>{{ activeMail.sender }}</strong></div>
-              <div class="meta-line"><span class="meta-label">A:</span> <strong>{{ activeMail.recipient }}</strong></div>
-              <div class="meta-line"><span class="meta-label">Data:</span> {{ formatDate(activeMail.created_at) }}</div>
+            <div class="bg-[#020420] border border-slate-800/80 rounded-xl p-3 flex flex-col gap-1 text-xs font-mono text-slate-300">
+              <div><span class="text-slate-500">Da:</span> <strong class="text-white">{{ activeMail.sender }}</strong></div>
+              <div><span class="text-slate-500">A:</span> <strong class="text-white">{{ activeMail.recipient }}</strong></div>
+              <div><span class="text-slate-500">Data:</span> {{ formatDate(activeMail.created_at) }}</div>
             </div>
           </div>
 
-          <div class="reader-body">
-            <div v-if="activeMail.body_html" class="html-content-view" v-html="activeMail.body_html"></div>
-            <div v-else class="text-content-view">{{ activeMail.body_text || 'Nessun contenuto nel corpo della mail.' }}</div>
+          <div class="flex-1 overflow-y-auto bg-[#020420] border border-slate-800 rounded-xl p-5 text-sm leading-relaxed text-slate-200">
+            <div v-if="activeMail.body_html" class="prose prose-invert max-w-none" v-html="sanitizedActiveHtml"></div>
+            <div v-else class="whitespace-pre-wrap font-sans">{{ activeMail.body_text || 'Nessun contenuto nel corpo della mail.' }}</div>
           </div>
         </div>
       </main>
     </div>
 
     <!-- MODAL COMPOSE EMAIL -->
-    <Transition name="modal-fade">
-      <div v-if="showComposeModal" class="modal-backdrop" @click.self="showComposeModal = false">
-        <div class="modal-card">
-          <div class="modal-header">
-            <h3>✏️ Nuova Email Outbound — DKP Engine</h3>
-            <button @click="showComposeModal = false" class="btn-close">✕</button>
+    <Transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showComposeModal"
+        class="fixed inset-0 bg-[#020420]/85 backdrop-blur-md flex items-center justify-center z-50 p-4"
+        @click.self="showComposeModal = false"
+      >
+        <div class="bg-[#090d16] border border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl">
+          <div class="px-5 py-4 bg-[#020420] border-b border-slate-800 flex justify-between items-center">
+            <h3 class="text-base font-black text-white m-0 font-mono">✏️ Nuova Email Outbound — Brevo v3</h3>
+            <button
+              type="button"
+              @click="showComposeModal = false"
+              aria-label="Chiudi modale"
+              class="text-slate-400 hover:text-white bg-transparent border-none text-base cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
 
-          <form @submit.prevent="handleSendMail" class="modal-form">
-            <div class="form-group">
-              <label>Da (Mittente Custom):</label>
-              <select v-model="composeData.from" class="form-input">
-                <option value="admin@devkernelpulse.org">admin@devkernelpulse.org</option>
-                <option value="info@devkernelpulse.org">info@devkernelpulse.org</option>
-                <option value="support@devkernelpulse.org">support@devkernelpulse.org</option>
-                <option value="newsletter@devkernelpulse.org">newsletter@devkernelpulse.org</option>
-                <option value="noreply@devkernelpulse.org">noreply@devkernelpulse.org</option>
-                <option value="alex@devkernelpulse.org">alex@devkernelpulse.org</option>
+          <form @submit.prevent="handleSendMail" class="p-5 flex flex-col gap-4 font-mono">
+            <div class="flex flex-col gap-1.5">
+              <label for="compose-from" class="text-xs font-bold text-slate-400">Da (Mittente Custom):</label>
+              <select
+                id="compose-from"
+                v-model="composeData.from"
+                class="bg-[#020420] border border-slate-700 text-white px-3.5 py-2.5 rounded-xl text-xs outline-none focus:border-emerald-400"
+              >
+                <option v-for="addr in cloudflareAddresses" :key="addr" :value="addr">{{ addr }}</option>
               </select>
             </div>
 
-            <div class="form-group">
-              <label>A (Destinatario):</label>
-              <input v-model="composeData.to" type="email" required placeholder="es. utente@gmail.com" class="form-input" />
+            <div class="flex flex-col gap-1.5">
+              <label for="compose-to" class="text-xs font-bold text-slate-400">A (Destinatario):</label>
+              <input
+                id="compose-to"
+                v-model="composeData.to"
+                type="email"
+                required
+                placeholder="es. utente@gmail.com"
+                class="bg-[#020420] border border-slate-700 text-white px-3.5 py-2.5 rounded-xl text-xs outline-none focus:border-emerald-400"
+              />
             </div>
 
-            <div class="form-group">
-              <label>Oggetto:</label>
-              <input v-model="composeData.subject" type="text" required placeholder="Inserisci l'oggetto della mail" class="form-input" />
+            <div class="flex flex-col gap-1.5">
+              <label for="compose-subject" class="text-xs font-bold text-slate-400">Oggetto:</label>
+              <input
+                id="compose-subject"
+                v-model="composeData.subject"
+                type="text"
+                required
+                placeholder="Inserisci l'oggetto della mail"
+                class="bg-[#020420] border border-slate-700 text-white px-3.5 py-2.5 rounded-xl text-xs outline-none focus:border-emerald-400"
+              />
             </div>
 
-            <div class="form-group">
-              <label>Corpo del Messaggio (HTML supportato):</label>
-              <textarea v-model="composeData.html" rows="8" required placeholder="Scrivi qui il tuo messaggio..." class="form-input textarea"></textarea>
+            <div class="flex flex-col gap-1.5">
+              <label for="compose-html" class="text-xs font-bold text-slate-400">Corpo del Messaggio (HTML supportato):</label>
+              <textarea
+                id="compose-html"
+                v-model="composeData.html"
+                rows="7"
+                required
+                placeholder="Scrivi qui il tuo messaggio..."
+                class="bg-[#020420] border border-slate-700 text-white p-3.5 rounded-xl text-xs outline-none focus:border-emerald-400 resize-y leading-relaxed"
+              ></textarea>
             </div>
 
-            <div v-if="sendSuccessMsg" class="alert success">{{ sendSuccessMsg }}</div>
-            <div v-if="sendErrorMsg" class="alert error">{{ sendErrorMsg }}</div>
+            <div v-if="sendSuccessMsg" role="status" class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 px-4 py-2.5 rounded-xl text-xs font-bold">
+              {{ sendSuccessMsg }}
+            </div>
+            <div v-if="sendErrorMsg" role="alert" class="bg-red-500/15 border border-red-500/40 text-red-400 px-4 py-2.5 rounded-xl text-xs font-bold">
+              ⚠️ {{ sendErrorMsg }}
+            </div>
 
-            <div class="modal-footer">
-              <button type="button" @click="showComposeModal = false" class="btn-secondary">Annulla</button>
-              <button type="submit" :disabled="isSending" class="btn-primary">
+            <div class="flex justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                @click="showComposeModal = false"
+                class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer"
+              >
+                Annulla
+              </button>
+              <button
+                type="submit"
+                :disabled="isSending"
+                class="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer disabled:opacity-50"
+              >
                 {{ isSending ? '⚡ Invio in corso...' : '🚀 Invia Email' }}
               </button>
             </div>
@@ -382,64 +618,3 @@ onMounted(() => {
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.admin-nav-container { display: flex; flex-direction: column; gap: 12px; background: #090d16; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
-.admin-nav-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.nav-branding { display: flex; align-items: center; gap: 8px; }
-.status-dot.green { width: 8px; height: 8px; background-color: #00ff87; border-radius: 50%; box-shadow: 0 0 8px #00ff87; }
-.nav-title { color: #00f0ff; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em; text-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
-.admin-grid-nav { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
-.nav-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; text-decoration: none; transition: all 0.2s ease-in-out; cursor: pointer; white-space: nowrap; }
-.btn-dashboard { color: #00ff87; background: rgba(0, 255, 135, 0.04); border: 1px solid rgba(0, 255, 135, 0.3); }
-.btn-dashboard:hover, .btn-dashboard.active { background: rgba(0, 255, 135, 0.12); border-color: #00ff87; box-shadow: 0 0 12px rgba(0, 255, 135, 0.25); transform: translateY(-1px); }
-.btn-dashboard-main { color: #00f0ff; background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.4); }
-
-.mail-admin-container { padding: 1.5rem; background-color: #020420; color: #f8fafc; min-height: calc(100vh - 80px); display: flex; flex-direction: column; gap: 1.25rem; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; max-width: 1400px; margin: 0 auto; }
-.mail-header-bar { display: flex; justify-content: space-between; align-items: center; background: #090d16; border: 1px solid #1e293b; padding: 1rem 1.5rem; border-radius: 12px; }
-.page-title { margin: 0; font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
-.badge-v { background: rgba(0, 220, 130, 0.15); color: #00dc82; font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 6px; border: 1px solid rgba(0, 220, 130, 0.3); }
-.page-subtitle { margin: 0.2rem 0 0 0; font-size: 0.85rem; color: #94a3b8; }
-.header-actions { display: flex; align-items: center; gap: 1rem; }
-.stat-card { display: flex; flex-direction: column; align-items: center; background: #020420; padding: 0.4rem 0.85rem; border-radius: 8px; border: 1px solid #1e293b; }
-.stat-num { font-size: 1.1rem; font-weight: 800; }
-.text-neon { color: #00dc82; }
-.stat-label { font-size: 0.68rem; color: #94a3b8; }
-
-.btn-primary { background: #00dc82; color: #020420; font-weight: 800; border: none; padding: 0.65rem 1.2rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-.btn-secondary { background: #1e293b; color: #f8fafc; font-weight: 600; border: 1px solid #334155; padding: 0.65rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-
-.mail-workspace { display: grid; grid-template-columns: 240px 360px 1fr; gap: 1rem; flex: 1; min-height: 600px; }
-.mail-sidebar { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-.sidebar-nav { display: flex; flex-direction: column; gap: 0.4rem; }
-.sidebar-section-title { font-size: 0.68rem; font-weight: 800; color: #64748b; letter-spacing: 0.5px; padding: 0.2rem 0.5rem; }
-.nav-item { display: flex; justify-content: space-between; align-items: center; background: transparent; border: none; color: #94a3b8; padding: 0.65rem 0.85rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.88rem; text-align: left; transition: all 0.2s; text-decoration: none; }
-.nav-item:hover, .nav-item.active { background: #020420; color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.2); }
-.count-badge { background: #1e293b; color: #f8fafc; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 10px; }
-.count-badge.neon { background: #00dc82; color: #020420; font-weight: 800; }
-.sidebar-divider { height: 1px; background: #1e293b; }
-
-.mail-list-panel { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
-.search-box { padding: 0.75rem; border-bottom: 1px solid #1e293b; }
-.search-input { width: 100%; background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.55rem 0.85rem; border-radius: 8px; font-size: 0.82rem; outline: none; }
-.mail-items-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-.mail-card { padding: 0.85rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; gap: 0.3rem; }
-.mail-card.active { background: #020420; border-left: 3px solid #00dc82; }
-
-.mail-detail-panel { background: #090d16; border: 1px solid #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; }
-.no-mail-selected { margin: auto; color: #64748b; font-size: 0.9rem; }
-.reader-header { border-bottom: 1px solid #1e293b; padding-bottom: 1rem; margin-bottom: 1rem; }
-.reader-subject { margin: 0; font-size: 1.2rem; font-weight: 800; color: #00dc82; }
-.reader-body { flex: 1; overflow-y: auto; background: #020420; border: 1px solid #1e293b; border-radius: 8px; padding: 1.25rem; font-size: 0.9rem; line-height: 1.6; }
-
-.modal-backdrop { position: fixed; inset: 0; background: rgba(2, 4, 32, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 10000; }
-.modal-card { background: #090d16; border: 1px solid #1e293b; border-radius: 14px; width: 550px; max-width: 90vw; overflow: hidden; }
-.modal-header { padding: 1rem 1.25rem; background: #020420; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
-.modal-form { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
-.form-input { background: #020420; border: 1px solid #1e293b; color: #fff; padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.85rem; outline: none; }
-
-@media (max-width: 1024px) {
-  .admin-grid-nav { grid-template-columns: repeat(4, 1fr); }
-  .mail-workspace { grid-template-columns: 1fr; }
-}
-</style>
