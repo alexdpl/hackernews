@@ -1,28 +1,59 @@
 // server/api/contact.post.ts
+import { defineEventHandler, readBody, createError } from 'h3'
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { name, email, subject, message, captchaAnswer } = body
 
-  // Verifica CAPTCHA personalizzato (es. risposta corretta "7" per "4 + 3")
-  if (parseInt(captchaAnswer) !== 7) {
-    return {
-      success: false,
-      error: 'Captcha errato. La risposta a 4 + 3 è 7!'
-    }
+  // 1. Protezione Honeypot silenziosa
+  if (body?.websiteHoneypot) {
+    return { success: true, message: 'Messaggio ricevuto.' }
   }
+
+  const name = String(body?.name || '').trim()
+  const email = String(body?.email || '').trim()
+  const subject = String(body?.subject || 'Generale').trim()
+  const message = String(body?.message || '').trim()
+  const gdprConsent = Boolean(body?.gdprConsent)
+  const gdprAcceptedAt = body?.gdprAcceptedAt ? new Date(body.gdprAcceptedAt).toISOString() : null
 
   if (!name || !email || !message) {
-    return {
-      success: false,
-      error: 'Compila tutti i campi obbligatori.'
-    }
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Nome, email e messaggio sono obbligatori.'
+    })
   }
 
-  // Qui viene simulato l'inoltro a info@devkernelpulse.org (in produzione collegabile a Resend, SendGrid o SMTP)
-  console.log(`[DKP Mailer] Nuovo messaggio da ${name} (${email}) per info@devkernelpulse.org - Oggetto: ${subject}`)
+  if (!gdprConsent || !gdprAcceptedAt) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Il consenso esplicito all\'Informativa Privacy (GDPR) con timestamp è obbligatorio.'
+    })
+  }
+
+  // Verifica Captcha equazionale
+  const answer = Number(body?.captchaAnswer)
+  const expected = Number(body?.captchaExpected)
+  if (Number.isNaN(answer) || answer !== expected) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Verifica DKP Kernel Captcha non superata.'
+    })
+  }
+
+  // Salvataggio Pure SQL (se presente helper useNeonSql / pool pg)
+  try {
+    const sql = useNeonSql()
+    await sql`
+      INSERT INTO contact_messages (name, email, subject, message, gdpr_consent, gdpr_accepted_at, created_at)
+      VALUES (${name}, ${email}, ${subject}, ${message}, ${gdprConsent}, ${gdprAcceptedAt}, NOW())
+    `
+  } catch (dbErr) {
+    // Fallback log strutturato se la tabella non è ancora migrata
+    console.info('[DKP CONTACT DISPATCH]', { name, email, subject, gdprAcceptedAt })
+  }
 
   return {
     success: true,
-    message: 'Messaggio inviato con successo! Ti risponderemo presto su info@devkernelpulse.org'
+    message: `Messaggio inviato al Kernel DKP! Consenso GDPR registrato (${gdprAcceptedAt}).`
   }
 })

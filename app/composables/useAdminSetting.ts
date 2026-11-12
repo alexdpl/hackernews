@@ -4,72 +4,101 @@ import { useState } from '#imports'
 export interface AdminSettings {
   siteTitle: string
   maintenanceMode: boolean
+
+  // Feature Flags Ecosistema DKP v2.6-PURE-SQL
   enableBlog: boolean
+  enableNodes: boolean
   enableJobs: boolean
   enableShop: boolean
-  
-  // Metodi di Pagamento & Gateway Shop
+  enableBounties: boolean
+  enableOpenUIStudio: boolean
+  enableSentinelAI: boolean
+
+  // Metodi di Pagamento & Gateway Shop (Popolati solo da API Admin protetta)
   enableStripe: boolean
   stripePublicKey: string
   enablePayPal: boolean
   paypalClientId: string
   enableCreditCard: boolean
-  
-  // Chiavi Terze Parti & Banner
-  githubClientKey: string
+
+  // Configurazione & Banner
+  githubOrgRepo: string
   announcementBanner: string
 }
 
 export function useAdminSettings() {
-  const settings = useState<AdminSettings>('dkp_admin_settings', () => ({
-    siteTitle: 'DevKernelPulse Ecosystem',
+  const settings = useState<AdminSettings>('dkp_admin_settings_v26', () => ({
+    siteTitle: 'DevKernelPulse v2.6-PURE-SQL',
     maintenanceMode: false,
+
+    // Feature Flags Predefiniti
     enableBlog: true,
+    enableNodes: true,
     enableJobs: true,
-    enableShop: false,
-    
-    // Configurazione Pagamenti Predefinita
+    enableShop: true,
+    enableBounties: true,
+    enableOpenUIStudio: true,
+    enableSentinelAI: true,
+
+    // Gateway Pagamenti (mai hardcodare chiavi o token nel client)
     enableStripe: true,
-    stripePublicKey: 'pk_live_dkp_secure_prod_99x',
+    stripePublicKey: '',
     enablePayPal: true,
-    paypalClientId: 'client_id_paypal_dkp_prod',
+    paypalClientId: '',
     enableCreditCard: true,
-    
-    // Terze parti & Annunci
-    githubClientKey: 'ghp_dkp_kernel_auth_token_v2',
-    announcementBanner: '🚀 DKP v3.0 Online: Esplora il nuovo Admin Command Center e Proof of Code!'
+
+    // Ecosistema & Annunci
+    githubOrgRepo: 'alexdpl/hackernews',
+    announcementBanner: '🚀 DKP v2.6-PURE-SQL Online: Esplora OpenUI Studio AI, Node Talks Hub e Proof of Code Vault!'
   }))
 
+  const loading = useState<boolean>('dkp_admin_settings_loading', () => false)
+  const saving = useState<boolean>('dkp_admin_settings_saving', () => false)
+
   const fetchSettings = async () => {
+    loading.value = true
     try {
-      const data = await $fetch('/api/admin/settings')
-      if (data) {
-        settings.value = { ...settings.value, ...(data as any) }
+      const res: any = await $fetch('/api/admin/settings')
+      const payload = res?.data ?? res
+      if (payload && typeof payload === 'object') {
+        settings.value = { ...settings.value, ...payload }
       }
     } catch (e) {
-      console.error('Errore nel recupero delle impostazioni admin:', e)
+      console.error('[DKP Admin Settings] Errore nel recupero delle impostazioni:', e)
+    } finally {
+      loading.value = false
     }
   }
 
-  const updateSettings = async (newSettings: Partial<AdminSettings>) => {
+  const updateSettings = async (newSettings: Partial<AdminSettings>): Promise<boolean> => {
+    const previousState = { ...settings.value }
     settings.value = { ...settings.value, ...newSettings }
+    saving.value = true
+
     try {
-      const res = await $fetch('/api/admin/settings', {
+      const res: any = await $fetch('/api/admin/settings', {
         method: 'POST',
         body: settings.value
       })
-      if (res) {
-        settings.value = { ...settings.value, ...(res as any) }
+      const payload = res?.data ?? res
+      if (payload && typeof payload === 'object') {
+        settings.value = { ...settings.value, ...payload }
       }
       return true
     } catch (e) {
-      console.error('Errore nel salvataggio delle impostazioni admin:', e)
+      // Rollback ottimistico in caso di errore API
+      settings.value = previousState
+      console.error('[DKP Admin Settings] Errore nel salvataggio delle impostazioni:', e)
       return false
+    } finally {
+      saving.value = false
     }
   }
 
   return {
     settings,
+    loading,
+    saving,
     fetchSettings,
     updateSettings
   }

@@ -1,4 +1,3 @@
-<!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
@@ -32,7 +31,7 @@ const milestones = ref<RoadmapMilestone[]>([
     features: [
       'Standardizzazione Navbar Admin Grid a 8 Moduli',
       'Persistenza Sessione Admin & Cookie dkp_session',
-      'Modulo DKP Shop SaaS & Gestione Licenze .ZIP',
+      'Modulo DKP Shop SaaS & Gestione Licenze',
       'Sitemap XML Dinamica con Sync Automatica'
     ]
   },
@@ -74,7 +73,7 @@ const milestones = ref<RoadmapMilestone[]>([
     description: 'Infrastruttura AI decentralizzata, moderazione automatica Nodes tramite Gemini 2.0 e Paywall Dinamico basato su PURE-SQL.',
     features: [
       'OpenUI Studio: Generazione Tailwind Live',
-      'DKP Trinity Engine (Gemini 2.0, Dots-3, Nemotron-3)',
+      'DKP Trinity Engine (Dots-3, North Mini-Code, Nemotron-3)',
       'Pulse Sentinel SAST & DKP Nodes Moderation',
       'Proof of Code Vault con hash SHA-256 deterministico'
     ]
@@ -124,18 +123,25 @@ const milestones = ref<RoadmapMilestone[]>([
   }
 ])
 
+const { data: apiRoadmap } = await useFetch('/api/roadmap', {
+  default: () => ({ overallCompletion: null })
+})
+
+const overallCompletion = computed(() => {
+  if (typeof apiRoadmap.value?.overallCompletion === 'number') {
+    return apiRoadmap.value.overallCompletion
+  }
+  const completedCount = milestones.value.filter(m => m.status === 'completed').length
+  const inProgressSum = milestones.value.filter(m => m.status === 'in-progress').reduce((acc, m) => acc + m.progress, 0)
+  const totalWeight = (completedCount * 100) + inProgressSum
+  return Math.round(totalWeight / milestones.value.length)
+})
+
 const activeFilter = ref<'all' | 'completed' | 'in-progress' | 'upcoming'>('all')
 
 const filteredMilestones = computed(() => {
   if (activeFilter.value === 'all') return milestones.value
   return milestones.value.filter(m => m.status === activeFilter.value)
-})
-
-const overallCompletion = computed(() => {
-  const completedCount = milestones.value.filter(m => m.status === 'completed').length
-  const inProgressSum = milestones.value.filter(m => m.status === 'in-progress').reduce((acc, m) => acc + m.progress, 0)
-  const totalWeight = (completedCount * 100) + inProgressSum
-  return Math.round(totalWeight / milestones.value.length)
 })
 </script>
 

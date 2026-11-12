@@ -1,6 +1,6 @@
 <!-- app/components/DkpPulseNexus.vue -->
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch } from 'vue'
+import { ref, nextTick, computed, watch, isRef } from 'vue'
 
 // (Opzionale: se hai un composable useAuthCore, assicurati che sia importato/auto-importato)
 const auth = useAuthCore() || {}
@@ -50,7 +50,7 @@ const userRole = computed(() => {
   return isLogged.value ? 'USER' : 'GUEST'
 })
 
-// L'XP base per la UI della chat (verrà sovrascritto dall'evento di sync globale in futuro)
+// L'XP base per la UI della chat (verrà sovrascritto dall'evento di sync globale)
 const userXp = computed(() => currentUser.value?.xp || 0)
 
 const isOpen = ref(false)
@@ -70,13 +70,13 @@ const messages = ref<Message[]>([])
 
 // 🧠 5. Generazione Saluto Dinamico
 const initWelcomeMessage = () => {
-  let welcomeText = `Benvenuto su DKP Pulse Nexus v2.5-GOLD! Effettua il login per accedere al Kernel.`
+  let welcomeText = `Benvenuto su DKP Pulse Nexus v2.6-PURE-SQL! Effettua il login per accedere al Kernel.`
 
   if (isLogged.value) {
     if (userRole.value === 'ADMIN') {
-      welcomeText = `Bentornato, Amministratore ${userName.value}. Kernel Nexus v2.5-GOLD pronto ai tuoi comandi diretti.`
+      welcomeText = `Bentornato, Amministratore ${userName.value}. Kernel Nexus v2.6-PURE-SQL pronto ai tuoi comandi diretti.`
     } else {
-      welcomeText = `Benvenuto nel Kernel, ${userName.value}! Connessione riservata stabilita. Come posso assisterti oggi?`
+      welcomeText = `Benvenuto nel Kernel v2.6, ${userName.value}! Connessione riservata stabilita. Come posso assisterti oggi?`
     }
   }
 
@@ -131,7 +131,7 @@ const handleSend = async () => {
 
     const aiResponse = res?.message?.text || "Non riesco a connettermi al Kernel neurale in questo momento. Riprova più tardi."
     
-    // Per testare la gamification, se res.message.xpEarned non esiste, diamo 10 XP di default al login
+    // Per testare la gamification, se res.message.xpEarned non esiste, diamo 10 XP di default
     const xpEarned = res?.message?.xpEarned || 10 
     
     messages.value.push({
@@ -141,7 +141,7 @@ const handleSend = async () => {
       time: res?.message?.timestamp || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
     })
 
-    // 🚀 INTEGRAZIONE FASE 2: SCRITTURA XP SU DATABASE NEON
+    // 🚀 INTEGRAZIONE PURE-SQL: SCRITTURA XP SU DATABASE NEON
     if (isLogged.value && xpEarned > 0) {
       try {
         await $fetch('/api/user/xp/award', {
@@ -149,7 +149,7 @@ const handleSend = async () => {
           body: { 
             amount: xpEarned, 
             actionType: 'CHAT_NEXUS', 
-            description: `Interazione con Pulse Nexus Companion` 
+            description: `Interazione con Pulse Nexus Companion v2.6` 
           }
         })
         
@@ -213,17 +213,16 @@ const clearChat = () => {
             <div>
               <h3 class="text-white font-extrabold text-sm flex items-center gap-2">
                 DKP Pulse Nexus 
-                <span class="bg-amber-500/15 border border-amber-500/30 text-amber-500 text-[10px] px-1.5 py-0.5 rounded tracking-wide">v2.5</span>
+                <span class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-mono tracking-wide">v2.6</span>
               </h3>
-              <p class="text-sky-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Assistente AI & Code Companion</p>
+              <p class="text-sky-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Assistente AI &amp; Code Companion</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <!-- XP Indicator (Optional placeholder if not synced here) -->
-            <button @click="clearChat" class="text-slate-400 hover:text-emerald-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors" title="Reset Conversazione">
+            <button @click="clearChat" class="text-slate-400 hover:text-emerald-400 p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer" title="Reset Conversazione">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </button>
-            <button @click="isOpen = false" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors" title="Chiudi">
+            <button @click="isOpen = false" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer" title="Chiudi">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
@@ -297,7 +296,7 @@ const clearChat = () => {
             <button 
               type="submit" 
               :disabled="!inputQuery.trim() || isTyping || !isLogged"
-              class="bg-emerald-500 text-[#020412] w-12 rounded-xl flex items-center justify-center hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-all shadow-[0_4px_15px_rgba(0,220,130,0.2)] hover:shadow-[0_6px_20px_rgba(0,220,130,0.4)]"
+              class="bg-emerald-500 text-[#020412] w-12 rounded-xl flex items-center justify-center hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-all shadow-[0_4px_15px_rgba(0,220,130,0.2)] hover:shadow-[0_6px_20px_rgba(0,220,130,0.4)] cursor-pointer"
             >
               <svg class="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
             </button>
@@ -309,9 +308,9 @@ const clearChat = () => {
     <!-- FLOATING LAUNCHER BUTTON -->
     <button 
       @click="isOpen = !isOpen" 
-      class="group flex items-center gap-3 bg-[#090d16]/90 backdrop-blur-md border border-slate-700 text-white px-5 py-3.5 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(0,220,130,0.1)] hover:border-emerald-500 hover:-translate-y-1 transition-all duration-300 relative z-50"
+      class="group flex items-center gap-3 bg-[#090d16]/90 backdrop-blur-md border border-slate-700 text-white px-5 py-3.5 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(0,220,130,0.1)] hover:border-emerald-500 hover:-translate-y-1 transition-all duration-300 relative z-50 cursor-pointer"
       :class="{ 'border-emerald-500 bg-[#020420] scale-95': isOpen }"
-      title="Apri DKP Pulse Nexus AI"
+      title="Apri DKP Pulse Nexus AI v2.6"
     >
       <div class="absolute inset-0 bg-emerald-500/10 rounded-full blur-md group-hover:bg-emerald-500/30 transition-all opacity-0 group-hover:opacity-100"></div>
       
@@ -323,7 +322,7 @@ const clearChat = () => {
 
       <span class="relative z-10 text-xl">🤖</span>
       <span class="relative z-10 font-extrabold text-sm tracking-wide text-slate-200 group-hover:text-emerald-400 transition-colors hidden sm:flex items-center gap-2">
-        Nexus <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider">v2.5</span>
+        Nexus <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">v2.6</span>
       </span>
     </button>
   </div>

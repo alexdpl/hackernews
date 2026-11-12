@@ -1,15 +1,16 @@
 <!-- app/pages/docs/faq.vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 useHead({
-  title: 'Domande Frequenti (FAQ) & Knowledge Base AI — DKP v2.5-GOLD',
+  title: 'Domande Frequenti (FAQ) & Knowledge Base AI — DKP v2.6-PURE-SQL',
   meta: [
-    { name: 'description', content: 'Tutte le risposte sull\'ecosistema DevKernelPulse v2.5-GOLD: OpenUI Studio, DKP Trinity AI Models, API Gateway crittografato, Vault e Sicurezza.' }
+    { name: 'description', content: 'Tutte le risposte sull\'ecosistema DevKernelPulse v2.6-PURE-SQL: OpenUI Studio, DKP Trinity AI Models, Neon Pure SQL Gateway crittografato, Vault e Pulse Sentinel.' }
   ]
 })
 
-const activeId = ref<string | null>(null)
+const activeId = ref<string | null>('ai-1')
+const searchQuery = ref('')
 
 function toggleFaq(id: string) {
   activeId.value = activeId.value === id ? null : id
@@ -24,169 +25,275 @@ interface FaqItem {
 interface FaqCategory {
   title: string
   icon: string
-  colorClass: string
+  accentText: string
+  accentBorder: string
   items: FaqItem[]
 }
 
 const faqData: FaqCategory[] = [
   {
-    title: '🤖 AI Gateway, OpenUI Studio & DKP Trinity',
+    title: 'AI Gateway, OpenUI Studio & DKP Trinity',
     icon: '🧠',
-    colorClass: 'pink',
+    accentText: 'text-pink-400',
+    accentBorder: 'border-pink-500/20',
     items: [
       {
         id: 'ai-1',
-        question: 'Come funziona l\'autenticazione API Gateway in DevKernelPulse v2.5-GOLD?',
-        answer: 'DevKernelPulse utilizza un sistema Zero-Trust basato su Bearer Token (es. dkp_live_...). Il server H3 in Nuxt 4 intercetta la richiesta, calcola in volo l\'hash crittografato (SHA-256 / scrypt KDF) e lo confronta con il campo key_hash salvato nel database serverless Neon PostgreSQL, azzerando i rischi di leak delle chiavi in chiaro.'
+        question: 'Come funziona l\'autenticazione API Gateway in DevKernelPulse v2.6-PURE-SQL?',
+        answer: 'DevKernelPulse utilizza un sistema Zero-Trust basato su Bearer Token (es. dkp_live_...). Il server Nitro in Nuxt 4 intercetta la richiesta, calcola in volo l\'hash crittografato (SHA-256 / scrypt KDF) e lo confronta tramite query parametrizzata Pure SQL con il campo key_hash su Neon PostgreSQL, eliminando l\'overhead di ORM pesanti e azzerando i rischi di leak delle chiavi in chiaro.'
       },
       {
         id: 'ai-2',
         question: 'Quali modelli IA alimentano OpenUI Studio e il Neural Playground?',
-        answer: 'Il motore OpenUI Studio e il Neural Playground sfruttano l\'architettura DKP Trinity via OpenRouter: 1. DKP-Flash (dots-studio/dots-3-note-preview) ottimizzato per velocità e contesti ampi. 2. DKP-Coder (recursive/flint-v1.0) specializzato in logica di programmazione e refactoring Tailwind. 3. DKP-Pro (nvidia/nemotron-3-ultra-550b-a55b) modello Enterprise a elevate prestazioni per ragionamento multi-step.'
+        answer: 'Il motore OpenUI Studio e il Neural Playground sfruttano l\'architettura DKP Trinity via OpenRouter: 1. DKP-Flash (dots-studio/dots-3-note-preview) ottimizzato per velocità e contesti ampi. 2. DKP-Coder (recursive/flint-v1.0) specializzato in logica di programmazione e refactoring Tailwind. 3. DKP-Pro (nvidia/nemotron-3-ultra-550b-a55b) modello Enterprise ad alte prestazioni per ragionamento multi-step.'
       },
       {
         id: 'ai-3',
-        question: 'Cos\'è il Paywall Dinamico e come gestisce il Metering?',
-        answer: 'Il sistema di metering monitora in tempo reale le chiamate sul database Neon. Gli utenti FREE (Newbie) hanno accesso a quota base e al modello DKP-Flash, mentre i piani PRO, ENTERPRISE o i possessori di API Pass sbloccano i modelli avanzati Coder e Pro con limiti fino a 1.000.000 req/mese.'
+        question: 'Cos\'è il Paywall Dinamico e come gestisce il Metering Pure SQL?',
+        answer: 'Il sistema di metering monitora in tempo reale le chiamate sul database Neon tramite aggiornamenti atomici Pure SQL (usage_count + 1). Gli utenti FREE (Newbie) hanno accesso a quota base e al modello DKP-Flash, mentre i piani PRO, ENTERPRISE o i possessori di API Pass sbloccano i modelli Coder e Pro con limiti fino a 1.000.000 req/mese.'
       }
     ]
   },
   {
-    title: '🌐 Ecosistema & Open Source',
+    title: 'Ecosistema a 4 Pilastri & Open Source',
     icon: '🚀',
-    colorClass: 'cyan',
+    accentText: 'text-sky-400',
+    accentBorder: 'border-sky-500/20',
     items: [
       {
         id: 'eco-1',
-        question: 'Cos\'è esattamente DevKernelPulse (DKP)?',
-        answer: 'DevKernelPulse è un ecosistema ibrido per sviluppatori. Unisce una piattaforma di blogging tecnico open-source, un API Gateway commerciale ad alte prestazioni, un sistema di notarizzazione del codice (Vault) e un motore di sicurezza AI. È pensato per fornire strumenti enterprise gratuitamente o tramite gamification.'
+        question: 'Quali sono i 4 pilastri dell\'ecosistema DevKernelPulse (DKP)?',
+        answer: 'DevKernelPulse unisce quattro ambienti integrati su un unico kernel Pure SQL: 1. DKP Tech Feed (/news) con crawler Hacker News tradotto e valutato da Trinity AI. 2. DKP Talks Hub (/nodes) per snippet e discussioni dev moderate da Sentinel. 3. Developer Tools (/tools) con OpenUI Studio, CLI e SDK. 4. DKP Editorial Hub (/blog) con articoli tecnici notarizzati nel Vault.'
       },
       {
         id: 'eco-2',
         question: 'Il progetto è interamente Open Source?',
-        answer: 'Sì! Il core della piattaforma è open source. Promuoviamo la collaborazione della community e abbiamo un sistema "Bounty Board": se contribuisci risolvendo issue su GitHub, vieni ricompensato in token nativi $PULSE.'
+        answer: 'Sì! Il core della piattaforma è open source. Promuoviamo la collaborazione della community attraverso il nostro Bounty Board: contribuendo su GitHub con fix, nuovi connettori o miglioramenti ai test E2E si ottengono ricompense in XP e token nativi $PULSE.'
       }
     ]
   },
   {
-    title: '🏆 Blog & Gamification',
+    title: 'Editorial Hub, Blog & Gamification',
     icon: '🎮',
-    colorClass: 'emerald',
+    accentText: 'text-emerald-400',
+    accentBorder: 'border-emerald-500/20',
     items: [
       {
         id: 'gam-1',
-        question: 'Come funziona il sistema di Gamification (XP)?',
-        answer: 'Eseguendo azioni virtuose (pubblicando articoli di qualità, notarizzando codice nel Vault, ricevendo upvote), guadagni Punti XP. Più XP accumuli, più sale il tuo "Rank" da sviluppatore.'
+        question: 'Come funziona il sistema di Gamification (XP) e Rank?',
+        answer: 'Eseguendo azioni virtuose — pubblicando articoli nel DKP Editorial Hub (+150 XP), notarizzando codice nel Vault (+100 XP), condividendo nodi nel Talks Hub (+50 XP) o commentando (+10 XP) — accumuli Punti XP che fanno salire il tuo livello e il tuo Rank pubblico.'
       },
       {
         id: 'gam-2',
-        question: 'Qual è il vantaggio di salire di Livello?',
-        answer: 'Salendo di livello, sblocchi automaticamente quote API più elevate e gratuite (ad esempio, passando da 1.000 chiamate/mese del tier FREE alle 50.000 chiamate/mese del tier PRO) e ottieni badge esclusivi sul tuo profilo.'
+        question: 'Qual è il vantaggio pratico di salire di Livello?',
+        answer: 'Salendo di livello sblocchi automaticamente quote API più elevate e gratuite (passando da 1.000 chiamate/mese del tier FREE alle 50.000 chiamate/mese del tier PRO), badge verificati accanto ai tuoi articoli e priorità nella coda di indicizzazione.'
       },
       {
         id: 'gam-3',
-        question: 'Come pubblico un articolo e cos\'è la Coda di Moderazione?',
-        answer: 'Puoi scrivere i tuoi articoli utilizzando il nostro editor Markdown avanzato dalla tua Dashboard. Una volta salvati come "Pubblicati", entrano in una Coda di Moderazione (gestita dagli admin) per garantire alta qualità e pertinenza prima di apparire nel feed pubblico.'
+        question: 'Come pubblico un articolo e in quanto tempo appare nel feed?',
+        answer: 'Puoi scrivere i tuoi articoli usando l\'editor Markdown avanzato nella Dashboard Utente oppure via terminale con il comando CLI "dkp blog:publish". Gli articoli approvati vengono indicizzati istantaneamente nel database Neon Pure SQL e compaiono subito in cima al DKP Editorial Hub.'
       }
     ]
   },
   {
-    title: '🔑 API Gateway & Limiti',
+    title: 'API Gateway, SDK & Limiti',
     icon: '🔌',
-    colorClass: 'purple',
+    accentText: 'text-purple-400',
+    accentBorder: 'border-purple-500/20',
     items: [
       {
         id: 'api-1',
         question: 'Come posso generare una chiave API?',
-        answer: 'Vai nella tua Dashboard Utente e apri il tab "DKP API Console". Puoi generare una nuova chiave API istantaneamente. Per motivi di sicurezza, la chiave verrà mostrata in chiaro una sola volta: assicurati di copiarla subito.'
+        answer: 'Vai nella tua Dashboard Utente e apri il tab "DKP API Console" (oppure usa il comando "dkp keys:create"). Per motivi di sicurezza Zero-Trust, la chiave verrà mostrata in chiaro una sola volta al momento della creazione: assicurati di salvarla subito nel tuo file .env.'
       },
       {
         id: 'api-2',
         question: 'Quali sono i Rate Limit e le quote mensili?',
-        answer: 'Il gateway applica limiti dinamici in base al tuo Tier: FREE (1.000 req/mese), PRO (50.000 req/mese), ENTERPRISE (1.000.000 req/mese). A ogni chiamata HTTP riceverai negli header (X-RateLimit-Remaining) il conteggio aggiornato in tempo reale dal nostro DB Neon.'
+        answer: 'Il gateway applica limiti dinamici in base al tuo Tier: FREE (1.000 req/mese), PRO (50.000 req/mese), ENTERPRISE (1.000.000 req/mese). A ogni chiamata HTTP riceverai negli header (X-RateLimit-Remaining) il conteggio aggiornato in tempo reale dal nostro database Neon.'
       },
       {
         id: 'api-3',
         question: 'Posso revocare una chiave API se viene compromessa?',
-        answer: 'Assolutamente sì. Dalla tua Dashboard puoi cliccare su "Revoca". La chiave verrà istantaneamente invalidata su tutto il cluster e non potrà più effettuare chiamate al gateway.'
+        answer: 'Assolutamente sì. Dalla tua Dashboard puoi cliccare su "Revoca" in qualsiasi momento. La chiave verrà istantaneamente invalidata su tutto il cluster Pure SQL e non potrà più effettuare chiamate al gateway.'
       }
     ]
   },
   {
-    title: '🛡️ Proof of Code Vault',
+    title: 'Proof of Code Vault',
     icon: '🔐',
-    colorClass: 'gold',
+    accentText: 'text-amber-400',
+    accentBorder: 'border-amber-500/20',
     items: [
       {
         id: 'vlt-1',
         question: 'Cos\'è il Proof of Code Vault?',
-        answer: 'È un motore di notarizzazione crittografica. Incollando il tuo codice sorgente o smart contract, DKP calcola un hash SHA-256 univoco, esegue una scansione di sicurezza (SAST) e genera un certificato immutabile salvato nel database. Serve a dimostrare la paternità e l\'integrità del tuo codice a una data certa.'
+        answer: 'È un motore di notarizzazione crittografica. Incollando codice sorgente, smart contract o articoli tecnici, DKP calcola un hash SHA-256 univoco, esegue una scansione di sicurezza (SAST) e genera un certificato immutabile salvato su Neon DB per dimostrare paternità e integrità a una data certa.'
       },
       {
         id: 'vlt-2',
         question: 'Il codice sorgente che notarizzo è al sicuro?',
-        answer: 'Sì. Una volta calcolato l\'hash crittografico (SHA-256), il nostro sistema non ha bisogno di mantenere il codice sorgente in chiaro per validare il certificato in futuro. È un sistema "zero-knowledge friendly".'
+        answer: 'Sì. Una volta calcolato l\'hash crittografico (SHA-256), il sistema può validare il certificato confrontando l\'impronta digitale senza dover esporre codice proprietario riservato.'
       }
     ]
   },
   {
-    title: '🤖 Pulse Sentinel AI & Cloud',
+    title: 'Pulse Sentinel AI & Cloud Security',
     icon: '⚡',
-    colorClass: 'rose',
+    accentText: 'text-rose-400',
+    accentBorder: 'border-rose-500/20',
     items: [
       {
         id: 'sec-1',
         question: 'Come è protetta la piattaforma?',
-        answer: 'Utilizziamo "Pulse Sentinel AI v2.5", il nostro Firewall Web Application (WAF) euristico, integrato con Google Cloud Armor in europe-west4. Blocca proattivamente attacchi DDoS, bot malevoli, iniezioni SQL e XSS in tempo reale.'
+        answer: 'Utilizziamo "Pulse Sentinel AI v2.6", il nostro Firewall Web Application (WAF) euristico con query Pure SQL parametrizzate (immune a SQL Injection) integrato con Google Cloud Armor in europe-west4. Blocca proattivamente attacchi DDoS, bot malevoli, Prompt Injection e XSS in tempo reale.'
       },
       {
         id: 'sec-2',
-        question: 'Cosa succede se il mio IP viene bloccato?',
-        answer: 'Se il tuo traffico viene identificato come anomalo, il tuo IP finirà nella "Blacklist Automatica" di Sentinel. Se ritieni sia un falso positivo, puoi contattarci su GitHub o Discord per richiedere lo sblocco manuale agli Admin.'
+        question: 'Cosa succede se il mio IP viene bloccato da Sentinel?',
+        answer: 'Se il tuo traffico supera le soglie di sicurezza o invia payload malevoli, l\'IP viene inserito nella Blacklist Automatica di Sentinel. Se ritieni si tratti di un falso positivo durante test legittimi, puoi contattarci su GitHub o Discord per la verifica da parte degli Admin.'
       }
     ]
   }
 ]
+
+const filteredFaqData = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return faqData
+
+  return faqData
+    .map(cat => ({
+      ...cat,
+      items: cat.items.filter(
+        item =>
+          item.question.toLowerCase().includes(q) ||
+          item.answer.toLowerCase().includes(q)
+      )
+    }))
+    .filter(cat => cat.items.length > 0)
+})
 </script>
 
 <template>
-  <div class="faq-page">
-    <div class="faq-container">
-      
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+
+      <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
+      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[#090d16] border border-slate-800 p-3 rounded-2xl shadow-lg">
+        <NuxtLink
+          to="/news"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🌍 DKP Tech Feed
+        </NuxtLink>
+
+        <NuxtLink
+          to="/nodes"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          💬 DKP Talks Hub
+        </NuxtLink>
+
+        <NuxtLink
+          to="/tools"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🛠️ Developer Tools
+        </NuxtLink>
+
+        <NuxtLink
+          to="/blog"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
+        >
+          ✍️ DKP Editorial Hub
+        </NuxtLink>
+      </nav>
+
       <!-- HERO SECTION -->
-      <header class="faq-hero">
-        <span class="badge-version">DOCUMENTAZIONE UFFICIALE v2.5-GOLD</span>
-        <h1 class="hero-title">Domande Frequenti (FAQ) &amp; AI Knowledge</h1>
-        <p class="hero-subtitle">
-          Tutto ciò che devi sapere sull'ecosistema <strong>DevKernelPulse</strong>. Dalle specificità dell'OpenUI Studio e DKP Trinity AI all'API Gateway crittografato.
+      <header class="bg-[#090d16] border border-slate-800 rounded-3xl p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-36 bg-emerald-500/10 blur-[110px] rounded-full pointer-events-none"></div>
+
+        <div class="mb-4 relative z-10">
+          <span class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 px-4 py-1.5 rounded-full text-xs font-mono font-extrabold tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            📚 DOCUMENTAZIONE UFFICIALE v2.6-PURE-SQL
+          </span>
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight leading-tight relative z-10">
+          Domande Frequenti &amp; <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">AI Knowledge Base</span>
+        </h1>
+
+        <p class="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed mb-7 relative z-10">
+          Tutto ciò che devi sapere sull'ecosistema <strong class="text-white">DevKernelPulse v2.6-PURE-SQL</strong>: dall'architettura serverless Neon PostgreSQL ai modelli DKP Trinity AI, Vault e Pulse Sentinel.
         </p>
+
+        <!-- SEARCH INPUT RAPIDO -->
+        <div class="max-w-xl mx-auto relative z-10">
+          <div class="flex items-center bg-[#020420] border border-slate-800 focus-within:border-emerald-400 rounded-xl px-4 py-3 shadow-inner transition-colors">
+            <span class="mr-2.5 text-base">🔍</span>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Cerca nelle FAQ (es. Pure SQL, Trinity, API Key, Vault, XP)..."
+              class="w-full bg-transparent text-sm text-white outline-none placeholder-slate-500"
+            />
+            <button
+              v-if="searchQuery"
+              type="button"
+              @click="searchQuery = ''"
+              class="text-rose-400 hover:text-rose-300 font-black text-lg px-1 cursor-pointer"
+            >
+              ×
+            </button>
+          </div>
+        </div>
       </header>
 
+      <!-- EMPTY SEARCH STATE -->
+      <div v-if="filteredFaqData.length === 0" class="text-center py-14 bg-[#090d16] border border-slate-800 rounded-2xl flex flex-col items-center gap-3">
+        <span class="text-4xl">🔎</span>
+        <h3 class="text-lg font-bold text-white">Nessuna risposta trovata per "{{ searchQuery }}"</h3>
+        <button
+          type="button"
+          @click="searchQuery = ''"
+          class="px-4 py-2 bg-emerald-500 text-slate-950 font-mono font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all cursor-pointer"
+        >
+          Mostra tutte le FAQ
+        </button>
+      </div>
+
       <!-- FAQ CATEGORIES LIST -->
-      <div class="faq-content">
-        <section v-for="category in faqData" :key="category.title" class="faq-category">
-          <h2 class="category-title" :class="category.colorClass">
-            <span class="cat-icon">{{ category.icon }}</span>
-            {{ category.title }}
+      <div v-else class="flex flex-col gap-8">
+        <section v-for="category in filteredFaqData" :key="category.title" class="flex flex-col gap-3">
+          <h2 :class="['text-lg sm:text-xl font-extrabold flex items-center gap-2.5 pb-3 border-b', category.accentText, category.accentBorder]">
+            <span>{{ category.icon }}</span>
+            <span>{{ category.title }}</span>
           </h2>
           
-          <div class="accordion-group">
+          <div class="flex flex-col gap-3">
             <div 
               v-for="item in category.items" 
               :key="item.id" 
-              class="accordion-item"
-              :class="{ 'is-active': activeId === item.id }"
+              :class="[
+                'bg-[#090d16] border rounded-2xl overflow-hidden transition-all',
+                activeId === item.id ? 'border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.08)]' : 'border-slate-800 hover:border-slate-700'
+              ]"
             >
-              <button class="accordion-trigger" @click="toggleFaq(item.id)">
-                <span class="question-text">{{ item.question }}</span>
-                <span class="chevron" :class="{ 'rotated': activeId === item.id }">▼</span>
+              <button
+                type="button"
+                class="w-full flex justify-between items-center gap-4 bg-transparent border-none px-5 py-4 text-left text-white font-bold text-sm sm:text-base cursor-pointer hover:bg-white/[0.02] transition-colors"
+                @click="toggleFaq(item.id)"
+              >
+                <span>{{ item.question }}</span>
+                <span :class="['text-xs font-mono transition-transform duration-300 shrink-0', activeId === item.id ? 'rotate-180 text-emerald-400' : 'text-slate-500']">
+                  ▼
+                </span>
               </button>
               
-              <!-- TRANSITION BODY -->
-              <div class="accordion-body" :style="{ maxHeight: activeId === item.id ? '350px' : '0' }">
-                <div class="answer-content">
-                  {{ item.answer }}
-                </div>
+              <div
+                v-show="activeId === item.id"
+                class="px-5 pb-5 pt-3 text-slate-300 text-xs sm:text-sm leading-relaxed border-t border-slate-800/70 bg-[#020420]/40"
+              >
+                {{ item.answer }}
               </div>
             </div>
           </div>
@@ -194,241 +301,29 @@ const faqData: FaqCategory[] = [
       </div>
 
       <!-- FOOTER CALL TO ACTION -->
-      <div class="faq-cta-box">
-        <div class="cta-content">
-          <h3>Non hai trovato quello che cercavi?</h3>
-          <p>La nostra community è sempre pronta ad aiutarti. Apri una issue pubblica, fai una domanda o contribuisci al nostro repository open source.</p>
+      <div class="bg-gradient-to-br from-[#090d16] via-[#0b1324] to-[#020420] border border-emerald-500/30 rounded-3xl p-8 text-center flex flex-col items-center gap-5 shadow-xl">
+        <div>
+          <h3 class="text-xl sm:text-2xl font-black text-white mb-2">Non hai trovato quello che cercavi?</h3>
+          <p class="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
+            Esplora la documentazione tecnica per sviluppatori oppure apri una discussione nel DKP Talks Hub per confrontarti con la community.
+          </p>
         </div>
-        <div class="cta-actions">
-          <a href="https://github.com/alexdpl/hackernews" target="_blank" class="dkp-btn-outline">🐙 GitHub Repository</a>
-          <NuxtLink to="/shop" class="dkp-btn-solid">🚀 Esplora Shop API Pass</NuxtLink>
+        <div class="flex flex-wrap justify-center gap-3 font-mono text-xs">
+          <NuxtLink to="/docs/api" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold rounded-xl transition-all">
+            🔌 API Reference v2.6
+          </NuxtLink>
+          <NuxtLink to="/docs/sdk" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold rounded-xl transition-all">
+            📦 SDK &amp; CLI Center
+          </NuxtLink>
+          <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-slate-500 text-slate-200 font-extrabold rounded-xl transition-all">
+            🐙 GitHub Repository
+          </a>
+          <NuxtLink to="/shop" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+            🚀 Esplora Shop API Pass
+          </NuxtLink>
         </div>
       </div>
 
     </div>
   </div>
 </template>
-
-<style scoped>
-.faq-page {
-  background: #020420;
-  min-height: 100vh;
-  padding: 4rem 1.5rem 6rem;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.faq-container {
-  max-width: 850px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 3.5rem;
-}
-
-/* HERO SECTION */
-.faq-hero {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.badge-version {
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.3rem 0.8rem;
-  border-radius: 99px;
-  letter-spacing: 0.05em;
-}
-
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: 900;
-  color: #ffffff;
-  margin: 0;
-  line-height: 1.2;
-}
-
-.hero-subtitle {
-  color: #94a3b8;
-  font-size: 1.1rem;
-  max-width: 650px;
-  line-height: 1.6;
-  margin: 0;
-}
-.hero-subtitle strong { color: #f8fafc; }
-
-/* CATEGORIES */
-.faq-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-}
-
-.category-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #1e293b;
-}
-
-.category-title.pink { color: #f472b6; border-bottom-color: rgba(244, 114, 182, 0.2); }
-.category-title.cyan { color: #38bdf8; border-bottom-color: rgba(56, 189, 248, 0.2); }
-.category-title.emerald { color: #00dc82; border-bottom-color: rgba(0, 220, 130, 0.2); }
-.category-title.purple { color: #a855f7; border-bottom-color: rgba(168, 85, 247, 0.2); }
-.category-title.gold { color: #f59e0b; border-bottom-color: rgba(245, 158, 11, 0.2); }
-.category-title.rose { color: #f43f5e; border-bottom-color: rgba(244, 63, 94, 0.2); }
-
-/* ACCORDION */
-.accordion-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.accordion-item {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.accordion-item.is-active {
-  border-color: #00dc82;
-  box-shadow: 0 0 15px rgba(0, 220, 130, 0.05);
-}
-
-.accordion-trigger {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: transparent;
-  border: none;
-  padding: 1.1rem 1.25rem;
-  color: #f8fafc;
-  font-size: 1rem;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.accordion-trigger:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.chevron {
-  font-size: 0.7rem;
-  color: #64748b;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.chevron.rotated {
-  transform: rotate(-180deg);
-  color: #00dc82;
-}
-
-.accordion-body {
-  overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.answer-content {
-  padding: 0 1.25rem 1.25rem;
-  color: #94a3b8;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  border-top: 1px solid transparent;
-}
-.is-active .answer-content { border-color: rgba(30, 41, 59, 0.5); padding-top: 1rem; }
-
-/* CTA BOX */
-.faq-cta-box {
-  background: radial-gradient(circle at top right, rgba(0, 220, 130, 0.08), #090d16 60%);
-  border: 1px solid rgba(0, 220, 130, 0.25);
-  border-radius: 12px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1.5rem;
-  margin-top: 1rem;
-}
-
-.cta-content h3 {
-  font-size: 1.35rem;
-  color: #ffffff;
-  font-weight: 800;
-  margin: 0 0 0.5rem;
-}
-
-.cta-content p {
-  color: #94a3b8;
-  font-size: 0.95rem;
-  margin: 0;
-  max-width: 500px;
-  line-height: 1.5;
-}
-
-.cta-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.dkp-btn-outline {
-  background: transparent;
-  color: #cbd5e1;
-  border: 1px solid #334155;
-  padding: 0.65rem 1.2rem;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.dkp-btn-outline:hover {
-  background: #1e293b;
-  color: #ffffff;
-  border-color: #475569;
-}
-
-.dkp-btn-solid {
-  background: #00dc82;
-  color: #020420;
-  border: 1px solid #00dc82;
-  padding: 0.65rem 1.2rem;
-  border-radius: 8px;
-  font-weight: 800;
-  font-size: 0.9rem;
-  text-decoration: none;
-  box-shadow: 0 4px 15px rgba(0, 220, 130, 0.2);
-  transition: all 0.2s;
-}
-
-.dkp-btn-solid:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 220, 130, 0.3);
-}
-
-@media (max-width: 600px) {
-  .hero-title { font-size: 2rem; }
-  .faq-cta-box { padding: 1.5rem; }
-  .cta-actions { flex-direction: column; width: 100%; }
-  .dkp-btn-outline, .dkp-btn-solid { width: 100%; text-align: center; }
-}
-</style>

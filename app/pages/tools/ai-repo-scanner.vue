@@ -3,8 +3,8 @@
 import { ref, computed } from 'vue'
 
 useDkpSeo({
-  title: 'AI Repository & Link Scanner v2.5-GOLD - DKP Tools',
-  description: 'Analizza repository GitHub, misura il rank di reputazione, la sicurezza del codice e ottieni un piano d audit per scalare la classifica DKP.'
+  title: 'AI Repository & Link Scanner v2.6-PURE-SQL — DKP Tools',
+  description: 'Analizza repository GitHub, misura il rank di reputazione, la sicurezza del codice e ottieni un piano d\'audit per scalare la classifica DKP.'
 })
 
 const { currentUser } = useAuthCore()
@@ -13,6 +13,7 @@ const currentUserId = computed(() => currentUser.value?.id || 1)
 const targetUrl = ref('')
 const loading = ref(false)
 const isNotarizing = ref(false)
+const isNotarized = ref(false)
 const scanResult = ref<any>(null)
 const errorMessage = ref('')
 
@@ -22,36 +23,46 @@ const toastMessage = ref('')
 function triggerToast(msg: string) {
   toastMessage.value = msg
   showToast.value = true
-  setTimeout(() => showToast.value = false, 3500)
+  setTimeout(() => {
+    showToast.value = false
+  }, 3500)
+}
+
+function notifyXpUpdate() {
+  if (import.meta.client && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dkp:xp_updated'))
+  }
 }
 
 async function runScan() {
   if (!targetUrl.value.trim()) return
   loading.value = true
   scanResult.value = null
+  isNotarized.value = false
   errorMessage.value = ''
 
   try {
     const res: any = await $fetch('/api/tools/ai-scan', {
       method: 'POST',
-      body: { url: targetUrl.value, userId: currentUserId.value }
+      body: { url: targetUrl.value.trim(), userId: currentUserId.value }
     })
 
     if (res && res.success) {
       scanResult.value = res.data
-      triggerToast('✅ Audit completato! +50 XP registrati sul profilo.')
+      notifyXpUpdate()
+      triggerToast('✅ Audit Pure SQL completato! +50 XP registrati sul profilo.')
     } else {
       errorMessage.value = res?.error || 'Errore durante l\'analisi.'
     }
   } catch (err: any) {
-    errorMessage.value = 'Errore di connessione con il server backend DKP.'
+    errorMessage.value = err?.data?.statusMessage || 'Errore di connessione con il server backend DKP.'
   } finally {
     loading.value = false
   }
 }
 
 async function notarizeToVault() {
-  if (!scanResult.value) return
+  if (!scanResult.value || isNotarizing.value || isNotarized.value) return
   isNotarizing.value = true
 
   try {
@@ -60,19 +71,27 @@ async function notarizeToVault() {
       body: {
         userId: currentUserId.value,
         title: `Audit Repo: ${scanResult.value.repoName}`,
-        code: JSON.stringify({
-          url: scanResult.value.url,
-          score: scanResult.value.overallScore,
-          tier: scanResult.value.rankTier
-        }, null, 2),
+        code: JSON.stringify(
+          {
+            url: scanResult.value.url,
+            score: scanResult.value.overallScore,
+            tier: scanResult.value.rankTier,
+            stack: scanResult.value.detectedStack,
+            engine: 'DKP-v2.6-PURE-SQL'
+          },
+          null,
+          2
+        ),
         sastStatus: scanResult.value.overallScore >= 85 ? 'PASSED' : 'WARNING'
       }
     })
 
     if (res && res.success) {
+      isNotarized.value = true
+      notifyXpUpdate()
       triggerToast('🛡️ Audit notarizzato nel Vault! +100 XP extra.')
     }
-  } catch (err) {
+  } catch {
     triggerToast('❌ Errore durante la notarizzazione Vault.')
   } finally {
     isNotarizing.value = false
@@ -90,7 +109,11 @@ function loadPreset(url: string) {
     
     <!-- TOAST NOTIFICATION -->
     <Transition name="fade">
-      <div v-if="showToast" class="fixed top-20 sm:top-5 right-1/2 translate-x-1/2 sm:translate-x-0 sm:right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.25)] font-bold text-sm z-50 whitespace-nowrap text-center">
+      <div
+        v-if="showToast"
+        role="status"
+        class="fixed top-20 sm:top-5 right-1/2 translate-x-1/2 sm:translate-x-0 sm:right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.25)] font-bold text-sm z-50 whitespace-nowrap text-center"
+      >
         {{ toastMessage }}
       </div>
     </Transition>
@@ -100,50 +123,61 @@ function loadPreset(url: string) {
       <!-- Glow background effect -->
       <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-3/4 h-40 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 
-      <div class="mb-5 relative z-10">
-        <span class="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 px-4 py-1.5 rounded-full text-xs font-black tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-          🤖 DKP AI CORE ENGINE v2.5-GOLD
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 relative z-10">
+        <span class="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 px-4 py-1.5 rounded-full text-xs font-mono font-black tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          🤖 DKP AI CORE ENGINE v2.6-PURE-SQL
         </span>
+        <NuxtLink to="/tools" class="text-sky-400 text-xs sm:text-sm font-bold hover:text-sky-300 hover:underline transition-colors no-underline">
+          ← Torna al Toolkit
+        </NuxtLink>
       </div>
       
       <h1 class="text-3xl sm:text-5xl font-black mb-4 text-white tracking-tight relative z-10">
-        AI Repository & <span class="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Link Scanner</span>
+        AI Repository &amp; <span class="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Link Scanner</span>
       </h1>
       
       <p class="text-slate-400 max-w-2xl mx-auto mb-10 text-base sm:text-lg leading-relaxed relative z-10">
-        Incolla l'URL di un repository o progetto: il motore IA analizzerà lo stack, calcolerà il <strong>Rank DKP</strong> e ti farà guadagnare punti XP!
+        Incolla l'URL di un repository o progetto: il motore IA analizzerà lo stack, calcolerà il <strong class="text-white">Rank DKP</strong> e ti farà guadagnare punti XP!
       </p>
 
       <!-- SEARCH INPUT E BOTTONE -->
       <div class="flex flex-col sm:flex-row gap-4 max-w-2xl mx-auto relative z-10">
         <div class="relative flex-1">
           <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xl pointer-events-none">🔗</span>
-          <input 
-            v-model="targetUrl" 
-            type="url" 
-            placeholder="https://github.com/username/repo..." 
+          <input
+            v-model="targetUrl"
+            type="url"
+            placeholder="https://github.com/username/repo..."
             @keyup.enter="runScan"
             class="w-full py-3.5 px-4 pl-12 rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 outline-none transition-all placeholder:text-slate-500 shadow-inner"
           />
         </div>
-        <button 
-          @click="runScan" 
-          :disabled="loading" 
-          class="bg-emerald-500 text-slate-950 px-8 py-3.5 rounded-xl font-black hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-50 whitespace-nowrap"
+        <button
+          type="button"
+          @click="runScan"
+          :disabled="loading || !targetUrl.trim()"
+          class="bg-emerald-500 text-slate-950 px-8 py-3.5 rounded-xl font-black hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
         >
           {{ loading ? 'Scansione IA...' : 'Avvia Audit ⚡' }}
         </button>
       </div>
 
       <!-- PRESETS -->
-      <div class="flex items-center justify-center gap-3 mt-8 flex-wrap relative z-10">
+      <div class="flex items-center justify-center gap-2.5 mt-8 flex-wrap relative z-10">
         <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">Esempi rapidi:</span>
-        <button @click="loadPreset('https://github.com/nuxt/nuxt')" class="bg-slate-950 border border-slate-700 text-sky-400 text-xs px-3 py-1.5 rounded-md hover:border-sky-400 hover:bg-sky-400/10 font-mono transition-colors">nuxt/nuxt</button>
-        <button @click="loadPreset('https://github.com/alexdpl/dkp-core')" class="bg-slate-950 border border-slate-700 text-sky-400 text-xs px-3 py-1.5 rounded-md hover:border-sky-400 hover:bg-sky-400/10 font-mono transition-colors">dkp-core</button>
+        <button type="button" @click="loadPreset('https://github.com/nuxt/nuxt')" class="bg-slate-950 border border-slate-700 text-sky-400 text-xs px-3 py-1.5 rounded-md hover:border-sky-400 hover:bg-sky-400/10 font-mono transition-colors cursor-pointer">
+          nuxt/nuxt
+        </button>
+        <button type="button" @click="loadPreset('https://github.com/alexdpl/hackernews')" class="bg-slate-950 border border-slate-700 text-emerald-400 text-xs px-3 py-1.5 rounded-md hover:border-emerald-400 hover:bg-emerald-400/10 font-mono transition-colors cursor-pointer">
+          alexdpl/dkp-core
+        </button>
+        <button type="button" @click="loadPreset('https://github.com/neondatabase/serverless')" class="bg-slate-950 border border-slate-700 text-purple-400 text-xs px-3 py-1.5 rounded-md hover:border-purple-400 hover:bg-purple-400/10 font-mono transition-colors cursor-pointer">
+          neondatabase/serverless
+        </button>
       </div>
 
       <!-- ERROR MESSAGE -->
-      <div v-if="errorMessage" class="bg-red-500/15 border border-red-500/50 text-red-400 p-4 rounded-xl mt-6 font-bold text-sm max-w-2xl mx-auto relative z-10">
+      <div v-if="errorMessage" role="alert" class="bg-red-500/15 border border-red-500/50 text-red-400 p-4 rounded-xl mt-6 font-bold text-sm max-w-2xl mx-auto relative z-10">
         ⚠️ {{ errorMessage }}
       </div>
     </header>
@@ -155,9 +189,13 @@ function loadPreset(url: string) {
         <!-- TOP BAR: NOME, RANK E SCORE -->
         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-slate-800 pb-6 mb-8 gap-6">
           <div class="w-full lg:w-auto">
-            <span class="bg-sky-400/10 text-sky-400 border border-sky-400/30 text-[10px] font-black px-2.5 py-1 rounded tracking-widest uppercase">AUDIT REPORT DKP</span>
+            <span class="bg-sky-400/10 text-sky-400 border border-sky-400/30 text-[10px] font-mono font-black px-2.5 py-1 rounded tracking-widest uppercase">
+              AUDIT REPORT DKP v2.6
+            </span>
             <h2 class="text-2xl sm:text-3xl font-black text-white mt-3 mb-1 truncate">{{ scanResult.repoName }}</h2>
-            <a :href="scanResult.url" target="_blank" class="text-xs sm:text-sm text-emerald-400 hover:underline font-mono truncate block max-w-full lg:max-w-md">{{ scanResult.url }} 🔗</a>
+            <a :href="scanResult.url" target="_blank" rel="noopener noreferrer" class="text-xs sm:text-sm text-emerald-400 hover:underline font-mono truncate block max-w-full lg:max-w-md">
+              {{ scanResult.url }} 🔗
+            </a>
           </div>
 
           <div class="flex items-center gap-4 bg-slate-950 border border-slate-800 rounded-2xl p-4 w-full lg:w-auto justify-between lg:justify-start flex-wrap">
@@ -169,12 +207,18 @@ function loadPreset(url: string) {
               <span class="text-2xl sm:text-3xl font-black text-emerald-400 leading-none">{{ scanResult.overallScore }}</span>
               <span class="text-[10px] text-slate-400 font-bold ml-1">/100</span>
             </div>
-            <button 
-              @click="notarizeToVault" 
-              :disabled="isNotarizing" 
-              class="w-full sm:w-auto bg-sky-400 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm hover:shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-all disabled:opacity-50 mt-2 sm:mt-0"
+            <button
+              type="button"
+              @click="notarizeToVault"
+              :disabled="isNotarizing || isNotarized"
+              class="w-full sm:w-auto font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all disabled:opacity-70 mt-2 sm:mt-0 cursor-pointer"
+              :class="isNotarized
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'bg-sky-400 text-slate-950 hover:shadow-[0_0_15px_rgba(56,189,248,0.4)]'"
             >
-              {{ isNotarizing ? 'Notarizzazione...' : '🛡️ Salva nel Vault' }}
+              <span v-if="isNotarizing">Notarizzazione...</span>
+              <span v-else-if="isNotarized">✅ Salvato nel Vault</span>
+              <span v-else>🛡️ Salva nel Vault</span>
             </button>
           </div>
         </div>
@@ -211,9 +255,9 @@ function loadPreset(url: string) {
               <span>🛠️</span> Tech Stack
             </h4>
             <div class="flex gap-2 flex-wrap">
-              <span 
-                v-for="tech in scanResult.detectedStack" 
-                :key="tech" 
+              <span
+                v-for="tech in scanResult.detectedStack"
+                :key="tech"
                 class="bg-sky-400/10 text-sky-400 border border-sky-400/30 px-3 py-1.5 rounded-lg text-xs font-bold"
               >
                 {{ tech }}
@@ -236,13 +280,13 @@ function loadPreset(url: string) {
             <h3 class="text-xl text-white font-black flex items-center gap-2">
               <span>🚀</span> Roadmap Miglioramenti
             </h3>
-            <span class="text-xs sm:text-sm text-slate-400 mt-1 block">Risolvi questi task per sbloccare XP extra nel DB.</span>
+            <span class="text-xs sm:text-sm text-slate-400 mt-1 block">Risolvi questi task per sbloccare XP extra nel DB Pure SQL.</span>
           </div>
 
           <div class="flex flex-col gap-3">
-            <div 
-              v-for="(item, idx) in scanResult.improvementActionPlan" 
-              :key="idx" 
+            <div
+              v-for="(item, idx) in scanResult.improvementActionPlan"
+              :key="idx"
               class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-[#090d16] border border-slate-800 p-4 sm:p-5 rounded-xl transition-colors hover:border-emerald-500/30"
             >
               <div class="text-[10px] font-black px-2.5 py-1 rounded tracking-widest border shrink-0 uppercase" :class="item.color">
@@ -266,12 +310,13 @@ function loadPreset(url: string) {
 </template>
 
 <style scoped>
-/* Transizione fluida e premium per i risultati IA */
-.fade-enter-active, .fade-leave-active { 
-  transition: opacity 0.5s ease-out, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease-out, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.fade-enter-from, .fade-leave-to { 
-  opacity: 0; 
-  transform: translateY(15px) scale(0.98); 
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(15px) scale(0.98);
 }
 </style>

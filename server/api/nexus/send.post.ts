@@ -16,7 +16,7 @@ const dkpProvider = createOpenAI({
 })
 
 const PULSE_SYSTEM_PROMPT = `
-Sei "Pulse Nexus v2.5-GOLD", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse (DKP).
+Sei "Pulse Nexus v2.6-PURE-SQL", l'entità IA proprietaria e Sentinella dell'ecosistema DevKernelPulse (DKP).
 Il tuo ruolo è fare da mentore tech, assistente ed entità di gamification per la community dei dev.
 Rispondi in modo professionale, carismatico, cyberpunk, conciso (max 3-4 frasi) e in italiano.
 Non usare formattazione Markdown complessa.
@@ -27,9 +27,9 @@ ALGORITMO NODI DKP:
 3. VAULT: Suggerisci ai dev di approfondire nel Vault.
 `
 
-// 🛡️ TRINITY AI FALLBACK ARRAY (Tenta in sequenza i nodi fino a trovare quello disponibile)
+// 🛡️ TRINITY AI FALLBACK ARRAY v2.6 (Modelli stabili e veloci in cima)
 const TRINITY_MODELS = [
-  'dots-studio/dots-3-note',
+  'google/gemini-2.0-flash-001',
   'openai/gpt-4o-mini',
   'meta-llama/llama-3.3-70b-instruct',
   'gpt-4o-mini'
@@ -53,21 +53,21 @@ export default defineEventHandler(async (event) => {
     if (!userText) {
       return {
         success: true,
-        reply: '⚡ Ciao socio! Scrivi un messaggio per interagire con il Kernel Nexus.',
+        reply: '⚡ Ciao socio! Scrivi un messaggio per interagire con il Kernel Nexus v2.6.',
         message: {
           id: Date.now().toString(),
           sender: 'Pulse Nexus',
           role: 'assistant',
-          text: '⚡ Ciao socio! Scrivi un messaggio per interagire con il Kernel Nexus.',
+          text: '⚡ Ciao socio! Scrivi un messaggio per interagire con il Kernel Nexus v2.6.',
           timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
         }
       }
     }
 
-    // 🔥 LOGICA XP DINAMICA (Mantenuta Intatta)
+    // 🔥 LOGICA XP DINAMICA
     let xpEarned = 10
     const lowerText = userText.toLowerCase()
-    if (lowerText.includes('crawler') || lowerText.includes('auth') || lowerText.includes('neon') || lowerText.includes('drizzle')) xpEarned += 15
+    if (lowerText.includes('crawler') || lowerText.includes('auth') || lowerText.includes('neon') || lowerText.includes('drizzle') || lowerText.includes('sql')) xpEarned += 15
     if (lowerText.includes('saas') || lowerText.includes('plugin') || lowerText.includes('vault') || lowerText.includes('nuxt')) xpEarned += 20
     if (userText.length > 50) xpEarned += 10
 
@@ -75,7 +75,7 @@ export default defineEventHandler(async (event) => {
     let currentLevel = 1
     let dbInstance: any = null
 
-    // 💾 1. SALVATAGGIO MESSAGGIO UTENTE E ACCREDITO XP SU NEON DB
+    // 💾 1. SALVATAGGIO MESSAGGIO UTENTE E ACCREDITO XP ATOMICO SU NEON DB
     try {
       dbInstance = await getDb()
       if (dbInstance) {
@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
             userId: updatedUser.id,
             action: `Nexus Chat: ${userText.substring(0, 25)}...`,
             points: xpEarned
-          }).catch(() => {})
+          }).catch((e: any) => console.warn('⚠️ [XP TX WARN]:', e?.message))
         }
       }
     } catch (dbErr: any) {
@@ -129,7 +129,7 @@ export default defineEventHandler(async (event) => {
           if (text && text.trim()) {
             aiResponseText = text.trim()
             usedModel = modelId
-            break // Risposta ricevuta! Interrompi il ciclo e restituisci la risposta al client.
+            break
           }
         } catch (modelErr: any) {
           console.warn(`⚠️ [TRINITY ENGINE WARN]: Nodo '${modelId}' non disponibile. Passo al successivo... (${modelErr?.message || modelErr})`)
@@ -141,7 +141,7 @@ export default defineEventHandler(async (event) => {
 
     // 🔄 3. FALLBACK DI EMERGENZA FINALE
     if (!aiResponseText) {
-      aiResponseText = `⚡ [Pulse Sentinel]: Nodi neurali momentaneamente occupati. Messaggio archiviato con successo e +${xpEarned} XP accreditati!`
+      aiResponseText = `⚡ [Pulse Sentinel v2.6]: Nodi neurali momentaneamente occupati. Messaggio archiviato con successo e +${xpEarned} XP accreditati!`
     }
 
     // 💾 4. SALVATAGGIO RISPOSTA AI SU NEON DB
@@ -160,6 +160,7 @@ export default defineEventHandler(async (event) => {
     // 🚀 5. RISPOSTA AL FRONTEND VUE
     return {
       success: true,
+      xpAwardedInBackend: true,
       reply: aiResponseText,
       message: {
         id: Date.now().toString(),
@@ -176,9 +177,10 @@ export default defineEventHandler(async (event) => {
     
   } catch (fatalErr: any) {
     console.error('💥 [NEXUS FATAL ERROR]:', fatalErr)
-    const fallbackText = '⚡ [Nexus Engine]: Sistema v2.5-GOLD in Safe Mode.'
+    const fallbackText = '⚡ [Nexus Engine]: Sistema v2.6-PURE-SQL in Safe Mode.'
     return { 
       success: true, 
+      xpAwardedInBackend: false,
       reply: fallbackText,
       message: {
         id: Date.now().toString(),

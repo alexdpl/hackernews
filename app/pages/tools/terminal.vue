@@ -2,17 +2,15 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 
-// 1. Estrazione Sicura
 const auth = useAuthCore() || {}
-const currentUser = auth.currentUser || ref({ username: 'alexdpl' })
-const isAuthenticated = auth.isAuthenticated || ref(true)
+const currentUser = auth.currentUser || ref({ id: 1, username: 'alexdpl' })
 
 const currentUserId = computed(() => currentUser.value?.id || 1)
 const usernameDisplay = computed(() => currentUser.value?.username || 'guest')
 
 useDkpSeo({
-  title: 'Terminal Web Shell v2.5-GOLD — DKP Tools',
-  meta: [{ name: 'description', content: 'Shell CLI in-browser e simulazione SDK DKP v2.5-GOLD' }]
+  title: 'Terminal Web Shell v2.6-PURE-SQL — DKP Tools',
+  description: 'Shell CLI interattiva in-browser e simulazione SDK DKP v2.6-PURE-SQL per diagnostica e comandi rapidi.'
 })
 
 const commandInput = ref('')
@@ -20,11 +18,24 @@ const terminalContainer = ref<HTMLElement | null>(null)
 const cmdInputRef = ref<HTMLInputElement | null>(null)
 const isLoading = ref(false)
 
+const commandBuffer = ref<string[]>([])
+const bufferIndex = ref(-1)
+
+const quickCommands = ['help', 'dkp info', 'dkp stats', 'whoami', 'clear']
+
 const history = ref<Array<{ cmd: string; res: string; isErr?: boolean }>>([
-  { cmd: 'dkp system start', res: 'DKP Kernel v2.5-GOLD Engine initialized.\nNeon DB Connection: ESTABLISHED.\nAPI Gateway: ONLINE.\n\nDigita "help" per iniziare.' }
+  {
+    cmd: 'dkp system start',
+    res: 'DKP Kernel v2.6-PURE-SQL Engine initialized.\nNeon PostgreSQL Pure SQL Connection: ESTABLISHED.\nAPI Gateway: ONLINE.\n\nDigita "help" per iniziare o clicca un comando rapido qui sopra.'
+  }
 ])
 
-// Scroller automatico verso il basso del terminale
+function notifyXpUpdate() {
+  if (import.meta.client && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dkp:xp_updated'))
+  }
+}
+
 function scrollToBottom() {
   nextTick(() => {
     if (terminalContainer.value) {
@@ -39,9 +50,35 @@ function focusInput() {
   }
 }
 
+function navigateHistory(direction: 'up' | 'down') {
+  if (!commandBuffer.value.length) return
+  if (direction === 'up') {
+    if (bufferIndex.value < commandBuffer.value.length - 1) {
+      bufferIndex.value++
+      commandInput.value = commandBuffer.value[commandBuffer.value.length - 1 - bufferIndex.value]
+    }
+  } else {
+    if (bufferIndex.value > 0) {
+      bufferIndex.value--
+      commandInput.value = commandBuffer.value[commandBuffer.value.length - 1 - bufferIndex.value]
+    } else {
+      bufferIndex.value = -1
+      commandInput.value = ''
+    }
+  }
+}
+
+function runQuickCommand(cmd: string) {
+  commandInput.value = cmd
+  executeCommand()
+}
+
 async function executeCommand() {
   const cmd = commandInput.value.trim()
   if (!cmd || isLoading.value) return
+
+  commandBuffer.value.push(cmd)
+  bufferIndex.value = -1
 
   if (cmd.toLowerCase() === 'clear') {
     history.value = []
@@ -52,8 +89,7 @@ async function executeCommand() {
   const currentCmd = cmd
   commandInput.value = ''
   isLoading.value = true
-  
-  // Aggiungi subito il comando in output (per feedback visivo immediato)
+
   history.value.push({ cmd: currentCmd, res: '🔄 Esecuzione in corso...' })
   const lastIndex = history.value.length - 1
   scrollToBottom()
@@ -63,12 +99,14 @@ async function executeCommand() {
       method: 'POST',
       body: { command: currentCmd, userId: currentUserId.value }
     })
-    
-    // Aggiorna l'ultimo elemento history con la vera risposta
+
     history.value[lastIndex].res = res.output || 'OK'
-    history.value[lastIndex].isErr = res.isError
+    history.value[lastIndex].isErr = Boolean(res.isError)
+    if (!res.isError) {
+      notifyXpUpdate()
+    }
   } catch (err: any) {
-    history.value[lastIndex].res = err.data?.message || 'Comando non valido o API irraggiungibile.'
+    history.value[lastIndex].res = err?.data?.statusMessage || err?.data?.message || 'Comando non valido o API irraggiungibile.'
     history.value[lastIndex].isErr = true
   } finally {
     isLoading.value = false
@@ -81,14 +119,14 @@ async function executeCommand() {
   <div class="max-w-5xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">
     
     <!-- HEADER SEZIONE -->
-    <div class="mb-10 text-center sm:text-left relative">
+    <div class="mb-8 text-center sm:text-left relative">
       <div class="absolute top-0 left-0 w-full h-32 bg-indigo-500/10 blur-[100px] pointer-events-none rounded-full"></div>
 
       <div class="flex flex-col sm:flex-row sm:justify-between items-center mb-4 gap-4 relative z-10">
-        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)]">
-          💻 DKP WEB SHELL v2.5-GOLD
+        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-mono font-black tracking-widest uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)]">
+          💻 DKP WEB SHELL v2.6-PURE-SQL
         </span>
-        <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors">
+        <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors no-underline">
           ← Torna al Toolkit
         </NuxtLink>
       </div>
@@ -98,8 +136,23 @@ async function executeCommand() {
       </h1>
       
       <p class="text-slate-400 text-base sm:text-lg max-w-3xl mx-auto sm:mx-0 leading-relaxed relative z-10">
-        Shell CLI interattiva per l'esecuzione rapida di comandi, esplorazione SDK e accumulo punti XP via console.
+        Shell CLI interattiva per l'esecuzione rapida di comandi, esplorazione SDK Pure SQL e accumulo punti XP via console.
       </p>
+    </div>
+
+    <!-- QUICK COMMANDS BAR -->
+    <div class="flex items-center gap-2 flex-wrap mb-4">
+      <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Comandi rapidi:</span>
+      <button
+        v-for="qCmd in quickCommands"
+        :key="qCmd"
+        type="button"
+        @click="runQuickCommand(qCmd)"
+        :disabled="isLoading"
+        class="text-xs font-mono px-3 py-1.5 rounded-lg bg-[#090d16] border border-slate-800 text-indigo-300 hover:border-indigo-500/50 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
+      >
+        {{ qCmd }}
+      </button>
     </div>
 
     <!-- TERMINAL EMULATOR -->
@@ -112,13 +165,13 @@ async function executeCommand() {
           <div class="w-3.5 h-3.5 rounded-full bg-yellow-500/85"></div>
           <div class="w-3.5 h-3.5 rounded-full bg-emerald-500/85"></div>
         </div>
-        <span class="text-xs text-slate-500 font-mono tracking-wide">dkp-sh — @{{ usernameDisplay }}</span>
+        <span class="text-xs text-slate-500 font-mono tracking-wide">dkp-sh v2.6 — @{{ usernameDisplay }}</span>
       </div>
 
       <!-- Terminal Body -->
-      <div 
-        ref="terminalContainer" 
-        class="p-5 sm:p-6 min-h-[420px] max-h-[600px] overflow-y-auto font-mono text-[0.9rem] sm:text-[0.92rem] flex flex-col gap-4 custom-scrollbar cursor-text" 
+      <div
+        ref="terminalContainer"
+        class="p-5 sm:p-6 min-h-[420px] max-h-[600px] overflow-y-auto font-mono text-[0.9rem] sm:text-[0.92rem] flex flex-col gap-4 custom-scrollbar cursor-text"
         @click="focusInput"
       >
         
@@ -130,7 +183,7 @@ async function executeCommand() {
             <span class="text-sky-300 break-all">{{ item.cmd }}</span>
           </div>
           <!-- Response Line -->
-          <div 
+          <div
             class="pl-4 leading-relaxed whitespace-pre-wrap break-words"
             :class="item.isErr ? 'text-red-400 font-bold' : 'text-slate-400'"
           >
@@ -141,14 +194,16 @@ async function executeCommand() {
         <!-- Current Input Line -->
         <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-900/60">
           <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>
-          <input 
+          <input
             ref="cmdInputRef"
-            v-model="commandInput" 
-            @keyup.enter="executeCommand" 
+            v-model="commandInput"
+            @keyup.enter="executeCommand"
+            @keydown.up.prevent="navigateHistory('up')"
+            @keydown.down.prevent="navigateHistory('down')"
             :disabled="isLoading"
-            type="text" 
+            type="text"
             placeholder="Scrivi 'help', 'dkp info' o prova l'easter egg..."
-            class="flex-1 bg-transparent border-none text-sky-300 outline-none w-full font-mono placeholder:text-slate-700 text-[0.9rem] sm:text-[0.92rem]" 
+            class="flex-1 bg-transparent border-none text-sky-300 outline-none w-full font-mono placeholder:text-slate-700 text-[0.9rem] sm:text-[0.92rem]"
             autofocus
             autocomplete="off"
             spellcheck="false"
@@ -160,8 +215,17 @@ async function executeCommand() {
 </template>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 8px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #020617; } /* slate-950 */
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; } /* slate-800 */
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; } /* slate-700 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #020617;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
 </style>

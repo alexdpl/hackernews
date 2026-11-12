@@ -14,8 +14,8 @@ const currentUser = computed(() => {
   return auth.user || null
 })
 
-const userXp = computed(() => currentUser.value?.xp || 850)
-const userLevel = computed(() => currentUser.value?.level || 1)
+const userXp = computed(() => currentUser.value?.xp ?? 850)
+const userLevel = computed(() => currentUser.value?.level ?? 1)
 
 // Chiusura automatica al cambio pagina
 watch(() => route.fullPath, () => {
@@ -48,7 +48,7 @@ onUnmounted(() => {
     <!-- HAMBURGER BUTTON PER MOBILE -->
     <button 
       @click="toggleMenu" 
-      class="hamburger-btn flex flex-col justify-center items-center w-11 h-11 bg-slate-900/90 border border-emerald-500/30 rounded-xl focus:outline-none transition-all"
+      class="hamburger-btn flex flex-col justify-center items-center w-11 h-11 bg-slate-900/90 border border-emerald-500/30 rounded-xl focus:outline-none transition-all cursor-pointer"
       :class="{ active: isOpen }"
       aria-label="Toggle Mobile Menu"
     >
@@ -70,9 +70,9 @@ onUnmounted(() => {
           <div class="brand-box flex items-center gap-2">
             <span class="brand-logo bg-emerald-500 text-slate-950 font-black text-xs px-1.5 py-0.5 rounded">DK</span>
             <span class="brand-name font-extrabold text-sm text-white">DevKernelPulse</span>
-            <span class="version-badge text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1 py-0.5 rounded font-mono">v2.5-GOLD</span>
+            <span class="version-badge text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono font-bold">v2.6-PURE-SQL</span>
           </div>
-          <button @click="closeMenu" class="close-btn text-slate-400 hover:text-white text-lg font-bold">✕</button>
+          <button @click="closeMenu" class="close-btn text-slate-400 hover:text-white text-lg font-bold cursor-pointer">✕</button>
         </div>
 
         <!-- BADGE LIVE XP & LEVEL NEL DRAWER -->
@@ -84,7 +84,7 @@ onUnmounted(() => {
               <div class="text-sm font-bold text-emerald-300 font-mono">{{ userXp }} XP <span class="text-xs font-normal text-slate-400">(Lv. {{ userLevel }})</span></div>
             </div>
           </div>
-          <span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-md font-mono">ACTIVE</span>
+          <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-1 rounded-md font-mono">ACTIVE</span>
         </div>
 
         <!-- CONTENUTO MENU MOBILE -->
@@ -92,9 +92,15 @@ onUnmounted(() => {
           
           <!-- SEZIONE MAIN NAVIGATION -->
           <div class="nav-section flex flex-col gap-1.5">
-            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">NAVIGAZIONE</span>
-            <NuxtLink to="/" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition text-sm font-semibold">
-              <span class="icon">📰</span> Tech Feed <span class="tag-v ml-auto text-[10px] text-slate-500 font-mono">v2.5</span>
+            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase font-mono">NAVIGAZIONE</span>
+            <NuxtLink to="/news" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition text-sm font-semibold">
+              <span class="icon">🌍</span> Tech Feed <span class="tag-v ml-auto text-[10px] text-emerald-400 font-mono font-bold">v2.6</span>
+            </NuxtLink>
+            <NuxtLink to="/nodes" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-purple-400 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/30 transition text-sm font-semibold">
+              <span class="icon">💬</span> DKP Nodes Hub
+            </NuxtLink>
+            <NuxtLink to="/show" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-sky-400 hover:bg-sky-500/10 border border-transparent hover:border-sky-500/30 transition text-sm font-semibold">
+              <span class="icon">🚀</span> Project Showcase
             </NuxtLink>
             <NuxtLink to="/submit" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 transition text-sm font-bold">
               <span class="icon">⚡</span> Invia Post (+30 XP)
@@ -102,16 +108,19 @@ onUnmounted(() => {
             <NuxtLink to="/blog" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition text-sm font-semibold">
               <span class="icon">📝</span> DKP Blog
             </NuxtLink>
+            <NuxtLink to="/shop" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/30 transition text-sm font-semibold">
+              <span class="icon">💳</span> API &amp; Ads Shop
+            </NuxtLink>
           </div>
 
           <!-- SEZIONE AMMINISTRAZIONE -->
           <div class="nav-section flex flex-col gap-1.5">
-            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">AMMINISTRAZIONE DKP</span>
+            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase font-mono">AMMINISTRAZIONE DKP</span>
             <NuxtLink to="/admin" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition text-sm font-semibold">
               <span class="icon">🔒</span> Control Center Admin
             </NuxtLink>
             <NuxtLink to="/admin/crawler" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition text-sm font-semibold">
-              <span class="icon">🤖</span> Crawler Engine v2.5
+              <span class="icon">🤖</span> Crawler Engine v2.6
             </NuxtLink>
             <NuxtLink to="/admin/mail" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-sky-400 bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20 transition text-sm font-semibold">
               <span class="icon">📬</span> DKP Mail Center
@@ -120,14 +129,17 @@ onUnmounted(() => {
 
           <!-- SEZIONE TOOLS & ECOSYSTEM -->
           <div class="nav-section flex flex-col gap-1.5">
-            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">DKP TOOLS SUITE</span>
-            <NuxtLink to="/vault" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
+            <span class="section-title text-[10px] font-extrabold text-slate-500 tracking-widest uppercase font-mono">DKP TOOLS SUITE</span>
+            <NuxtLink to="/tools" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
+              <span class="icon">🛠️</span> Tutti i Developer Tools
+            </NuxtLink>
+            <NuxtLink to="/tools/proof-of-code" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
               <span class="icon">🛡️</span> Proof of Code (Vault)
             </NuxtLink>
-            <NuxtLink to="/scanner" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
-              <span class="icon">🔍</span> AI Code Scanner v2
+            <NuxtLink to="/tools/ai-scanner" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
+              <span class="icon">🔍</span> AI Code Scanner Pro
             </NuxtLink>
-            <NuxtLink to="/terminal" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
+            <NuxtLink to="/tools/terminal" class="mobile-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent transition text-sm font-semibold">
               <span class="icon">💻</span> Terminal Web Shell
             </NuxtLink>
           </div>
@@ -136,11 +148,11 @@ onUnmounted(() => {
 
         <!-- FOOTER DRAWER -->
         <div class="drawer-footer mt-6 border-t border-slate-800 pt-3 flex flex-col gap-1">
-          <div class="status-indicator flex items-center gap-2 text-xs text-emerald-400 font-mono">
+          <div class="status-indicator flex items-center gap-2 text-xs text-emerald-400 font-mono font-bold">
             <span class="status-led w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#34d399]"></span>
-            <span>Kernel v2.5-GOLD Active</span>
+            <span>Kernel v2.6-PURE-SQL Active</span>
           </div>
-          <span class="author-note text-[11px] text-slate-500">Built by Alessandro De Paola & Gemini AI</span>
+          <span class="author-note text-[11px] text-slate-500">Built by Alessandro De Paola &amp; Gemini AI</span>
         </div>
 
       </div>

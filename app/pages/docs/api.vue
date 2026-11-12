@@ -3,13 +3,14 @@
 import { ref, computed } from 'vue'
 
 useDkpSeo({
-  title: 'API Reference v2.5 Interattiva — DKP Docs',
-  description: 'Documentazione tecnica interattiva ed OpenAPI delle API REST di DevKernelPulse v2.5-GOLD. Integration OpenRouter, metering crediti, rate limit, validazione crittografica e code snippets.'
+  title: 'API Reference v2.6-PURE-SQL Interattiva — DKP Docs',
+  description: 'Documentazione tecnica interattiva ed OpenAPI delle API REST di DevKernelPulse v2.6-PURE-SQL. Integration OpenRouter, Neon Pure SQL metering, rate limit, validazione crittografica SHA-256 e code snippets.'
 })
 
 const selectedLang = ref<'curl' | 'javascript' | 'python' | 'go'>('curl')
 const searchQuery = ref('')
-const selectedCategory = ref('all')
+const selectedCategory = ref<'all' | 'public' | 'protected'>('all')
+const copiedSnippet = ref(false)
 
 interface Endpoint {
   id: string
@@ -31,7 +32,7 @@ const endpoints: Endpoint[] = [
     method: 'POST',
     path: '/api/ai/chat',
     title: 'Neural AI Chat & OpenUI Streaming',
-    description: 'Endpoint di routing dinamico verso OpenRouter (DKP Trinity). Gestisce la generazione in streaming di codice UI e componenti Tailwind. Il Bearer token viene validato in volo (SHA-256) ed ogni chiamata consuma 1 credito dalla quota sul DB Neon.',
+    description: 'Endpoint di routing dinamico verso OpenRouter (DKP Trinity). Gestisce la generazione in streaming di codice UI e componenti Tailwind. Il Bearer token viene validato in volo (SHA-256) su Neon Pure SQL ed ogni chiamata consuma 1 credito dalla quota.',
     protected: true,
     rateLimit: 'Free: 1.000 req/mo | Pro: 50.000 req/mo | Enterprise: 1.000.000 req/mo',
     costPerReq: '1 Richiesta API (usage_count +1)',
@@ -56,20 +57,21 @@ const endpoints: Endpoint[] = [
     id: 'post-nodes-publish',
     method: 'POST',
     path: '/api/nodes',
-    title: 'DKP Nodes - Pubblicazione & Pulse Sentinel Moderation',
-    description: 'Pubblica un nuovo Node (snippet o post dev) nella community. Il contenuto viene scansionato in tempo reale da Pulse Sentinel (Gemini 2.0 Flash) per bloccare spam, injection o malware prima dell\'inserimento su Neon DB.',
+    title: 'DKP Talks Hub - Pubblicazione & Pulse Sentinel Moderation',
+    description: 'Pubblica un nuovo Node (snippet o post dev) nella community. Il contenuto viene scansionato in tempo reale da Pulse Sentinel per bloccare spam, SQL/XSS injection o malware prima dell\'inserimento su Neon PostgreSQL Pure SQL.',
     protected: true,
     rateLimit: '30 req/ora (Free) | 500 req/ora (Pro)',
     costPerReq: '1 Richiesta API + Reward +50 XP al superamento della moderazione',
     params: [],
     bodyExample: `{
-  "title": "Nuxt 4 Nitro Server Handler Pattern",
-  "content": "Ecco come strutturare un middleware per la gestione dinamica delle API Keys...",
-  "tags": ["nuxt", "typescript", "backend"]
+  "title": "Nuxt 4 Nitro Server Handler Pattern v2.6",
+  "content": "Ecco come strutturare un middleware Pure SQL per la gestione dinamica delle API Keys...",
+  "tags": ["nuxt", "typescript", "pure-sql"]
 }`,
     responseExample: `{
   "success": true,
   "node_id": "nd_992140",
+  "engine": "v2.6-PURE-SQL",
   "moderation": {
     "status": "APPROVED",
     "sentinel_model": "google/gemini-2.0-flash-exp:free",
@@ -86,20 +88,21 @@ const endpoints: Endpoint[] = [
     method: 'POST',
     path: '/api/v2/vault/notarize',
     title: 'Notarizzazione Proof of Code Vault',
-    description: 'Calcola l\'hash SHA-256 e genera un certificato crittografico immutabile per un frammento di codice o script salvandolo sul database Neon.',
+    description: 'Calcola l\'hash crittografico SHA-256 e genera un certificato immutabile per un frammento di codice, documento tecnico o articolo salvandolo tramite query parametrizzate Pure SQL su Neon DB.',
     protected: true,
     rateLimit: '10 req/min (Free) | 200 req/min (Pro)',
     costPerReq: '1 Richiesta API + Reward +100 XP automatici nel Vault',
     bodyExample: `{
-  "title": "SmartContract_Auth_v2.sol",
+  "title": "SmartContract_Auth_v26.sol",
   "source_code": "function verifyHash(code) { return sha256(code); }",
   "language": "solidity"
 }`,
     responseExample: `{
   "status": "notarized",
+  "engine": "v2.6-PURE-SQL",
   "vault_id": "vlt_88120491",
   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "timestamp": "2026-10-30T16:00:00Z",
+  "timestamp": "2026-11-12T07:50:00Z",
   "verification_url": "https://devkernelpulse.org/user/dashboard?tab=vault"
 }`
   },
@@ -107,8 +110,8 @@ const endpoints: Endpoint[] = [
     id: 'get-commercial-data',
     method: 'GET',
     path: '/api/v1/data',
-    title: 'Commercial Suite Data Stream',
-    description: 'Endpoint ad alte prestazioni protetto da API Gateway per l\'estrazione dei dati. Applica il metering Nitro tramite il check del key_hash su Drizzle ORM.',
+    title: 'Commercial Suite Data Stream (Pure SQL Gateway)',
+    description: 'Endpoint ad alte prestazioni protetto da API Gateway per l\'estrazione dei dati. Applica il metering Nitro a latenza sub-10ms tramite query Pure SQL su key_hash.',
     protected: true,
     rateLimit: '1.000 req/mese (Free) | 50.000 req/mese (Pro) | 1.000.000 req/mese (Enterprise)',
     costPerReq: '1 Richiesta API dal contatore mensile',
@@ -117,7 +120,7 @@ const endpoints: Endpoint[] = [
     ],
     responseExample: `{
   "success": true,
-  "message": "Accesso autorizzato alle API commerciali DevKernelPulse v2.5-GOLD",
+  "message": "Accesso autorizzato alle API commerciali DevKernelPulse v2.6-PURE-SQL",
   "clientContext": {
     "keyId": 42,
     "keyName": "App Produzione Mobile",
@@ -127,9 +130,67 @@ const endpoints: Endpoint[] = [
   },
   "data": {
     "status": "OPERATIONAL",
-    "service": "DKP Commercial Suite v1",
-    "timestamp": "2026-10-30T16:00:00.000Z"
+    "service": "DKP Commercial Suite v2.6",
+    "timestamp": "2026-11-12T07:50:00.000Z"
   }
+}`
+  },
+  {
+    id: 'get-news-stream',
+    method: 'GET',
+    path: '/api/news',
+    title: 'DKP Tech Feed — Hacker News AI Stream',
+    description: 'Restituisce lo stream paginato e filtrabile delle notizie tecnologiche elaborate da Trinity AI e indicizzate da Sentinel Score su Neon PostgreSQL.',
+    protected: false,
+    rateLimit: '60 req/min per IP (Cache Edge + Pure SQL)',
+    costPerReq: 'Gratuito (Endpoint Pubblico)',
+    params: [
+      { name: 'page', type: 'number', required: false, desc: 'Numero di pagina (default: 1)' },
+      { name: 'limit', type: 'number', required: false, desc: 'Elementi per pagina (default: 12, max: 50)' },
+      { name: 'q', type: 'string', required: false, desc: 'Filtro ricerca testuale su titolo e sintesi AI' },
+      { name: 'minScore', type: 'number', required: false, desc: 'Punteggio minimo Sentinel AI (0 - 90)' },
+      { name: 'category', type: 'string', required: false, desc: 'Tipologia notizia: show | ask' }
+    ],
+    responseExample: `{
+  "success": true,
+  "meta": { "page": 1, "limit": 12, "total": 248, "totalPages": 21 },
+  "data": [
+    {
+      "id": 1042,
+      "slug": "postgres-pure-sql-performance-2026",
+      "title": "Zero-ORM Pure SQL Patterns on Serverless Postgres",
+      "type": "news",
+      "points": 412,
+      "techScore": 94,
+      "summary_it": "Analisi tecnica sull'abbattimento della latenza cold-start eliminando layer ORM pesanti..."
+    }
+  ]
+}`
+  },
+  {
+    id: 'get-blog-posts',
+    method: 'GET',
+    path: '/api/blog/posts',
+    title: 'DKP Editorial Hub — Articoli & Vault Feed',
+    description: 'Estrae la lista completa degli articoli tecnici pubblicati nella community e notarizzati nel Vault DKP, ordinati cronologicamente dal più recente.',
+    protected: false,
+    rateLimit: '60 req/min per IP',
+    costPerReq: 'Gratuito (Endpoint Pubblico)',
+    params: [],
+    responseExample: `{
+  "success": true,
+  "engine": "v2.6-PURE-SQL",
+  "data": [
+    {
+      "id": 88,
+      "slug": "migrazione-dkp-v26-pure-sql",
+      "title": "Architettura DevKernelPulse v2.6-PURE-SQL",
+      "categoryName": "System Architecture",
+      "isVerified": true,
+      "views": 340,
+      "likes": 45
+    }
+  ]
 }`
   }
 ]
@@ -142,8 +203,8 @@ const activeEndpoint = computed(() => {
 
 const filteredEndpoints = computed(() => {
   return endpoints.filter(e => {
-    const matchesSearch = e.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          e.path.toLowerCase().includes(searchQuery.value.toLowerCase())
+    const q = searchQuery.value.toLowerCase()
+    const matchesSearch = e.title.toLowerCase().includes(q) || e.path.toLowerCase().includes(q)
     if (selectedCategory.value === 'protected') return matchesSearch && e.protected
     if (selectedCategory.value === 'public') return matchesSearch && !e.protected
     return matchesSearch
@@ -187,7 +248,7 @@ print(response.json())`
 import (
     "fmt"
     "net/http"
-    "io/ioutil"
+    "io"
 )
 
 func main() {
@@ -198,508 +259,279 @@ func main() {
 
     res, _ := http.DefaultClient.Do(req)
     defer res.Body.Close()
-    body, _ := ioutil.ReadAll(res.Body)
+    body, _ := io.ReadAll(res.Body)
     fmt.Println(string(body))
 }`
   }
 
   return ''
 }
+
+function copyCodeSnippet() {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && activeEndpoint.value) {
+    navigator.clipboard.writeText(getSnippet(activeEndpoint.value, selectedLang.value))
+    copiedSnippet.value = true
+    setTimeout(() => { copiedSnippet.value = false }, 2000)
+  }
+}
 </script>
 
 <template>
-  <div class="api-page">
-    <div class="api-container">
-      
-      <!-- LEFT SIDEBAR: FILTRI ED ENDPOINTS -->
-      <aside class="api-sidebar">
-        <div class="sidebar-top">
-          <h3>🔌 DKP API Console</h3>
-          <span class="version">v2.5-GOLD</span>
-        </div>
+  <div class="min-h-screen bg-[#020420] text-slate-200 px-4 sm:px-6 py-10 pb-20 font-sans">
+    <div class="max-w-7xl mx-auto flex flex-col gap-8">
 
-        <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="🔍 Cerca endpoint o URL..." 
-          class="api-search"
-        />
+      <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
+      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[#090d16] border border-slate-800 p-3 rounded-2xl shadow-lg">
+        <NuxtLink
+          to="/news"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🌍 DKP Tech Feed
+        </NuxtLink>
 
-        <div class="category-tabs">
-          <button @click="selectedCategory = 'all'" :class="{ active: selectedCategory === 'all' }">Tutti</button>
-          <button @click="selectedCategory = 'public'" :class="{ active: selectedCategory === 'public' }">Pubblici</button>
-          <button @click="selectedCategory = 'protected'" :class="{ active: selectedCategory === 'protected' }">Protetti</button>
-        </div>
+        <NuxtLink
+          to="/nodes"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          💬 DKP Talks Hub
+        </NuxtLink>
 
-        <div class="endpoint-list">
-          <button 
-            v-for="e in filteredEndpoints" 
-            :key="e.id"
-            @click="activeEndpointId = e.id"
-            :class="{ active: activeEndpointId === e.id }"
-            class="endpoint-btn"
-          >
-            <span class="method-badge" :class="e.method.toLowerCase()">{{ e.method }}</span>
-            <span class="ep-title">{{ e.title }}</span>
-          </button>
-        </div>
-      </aside>
+        <NuxtLink
+          to="/tools"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🛠️ Developer Tools
+        </NuxtLink>
 
-      <!-- MAIN PANEL: SPECS & SNIPPETS -->
-      <main class="api-main">
+        <NuxtLink
+          to="/blog"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
+        >
+          ✍️ DKP Editorial Hub
+        </NuxtLink>
+      </nav>
+
+      <!-- GRID CONSOLE -->
+      <div class="grid grid-cols-1 lg:grid-cols-[330px_1fr] gap-8 items-start">
         
-        <!-- HEADER CONSUMO CREDITI & AUTENTICAZIONE -->
-        <div class="auth-card">
-          <div class="auth-info">
-            <h4>⚡ Consumo API &amp; Metering Automatico</h4>
-            <p>
-              Tutte le chiamate verso il Gateway DKP (Neural Playground, Nodes, Vault e Commercial Suite) <strong>consumano 1 credito</strong> scalando direttamente dal contatore <code>usage_count</code> nel Database Neon.
+        <!-- LEFT SIDEBAR: FILTRI ED ENDPOINTS -->
+        <aside class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 lg:sticky lg:top-20 shadow-xl">
+          <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
+            <h3 class="text-white font-extrabold text-base m-0">🔌 DKP API Console</h3>
+            <span class="text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-black">
+              v2.6-PURE-SQL
+            </span>
+          </div>
+
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="🔍 Cerca endpoint o URL..." 
+            class="bg-[#020420] border border-slate-800 focus:border-emerald-500 text-white px-3.5 py-2.5 rounded-xl text-xs outline-none transition-colors"
+          />
+
+          <div class="flex gap-1 bg-[#020420] p-1 rounded-xl border border-slate-800/80 font-mono">
+            <button
+              type="button"
+              @click="selectedCategory = 'all'"
+              :class="['flex-1 text-xs font-bold py-1.5 rounded-lg transition-all cursor-pointer', selectedCategory === 'all' ? 'bg-slate-800 text-emerald-400' : 'text-slate-500 hover:text-slate-300']"
+            >
+              Tutti
+            </button>
+            <button
+              type="button"
+              @click="selectedCategory = 'public'"
+              :class="['flex-1 text-xs font-bold py-1.5 rounded-lg transition-all cursor-pointer', selectedCategory === 'public' ? 'bg-slate-800 text-emerald-400' : 'text-slate-500 hover:text-slate-300']"
+            >
+              Pubblici
+            </button>
+            <button
+              type="button"
+              @click="selectedCategory = 'protected'"
+              :class="['flex-1 text-xs font-bold py-1.5 rounded-lg transition-all cursor-pointer', selectedCategory === 'protected' ? 'bg-slate-800 text-emerald-400' : 'text-slate-500 hover:text-slate-300']"
+            >
+              Protetti
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <button 
+              v-for="e in filteredEndpoints" 
+              :key="e.id"
+              type="button"
+              @click="activeEndpointId = e.id"
+              :class="[
+                'flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                activeEndpointId === e.id
+                  ? 'bg-[#020420] border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.1)]'
+                  : 'bg-transparent border-transparent hover:bg-[#020420]/60 hover:border-slate-800'
+              ]"
+            >
+              <span
+                :class="[
+                  'text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase shrink-0',
+                  e.method === 'GET' ? 'bg-sky-500/15 text-sky-400' : 'bg-emerald-500/15 text-emerald-400'
+                ]"
+              >
+                {{ e.method }}
+              </span>
+              <span :class="['text-xs font-semibold truncate', activeEndpointId === e.id ? 'text-emerald-400' : 'text-slate-300']">
+                {{ e.title }}
+              </span>
+            </button>
+
+            <p v-if="filteredEndpoints.length === 0" class="text-xs text-slate-500 font-mono text-center py-4">
+              Nessun endpoint trovato.
             </p>
-            <p class="sub-auth">
-              Invia l'header <code>Authorization: Bearer dkp_live_...</code>. La tua chiave viene verificata tramite l'hash crittografato SHA-256 per garantire la massima sicurezza zero-trust.
-            </p>
           </div>
-          <div class="rate-info">
-            <strong>Quote Mensili Disponibili:</strong>
-            <ul>
-              <li><span class="free">FREE:</span> 1.000 req/mese (DKP-Flash)</li>
-              <li><span class="pro">PRO:</span> 50.000 req/mese (Coder &amp; Pro)</li>
-              <li><span class="enterprise">ENTERPRISE:</span> 1.000.000 req/mese</li>
-            </ul>
-          </div>
-        </div>
+        </aside>
 
-        <!-- ENDPOINT DETAILS SECTION -->
-        <div class="endpoint-detail-card" v-if="activeEndpoint">
-          <div class="ep-header">
-            <div class="ep-headline">
-              <span class="method-badge large" :class="activeEndpoint.method.toLowerCase()">{{ activeEndpoint.method }}</span>
-              <code>{{ activeEndpoint.path }}</code>
+        <!-- MAIN PANEL: SPECS & SNIPPETS -->
+        <main class="min-w-0 flex flex-col gap-6">
+          
+          <!-- HEADER CONSUMO CREDITI & AUTENTICAZIONE -->
+          <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex justify-between items-start gap-6 flex-wrap shadow-xl">
+            <div class="flex-1 min-w-[280px]">
+              <div class="flex items-center gap-2 mb-2">
+                <h4 class="text-white font-extrabold text-base m-0">⚡ Consumo API &amp; Metering Pure SQL</h4>
+                <span class="text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-bold">
+                  SHA-256 ZERO-TRUST
+                </span>
+              </div>
+              <p class="text-sm text-slate-400 leading-relaxed mb-2">
+                Tutte le chiamate protette verso il Gateway DKP (Neural Playground, Talks Hub, Vault e Commercial Suite) <strong class="text-slate-200">consumano 1 credito</strong> scalando direttamente dal contatore <code class="text-sky-400 bg-[#020420] px-1.5 py-0.5 rounded text-xs">usage_count</code> su Neon PostgreSQL.
+              </p>
+              <p class="text-xs text-slate-500 m-0">
+                Invia l'header <code class="text-sky-400 bg-[#020420] px-1.5 py-0.5 rounded">Authorization: Bearer dkp_live_...</code>. La chiave viene verificata tramite hash SHA-256 senza latenza ORM.
+              </p>
             </div>
-            <span v-if="activeEndpoint.protected" class="badge-protected">🔒 API Key Required</span>
-            <span v-else class="badge-public">🌐 Public</span>
-          </div>
 
-          <h3>{{ activeEndpoint.title }}</h3>
-          <p class="ep-desc">{{ activeEndpoint.description }}</p>
-
-          <div class="meta-grid">
-            <div class="meta-box">
-              <span class="meta-label">Allocazione &amp; Quota:</span>
-              <span class="meta-val">{{ activeEndpoint.rateLimit }}</span>
-            </div>
-            <div class="meta-box highlight-cost">
-              <span class="meta-label">Costo Chiamata:</span>
-              <span class="meta-val text-emerald">⚡ {{ activeEndpoint.costPerReq }}</span>
+            <div class="text-xs text-slate-400 bg-[#020420] border border-slate-800 p-4 rounded-xl min-w-[240px] font-mono">
+              <strong class="text-slate-200 block mb-2">Quote Mensili Disponibili:</strong>
+              <ul class="flex flex-col gap-1.5 m-0 p-0 list-none">
+                <li><span class="text-slate-200 font-extrabold">FREE:</span> 1.000 req/mese (DKP-Flash)</li>
+                <li><span class="text-emerald-400 font-extrabold">PRO:</span> 50.000 req/mese (Coder &amp; Pro)</li>
+                <li><span class="text-amber-400 font-extrabold">ENTERPRISE:</span> 1.000.000 req/mese</li>
+              </ul>
             </div>
           </div>
 
-          <!-- PARAMETRI QUERY / URL -->
-          <div v-if="activeEndpoint.params && activeEndpoint.params.length" class="params-section">
-            <h4>Query Parameters</h4>
-            <div class="table-responsive">
-              <table class="params-table">
-                <thead>
-                  <tr>
-                    <th>Parametro</th>
-                    <th>Tipo</th>
-                    <th>Obbligatorio</th>
-                    <th>Descrizione</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="p in activeEndpoint.params" :key="p.name">
-                    <td><code>{{ p.name }}</code></td>
-                    <td><span class="type">{{ p.type }}</span></td>
-                    <td>{{ p.required ? 'Sì' : 'No' }}</td>
-                    <td>{{ p.desc }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <!-- ENDPOINT DETAILS SECTION -->
+          <div v-if="activeEndpoint" class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 min-w-0 overflow-hidden shadow-xl">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-3 pb-4 border-b border-slate-800/80">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span
+                  :class="[
+                    'text-xs font-mono font-black px-2.5 py-1 rounded-md uppercase',
+                    activeEndpoint.method === 'GET' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  ]"
+                >
+                  {{ activeEndpoint.method }}
+                </span>
+                <code class="text-white text-base sm:text-lg font-bold font-mono break-all">{{ activeEndpoint.path }}</code>
+              </div>
 
-          <!-- CODE SNIPPET GENERATOR -->
-          <div class="code-generator">
-            <div class="code-header">
-              <h4>💻 Code Snippet Generato</h4>
-              <div class="lang-selector">
-                <button @click="selectedLang = 'curl'" :class="{ active: selectedLang === 'curl' }">cURL</button>
-                <button @click="selectedLang = 'javascript'" :class="{ active: selectedLang === 'javascript' }">JS / TS</button>
-                <button @click="selectedLang = 'python'" :class="{ active: selectedLang === 'python' }">Python</button>
-                <button @click="selectedLang = 'go'" :class="{ active: selectedLang === 'go' }">Go</button>
+              <span v-if="activeEndpoint.protected" class="bg-rose-500/15 text-rose-400 border border-rose-500/30 text-xs font-mono font-bold px-3 py-1 rounded-lg">
+                🔒 API Key Required
+              </span>
+              <span v-else class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold px-3 py-1 rounded-lg">
+                🌐 Public Endpoint
+              </span>
+            </div>
+
+            <h3 class="text-white font-black text-xl sm:text-2xl mb-2">{{ activeEndpoint.title }}</h3>
+            <p class="text-slate-400 text-sm sm:text-base mb-6 leading-relaxed">{{ activeEndpoint.description }}</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div class="bg-[#020420] border border-slate-800 p-4 rounded-xl flex flex-col gap-1">
+                <span class="text-[11px] font-mono text-slate-500 font-bold uppercase">Allocazione &amp; Rate Limit:</span>
+                <span class="text-xs sm:text-sm text-slate-200 font-semibold">{{ activeEndpoint.rateLimit }}</span>
+              </div>
+              <div class="bg-[#020420] border border-emerald-500/30 p-4 rounded-xl flex flex-col gap-1">
+                <span class="text-[11px] font-mono text-slate-500 font-bold uppercase">Costo &amp; Metering:</span>
+                <span class="text-xs sm:text-sm text-emerald-400 font-extrabold">⚡ {{ activeEndpoint.costPerReq }}</span>
               </div>
             </div>
 
-            <div class="code-wrapper">
-              <pre class="code-block"><code>{{ getSnippet(activeEndpoint, selectedLang) }}</code></pre>
+            <!-- PARAMETRI QUERY / URL -->
+            <div v-if="activeEndpoint.params && activeEndpoint.params.length" class="mb-6">
+              <h4 class="text-white font-bold text-sm mb-3">Query Parameters</h4>
+              <div class="w-full overflow-x-auto border border-slate-800 rounded-xl">
+                <table class="w-full border-collapse min-w-[500px] text-left text-xs sm:text-sm">
+                  <thead>
+                    <tr class="bg-[#020420] text-slate-300 border-b border-slate-800">
+                      <th class="p-3 font-mono">Parametro</th>
+                      <th class="p-3 font-mono">Tipo</th>
+                      <th class="p-3 font-mono">Obbligatorio</th>
+                      <th class="p-3">Descrizione</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="p in activeEndpoint.params" :key="p.name" class="border-b border-slate-800/70 last:border-none">
+                      <td class="p-3"><code class="text-sky-400 font-mono font-bold">{{ p.name }}</code></td>
+                      <td class="p-3"><span class="text-emerald-400 font-mono">{{ p.type }}</span></td>
+                      <td class="p-3 text-slate-400">{{ p.required ? 'Sì' : 'No' }}</td>
+                      <td class="p-3 text-slate-300">{{ p.desc }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <!-- ESEMPIO RISPOSTA JSON / STREAM -->
-          <div class="response-section">
-            <h4>Esempio Risposta HTTP / Stream Payload</h4>
-            <div class="code-wrapper">
-              <pre class="code-block json-response"><code>{{ activeEndpoint.responseExample }}</code></pre>
+            <!-- CODE SNIPPET GENERATOR -->
+            <div class="mt-6 bg-[#020420] border border-slate-800 rounded-xl overflow-hidden">
+              <div class="bg-[#0d1322] px-4 py-2.5 flex justify-between items-center border-b border-slate-800 flex-wrap gap-2">
+                <h4 class="m-0 text-white text-xs font-mono font-bold">💻 Code Snippet Generato</h4>
+                <div class="flex items-center gap-1.5 font-mono">
+                  <button
+                    v-for="lang in (['curl', 'javascript', 'python', 'go'] as const)"
+                    :key="lang"
+                    type="button"
+                    @click="selectedLang = lang"
+                    :class="[
+                      'text-xs font-bold px-2.5 py-1 rounded cursor-pointer transition-colors',
+                      selectedLang === lang ? 'text-emerald-400 bg-emerald-500/15' : 'text-slate-500 hover:text-slate-300'
+                    ]"
+                  >
+                    {{ lang === 'curl' ? 'cURL' : lang === 'javascript' ? 'JS / TS' : lang === 'python' ? 'Python' : 'Go' }}
+                  </button>
+                  <button
+                    type="button"
+                    @click="copyCodeSnippet"
+                    class="ml-2 text-xs font-bold px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer transition-colors"
+                  >
+                    {{ copiedSnippet ? '✅ Copiato!' : '📋 Copia' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="max-w-full overflow-x-auto bg-[#020420]">
+                <pre class="m-0 p-5 text-sky-400 font-mono text-xs leading-relaxed whitespace-pre"><code>{{ getSnippet(activeEndpoint, selectedLang) }}</code></pre>
+              </div>
             </div>
+
+            <!-- ESEMPIO RISPOSTA JSON / STREAM -->
+            <div class="mt-6">
+              <h4 class="text-white text-xs font-mono font-bold uppercase tracking-wider mb-2.5">Esempio Risposta HTTP / Stream Payload</h4>
+              <div class="max-w-full overflow-x-auto bg-[#020420] border border-slate-800 rounded-xl">
+                <pre class="m-0 p-5 text-emerald-400 font-mono text-xs leading-relaxed whitespace-pre"><code>{{ activeEndpoint.responseExample }}</code></pre>
+              </div>
+            </div>
+
           </div>
+        </main>
+      </div>
 
-        </div>
-
-      </main>
+      <!-- FOOTER NAVIGATION -->
+      <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-slate-800 font-mono text-xs">
+        <NuxtLink to="/tools" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
+          ← Ritorna ai Developer Tools
+        </NuxtLink>
+        <NuxtLink to="/docs/cli-automation" class="text-emerald-400 hover:underline font-bold">
+          Vai a DKP CLI &amp; Local Automation v2.6 ➔
+        </NuxtLink>
+      </div>
 
     </div>
   </div>
 </template>
-
-<style scoped>
-.api-page {
-  background: #020420;
-  color: #cbd5e1;
-  min-height: 100vh;
-  padding: 2rem 1.5rem 5rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.api-container {
-  max-width: 1350px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 2rem;
-}
-
-/* 🟢 FIX CRITICO PER OVERFLOW GRID: impone ai figli del grid di non espandersi oltre lo schermo */
-.api-main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-@media (max-width: 960px) {
-  .api-container { grid-template-columns: 1fr; }
-}
-
-/* SIDEBAR */
-.api-sidebar {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  height: fit-content;
-  position: sticky;
-  top: 5rem;
-}
-
-.sidebar-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.sidebar-top h3 { color: #fff; margin: 0; font-size: 1.1rem; }
-.sidebar-top .version {
-  font-size: 0.65rem;
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-weight: 800;
-}
-
-.api-search {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.6rem 0.8rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-
-.category-tabs {
-  display: flex;
-  gap: 0.3rem;
-  background: #020420;
-  padding: 0.2rem;
-  border-radius: 6px;
-}
-
-.category-tabs button {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.35rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.category-tabs button.active {
-  background: #1e293b;
-  color: #00dc82;
-}
-
-.endpoint-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.endpoint-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.55rem 0.7rem;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s ease;
-}
-
-.endpoint-btn:hover, .endpoint-btn.active {
-  background: #020420;
-  border-color: #1e293b;
-}
-
-.endpoint-btn.active .ep-title { color: #00dc82; }
-
-.ep-title {
-  color: #cbd5e1;
-  font-size: 0.82rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* BADGES METHOD */
-.method-badge {
-  font-size: 0.65rem;
-  font-weight: 900;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-}
-
-.method-badge.get { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-.method-badge.post { background: rgba(0, 220, 130, 0.15); color: #00dc82; }
-.method-badge.large { font-size: 0.85rem; padding: 0.3rem 0.6rem; }
-
-/* MAIN DETAILS & AUTH CARD */
-.auth-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.auth-info { flex: 1; min-width: 280px; }
-.auth-info h4 { margin: 0 0 0.4rem; color: #fff; font-size: 1.1rem; }
-.auth-info p { margin: 0 0 0.5rem; font-size: 0.88rem; color: #94a3b8; line-height: 1.5; }
-.auth-info .sub-auth { font-size: 0.82rem; color: #64748b; }
-.auth-info code { color: #38bdf8; background: #020420; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
-
-.rate-info { 
-  font-size: 0.82rem; 
-  color: #94a3b8; 
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 1rem;
-  border-radius: 8px;
-  min-width: 220px;
-}
-.rate-info ul { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.35rem; }
-.rate-info .free { color: #cbd5e1; font-weight: 800; }
-.rate-info .pro { color: #00dc82; font-weight: 800; }
-.rate-info .enterprise { color: #f59e0b; font-weight: 800; }
-
-.endpoint-detail-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 1.75rem;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.ep-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.ep-headline {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.ep-headline code {
-  color: #fff;
-  font-size: 1.1rem;
-  font-weight: 700;
-  font-family: monospace;
-  word-break: break-all;
-}
-
-.badge-protected {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-}
-
-.badge-public {
-  background: rgba(0, 220, 130, 0.15);
-  color: #00dc82;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-}
-
-.endpoint-detail-card h3 { color: #fff; margin: 0 0 0.5rem; font-size: 1.3rem; }
-.ep-desc { color: #94a3b8; font-size: 0.95rem; margin-bottom: 1.25rem; line-height: 1.6; }
-
-/* META GRID PER RATE LIMIT & COSTO */
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.meta-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  padding: 0.85rem 1rem;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.meta-box.highlight-cost {
-  border-color: rgba(0, 220, 130, 0.3);
-}
-
-.meta-label { font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase; }
-.meta-val { font-size: 0.88rem; color: #cbd5e1; font-weight: 600; }
-.text-emerald { color: #00dc82; font-weight: 800; }
-
-/* TABELLA RESPONSIVE */
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  margin-top: 0.8rem;
-}
-
-.params-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 500px;
-}
-
-.params-table th, .params-table td {
-  padding: 0.65rem 0.8rem;
-  text-align: left;
-  border-bottom: 1px solid #1e293b;
-  font-size: 0.85rem;
-}
-
-.params-table th { color: #fff; background: #020420; }
-.params-table code { color: #38bdf8; }
-.params-table .type { color: #00dc82; font-family: monospace; }
-
-/* CODE BLOCK GENERATOR & WRAPPERS */
-.code-generator {
-  margin-top: 1.75rem;
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.code-header {
-  background: #0d1322;
-  padding: 0.6rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #1e293b;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.code-header h4 { margin: 0; color: #fff; font-size: 0.85rem; }
-
-.lang-selector {
-  display: flex;
-  gap: 0.2rem;
-}
-
-.lang-selector button {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  font-weight: 700;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.55rem;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.lang-selector button.active {
-  color: #00dc82;
-  background: rgba(0, 220, 130, 0.1);
-}
-
-.code-wrapper {
-  max-width: 100%;
-  overflow-x: auto;
-  background: #020420;
-}
-
-.code-block {
-  margin: 0;
-  padding: 1.25rem;
-  color: #38bdf8;
-  font-family: 'Fira Code', 'Courier New', Courier, monospace;
-  font-size: 0.82rem;
-  line-height: 1.6;
-  white-space: pre;
-}
-
-.code-block.json-response {
-  color: #00dc82;
-}
-
-.response-section {
-  margin-top: 1.75rem;
-}
-
-.response-section h4 {
-  color: #fff;
-  font-size: 0.9rem;
-  margin-bottom: 0.6rem;
-}
-</style>

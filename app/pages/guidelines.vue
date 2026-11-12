@@ -1,265 +1,179 @@
 <!-- app/pages/guidelines.vue -->
 <script setup lang="ts">
 useDkpSeo({
-  title: 'Linee Guida della Community - DevKernelPulse v2.4-Gold',
-  description: 'Linee guida, codice di condotta e regole di pubblicazione per la community di DevKernelPulse v2.4-Gold.'
+  title: 'Linee Guida della Community & Code of Conduct — DevKernelPulse v2.6-PURE-SQL',
+  description: 'Linee guida, codice di condotta, regole di pubblicazione editoriale e utilizzo responsabile degli strumenti AI per la community di DevKernelPulse v2.6-PURE-SQL.'
 })
 </script>
 
 <template>
-  <div class="guidelines-page-container">
-    <div class="guidelines-card">
-      
-      <!-- BADGE CATEGORIA CON ICONA VIOLA COMMUNITY -->
-      <div class="guidelines-header-top">
-        <div class="icon-box-violet">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
+
+      <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
+      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[#090d16] border border-slate-800 p-3 rounded-2xl shadow-lg">
+        <NuxtLink
+          to="/news"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🌍 DKP Tech Feed
+        </NuxtLink>
+
+        <NuxtLink
+          to="/nodes"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          💬 DKP Talks Hub
+        </NuxtLink>
+
+        <NuxtLink
+          to="/tools"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🛠️ Developer Tools
+        </NuxtLink>
+
+        <NuxtLink
+          to="/blog"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
+        >
+          ✍️ DKP Editorial Hub
+        </NuxtLink>
+      </nav>
+
+      <!-- MAIN INSTITUTIONAL CARD -->
+      <article class="bg-[#090d16]/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-purple-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <!-- HEADER TOP: ICONA E BADGE -->
+        <div class="flex items-center gap-3.5 mb-5 flex-wrap">
+          <div class="flex items-center justify-center w-10 h-10 bg-purple-500/15 text-purple-400 border border-purple-500/35 rounded-xl shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-xs font-mono font-extrabold tracking-wider px-3.5 py-1.5 rounded-full uppercase">
+            <span>COMMUNITY &amp; CODE OF CONDUCT</span>
+            <span class="text-slate-500">•</span>
+            <span>v2.6-PURE-SQL</span>
+          </div>
         </div>
-        <div class="guidelines-badge">
-          COMMUNITY & CODE OF CONDUCT
-        </div>
+
+        <!-- TITOLO E METADATI -->
+        <h1 class="text-3xl sm:text-5xl font-black text-white mb-3 tracking-tight leading-tight">
+          Linee Guida della <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-purple-400">Community</span>
+        </h1>
+        <p class="text-xs sm:text-sm font-mono text-slate-400 mb-6">
+          Regole d'oro per mantenere DevKernelPulse un hub tecnico ad alto valore aggiunto | Ecosistema v2.6-PURE-SQL
+        </p>
+
+        <hr class="border-slate-800 my-7" />
+
+        <!-- INTRODUZIONE -->
+        <p class="text-sm sm:text-base leading-relaxed text-slate-200 mb-8">
+          Per mantenere <strong class="text-white">DevKernelPulse (DKP)</strong> uno spazio stimolante, pulito e ricco di contenuti tecnici di alto livello tra Tech Feed, Talks Hub ed Editorial Hub, chiediamo a tutti i membri di seguire poche e semplici regole d'oro.
+        </p>
+
+        <!-- SEZIONE 1: QUALITÀ E PERTINENZA -->
+        <section class="mb-9">
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>01.</span>
+            <span>Qualità e Pertinenza Tecnica</span>
+          </h2>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 mb-3">
+            Condividi articoli nel <strong class="text-white">DKP Editorial Hub</strong>, nodi nel <strong class="text-white">Talks Hub</strong>, domande (<em class="text-emerald-300">Ask DKP</em>) e progetti (<em class="text-emerald-300">Show DKP</em>) che apportino valore reale a sviluppatori, sistemisti, devops, data scientist e architetti cloud:
+          </p>
+          <ul class="flex flex-col gap-2.5 my-3 p-0 list-none">
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Contenuti ammessi:</strong> Architetture software, benchmark SQL/Cloud, analisi del codice, novità open source, post-mortem di incidenti tecnici e guide approfondite.
+            </li>
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Contenuti vietati:</strong> Marketing aggressivo, link affiliate, promozioni commerciali superficiali, contenuti generati automaticamente privi di revisione tecnica o clickbait.
+            </li>
+          </ul>
+        </section>
+
+        <!-- SEZIONE 2: DISCUSSIONI COSTRUTTIVE -->
+        <section class="mb-9">
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>02.</span>
+            <span>Discussioni Costruttive e Rigore</span>
+          </h2>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 mb-3">
+            Nei commenti e nelle discussioni dei Nodi, punta sempre all'eccellenza e alla precisione. L'argomentazione logica e il rispetto reciproco sono il pilastro della nostra crescita collettiva:
+          </p>
+          <ul class="flex flex-col gap-2.5 my-3 p-0 list-none">
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Discuti le idee, non le persone:</strong> Il dibattito acceso sulle scelte architetturali, sugli ORM vs Pure SQL o sui linguaggi è benvenuto; gli attacchi personali (<em class="text-slate-400">ad hominem</em>) non sono tollerati.
+            </li>
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Apporta evidenze:</strong> Se esprimi un disaccordo tecnico, spiega il <em class="text-slate-200">perché</em> fornendo esempi di codice, benchmark, documentazione ufficiale o casi d'uso reali.
+            </li>
+          </ul>
+        </section>
+
+        <!-- SEZIONE 3: TRASPARENZA JOB E SHOW DKP -->
+        <section class="mb-9">
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>03.</span>
+            <span>Trasparenza nei Job, Show DKP &amp; Vault</span>
+          </h2>
+          <div class="bg-[#020420] border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 mt-3">
+            <div class="flex flex-col gap-1">
+              <strong class="text-sm text-emerald-400 font-extrabold">💼 Offerte di Lavoro (Job Board):</strong>
+              <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Includi sempre lo stack tecnologico richiesto, il range salariale o di compensation trasparente e la modalità operativa (Full Remote, Hybrid, Onsite).
+              </span>
+            </div>
+            <div class="flex flex-col gap-1 pt-3 border-t border-slate-800/80">
+              <strong class="text-sm text-emerald-400 font-extrabold">🚀 Show DKP &amp; Proof of Code Vault:</strong>
+              <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Quando presenti una libreria open source o un'architettura notarizzata nel Vault, condividi dettagli tecnici riproducibili e resta aperto al peer-review della community.
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEZIONE 4: USO RESPONSABILE DI AI & DKP TOOLS -->
+        <section>
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>04.</span>
+            <span>Uso Responsabile di DKP Tools, API &amp; Sentinel AI</span>
+          </h2>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 mb-3">
+            L'ecosistema <strong class="text-emerald-400 font-mono">v2.6-PURE-SQL</strong> mette a disposizione strumenti avanzati (OpenUI Studio, Neural Playground, SDK, CLI e REST API). Tutti i flussi sono protetti in tempo reale da <strong class="text-white">Pulse Sentinel AI</strong>:
+          </p>
+          <ul class="flex flex-col gap-2.5 my-3 p-0 list-none">
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">No Spam, Scraping o Abuso XP:</strong> È vietato aggirare i rate-limit, automatizzare farm di XP o tentare Prompt Injection / SQL Injection sugli endpoint pubblici e privati.
+            </li>
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Igiene delle Credenziali:</strong> Non incollare mai chiavi API private (<code class="text-sky-400 font-mono text-xs">dkp_live_...</code>), token di produzione o codice proprietario coperto da NDA nei post pubblici o negli strumenti di scansione condivisi.
+            </li>
+          </ul>
+        </section>
+
+      </article>
+
+      <!-- FOOTER NAVIGATION -->
+      <div class="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-800 font-mono text-xs">
+        <NuxtLink to="/about" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
+          ← Torna a Chi Siamo (About DKP)
+        </NuxtLink>
+        <NuxtLink to="/nodes" class="text-purple-400 hover:text-emerald-400 font-bold transition-colors">
+          Partecipa nel DKP Talks Hub →
+        </NuxtLink>
       </div>
-
-      <!-- TITOLO E METADATI -->
-      <h1 class="guidelines-title">
-        Linee Guida della <span class="highlight-text">Community</span>
-      </h1>
-      <p class="guidelines-subtitle">
-        Regole d'oro per mantenere DevKernelPulse un hub tecnico ad alto valore aggiunto | Versione Ecosistema v2.4-Gold
-      </p>
-
-      <hr class="guidelines-divider" />
-
-      <!-- INTRODUZIONE -->
-      <p class="intro-text">
-        Per mantenere <strong>DevKernelPulse (DKP)</strong> uno spazio stimolante, pulito e ricco di contenuti tecnici di alto livello, chiediamo a tutti i membri di seguire poche e semplici regole d'oro.
-      </p>
-
-      <!-- SEZIONE 1: QUALITÀ E PERTINENZA -->
-      <section class="guidelines-section">
-        <h2>1. Qualità e Pertinenza Tech</h2>
-        <p>
-          Invia storie, link, domande (<em>Ask DKP</em>) e progetti (<em>Show DKP</em>) che interessino direttamente sviluppatori, sistemisti, devops, data scientist, ingegneri AI e fondatori di startup tech:
-        </p>
-        <ul class="styled-list">
-          <li><strong>Contenuti ammessi:</strong> Architetture software, benchmark, analisi del codice, novità open source, post-mortem di incidenti tecnici e guide approfondite.</li>
-          <li><strong>Contenuti vietati:</strong> Marketing aggressivo, link affiliate, promozioni commerciali superficiali, clickbait o comunicati stampa privi di sostanza tecnica.</li>
-        </ul>
-      </section>
-
-      <!-- SEZIONE 2: DISCUSSIONI COSTRUTTIVE -->
-      <section class="guidelines-section">
-        <h2>2. Discussioni Costruttive e Rigore Tecnico</h2>
-        <p>
-          Nei commenti e nei post, punta sempre all'eccellenza e alla precisione. L'argomentazione logica e il rispetto reciproco sono il pilastro della nostra crescita collettiva:
-        </p>
-        <ul class="styled-list">
-          <li><strong>Discuti le idee, non le persone:</strong> Il dibattito acceso sulle scelte architetturali o sui linguaggi è benvenuto, gli attacchi personali (ad hominem) non sono tollerati.</li>
-          <li><strong>Apporta valore:</strong> Se esprimi un disaccordo, spiega il <em>perché</em> fornendo esempi di codice, documentazione o casi d'uso reali.</li>
-        </ul>
-      </section>
-
-      <!-- SEZIONE 3: TRASPARENZA JOB E SHOW DKP -->
-      <section class="guidelines-section">
-        <h2>3. Trasparenza nei Job e Show DKP</h2>
-        <div class="rule-box">
-          <div class="rule-item">
-            <strong>💼 Offerte di Lavoro (Job Board):</strong>
-            <span>Includi sempre lo stack tecnologico richiesto, il range salariale o di compensation (se applicabile) e la modalità di lavoro (Remote, Hybrid, Onsite).</span>
-          </div>
-          <div class="rule-item">
-            <strong>🚀 Show DKP:</strong>
-            <span>Se mostri un tuo progetto o una tua libreria open source, sii pronto a condividere dettagli tecnici, ricevere feedback costruttivi e spiegare le scelte di sviluppo.</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- SEZIONE 4: USO RESPONSABILE DI AI & DKP TOOLS -->
-      <section class="guidelines-section">
-        <h2>4. Uso Responsabile di DKP Tools & Pulse Nexus</h2>
-        <p>
-          L'ecosistema DKP v2.4-Gold mette a disposizione strumenti avanzati in-browser (Pulse Nexus AI, DKP Web Shell, Neural Playground). Chiediamo di utilizzarli responsabilmente:
-        </p>
-        <ul class="styled-list">
-          <li><strong>No Spam/Automazioni:</strong> È vietato abusare delle API di Pulse Nexus o del sistema di XP Gamification tramite bot o script automatici.</li>
-          <li><strong>Sicurezza del Codice:</strong> Non inserire credenziali, chiavi API private o codice sensibile coperte da NDA durante i test negli strumenti di scansione.</li>
-        </ul>
-      </section>
 
     </div>
   </div>
 </template>
-
-<style scoped>
-.guidelines-page-container {
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #f8fafc;
-}
-
-.guidelines-card {
-  background: rgba(9, 13, 22, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid #1e293b;
-  border-radius: 16px;
-  padding: 2.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-}
-
-/* HEADER TOP: ICONA E BADGE */
-.guidelines-header-top {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-bottom: 1.25rem;
-}
-
-.icon-box-violet {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(167, 139, 250, 0.15);
-  color: #a78bfa;
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  border-radius: 10px;
-  box-shadow: 0 0 15px rgba(167, 139, 250, 0.2);
-}
-
-.guidelines-badge {
-  display: inline-block;
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  padding: 0.3rem 0.75rem;
-  border-radius: 6px;
-  text-transform: uppercase;
-}
-
-/* TYPOGRAPHY */
-.guidelines-title {
-  font-size: 2.25rem;
-  font-weight: 900;
-  color: #ffffff;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.2;
-}
-
-.highlight-text {
-  color: #00dc82;
-  text-shadow: 0 0 20px rgba(0, 220, 130, 0.3);
-}
-
-.guidelines-subtitle {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin: 0 0 1.5rem 0;
-  line-height: 1.5;
-}
-
-.guidelines-divider {
-  border: 0;
-  height: 1px;
-  background: #1e293b;
-  margin: 1.5rem 0 2rem 0;
-}
-
-.intro-text {
-  font-size: 1rem;
-  line-height: 1.65;
-  color: #e2e8f0;
-  margin-bottom: 2rem;
-}
-
-/* SECTIONS */
-.guidelines-section {
-  margin-bottom: 2rem;
-}
-
-.guidelines-section h2 {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #38bdf8;
-  margin-bottom: 0.75rem;
-}
-
-.guidelines-section p {
-  font-size: 0.93rem;
-  line-height: 1.65;
-  color: #cbd5e1;
-  margin: 0 0 0.75rem 0;
-}
-
-/* LISTS */
-.styled-list {
-  list-style: none;
-  padding-left: 0;
-  margin: 0.75rem 0 1.25rem 0;
-}
-
-.styled-list li {
-  position: relative;
-  padding-left: 1.5rem;
-  margin-bottom: 0.6rem;
-  font-size: 0.9rem;
-  color: #cbd5e1;
-  line-height: 1.55;
-}
-
-.styled-list li::before {
-  content: "▹";
-  position: absolute;
-  left: 0;
-  color: #00dc82;
-  font-weight: bold;
-}
-
-/* RULE BOX */
-.rule-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 0.75rem;
-}
-
-.rule-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.rule-item strong {
-  font-size: 0.9rem;
-  color: #00dc82;
-}
-
-.rule-item span {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  line-height: 1.5;
-}
-
-@media (max-width: 640px) {
-  .guidelines-card {
-    padding: 1.5rem;
-  }
-  .guidelines-title {
-    font-size: 1.65rem;
-  }
-}
-</style>

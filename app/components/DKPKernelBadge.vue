@@ -5,7 +5,7 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const loadTime = ref<string>('0ms')
-const dbLatency = ref<number>(18)
+const dbLatency = ref<number>(14)
 const isOpen = ref<boolean>(false)
 const isMeasuring = ref<boolean>(false)
 
@@ -85,7 +85,7 @@ onUnmounted(() => {
       @click="isOpen = !isOpen" 
       class="dkp-badge-pill flex items-center gap-2.5 bg-slate-950/95 backdrop-blur-md border border-sky-400/30 border-b-0 px-3.5 py-1.5 rounded-t-xl text-slate-100 cursor-pointer shadow-2xl transition-all duration-300 hover:border-sky-400 hover:-translate-y-0.5"
       :class="{ active: isOpen, measuring: isMeasuring }"
-      title="DKP Kernel Telemetry v2.5-GOLD — Clicca per espandere"
+      title="DKP Kernel Telemetry v2.6-PURE-SQL — Clicca per espandere"
     >
       <!-- LOGO DKP 3 FOGLI VERDI NEON -->
       <svg class="dkp-logo-svg w-4 h-4 filter drop-shadow-[0_0_4px_rgba(0,220,130,0.6)] transition-all" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -110,11 +110,11 @@ onUnmounted(() => {
 
     <!-- TELEMETRY DRAWER MODAL -->
     <Transition name="drawer-fade">
-      <div v-if="isOpen" class="dkp-telemetry-drawer absolute bottom-11 left-1/2 -translate-x-1/2 w-[340px] bg-[#090d16] border border-sky-400/60 rounded-xl shadow-[0_-10px_35px_rgba(0,0,0,0.85)] p-4 overflow-hidden">
+      <div v-if="isOpen" class="dkp-telemetry-drawer absolute bottom-11 left-1/2 -translate-x-1/2 w-[350px] bg-[#090d16] border border-sky-400/60 rounded-xl shadow-[0_-10px_35px_rgba(0,0,0,0.85)] p-4 overflow-hidden">
         <div class="drawer-header flex justify-between items-center border-b border-slate-800 pb-2 mb-3">
           <div class="title-box flex items-center gap-2">
             <span class="brand-title text-xs font-extrabold text-white tracking-wide">DEV KERNEL PULSE</span>
-            <span class="version-tag text-[10px] text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded font-bold border border-emerald-500/30">v2.5-GOLD</span>
+            <span class="version-tag text-[10px] text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded font-bold border border-emerald-500/30">v2.6-PURE-SQL</span>
           </div>
           <button @click="isOpen = false" class="close-btn text-slate-400 hover:text-red-400 text-xs font-bold cursor-pointer">✕</button>
         </div>
@@ -132,7 +132,7 @@ onUnmounted(() => {
           </div>
 
           <div class="metric-row flex justify-between items-center">
-            <span class="label text-slate-400">🗄️ Neon DB Latency:</span>
+            <span class="label text-slate-400">🗄️ Neon DB (Pure SQL):</span>
             <span class="value text-sky-400 font-bold">{{ dbLatency }}ms</span>
           </div>
 
@@ -153,7 +153,7 @@ onUnmounted(() => {
 
           <div class="drawer-footer mt-2 border-t border-slate-800 pt-2 text-center">
             <span class="footer-note text-[10px] text-slate-500 block">Built with ❤️ by Alessandro De Paola & Gemini AI</span>
-            <span class="sub-footer text-[9px] text-purple-400 italic block mt-0.5">Managed by Pulse Sentinel AI Architecture v2.5</span>
+            <span class="sub-footer text-[9px] text-purple-400 italic block mt-0.5">Managed by Pulse Sentinel AI Architecture v2.6-PURE-SQL</span>
           </div>
         </div>
       </div>

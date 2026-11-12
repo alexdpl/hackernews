@@ -72,20 +72,40 @@ function populateFallbackArticles() {
           Notarizzazione del codice, strumenti di sicurezza e aggregatore Hacker News arricchito in tempo reale da Trinity AI.
         </p>
 
-        <!-- PULSANTI HERO CON NUOVO BOTTONE DKP TALKS HUB -->
-        <div class="flex flex-wrap gap-3 justify-center mt-2 font-mono">
-          <NuxtLink to="/news" class="px-5 py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-extrabold text-xs sm:text-sm rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]">
-            🌍 Esplora DKP Tech Feed
-          </NuxtLink>
+        <!-- PULSANTI PRINCIPALI DELL'ECOSISTEMA (4 PILASTRI v2.6-PURE-SQL) -->
+<div class="flex flex-wrap gap-3 justify-center mb-8 relative z-10 font-mono">
+  <NuxtLink
+    to="/news"
+    active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
+  >
+    🌍 DKP Tech Feed
+  </NuxtLink>
 
-          <NuxtLink to="/nodes" class="px-5 py-3 bg-purple-500/10 text-purple-400 border border-purple-500/40 font-extrabold text-xs sm:text-sm rounded-xl hover:bg-purple-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-            💬 DKP Talks Hub
-          </NuxtLink>
+  <NuxtLink
+    to="/nodes"
+    active-class="!bg-purple-500 !text-slate-950 !border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
+  >
+    💬 DKP Talks Hub
+  </NuxtLink>
 
-          <NuxtLink to="/tools" class="px-5 py-3 bg-[#090d16] border border-slate-700 hover:border-slate-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg">
-            🛠️ Developer Tools
-          </NuxtLink>
-        </div>
+  <NuxtLink
+    to="/tools"
+    active-class="!bg-sky-400 !text-slate-950 !border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]"
+    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
+  >
+    🛠️ Developer Tools
+  </NuxtLink>
+
+  <NuxtLink
+    to="/blog"
+    active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all shadow-lg"
+  >
+    ✍️ DKP Editorial Hub
+  </NuxtLink>
+</div>
       </section>
 
       <!-- WIDGET NOTIZIE HACKER NEWS (DKP NODES LIVE STREAM) -->

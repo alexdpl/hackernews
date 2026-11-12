@@ -1,316 +1,191 @@
 <!-- app/pages/about.vue -->
+<script setup lang="ts">
+useDkpSeo({
+  title: 'Chi Siamo & Visione Architetturale — DevKernelPulse v2.6-PURE-SQL',
+  description: 'Scopri la missione, la filosofia e l\'architettura serverless Pure SQL alla base di DevKernelPulse v2.6-PURE-SQL, ecosistema indipendente guidato dall\'IA per sviluppatori.'
+})
+</script>
+
 <template>
-  <div class="about-page-container">
-    <div class="about-card">
-      
-      <!-- BADGE CATEGORIA -->
-      <div class="about-badge">
-        ECOSYSTEM & MISSION
-      </div>
+  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+    <div class="max-w-5xl mx-auto flex flex-col gap-8">
 
-      <!-- TITOLO E METADATI -->
-      <h1 class="about-title">
-        Chi Siamo • <span class="highlight-text">DevKernelPulse</span>
-      </h1>
-      <p class="about-subtitle">
-        Piattaforma indipendente, fulminea e guidata dall'IA per sviluppatori e maker | Versione Ecosistema v2.4-Gold
-      </p>
+      <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
+      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[#090d16] border border-slate-800 p-3 rounded-2xl shadow-lg">
+        <NuxtLink
+          to="/news"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🌍 DKP Tech Feed
+        </NuxtLink>
 
-      <hr class="about-divider" />
+        <NuxtLink
+          to="/nodes"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          💬 DKP Talks Hub
+        </NuxtLink>
 
-      <!-- SEZIONE 1: MISSIONE -->
-      <section class="about-section">
-        <h2>1. La Missione DKP</h2>
-        <p>
-          <strong>DevKernelPulse (DKP)</strong> nasce con una missione audace e cristallina: diventare il punto di incontro definitivo, indipendente e tecnicamente avanzato per la community di sviluppatori, ingegneri software, architetti cloud e maker in Italia.
-        </p>
-      </section>
+        <NuxtLink
+          to="/tools"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
+        >
+          🛠️ Developer Tools
+        </NuxtLink>
 
-      <!-- SEZIONE 2: FILOSOFIA -->
-      <section class="about-section">
-        <h2>2. La Nostra Filosofia</h2>
-        <p>
-          Nel panorama tech odierno saturo di rumore digitale e social network generalisti, DKP recupera il valore autentico del dibattito tecnico:
-        </p>
-        <ul class="styled-list">
-          <li><strong>Qualità del Codice:</strong> Focus su best practice, pattern architetturali e codice pulito.</li>
-          <li><strong>Architetture Scalabili:</strong> Approfondimenti su microservizi, serverless e Kernel DB.</li>
-          <li><strong>Open Source & Innovazione Reale:</strong> Valorizzazione dei progetti indipendenti e delle tecnologie emergenti.</li>
-        </ul>
-        <p>
-          Niente metriche di vanità, solo contenuti ad alto valore che fanno pulsare il cuore del kernel tecnologico italiano.
-        </p>
-      </section>
+        <NuxtLink
+          to="/blog"
+          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
+        >
+          ✍️ DKP Editorial Hub
+        </NuxtLink>
+      </nav>
 
-      <!-- SEZIONE 3: ECOSISTEMA V2.3 -->
-      <section class="about-section">
-        <h2>3. L'Ecosistema Tecnologico v2.4-Gold</h2>
-        <p>
-          La versione 2.4-Gold di DevKernelPulse integra uno stack all'avanguardia progettato per offrire reattività e interattività estreme:
-        </p>
-        
-        <div class="tech-grid">
-          <div class="tech-card">
-            <div class="tech-icon">⚡</div>
-            <div class="tech-info">
-              <strong>DKP Auth Core</strong>
-              <span>Autenticazione proprietaria ad alte prestazioni con sessioni resilienti.</span>
-            </div>
-          </div>
+      <!-- MAIN INSTITUTIONAL CARD -->
+      <article class="bg-[#090d16]/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none"></div>
 
-          <div class="tech-card">
-            <div class="tech-icon">🛠️</div>
-            <div class="tech-info">
-              <strong>DKP Tools Suite</strong>
-              <span>Strumenti integrati in-browser per la diagnosi, scansione del codice e Web Shell.</span>
-            </div>
-          </div>
-
-          <div class="tech-card">
-            <div class="tech-icon">🤖</div>
-            <div class="tech-info">
-              <strong>Pulse Nexus Agent</strong>
-              <span>Assistente AI integrato con gamification in tempo reale e tracciamento XP.</span>
-            </div>
-          </div>
-
-          <div class="tech-card">
-            <div class="tech-icon">🗄️</div>
-            <div class="tech-info">
-              <strong>Neon Kernel DB</strong>
-              <span>Database Serverless Postgres per memorizzazione e sincronizzazione ultra-veloce.</span>
-            </div>
-          </div>
+        <!-- BADGE CATEGORIA -->
+        <div class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-xs font-mono font-extrabold tracking-wider px-3.5 py-1.5 rounded-full mb-5 uppercase">
+          <span>🧬 ECOSYSTEM &amp; MISSION</span>
+          <span class="text-slate-500">•</span>
+          <span>v2.6-PURE-SQL</span>
         </div>
-      </section>
 
-      <!-- SEZIONE 4: CHI C'È DIETRO IL PROGETTO -->
-      <section class="about-section">
-        <h2>4. Chi c'è dietro il progetto</h2>
-        <div class="creator-box">
-          <div class="creator-header">
-            <span class="creator-avatar">👨‍💻</span>
-            <div>
-              <strong class="creator-name">Alessandro De Paola</strong>
-              <span class="creator-role">Founder Creator & Lead Engineer Architect</span>
-            </div>
-          </div>
-          <p class="creator-desc">
-            Creato con passione da <strong>Alessandro De Paola</strong> in stretta sinergia con l'intelligenza artificiale avanzata (<strong>Gemini AI</strong>), DKP dimostra come la fusione tra visione umana, ingegneria del software e automazione intelligente possa dare vita a un ecosistema moderno, fulmineo e curato nei minimi dettagli.
+        <!-- TITOLO E METADATI -->
+        <h1 class="text-3xl sm:text-5xl font-black text-white mb-3 tracking-tight leading-tight">
+          Chi Siamo • <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">DevKernelPulse</span>
+        </h1>
+        <p class="text-xs sm:text-sm font-mono text-slate-400 mb-6">
+          Piattaforma indipendente, fulminea e guidata dall'IA per sviluppatori e maker | Release v2.6-PURE-SQL
+        </p>
+
+        <hr class="border-slate-800 my-7" />
+
+        <!-- SEZIONE 1: MISSIONE -->
+        <section class="mb-9">
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>01.</span>
+            <span>La Missione DKP</span>
+          </h2>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 m-0">
+            <strong class="text-white">DevKernelPulse (DKP)</strong> nasce con una missione audace e cristallina: diventare il punto di incontro definitivo, indipendente e tecnicamente avanzato per la community di sviluppatori, ingegneri software, architetti cloud e maker in Italia e in Europa.
           </p>
-        </div>
-      </section>
+        </section>
+
+        <!-- SEZIONE 2: FILOSOFIA -->
+        <section class="mb-9">
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>02.</span>
+            <span>La Nostra Filosofia Ingegneristica</span>
+          </h2>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 mb-4">
+            Nel panorama tech odierno saturo di rumore digitale, paywall opachi e social network generalisti, DKP recupera il valore autentico del dibattito tecnico e della trasparenza architetturale:
+          </p>
+          <ul class="flex flex-col gap-2.5 my-4 p-0 list-none">
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Qualità del Codice &amp; Zero-Bloat:</strong> Focus su best practice, pattern architetturali puliti e query Pure SQL ad altissima efficienza.
+            </li>
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Architetture Serverless &amp; Edge:</strong> Approfondimenti concreti su microservizi Nitro, PostgreSQL serverless, sicurezza applicativa e intelligenza artificiale.
+            </li>
+            <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
+              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <strong class="text-white">Open Source &amp; Meritocrazia (XP):</strong> Valorizzazione dei progetti indipendenti attraverso gamification reale che premia i contributi tecnici con quote API e badge verificati.
+            </li>
+          </ul>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 m-0">
+            Niente metriche di vanità: solo contenuti, tool e infrastrutture ad alto valore che fanno pulsare il cuore del kernel tecnologico.
+          </p>
+        </section>
+
+        <!-- SEZIONE 3: ECOSISTEMA V2.6-PURE-SQL -->
+        <section class="mb-9">
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>03.</span>
+            <span>L'Architettura v2.6-PURE-SQL</span>
+          </h2>
+          <p class="text-sm sm:text-base leading-relaxed text-slate-300 mb-5">
+            La release <strong class="text-emerald-400 font-mono">v2.6-PURE-SQL</strong> elimina ogni strato intermedio superfluo, combinando Nuxt 4 Nitro con query SQL native parametrizzate su Neon PostgreSQL per garantire reattività estrema e latenza sub-10ms:
+          </p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex items-start gap-4 transition-colors">
+              <div class="text-2xl shrink-0">🗄️</div>
+              <div class="flex flex-col gap-1">
+                <strong class="text-sm sm:text-base text-white font-extrabold">Neon Pure SQL Kernel</strong>
+                <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Accesso diretto e parametrizzato a PostgreSQL serverless senza overhead ORM, con indicizzazione istantanea per Tech Feed, Talks Hub ed Editorial Hub.
+                </span>
+              </div>
+            </div>
+
+            <div class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex items-start gap-4 transition-colors">
+              <div class="text-2xl shrink-0">🤖</div>
+              <div class="flex flex-col gap-1">
+                <strong class="text-sm sm:text-base text-white font-extrabold">DKP Trinity &amp; OpenUI Studio</strong>
+                <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Routing dinamico multi-modello (Flash, Coder, Pro) via OpenRouter con streaming nativo, generazione componenti UI e gamification XP in tempo reale.
+                </span>
+              </div>
+            </div>
+
+            <div class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex items-start gap-4 transition-colors">
+              <div class="text-2xl shrink-0">🛡️</div>
+              <div class="flex flex-col gap-1">
+                <strong class="text-sm sm:text-base text-white font-extrabold">Pulse Sentinel &amp; Code Vault</strong>
+                <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  WAF euristico con analisi SAST/AST, autenticazione Zero-Trust SHA-256 e notarizzazione crittografica immutabile per codice sorgente e articoli.
+                </span>
+              </div>
+            </div>
+
+            <div class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex items-start gap-4 transition-colors">
+              <div class="text-2xl shrink-0">🛠️</div>
+              <div class="flex flex-col gap-1">
+                <strong class="text-sm sm:text-base text-white font-extrabold">DKP Tools, SDK &amp; CLI</strong>
+                <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  Suite completa di utility in-browser, SDK TypeScript/Python/Go e CLI Toolkit per automatizzare audit, pubblicazioni e pipeline CI/CD.
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEZIONE 4: CHI C'È DIETRO IL PROGETTO -->
+        <section>
+          <h2 class="text-lg sm:text-xl font-extrabold text-sky-400 mb-3 flex items-center gap-2">
+            <span>04.</span>
+            <span>Chi c'è dietro il progetto</span>
+          </h2>
+          <div class="bg-[#020420] border border-slate-800 border-l-4 border-l-emerald-400 rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center gap-3.5 mb-3">
+              <span class="text-3xl">👨‍💻</span>
+              <div>
+                <strong class="block text-base sm:text-lg text-white font-black">Alessandro De Paola</strong>
+                <span class="block text-xs font-mono text-emerald-400 font-bold">Founder Creator &amp; Lead Engineer Architect</span>
+              </div>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-400 m-0 leading-relaxed">
+              Creato con passione da <strong class="text-slate-200">Alessandro De Paola</strong> in stretta sinergia con l'intelligenza artificiale avanzata (<strong class="text-slate-200">Gemini AI</strong>), DKP dimostra come la fusione tra visione umana, ingegneria del software Pure SQL e automazione intelligente possa dare vita a un ecosistema moderno, fulmineo e curato nei minimi dettagli.
+            </p>
+          </div>
+        </section>
+
+      </article>
+
+      <!-- FOOTER NAVIGATION -->
+      <div class="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-800 font-mono text-xs">
+        <NuxtLink to="/guidelines" class="text-purple-400 hover:text-emerald-400 font-bold transition-colors">
+          📜 Leggi le Linee Guida della Community →
+        </NuxtLink>
+        <NuxtLink to="/docs/faq" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
+          🧠 Esplora FAQ &amp; Knowledge Base →
+        </NuxtLink>
+      </div>
 
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-useHead({
-  title: 'Chi Siamo - DevKernelPulse v2.4-Gold',
-  meta: [
-    { name: 'description', content: 'Scopri la missione, la filosofia e la tecnologia alla base di DevKernelPulse v2.3.' }
-  ]
-})
-</script>
-
-<style scoped>
-.about-page-container {
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #f8fafc;
-}
-
-.about-card {
-  background: rgba(9, 13, 22, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid #1e293b;
-  border-radius: 16px;
-  padding: 2.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-}
-
-/* BADGE */
-.about-badge {
-  display: inline-block;
-  background: rgba(0, 220, 130, 0.12);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  padding: 0.3rem 0.75rem;
-  border-radius: 6px;
-  margin-bottom: 1.25rem;
-  text-transform: uppercase;
-}
-
-/* TYPOGRAPHY */
-.about-title {
-  font-size: 2.25rem;
-  font-weight: 900;
-  color: #ffffff;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.2;
-}
-
-.highlight-text {
-  color: #00dc82;
-}
-
-.about-subtitle {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin: 0 0 1.5rem 0;
-}
-
-.about-divider {
-  border: 0;
-  height: 1px;
-  background: #1e293b;
-  margin: 1.5rem 0 2rem 0;
-}
-
-/* SECTIONS */
-.about-section {
-  margin-bottom: 2rem;
-}
-
-.about-section h2 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #38bdf8;
-  margin-bottom: 0.75rem;
-}
-
-.about-section p {
-  font-size: 0.93rem;
-  line-height: 1.65;
-  color: #cbd5e1;
-  margin: 0 0 1rem 0;
-}
-
-/* LISTS */
-.styled-list {
-  list-style: none;
-  padding-left: 0;
-  margin: 0.75rem 0 1.25rem 0;
-}
-
-.styled-list li {
-  position: relative;
-  padding-left: 1.5rem;
-  margin-bottom: 0.6rem;
-  font-size: 0.9rem;
-  color: #cbd5e1;
-  line-height: 1.5;
-}
-
-.styled-list li::before {
-  content: "▹";
-  position: absolute;
-  left: 0;
-  color: #00dc82;
-  font-weight: bold;
-}
-
-/* TECH GRID */
-.tech-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.tech-card {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  padding: 1rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
-  transition: border-color 0.2s ease;
-}
-
-.tech-card:hover {
-  border-color: rgba(0, 220, 130, 0.4);
-}
-
-.tech-icon {
-  font-size: 1.4rem;
-  line-height: 1;
-}
-
-.tech-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.tech-info strong {
-  font-size: 0.88rem;
-  color: #f8fafc;
-}
-
-.tech-info span {
-  font-size: 0.78rem;
-  color: #94a3b8;
-  line-height: 1.4;
-}
-
-/* CREATOR BOX */
-.creator-box {
-  background: #020420;
-  border: 1px solid #1e293b;
-  border-left: 4px solid #00dc82;
-  border-radius: 10px;
-  padding: 1.25rem;
-  margin-top: 0.75rem;
-}
-
-.creator-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.creator-avatar {
-  font-size: 1.6rem;
-}
-
-.creator-name {
-  display: block;
-  font-size: 0.95rem;
-  color: #ffffff;
-}
-
-.creator-role {
-  display: block;
-  font-size: 0.75rem;
-  color: #00dc82;
-  font-weight: 700;
-}
-
-.creator-desc {
-  font-size: 0.88rem !important;
-  color: #94a3b8 !important;
-  margin: 0 !important;
-  line-height: 1.5;
-}
-
-@media (max-width: 640px) {
-  .about-card {
-    padding: 1.5rem;
-  }
-  .about-title {
-    font-size: 1.65rem;
-  }
-  .tech-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
