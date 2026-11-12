@@ -1,60 +1,121 @@
-// server/api/nodes/posts/[id].get.ts
+// server/api/nodes/post/[id].get.ts
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 
-export default defineEventHandler(async (event) => {
-  const db = await getDb()
-  const postId = Number(getRouterParam(event, 'id'))
+function stripNodePrefix(raw: string): string {
+  return String(raw || '').replace(/^(n\/)+/i, '').trim()
+}
 
-  if (!postId || isNaN(postId)) {
-    throw createError({ statusCode: 400, statusMessage: 'ID Thread non valido.' })
+function extractRows(result: any): any[] {
+  if (Array.isArray(result)) return result
+  if (Array.isArray(result?.rows)) return result.rows
+  return []
+}
+
+export default defineEventHandler(async (event) => {
+  const idParam = getRouterParam(event, 'id')
+  const postId = Number(idParam)
+
+  if (!idParam || Number.isNaN(postId)) {
+    throw createError({ statusCode: 400, statusMessage: 'ID thread non valido' })
+  }
+
+  const db = await getDb()
+  if (!db) {
+    throw createError({ statusCode: 503, statusMessage: 'Database non disponibile' })
   }
 
   try {
-    // 1. Recupera il Post Principale con i dati dell'Autore e del Nodo
-    const postResult: any = await db.execute(sql`
-      SELECT 
-        p.id, p.title, p.content, p.karma_score AS "karmaScore", p.comments_count AS "commentsCount",
-        p.vault_hash AS "vaultHash", p.is_locked AS "isLocked", p.created_at AS "createdAt",
-        n.id AS "nodeId", n.name AS "nodeName", n.slug AS "nodeSlug", n.color AS "nodeColor",
-        u.id AS "authorId", u.username AS "authorUsername", u.avatar_url AS "authorAvatar",
-        u.xp AS "authorXp", u.badges AS "authorBadges"
-      FROM node_posts p
-      JOIN nodes n ON p.node_id = n.id
-      JOIN users u ON p.author_id = u.id
-      WHERE p.id = ${postId}
-      LIMIT 1
-    `)
-
-    const post = postResult?.rows?.[0] || postResult?.[0]
-    if (!post) {
-      throw createError({ statusCode: 404, statusMessage: 'Thread non trovato.' })
+    let postRes: any
+    try {
+      postRes = await db.execute(sql`
+        SELECT
+          p.*,
+          COALESCE(u.username, 'community') AS "authorUsername",
+          n.name AS "rawNodeName",
+          n.slug AS "nodeSlug",
+          n.icon AS "nodeIcon"
+        FROM node_posts p
+        LEFT JOIN users u ON p.user_id = u.id
+        LEFT JOIN nodes n ON p.node_id = n.id
+        WHERE p.id = ${postId}
+        LIMIT 1
+      `)
+    } catch {
+      try {
+        postRes = await db.execute(sql`
+          SELECT
+            p.*,
+            n.name AS "rawNodeName",
+            n.slug AS "nodeSlug",
+            n.icon AS "nodeIcon"
+          FROM node_posts p
+          LEFT JOIN nodes n ON p.node_id = n.id
+          WHERE p.id = ${postId}
+          LIMIT 1
+        `)
+      } catch {
+        postRes = await db.execute(sql`
+          SELECT *
+          FROM node_posts
+          WHERE id = ${postId}
+          LIMIT 1
+        `)
+      }
     }
 
-    // 2. Recupera tutti i commenti del Thread (ordinati per i più vecchi prima, o per Karma)
-    const commentsResult: any = await db.execute(sql`
-      SELECT 
-        c.id, c.parent_id AS "parentId", c.content, c.karma_score AS "karmaScore", c.created_at AS "createdAt",
-        u.id AS "authorId", u.username AS "authorUsername", u.avatar_url AS "authorAvatar", u.badges AS "authorBadges"
-      FROM node_comments c
-      JOIN users u ON c.author_id = u.id
-      WHERE c.post_id = ${postId}
-      ORDER BY c.karma_score DESC, c.created_at ASC
-    `)
+    const row = extractRows(postRes)[0]
+    if (!row) {
+      throw createError({ statusCode: 404, statusMessage: 'Discussione non trovata' })
+    }
 
-    const comments = Array.isArray(commentsResult) ? commentsResult : (commentsResult?.rows || [])
+    let commentsRes: any = []
+    try {
+      commentsRes = await db.execute(sql`
+        SELECT
+          c.*,
+          COALESCE(u.username, 'member') AS "authorUsername"
+        FROM node_comments c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE c.post_id = ${postId}
+        ORDER BY c.created_at ASC
+      `)
+    } catch {
+      commentsRes = await db.execute(sql`
+        SELECT *
+        FROM node_comments
+        WHERE post_id = ${postId}
+        ORDER BY created_at ASC
+      `).catch(() => [])
+    }
+
+    const post = {
+      ...row,
+      id: Number(row.id),
+      nodeName: stripNodePrefix(row.rawNodeName || row.nodeSlug || 'General'),
+      nodeSlug: row.nodeSlug || '',
+      nodeIcon: row.nodeIcon || '#',
+      authorUsername: row.authorUsername || row.author_username || 'community',
+      karmaScore: Number(row.karmaScore ?? row.karma_score ?? 1),
+      vaultHash: row.vaultHash ?? row.vault_hash ?? null,
+      createdAt: row.createdAt ?? row.created_at ?? new Date().toISOString(),
+      comments: extractRows(commentsRes).map((c: any) => ({
+        ...c,
+        id: Number(c.id),
+        authorUsername: c.authorUsername || c.author_username || 'member',
+        createdAt: c.createdAt ?? c.created_at ?? new Date().toISOString()
+      }))
+    }
 
     return {
       success: true,
-      data: {
-        post,
-        comments // Il frontend si occuperà di raggrupparli ad albero tramite parentId
-      }
+      post,
+      data: post
     }
-  } catch (error: any) {
-    console.error('💥 [NODE THREAD GET ERROR]:', error?.message)
-    if (error.statusCode === 404) throw error
-    throw createError({ statusCode: 500, statusMessage: 'Errore nel caricamento del Thread.' })
+  } catch (err: any) {
+    if (err?.statusCode === 404) throw err
+    console.error('[GET /api/nodes/post/:id ERROR]:', err)
+    throw createError({ statusCode: 500, statusMessage: err?.message || 'Errore interno thread' })
   }
 })
