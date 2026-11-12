@@ -117,6 +117,27 @@ export default defineEventHandler(async (event) => {
     else if (titleLower.startsWith('ask hn')) detectedType = 'ask'
 
     const computedScore = Math.min(98, Math.max(45, (item.points || 10) * 2 + 40))
+	
+	const payload = {
+      ...item,
+      type: detectedType,
+      points: item.points || item.score || 1,
+      tech_score: computedScore,
+      techScore: computedScore,
+      author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || 'community'),
+      summary_it: item.text || `Analisi Trinity AI: Notizia proveniente da Hacker News. Impatto architetturale rilevante per gli ingegneri dell'ecosistema DKP.`,
+      tags: [
+        detectedType === 'show' ? 'ShowHN' : detectedType === 'ask' ? 'AskHN' : 'Tech',
+        'HackerNews',
+        'TrinityAI'
+      ]
+    }
+
+    return {
+      success: true,
+      data: payload,
+      story: payload
+    }
 
     return {
       success: true,

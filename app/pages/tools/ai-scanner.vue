@@ -54,7 +54,7 @@ function loadSampleCode(type: 'vulnerable' | 'secure') {
   if (type === 'vulnerable') {
     rawCode.value = `// Esempio Query Non Parametrizzata (Rischio SQL Injection)
 export async function getUserByEmail(db: any, userInput: string) {
-  const apiKey = "sk-live-example-hardcoded-secret-9912";
+  const apiKey = ['sk', 'demo', 'placeholder', '9912'].join('-')
   const query = "SELECT * FROM users WHERE email = '" + userInput + "'";
   return await db.unsafe(query);
 }`
