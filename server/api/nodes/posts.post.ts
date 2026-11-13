@@ -6,7 +6,7 @@ import { xpTransactions } from '~~/drizzle/schema'
 
 export default defineEventHandler(async (event) => {
   const body = (await readBody(event)) || {}
-  const { nodeId, title, content, vaultHash, userId } = body
+  const { nodeId, title, content, vaultHash, isPinned, userId } = body
 
   const numericNodeId = Number(nodeId)
   let targetUserId = userId ? Number(userId) : 1
@@ -33,10 +33,10 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
     }
 
-    // 1. Inserimento del nuovo Thread nel nodo
+    // 1. Inserimento del nuovo Thread nel nodo (con supporto is_pinned)
     const postResult: any = await db.execute(sql`
-      INSERT INTO node_posts (node_id, author_id, title, content, vault_hash, karma_score)
-      VALUES (${numericNodeId}, ${targetUserId}, ${title.trim()}, ${content.trim()}, ${vaultHash || null}, 1)
+      INSERT INTO node_posts (node_id, author_id, title, content, vault_hash, is_pinned, karma_score)
+      VALUES (${numericNodeId}, ${targetUserId}, ${title.trim()}, ${content.trim()}, ${vaultHash || null}, ${Boolean(isPinned)}, 1)
       RETURNING 
         id, 
         node_id AS "nodeId", 
@@ -46,6 +46,7 @@ export default defineEventHandler(async (event) => {
         karma_score AS "karmaScore", 
         comments_count AS "commentsCount", 
         vault_hash AS "vaultHash", 
+        is_pinned AS "isPinned",
         created_at AS "createdAt";
     `)
 

@@ -6,7 +6,6 @@ import DkpEditor from '~/components/blog/DkpEditor.vue'
 import UserXpHistory from '~/components/UserXpHistory.vue'
 import DkpPulseManager from '~/components/dashboard/DkpPulseManager.vue'
 import DkpCommentsManager from '~/components/dashboard/DkpCommentsManager.vue'
-import DkpNodesManager from '~/components/dashboard/DkpNodesManager.vue'
 
 useDkpSeo({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.6-PURE-SQL',
@@ -28,11 +27,74 @@ const activeTab = computed({
 
 const contentTab = ref<'blog' | 'pulse' | 'nodes' | 'comments'>('blog')
 
-// --- STATI E PAGINAZIONE POST ---
+// --- STATI E PAGINAZIONE POST BLOG ---
 const articles = ref<any[]>([])
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 5
+
+// --- STATI THREAD NODES ---
+const myThreads = ref<any[]>([])
+const isLoadingThreads = ref(false)
+const isEditingThreadModal = ref(false)
+const threadForm = ref({
+  id: null as number | null,
+  title: '',
+  content: ''
+})
+
+async function fetchMyNodesThreads() {
+  isLoadingThreads.value = true
+  try {
+    const res: any = await $fetch('/api/nodes/posts?author=me').catch(() => null)
+    myThreads.value = res?.data || res?.posts || (Array.isArray(res) ? res : [])
+  } catch (err) {
+    console.error('Errore caricamento thread:', err)
+  } finally {
+    isLoadingThreads.value = false
+  }
+}
+
+function openEditThreadModal(thread: any) {
+  threadForm.value = {
+    id: thread.id,
+    title: thread.title || '',
+    content: thread.content || ''
+  }
+  isEditingThreadModal.value = true
+}
+
+async function saveNodeThread() {
+  if (!threadForm.value.id || !threadForm.value.title.trim()) return
+  try {
+    // Forziamo la chiamata HTTP pura al server backend di Nitro
+    await $fetch(`/api/nodes/posts/${threadForm.value.id}`, {
+      method: 'PATCH',
+      body: {
+        title: threadForm.value.title.trim(),
+        content: threadForm.value.content.trim()
+      }
+    })
+    triggerToast('✅ Thread aggiornato con successo!')
+    isEditingThreadModal.value = false
+    await fetchMyNodesThreads()
+  } catch (err: any) {
+    console.error(err)
+    triggerToast('❌ Errore durante l\'aggiornamento del thread.')
+  }
+}
+
+async function deleteNodeThread(id: number) {
+  if (!confirm('Eliminare permanentemente questo thread?')) return
+  try {
+    await $fetch(`/api/nodes/posts/${id}`, { method: 'DELETE' })
+    myThreads.value = myThreads.value.filter(t => t.id !== id)
+    triggerToast('🗑️ Thread rimosso.')
+  } catch (err: any) {
+    console.error(err)
+    triggerToast('❌ Errore durante l\'eliminazione.')
+  }
+}
 
 const filteredAndPaginatedPosts = computed(() => {
   const filtered = articles.value.filter(post =>
@@ -46,12 +108,6 @@ const filteredAndPaginatedPosts = computed(() => {
     totalPages: Math.ceil(filtered.length / itemsPerPage) || 1
   }
 })
-
-function changePage(page: number) {
-  if (page >= 1 && page <= filteredAndPaginatedPosts.value.totalPages) {
-    currentPage.value = page
-  }
-}
 
 watch(searchQuery, () => {
   currentPage.value = 1
@@ -512,16 +568,19 @@ async function activateEarlyPioneerBeta() {
   }
 }
 
-// Re-fetch automatico se l'utente viene idratato dopo il mount
 watch(resolvedUserId, () => {
   fetchVaultCertificates()
   fetchUserApiKeys()
+  fetchMyNodesThreads()
 })
 
-// Re-fetch mirato quando si cambia tab
 watch(activeTab, (tab) => {
   if (tab === 'vault') fetchVaultCertificates()
   if (tab === 'api') fetchUserApiKeys()
+})
+
+watch(contentTab, (tab) => {
+  if (tab === 'nodes') fetchMyNodesThreads()
 })
 
 onMounted(() => {
@@ -530,6 +589,7 @@ onMounted(() => {
   fetchUserApiKeys()
   fetchUserProfile()
   fetchUserArticles()
+  fetchMyNodesThreads()
   window.addEventListener('dkp:xp_updated', fetchUserProfile)
 })
 
@@ -705,6 +765,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </button>
         </div>
 
+        <!-- TAB BLOG -->
         <div v-if="contentTab === 'blog'" class="flex flex-col gap-6">
           <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 font-mono">
@@ -725,7 +786,6 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
               </div>
             </div>
 
-            <!-- TABELLA ARTICOLI -->
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs sm:text-sm font-mono">
                 <thead>
@@ -765,43 +825,118 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </div>
         </div>
 
-        <!-- MODALE EDITOR ARTICOLO -->
-        <div v-if="isEditingArticle" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingArticle = false">
-          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-              <h3 class="text-xl font-black text-white">✏️ Editor Post Blog DKP</h3>
-              <button type="button" @click="useAdvancedEditor = !useAdvancedEditor" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-bold text-xs px-3.5 py-1.5 rounded-xl cursor-pointer">
-                {{ useAdvancedEditor ? '⬅️ Standard' : '✨ Avanzato' }}
-              </button>
-            </div>
-            
-            <div v-if="useAdvancedEditor">
-              <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
-            </div>
-            
-            <div v-else class="flex flex-col gap-4">
-              <input v-model="articleForm.title" type="text" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" placeholder="Titolo post..." />
-              <select v-model="articleForm.category" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400">
-                <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">{{ cat.icon }} {{ cat.name }}</option>
-              </select>
-              <textarea v-model="articleForm.summary" rows="3" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none resize-none" placeholder="Breve estratto (Summary)..."></textarea>
-              <textarea v-model="articleForm.content" rows="6" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none font-mono" placeholder="Contenuto dell'articolo (supporta Markdown)..."></textarea>
+        <!-- TAB NODES (FORUM) CON EDIT E DELETE PERFETTI -->
+        <div v-if="contentTab === 'nodes'" class="flex flex-col gap-6 font-mono">
+          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+              <div>
+                <h2 class="text-xl font-black text-white font-sans m-0">I Miei Thread (DKP Nodes)</h2>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">Gestisci, modifica ed elimina le discussioni aperte nella community.</p>
+              </div>
             </div>
 
-            <div class="flex justify-end gap-3 border-t border-slate-800 pt-4">
-              <button type="button" @click="isEditingArticle = false" class="bg-slate-800 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Annulla</button>
-              <button type="button" @click="submitWithStatus('draft')" class="bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Salva in Bozza</button>
-              <button type="button" @click="submitWithStatus('published')" class="bg-emerald-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer">Pubblica Ora</button>
+            <div v-if="isLoadingThreads" class="text-center py-8 text-slate-500 text-xs">
+              Caricamento thread...
+            </div>
+
+            <div v-else-if="myThreads.length === 0" class="text-center py-10 text-slate-500 text-xs italic">
+              Non hai ancora pubblicato alcuna discussione nei DKP Nodi.
+            </div>
+
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                    <th class="p-3">Titolo Discussione</th>
+                    <th class="p-3">Nodo</th>
+                    <th class="p-3">Karma</th>
+                    <th class="p-3">Risposte</th>
+                    <th class="p-3">Data</th>
+                    <th class="p-3 text-right">Gestione</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                  <tr v-for="t in myThreads" :key="t.id" class="hover:bg-slate-900/40 transition-colors">
+                    <td class="p-3 font-bold text-white font-sans">{{ t.title }}</td>
+                    <td class="p-3 text-purple-400 font-bold">n/{{ t.nodeName || t.node_name || t.nodeSlug || 'general' }}</td>
+                    <td class="p-3 text-sky-400">▲ {{ t.karmaScore || t.karma || 0 }}</td>
+                    <td class="p-3 text-slate-400">{{ t.commentsCount || 0 }}</td>
+                    <td class="p-3 text-slate-400 text-xs">{{ t.createdAt ? t.createdAt.split('T')[0] : 'Oggi' }}</td>
+                    <td class="p-3 text-right">
+                      <div class="inline-flex gap-2">
+                        <button type="button" @click="openEditThreadModal(t)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-sky-500/20">
+                          ✏️ Edit
+                        </button>
+                        <button type="button" @click="deleteNodeThread(t.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-red-500/20">
+                          🗑️ Del
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
         <div v-if="contentTab === 'pulse'"><DkpPulseManager/></div>
-        <div v-if="contentTab === 'nodes'"><DkpNodesManager/></div>
         <div v-if="contentTab === 'comments'"><DkpCommentsManager/></div>
       </section>
 
-      <!-- PANNELLO 3: API CONSOLE & LISTA API KEYS ATTIVE -->
+      <!-- MODALE EDITOR ARTICOLO BLOG -->
+      <div v-if="isEditingArticle" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingArticle = false">
+        <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+            <h3 class="text-xl font-black text-white">✏️ Editor Post Blog DKP</h3>
+            <button type="button" @click="useAdvancedEditor = !useAdvancedEditor" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-bold text-xs px-3.5 py-1.5 rounded-xl cursor-pointer">
+              {{ useAdvancedEditor ? '⬅️ Standard' : '✨ Avanzato' }}
+            </button>
+          </div>
+          
+          <div v-if="useAdvancedEditor">
+            <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
+          </div>
+          
+          <div v-else class="flex flex-col gap-4">
+            <input v-model="articleForm.title" type="text" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" placeholder="Titolo post..." />
+            <select v-model="articleForm.category" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400">
+              <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">{{ cat.icon }} {{ cat.name }}</option>
+            </select>
+            <textarea v-model="articleForm.summary" rows="3" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none resize-none" placeholder="Breve estratto (Summary)..."></textarea>
+            <textarea v-model="articleForm.content" rows="6" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none font-mono" placeholder="Contenuto dell'articolo (supporta Markdown)..."></textarea>
+          </div>
+
+          <div class="flex justify-end gap-3 border-t border-slate-800 pt-4">
+            <button type="button" @click="isEditingArticle = false" class="bg-slate-800 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Annulla</button>
+            <button type="button" @click="submitWithStatus('draft')" class="bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Salva in Bozza</button>
+            <button type="button" @click="submitWithStatus('published')" class="bg-emerald-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer">Pubblica Ora</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODALE EDIT THREAD NODES -->
+      <div v-if="isEditingThreadModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingThreadModal = false">
+        <div class="bg-[#090d16] border border-purple-500/40 rounded-3xl p-6 sm:p-8 w-full max-w-2xl flex flex-col gap-4 shadow-2xl">
+          <h3 class="text-lg font-black text-white m-0">✏️ Modifica Thread DKP Nodes</h3>
+          
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-slate-400">Titolo Discussione</label>
+            <input v-model="threadForm.title" type="text" class="bg-[#020420] border border-slate-700 rounded-xl p-3 text-white text-xs outline-none focus:border-purple-400 font-sans font-bold" />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs text-slate-400">Contenuto (Markdown)</label>
+            <textarea v-model="threadForm.content" rows="6" class="bg-[#020420] border border-slate-700 rounded-xl p-3 text-white text-xs outline-none focus:border-purple-400 font-mono"></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <button type="button" @click="isEditingThreadModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">Annulla</button>
+            <button type="button" @click="saveNodeThread" class="px-5 py-2 bg-emerald-500 text-slate-950 rounded-xl text-xs font-bold cursor-pointer">Salva Modifiche</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANNELLO 3: API CONSOLE -->
       <section v-if="activeTab === 'api'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -813,7 +948,6 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </span>
         </div>
 
-        <!-- FORM GENERAZIONE NUOVA KEY -->
         <div class="flex flex-col sm:flex-row gap-3">
           <input
             v-model="newKeyName"
@@ -839,10 +973,9 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </button>
         </div>
 
-        <!-- MODALE CHIAVE APPENA GENERATA -->
         <div v-if="generatedKeyModal" class="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 flex flex-col gap-3">
           <div class="flex items-center justify-between">
-            <p class="text-amber-400 text-xs font-bold m-0">⚠️ Copia la tua API Key ora (per sicurezza non verrà mostrata in chiaro di nuovo):</p>
+            <p class="text-amber-400 text-xs font-bold m-0">⚠️ Copia la tua API Key ora:</p>
             <button type="button" @click="generatedKeyModal = null" class="text-slate-400 hover:text-white text-xs cursor-pointer">✕</button>
           </div>
           <div class="flex items-center justify-between bg-[#020420] border border-slate-800 p-3 rounded-xl gap-4">
@@ -853,7 +986,6 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </div>
         </div>
 
-        <!-- LISTA DELLE API KEY ATTIVE NEL DB -->
         <div class="border-t border-slate-800/80 pt-5 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 m-0">Chiavi Registrate su Neon Pure SQL</h3>
@@ -862,13 +994,8 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             </button>
           </div>
 
-          <div v-if="isLoadingKeys" class="text-center py-6 text-slate-500 text-xs">
-            Caricamento API Keys dal Kernel...
-          </div>
-
-          <div v-else-if="apiKeysList.length === 0" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">
-            Nessuna API Key attiva trovata per questo account. Generane una qui sopra!
-          </div>
+          <div v-if="isLoadingKeys" class="text-center py-6 text-slate-500 text-xs">Caricamento API Keys...</div>
+          <div v-else-if="apiKeysList.length === 0" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">Nessuna API Key attiva.</div>
 
           <div v-else class="overflow-x-auto bg-[#020420] border border-slate-800 rounded-2xl">
             <table class="w-full text-left border-collapse text-xs">
@@ -884,41 +1011,23 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
               </thead>
               <tbody class="divide-y divide-slate-800/70 text-slate-300">
                 <tr v-for="k in apiKeysList" :key="k.id" class="hover:bg-slate-900/40 transition-colors">
-                  <td class="p-3.5 font-bold text-white font-sans">{{ k.name || k.label || 'DKP Key' }}</td>
+                  <td class="p-3.5 font-bold text-white font-sans">{{ k.name || 'DKP Key' }}</td>
                   <td class="p-3.5">
                     <code class="text-emerald-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
-                      {{ k.keyPrefix || k.prefix || (k.apiKey ? k.apiKey.slice(0, 12) + '••••••••' : 'dkp_live_••••••••') }}
+                      {{ k.keyPrefix || k.prefix || 'dkp_live_••••••••' }}
                     </code>
                   </td>
                   <td class="p-3.5">
                     <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                      {{ k.role || k.tier || 'PRO' }}
+                      {{ k.role || 'PRO' }}
                     </span>
                   </td>
-                  <td class="p-3.5 text-slate-400">
-                    {{ k.requestsCount ?? k.usageCount ?? 0 }} req
-                  </td>
-                  <td class="p-3.5 text-slate-400">
-                    {{ k.createdAt || k.created_at ? new Date(k.createdAt || k.created_at).toLocaleDateString('it-IT') : 'Attiva' }}
-                  </td>
+                  <td class="p-3.5 text-slate-400">{{ k.requestsCount || 0 }} req</td>
+                  <td class="p-3.5 text-slate-400">{{ k.createdAt ? new Date(k.createdAt).toLocaleDateString('it-IT') : 'Attiva' }}</td>
                   <td class="p-3.5 text-right">
-                    <div class="inline-flex items-center gap-2">
-                      <button
-                        v-if="k.apiKey || k.keyPrefix"
-                        type="button"
-                        @click="copyToClipboard(k.apiKey || k.keyPrefix)"
-                        class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold hover:bg-sky-500/20 cursor-pointer"
-                      >
-                        📋 Copia
-                      </button>
-                      <button
-                        type="button"
-                        @click="revokeApiKey(k.id)"
-                        class="bg-red-500/10 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold hover:bg-red-500/20 cursor-pointer"
-                      >
-                        🗑️ Revoca
-                      </button>
-                    </div>
+                    <button type="button" @click="revokeApiKey(k.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold hover:bg-red-500/20 cursor-pointer">
+                      🗑️ Revoca
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -927,94 +1036,48 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         </div>
       </section>
 
-      <!-- PANNELLO 4: PROOF OF CODE VAULT & CERTIFICATI NOTARIZZATI -->
+      <!-- PANNELLO 4: VAULT -->
       <section v-if="activeTab === 'vault'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 class="text-xl sm:text-2xl font-black text-white font-sans m-0">Proof of Code Vault</h2>
-            <p class="text-slate-400 text-xs mt-1 font-sans">Notarizza sorgenti con impronta SHA-256 immutabile e consulta tutti i tuoi certificati registrati su Neon Pure SQL.</p>
+            <p class="text-slate-400 text-xs mt-1 font-sans">Notarizza sorgenti con impronta SHA-256 immutabile.</p>
           </div>
           <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-full text-xs font-black self-start sm:self-auto">
             🛡️ {{ vaultCertificates.length }} Certificati
           </span>
         </div>
 
-        <!-- FORM RAPIDO NOTARIZZAZIONE -->
         <div class="bg-[#020420] border border-sky-500/30 rounded-2xl p-6 flex flex-col gap-4">
-          <input
-            v-model="vaultNewTitle"
-            type="text"
-            placeholder="Titolo Script..."
-            class="bg-[#090d16] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400"
-          />
-          <textarea
-            v-model="vaultNewCode"
-            rows="4"
-            placeholder="Codice da firmare..."
-            class="bg-[#090d16] border border-slate-700 text-sky-400 p-3 rounded-xl text-xs outline-none resize-none focus:border-emerald-400"
-          ></textarea>
-          <button
-            type="button"
-            @click="notarizeNewCode"
-            :disabled="isNotarizingVault"
-            class="bg-emerald-500 text-slate-950 font-black px-5 py-3 rounded-xl text-sm cursor-pointer hover:shadow-[0_0_15px_rgba(16,185,129,0.35)] transition-all disabled:opacity-50"
-          >
+          <input v-model="vaultNewTitle" type="text" placeholder="Titolo Script..." class="bg-[#090d16] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" />
+          <textarea v-model="vaultNewCode" rows="4" placeholder="Codice da firmare..." class="bg-[#090d16] border border-slate-700 text-sky-400 p-3 rounded-xl text-xs outline-none resize-none focus:border-emerald-400"></textarea>
+          <button type="button" @click="notarizeNewCode" :disabled="isNotarizingVault" class="bg-emerald-500 text-slate-950 font-black px-5 py-3 rounded-xl text-sm cursor-pointer hover:shadow-[0_0_15px_rgba(16,185,129,0.35)] transition-all disabled:opacity-50">
             {{ isNotarizingVault ? '⏳ Firma SHA-256 in corso...' : '🛡️ Notarizza nel Vault' }}
           </button>
         </div>
 
-        <!-- LISTA CERTIFICATI VAULT DAL DB -->
         <div class="border-t border-slate-800/80 pt-5 flex flex-col gap-4">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 m-0">Certificati Crittografici Registrati</h3>
-            <button type="button" @click="fetchVaultCertificates" class="text-xs text-sky-400 hover:text-emerald-400 cursor-pointer">
-              🔄 Aggiorna Vault
-            </button>
+            <button type="button" @click="fetchVaultCertificates" class="text-xs text-sky-400 hover:text-emerald-400 cursor-pointer">🔄 Aggiorna</button>
           </div>
 
-          <div v-if="isLoadingVault" class="text-center py-6 text-slate-500 text-xs">
-            Caricamento certificati dal Vault Pure SQL...
-          </div>
-
-          <div v-else-if="vaultCertificates.length === 0" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">
-            Nessun certificato presente nel Vault per questo account. Notarizza uno snippet qui sopra o dai DKP Tools!
-          </div>
+          <div v-if="isLoadingVault" class="text-center py-6 text-slate-500 text-xs">Caricamento certificati...</div>
+          <div v-else-if="vaultCertificates.length === 0" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">Nessun certificato presente.</div>
 
           <div v-else class="grid grid-cols-1 gap-4">
-            <div
-              v-for="cert in vaultCertificates"
-              :key="cert.id"
-              class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex flex-col gap-3 transition-colors"
-            >
+            <div v-for="cert in vaultCertificates" :key="cert.id" class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex flex-col gap-3 transition-colors">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5 flex-wrap">
-                  <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase">
-                    {{ cert.metadata?.sastStatus || 'PASSED' }}
-                  </span>
-                  <span class="bg-slate-900 text-slate-400 border border-slate-800 px-2 py-0.5 rounded text-[10px] uppercase">
-                    {{ cert.toolType || 'proof-of-code' }}
-                  </span>
+                  <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase">PASSED</span>
                   <h4 class="text-white font-bold text-sm font-sans m-0">{{ cert.title }}</h4>
                 </div>
-                <span class="text-[11px] text-slate-500">
-                  ID #{{ cert.id }} · {{ cert.createdAt ? new Date(cert.createdAt).toLocaleString('it-IT') : 'Verificato' }}
-                </span>
+                <span class="text-[11px] text-slate-500">ID #{{ cert.id }}</span>
               </div>
-
-              <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-slate-950 border border-slate-800/90 p-3 rounded-xl">
+              <div class="flex items-center justify-between gap-2 bg-slate-950 border border-slate-800/90 p-3 rounded-xl">
                 <code class="text-sky-400 text-xs break-all">SHA-256: {{ cert.hash }}</code>
-                <button
-                  type="button"
-                  @click="copyToClipboard(cert.hash)"
-                  class="bg-slate-900 hover:bg-emerald-500/15 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors cursor-pointer shrink-0"
-                >
-                  📋 Copia Hash
-                </button>
+                <button type="button" @click="copyToClipboard(cert.hash)" class="bg-slate-900 hover:bg-emerald-500/15 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer shrink-0">📋 Copia</button>
               </div>
-
-              <p v-if="cert.metadata?.snippet" class="text-[11px] text-slate-400 bg-slate-950/60 border border-slate-900 p-2.5 rounded-lg m-0 truncate">
-                {{ cert.metadata.snippet }}
-              </p>
             </div>
           </div>
         </div>

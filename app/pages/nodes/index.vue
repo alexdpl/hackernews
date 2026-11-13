@@ -22,12 +22,16 @@ const selectedCategoryName = ref<string | null>(null)
 const expandedCategories = ref<Record<string, boolean>>({})
 const searchNodeQuery = ref('')
 
+// Paginazione (10 thread per pagina)
+const currentPage = ref(1)
+
 const isModalOpen = ref(false)
 const composerCategory = ref('')
 const newPostNodeId = ref<number | null>(null)
 const newPostTitle = ref('')
 const newPostContent = ref('')
 const newPostVaultHash = ref('')
+const newPostIsPinned = ref(false)
 const editorTab = ref<'write' | 'preview'>('write')
 const selectedCodeLang = ref<'typescript' | 'sql' | 'rust' | 'bash' | 'python'>('typescript')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -36,6 +40,7 @@ const formError = ref('')
 const toastMsg = ref('')
 
 const { currentUser } = useAuthCore()
+const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
 
 function cleanNodeLabel(raw: string): string {
   return String(raw || '').replace(/^(n\/)+/i, '').trim()
@@ -161,10 +166,12 @@ watch(composerCategory, (cat) => {
   }
 })
 
+// Fetch dei post con supporto a ordinamento, filtro nodo e paginazione (10 per pagina)
 const { data: postsRes, pending: loadingPosts, refresh: refreshPosts } = await useFetch<any>('/api/nodes/posts', {
   query: computed(() => ({
     sort: activeSort.value,
-    nodeSlug: selectedNodeSlug.value || undefined
+    nodeSlug: selectedNodeSlug.value || undefined,
+    page: currentPage.value
   }))
 })
 
@@ -175,7 +182,8 @@ const rawPosts = computed<any[]>(() => {
 
   return list.map((p: any) => ({
     ...p,
-    nodeName: cleanNodeLabel(p.nodeName || p.nodeSlug || 'General')
+    nodeName: cleanNodeLabel(p.nodeName || p.nodeSlug || 'General'),
+    isPinned: Boolean(p.isPinned || p.is_pinned)
   }))
 })
 
@@ -223,11 +231,49 @@ watch(
   { immediate: true }
 )
 
+// Reset pagina quando cambiano filtri o ordinamento
+watch([activeSort, selectedNodeSlug, selectedCategoryName], () => {
+  currentPage.value = 1
+})
+
+function nextPage() {
+  currentPage.value++
+  if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
 function showNotification(msg: string) {
   toastMsg.value = msg
   setTimeout(() => {
     toastMsg.value = ''
   }, 4000)
+}
+
+function copyPostLink(postId: number) {
+  const url = `${window.location.origin}/nodes/thread/${postId}`
+  navigator.clipboard.writeText(url)
+  showNotification('🔗 Link del thread copiato negli appunti!')
+}
+
+async function togglePinPostCard(post: any) {
+  const newPinState = !post.isPinned
+  try {
+    await $fetch(`/api/nodes/posts/${post.id}`, {
+      method: 'PATCH',
+      body: { is_pinned: newPinState, userId: currentUser.value?.id }
+    })
+    post.isPinned = newPinState
+    showNotification(newPinState ? '📌 Thread fissato in alto!' : '📍 Thread rimosso dai pinned.')
+    await refreshPosts()
+  } catch {
+    showNotification('❌ Errore durante l\'aggiornamento dello stato pinned.')
+  }
 }
 
 function openComposerModal() {
@@ -285,46 +331,23 @@ function insertQuote() {
   applyMarkdown(`${nl}> `, nl, 'Citazione tecnica')
 }
 
+function insertHighlight() {
+  applyMarkdown('==', '==', 'testo evidenziato')
+}
+
+// Anteprima formattata Markdown Real-time nel Rich Editor
 const previewHtml = computed(() => {
-  const nl = String.fromCharCode(10)
-  const escaped = newPostContent.value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-
-  const lines = escaped.split(nl)
-  const out: string[] = []
-  let inCode = false
-
-  for (const line of lines) {
-    if (line.startsWith('```')) {
-      if (!inCode) {
-        inCode = true
-        out.push('<pre class="bg-[#020420] border border-slate-800 rounded-xl p-3.5 my-2 overflow-x-auto text-emerald-300 font-mono text-xs"><code>')
-      } else {
-        inCode = false
-        out.push('</code></pre>')
-      }
-      continue
-    }
-
-    if (inCode) {
-      out.push(`${line}${nl}`)
-      continue
-    }
-
-    if (line.startsWith('### ')) {
-      out.push(`<h3 class="text-base font-bold text-white mt-3 mb-1">${line.slice(4)}</h3>`)
-    } else if (line.startsWith('## ')) {
-      out.push(`<h2 class="text-lg font-black text-emerald-400 mt-4 mb-1.5">${line.slice(3)}</h2>`)
-    } else if (line.startsWith('&gt; ')) {
-      out.push(`<blockquote class="border-l-4 border-purple-400 pl-3 py-1 my-2 text-slate-300 italic bg-purple-500/5 rounded-r">${line.slice(5)}</blockquote>`)
-    } else {
-      out.push(`${line}<br />`)
-    }
-  }
-
-  return out.join('')
+  const val = newPostContent.value
+  if (!val) return ''
+  return val
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/==(.*?)==/g, '<mark class="bg-emerald-500/25 text-emerald-300 px-1 rounded">$1</mark>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`\n]+)`/g, '<code class="bg-slate-800 text-sky-400 px-1.5 py-0.5 rounded text-xs">$1</code>')
+    .replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-emerald-400 mt-3 mb-1">$1</h2>')
+    .replace(/^&gt; (.*?)$/gm, '<blockquote class="border-l-4 border-purple-400 pl-3 my-2 text-slate-300 italic">$1</blockquote>')
+    .replace(/\n/g, '<br />')
 })
 
 async function handleCreatePost() {
@@ -344,6 +367,7 @@ async function handleCreatePost() {
         title: newPostTitle.value.trim(),
         content: newPostContent.value.trim(),
         vaultHash: newPostVaultHash.value.trim() || null,
+        isPinned: newPostIsPinned.value,
         userId: currentUser.value?.id
       }
     })
@@ -356,6 +380,7 @@ async function handleCreatePost() {
       newPostTitle.value = ''
       newPostContent.value = ''
       newPostVaultHash.value = ''
+      newPostIsPinned.value = false
       isModalOpen.value = false
       showNotification('Thread pubblicato con successo! Hai guadagnato +25 XP!')
       await refreshPosts()
@@ -581,7 +606,7 @@ function resetAllFilters() {
             </button>
           </div>
 
-          <DKPAdBanner />
+          <DKPAdBanner/>
         </aside>
 
         <!-- MAIN FEED CENTRALE -->
@@ -674,7 +699,11 @@ function resetAllFilters() {
 
               <div class="flex-1 flex flex-col gap-2 min-w-0">
                 <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400 flex-wrap">
-                  <NuxtLink v-if="post.nodeSlug" :to="`/nodes/n/${post.nodeSlug}`" class="text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 no-underline">
+                  <span v-if="post.isPinned" class="text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">
+                    📌 PINNED
+                  </span>
+
+                  <NuxtLink :to="`/nodes/n/${post.nodeSlug}`" class="text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 no-underline" v-if="post.nodeSlug">
                     {{ post.nodeIcon || '#' }} n/{{ post.nodeName || post.nodeSlug }}
                   </NuxtLink>
                   <span v-else class="text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
@@ -697,17 +726,62 @@ function resetAllFilters() {
                   {{ cleanExcerpt(post.content) }}
                 </p>
 
-                <div class="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-slate-800/80 font-mono text-[11px] text-slate-400">
+                <div class="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-slate-800/80 font-mono text-[11px] text-slate-400 flex-wrap">
                   <NuxtLink :to="`/nodes/thread/${post.id}`" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5 font-bold no-underline text-sky-400">
                     {{ post.commentsCount || 0 }} Commenti - Apri Thread -&gt;
                   </NuxtLink>
+
+                  <div class="flex items-center gap-3">
+                    <button
+                      type="button"
+                      @click="copyPostLink(post.id)"
+                      class="text-slate-400 hover:text-emerald-400 bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
+                      title="Copia link del thread"
+                    >
+                      🔗 Condividi
+                    </button>
+
+                    <button
+                      v-if="isAdmin"
+                      type="button"
+                      @click="togglePinPostCard(post)"
+                      class="text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded cursor-pointer font-bold transition-colors"
+                    >
+                      📌 {{ post.isPinned ? 'Unpin' : 'Pinna' }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </article>
           </div>
 
+          <!-- CONTROLLI PAGINAZIONE (10 per pagina) -->
+          <div class="flex items-center justify-between bg-[#090d16] border border-slate-800 rounded-xl p-4 font-mono text-xs shadow-xl">
+            <button
+              type="button"
+              @click="prevPage"
+              :disabled="currentPage === 1"
+              class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all"
+            >
+              ← Pagina Precedente
+            </button>
+
+            <span class="text-purple-400 font-bold">
+              Pagina {{ currentPage }}
+            </span>
+
+            <button
+              type="button"
+              @click="nextPage"
+              :disabled="posts.length < 10"
+              class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all"
+            >
+              Pagina Successiva →
+            </button>
+          </div>
+
           <div class="pt-6 border-t border-slate-800">
-            <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined" />
+            <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined"/>
           </div>
 
           <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800 flex flex-col gap-4">
@@ -721,7 +795,7 @@ function resetAllFilters() {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <NuxtLink v-for="art in featuredArticles" :key="art.id" :to="`/blog/${art.slug || art.id}`" class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px] no-underline">
+              <NuxtLink :key="art.id" :to="`/blog/${art.slug || art.id}`" class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px] no-underline" v-for="art in featuredArticles">
                 <div>
                   <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
                     {{ art.categoryName || art.category || 'Tech' }}
@@ -738,10 +812,10 @@ function resetAllFilters() {
           </div>
 
           <div class="pt-6 border-t border-slate-800">
-            <DkpNodesHomeWidget />
+            <DkpNodesHomeWidget/>
           </div>
 
-          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM" />
+          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM"/>
         </main>
       </div>
     </div>
@@ -798,6 +872,12 @@ function resetAllFilters() {
           </div>
         </div>
 
+        <!-- CHECKBOX PINNED SE ADMIN -->
+        <div v-if="isAdmin" class="flex items-center gap-2 bg-[#020420] border border-amber-500/30 p-3 rounded-xl font-mono text-xs">
+          <input id="modal-pin-check" v-model="newPostIsPinned" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer" />
+          <label for="modal-pin-check" class="text-amber-400 font-bold cursor-pointer">📌 Fissa questo thread in cima al feed (Pinned)</label>
+        </div>
+
         <div class="font-mono text-xs">
           <label for="modal-thread-title" class="block text-slate-400 mb-1">Titolo Thread:</label>
           <input
@@ -824,11 +904,11 @@ function resetAllFilters() {
               <button type="button" @click="applyMarkdown('`', '`', 'codice')" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-400 text-xs border border-slate-700 cursor-pointer">
                 &lt;/&gt;
               </button>
+              <button type="button" @click="insertHighlight" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-400 text-xs font-bold border border-slate-700 cursor-pointer" title="Evidenzia">
+                ==H==
+              </button>
               <button type="button" @click="insertQuote" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs border border-slate-700 cursor-pointer">
                 Quote
-              </button>
-              <button type="button" @click="applyMarkdown('[', '](https://)', 'Link')" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs border border-slate-700 cursor-pointer">
-                Link
               </button>
 
               <div class="flex items-center gap-1 pl-2 ml-1 border-l border-slate-800">
@@ -848,7 +928,7 @@ function resetAllFilters() {
                   @click="insertCodeBlock"
                   class="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold border border-emerald-500/35 cursor-pointer"
                 >
-                  + Code Block
+                  + Code
                 </button>
               </div>
             </div>
@@ -884,7 +964,7 @@ function resetAllFilters() {
 
           <div
             v-else
-            class="p-4 min-h-[200px] text-sm text-slate-200 leading-relaxed"
+            class="p-4 min-h-[200px] max-h-[300px] overflow-y-auto text-sm text-slate-200 leading-relaxed dkp-preview-content"
             v-html="previewHtml || '<span class=\'text-slate-500 font-mono text-xs\'>Nessun contenuto in anteprima...</span>'"
           ></div>
         </div>
@@ -895,7 +975,7 @@ function resetAllFilters() {
             id="modal-vault-hash"
             v-model="newPostVaultHash"
             type="text"
-            placeholder="Incolla l'hash del DKP Vault per certificarne l'autenticita"
+            placeholder="Incolla l'hash del DKP Vault per certificarne l'autenticità"
             class="w-full bg-[#020420] border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-purple-400 outline-none"
           />
         </div>
@@ -908,6 +988,7 @@ function resetAllFilters() {
           <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
             Inviando questo post riceverai +25 XP!
           </span>
+
           <div class="flex gap-2 font-mono">
             <button
               type="button"
@@ -927,6 +1008,17 @@ function resetAllFilters() {
           </div>
         </div>
       </div>
-	  </div>
+    </div>
+	<!-- MODALE RICH EDITOR COMPONENTIZZATO -->
+    <DKPnodesRichEditor
+      :isOpen="isModalOpen"
+      :categories="categoryNames"
+      :groupedNodes="groupedNodes"
+      :initialCategory="composerCategory"
+      :initialNodeId="newPostNodeId"
+      :isAdmin="isAdmin"
+      @close="isModalOpen = false"
+      @published="isModalOpen = false; showNotification('Thread pubblicato con successo! +25 XP!'); refreshPosts()"
+    />
   </div>
 </template>

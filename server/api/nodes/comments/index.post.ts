@@ -1,21 +1,32 @@
 // server/api/nodes/comments/index.post.ts
-import { defineEventHandler, readBody, createError } from 'h3'
+import { defineEventHandler, readBody, getCookie, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { awardNodeXpAndBadges, GamificationRules } from '~~/server/utils/gamification'
 
 export default defineEventHandler(async (event) => {
   const db = await getDb()
-  const body = await readBody(event)
+  if (!db) {
+    throw createError({ statusCode: 500, statusMessage: 'Database non disponibile.' })
+  }
+
+  const body = (await readBody(event)) || {}
   
-  // Sostituisci con il vero estensore della sessione
-  const authorId = event.context.user?.id || 1 
+  // Risoluzione ID utente (supporta body, context o cookie di sessione dkp_session)
+  let authorId = body.userId ? Number(body.userId) : (event.context.user?.id || 1)
+  const sessionCookie = getCookie(event, 'dkp_session')
+  if (sessionCookie) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(sessionCookie))
+      if (parsed.id) authorId = Number(parsed.id)
+    } catch (_) {}
+  }
 
   const postId = Number(body.postId)
   const parentId = body.parentId ? Number(body.parentId) : null
   const content = body.content?.trim()
 
-  if (!postId || !content) {
+  if (!postId || isNaN(postId) || !content) {
     throw createError({ statusCode: 400, statusMessage: 'Post ID e contenuto sono obbligatori.' })
   }
 
@@ -27,16 +38,21 @@ export default defineEventHandler(async (event) => {
       RETURNING id, created_at
     `)
 
-    const newComment = insertResult?.rows?.[0] || insertResult?.[0]
+    const rows = Array.isArray(insertResult) ? insertResult : (insertResult?.rows || [])
+    const newComment = rows[0]
+
+    if (!newComment) {
+      throw new Error('Impossibile recuperare il commento appena inserito.')
+    }
 
     // 2. Incremento del contatore sul Thread principale
     await db.execute(sql`
       UPDATE node_posts 
-      SET comments_count = comments_count + 1 
+      SET comments_count = COALESCE(comments_count, 0) + 1 
       WHERE id = ${postId}
     `)
 
-    // 3. Erogazione XP (+5 XP per la risposta)
+    // 3. Erogazione XP per la risposta
     try {
       await awardNodeXpAndBadges(authorId, `Risposta al Thread #${postId}`, GamificationRules.NEW_COMMENT)
     } catch (xpErr) {
@@ -53,6 +69,6 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error: any) {
     console.error('💥 [NODE COMMENT POST ERROR]:', error?.message)
-    throw createError({ statusCode: 500, statusMessage: 'Errore durante la pubblicazione del commento.' })
+    throw createError({ statusCode: 500, statusMessage: error.message || 'Errore durante la pubblicazione del commento.' })
   }
 })
