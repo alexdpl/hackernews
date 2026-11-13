@@ -3,9 +3,8 @@ import { defineEventHandler, readBody, getHeader, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { streamText } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
+import { getSmartAIProvider } from '~~/server/utils/aiRouter'
 
-// Definizione delle quote mensili per ciascun Tier
 const TIER_QUOTAS: Record<string, number> = {
   FREE: 1000,
   PRO: 50000,
@@ -19,34 +18,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Accesso negato: API Key DKP mancante o formato errato' })
   }
 
-  // 2. Lettura DINAMICA della chiave OpenRouter a runtime
-  const config = useRuntimeConfig()
-  const openrouterKey = process.env.OPENROUTER_API_KEY || 
-                        process.env.PROVIDER_API_KEY || 
-                        config.openrouterApiKey
-
-  if (!openrouterKey) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'OPENROUTER_API_KEY non presente nelle variabili d\'ambiente del server.'
-    })
-  }
-
-  // Provider inizializzato con la chiave verificata ad ogni richiesta
-  const dkpProvider = createOpenAI({
-    apiKey: openrouterKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    headers: {
-      'HTTP-Referer': 'https://devkernelpulse.org',
-      'X-Title': 'DevKernelPulse'
-    }
-  })
-
-  const token = authHeader.replace('Bearer ', '').trim()
   const db = await getDb()
   if (!db) throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile' })
 
-  // 3. Lettura del payload dal Neural Playground
+  // 2. Lettura del payload
   const body = await readBody(event)
   const { messages, model, systemPrompt, temperature, maxTokens } = body
 
@@ -54,7 +29,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Array messages richiesto' })
   }
 
-  // 4. Controllo e Metering della Chiave su Database
+  // 3. Controllo e Metering della Chiave su Database
   let apiKeyRecord: any = null
   try {
     const keyResult: any = await db.execute(sql`
@@ -82,7 +57,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 5. Paywall Dinamico
+  // 4. Paywall Dinamico
   if (roleTier === 'FREE' && (model === 'dkp-coder' || model === 'dkp-pro')) {
     throw createError({
       statusCode: 403,
@@ -90,31 +65,30 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 6. Routing sui modelli gratuiti di OpenRouter
-  let targetModel = 'dots-studio/dots-3-note-preview:free'
-  if (model === 'dkp-coder') targetModel = 'cohere/north-mini-code:free'
-  if (model === 'dkp-pro') targetModel = 'nvidia/nemotron-3-ultra-550b-a55b:free'
+  // 5. Inizializza Smart Router
+  const aiRouter = getSmartAIProvider()
 
   try {
-    const result = await streamText({
-      model: dkpProvider(targetModel),
-      messages,
-      system: systemPrompt || "Sei un assistente esperto di programmazione OpenUI.",
-      temperature: typeof temperature === 'number' ? temperature : 0.7,
-      maxTokens: typeof maxTokens === 'number' ? maxTokens : 2048,
-      onFinish: async () => {
-        try {
-          await db.execute(sql`
+    // 6. Esegui la generazione protetta da Circuit Breaker (Asincrono e Non-bloccante)
+    const result = await aiRouter.executeWithFallback(async (client, modelName) => {
+      return await streamText({
+        model: client(modelName),
+        messages,
+        system: systemPrompt || "Sei un assistente esperto di programmazione e architettura software del DevKernelPulse ecosistema.",
+        temperature: typeof temperature === 'number' ? temperature : 0.7,
+        maxTokens: typeof maxTokens === 'number' ? maxTokens : 2048,
+        onFinish: async () => {
+          // Esecuzione asincrona (fire-and-forget), non blocca la risposta verso l'utente
+          db.execute(sql`
             UPDATE api_keys 
             SET usage_count = COALESCE(usage_count, 0) + 1, last_used_at = NOW() 
             WHERE id = ${apiKeyRecord.id}
-          `)
-        } catch(err) {
-          console.error('Errore aggiornamento usage_count su DB:', err)
+          `).catch((err: any) => console.error('Errore aggiornamento usage_count:', err))
         }
-      }
-    })
+      })
+    }, model || 'dkp-flash')
 
+    // 7. Ritorna lo stream (AI SDK gestisce i vari formati)
     if (typeof (result as any).toDataStreamResponse === 'function') {
       return (result as any).toDataStreamResponse()
     } else if (typeof (result as any).toAIStreamResponse === 'function') {
@@ -124,11 +98,12 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error: any) {
-    if (error.statusCode) throw error
-    console.error('[DKP AI GATEWAY ERROR]:', error?.message || error)
-    throw createError({ 
-      statusCode: 500, 
-      statusMessage: `Errore OpenRouter: ${error?.message || 'Connessione fallita'}` 
-    })
+    console.error('❌ [DKP AI GATEWAY ERROR]:', error?.message || error)
+    
+    // Fallback disperato se tutti i circuiti saltano (gracefully degraded, status 503)
+    return new Response(
+      `⚡ [Pulse Sentinel v2.6]: Nodi neurali momentaneamente occupati (${error.message || 'Timeout'}). Sistema auto-protetto tramite Circuit Breaker. Riprova tra 60 secondi.`,
+      { status: 503 }
+    )
   }
 })

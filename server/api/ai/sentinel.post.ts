@@ -1,5 +1,7 @@
 // server/api/ai/sentinel.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
+import { generateText } from 'ai'
+import { getSmartAIProvider } from '~~/server/utils/aiRouter'
 
 export interface SentinelApiRequest {
   title?: string
@@ -9,15 +11,13 @@ export interface SentinelApiRequest {
 
 export interface SentinelApiResponse {
   success: boolean
-  data: SentinelScanResult
+  data: any
   timestamp: string
 }
 
 export default defineEventHandler(async (event): Promise<SentinelApiResponse> => {
   try {
     const body = await readBody<SentinelApiRequest>(event)
-
-    // Convalida dell'input
     const content = body?.content?.trim()
     const title = body?.title?.trim() || 'Senza Titolo'
 
@@ -29,30 +29,58 @@ export default defineEventHandler(async (event): Promise<SentinelApiResponse> =>
       })
     }
 
-    // Invocazione del motore ibrido di analisi (Euristica + AI Multi-Provider Fallback)
-    const scanResult = await scanWithSentinelAI(title, content)
+    // 1. Inizializziamo lo Smart AI Router
+    const aiRouter = getSmartAIProvider()
+    
+    const systemPrompt = `Sei DKP Pulse Sentinel, un firewall e moderatore AI. Analizza il seguente contenuto e restituisci ESATTAMENTE e SOLO un JSON valido con questa struttura:
+    {
+      "isAllowed": boolean,
+      "isFlagged": boolean,
+      "riskScore": numero da 0 a 100,
+      "flagReason": "stringa vuota se ok, motivo se bloccato",
+      "suggestedAction": "approve" | "flag_admin" | "reject",
+      "detectedThreats": ["array di stringhe con minacce, o array vuoto"]
+    }
+    Linee guida:
+    - Contenuto sicuro = tech, coding, discussioni civili.
+    - Contenuto bloccato = spam, odio, codice malevolo evidente.`
+
+    // 2. Chiamata con Circuit Breaker usando "generateText" invece di "streamText"
+    const result = await aiRouter.executeWithFallback(async (client, modelName) => {
+      return await generateText({
+        model: client(modelName),
+        system: systemPrompt,
+        prompt: `TITOLO: ${title}\nCONTENUTO: ${content}`,
+        temperature: 0.1, // Bassa per JSON deterministico
+      })
+    }, 'dkp-flash') // DKP-Flash (Gemini) è velocissimo ed economico per moderare
+
+    // 3. Parsing e pulizia del JSON restituito dall'AI
+    const rawResponse = result.text.replace(/```json/g, '').replace(/```/g, '').trim()
+    const parsedData = JSON.parse(rawResponse)
 
     return {
       success: true,
-      data: scanResult,
+      data: {
+        ...parsedData,
+        evaluatedByLlm: true,
+        providerUsed: 'Smart AI Router (Circuit Breaker)'
+      },
       timestamp: new Date().toISOString()
     }
+
   } catch (error: any) {
     console.error('❌ [Sentinel API Endpoint Error]:', error)
+    if (error.statusCode) throw error
 
-    // Se l'errore è già una H3Error (es. 400 Bad Request), lo rilanciamo
-    if (error.statusCode) {
-      throw error
-    }
-
-    // Risposta di emergenza strutturata in caso di eccezione non prevista
+    // FAIL-OPEN POLICY: Se l'IA è giù, non blocchiamo l'azione dell'utente ma lo flagghiamo per admin
     return {
       success: false,
       data: {
-        isAllowed: true,
+        isAllowed: true, 
         isFlagged: true,
         riskScore: 50,
-        flagReason: 'Errore interno del gateway Sentinel. Inviato in coda di revisione.',
+        flagReason: 'Errore interno Sentinel AI Router. Approvato con riserva (Fail-open).',
         suggestedAction: 'flag_admin',
         detectedThreats: ['API_GATEWAY_EXCEPTION'],
         evaluatedByLlm: false,
