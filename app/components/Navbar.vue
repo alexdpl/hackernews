@@ -1,9 +1,11 @@
 <!-- app/components/Navbar.vue -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useDkpTheme } from '~/composables/useDkpTheme' // Iniezione del Theme Manager
 
 const { currentUser, isAuthenticated, logout, openAuthModal } = useAuthCore()
 const { currentLang, activeLanguageObj, languages, setLanguage, initTranslator, t } = useDkpTranslator()
+const { currentTheme, toggleTheme } = useDkpTheme()
 
 const router = useRouter()
 const route = useRoute()
@@ -12,6 +14,7 @@ const { getMainUrl, getApiUrl } = useDomain()
 const navbarRef = ref<HTMLElement | null>(null)
 const activeDropdown = ref<string | null>(null)
 const isMobileMenuOpen = ref(false)
+const isXpMenuOpen = ref(false) // Stato per il widget XP espandibile
 
 // Reattività Gamification in Navbar
 const globalXp = ref(0)
@@ -20,18 +23,29 @@ const isXpAnimating = ref(false)
 
 function toggleDropdown(name: string) {
   activeDropdown.value = activeDropdown.value === name ? null : name
+  if (activeDropdown.value) isXpMenuOpen.value = false
+}
+
+function toggleXpMenu() {
+  isXpMenuOpen.value = !isXpMenuOpen.value
+  if (isXpMenuOpen.value) {
+    activeDropdown.value = null
+    isMobileMenuOpen.value = false
+  }
 }
 
 function toggleMobileMenu() {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
   if (isMobileMenuOpen.value) {
     activeDropdown.value = null
+    isXpMenuOpen.value = false
   }
 }
 
 function closeAllDropdowns() {
   activeDropdown.value = null
   isMobileMenuOpen.value = false
+  isXpMenuOpen.value = false
 }
 
 watch(() => route.fullPath, () => {
@@ -161,8 +175,8 @@ async function handleLogout() {
 <template>
   <header
     ref="navbarRef"
-    class="bg-[#020420]/95 backdrop-blur-xl border-b-2 border-emerald-500 sticky top-0 z-50 px-4 sm:px-6 py-2.5 shadow-[0_4px_24px_rgba(0,220,130,0.08)] font-sans"
-  >
+  class="bg-[#020420]/95 backdrop-blur-xl border-b-2 border-emerald-500 sticky top-0 z-50 px-4 sm:px-6 py-2.5 shadow-[0_4px_24px_rgba(0,220,130,0.08)] font-sans"
+>
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
       
       <!-- BRAND LOGO DKP v2.6-PURE-SQL -->
@@ -328,21 +342,67 @@ async function handleLogout() {
       <!-- SEZIONE DESTRA: GAMIFICATION, LINGUA, UTENTE / ADMIN & MOBILE TOGGLE -->
       <div class="flex items-center gap-2.5">
         
-        <!-- BADGE GAMIFICATION (Click diretto alla Dashboard) -->
-        <NuxtLink
-          v-if="isAuthenticated || currentUser?.id"
-          :to="getMainUrl('/user/dashboard')"
-          external
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 no-underline"
-          :class="isXpAnimating
-            ? 'bg-amber-500/20 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
-            : 'bg-[#090d16] border-slate-700 hover:border-amber-500/60'"
-          title="Punteggio DKP Gamification — Apri Dashboard"
-        >
-          <span class="text-amber-400 text-xs sm:text-sm">⚡</span>
-          <span class="font-black font-mono text-white text-xs">{{ globalXp }}</span>
-          <span class="hidden sm:inline text-[9px] text-amber-400 font-mono font-bold uppercase ml-0.5">Lv.{{ globalLevel }}</span>
-        </NuxtLink>
+        <!-- WIDGET GAMIFICATION ESPANDIBILE CON THEME TOGGLE -->
+        <div v-if="isAuthenticated || currentUser?.id" class="relative">
+          <button
+            @click="toggleXpMenu"
+            type="button"
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 cursor-pointer"
+            :class="isXpAnimating
+              ? 'bg-amber-500/20 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
+              : 'bg-[#090d16] border-slate-700 hover:border-amber-500/60'"
+            title="Punteggio DKP Gamification & Opzioni"
+          >
+            <span class="text-amber-400 text-xs sm:text-sm">⚡</span>
+            <span class="font-black font-mono text-white text-xs">{{ globalXp }}</span>
+            <span class="hidden sm:inline text-[9px] text-amber-400 font-mono font-bold uppercase ml-0.5">Lv.{{ globalLevel }}</span>
+            <span class="text-[9px] text-slate-500 transition-transform duration-200 ml-1" :class="{ 'rotate-180 text-amber-400': isXpMenuOpen }">▼</span>
+          </button>
+
+          <Transition name="fade-slide">
+            <div
+              v-show="isXpMenuOpen"
+              class="absolute right-0 mt-2.5 w-64 bg-[#090d16] border border-slate-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-3 flex flex-col gap-3 z-50 font-mono"
+            >
+              <!-- Info Livello -->
+              <div class="flex flex-col gap-1.5 border-b border-slate-800 pb-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Level {{ globalLevel }}</span>
+                  <span class="text-[10px] font-black text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">VIP DEV</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+                  <!-- Progress bar simulata o collegata a xp/xpNextLevel -->
+                  <div class="h-full bg-amber-400 w-[65%] rounded-full shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
+                </div>
+                <NuxtLink :to="getMainUrl('/user/dashboard')" class="text-center text-[10px] text-emerald-400 hover:text-emerald-300 mt-1 uppercase tracking-widest font-black transition-colors" @click="closeAllDropdowns">
+                  Vai alla Dashboard XP →
+                </NuxtLink>
+              </div>
+
+              <!-- Switch Tema (The Shift) -->
+              <div class="flex items-center justify-between bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/50">
+                <div class="flex flex-col">
+                  <span class="text-xs font-bold text-slate-200 font-sans">Reading Mode</span>
+                  <span class="text-[10px] text-slate-500">{{ currentTheme === 'sepia' ? 'White Sepia' : 'Dark Cyberpunk' }}</span>
+                </div>
+                
+                <button
+                  @click="toggleTheme"
+                  class="relative w-14 h-7 rounded-full transition-colors duration-300 border cursor-pointer shrink-0"
+                  :class="currentTheme === 'sepia' ? 'bg-[#d4c4a8] border-[#b85c38]' : 'bg-[#020420] border-slate-700'"
+                >
+                  <div
+                    class="absolute top-[2px] left-[2px] w-5 h-5 rounded-full transition-transform duration-300 flex items-center justify-center shadow-md"
+                    :class="currentTheme === 'sepia' ? 'translate-x-7 bg-[#f4ecd8]' : 'translate-x-0 bg-slate-800'"
+                  >
+                    <span v-if="currentTheme === 'sepia'" class="text-[12px] leading-none">📜</span>
+                    <span v-else class="text-[12px] leading-none text-sky-400">⚡</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
 
         <!-- SELETTORE LINGUA (Desktop) -->
         <div class="relative hidden sm:block">

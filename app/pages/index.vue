@@ -43,10 +43,10 @@ function populateFallbackArticles() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 font-sans px-4 sm:px-6 py-12 relative overflow-hidden">
+  <div class="min-h-screen bg-[var(--bg-kernel)] text-[var(--text-main)] font-sans px-4 sm:px-6 py-12 relative overflow-hidden transition-colors duration-500">
     
     <!-- BACKGROUND GLOWS GLOBALI -->
-    <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-emerald-500/10 blur-[120px] rounded-[100%] pointer-events-none"></div>
+    <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[var(--accent-emerald)]/10 blur-[120px] rounded-[100%] pointer-events-none"></div>
 
     <div class="max-w-6xl mx-auto flex flex-col gap-12 sm:gap-16 relative z-10">
       
@@ -54,58 +54,58 @@ function populateFallbackArticles() {
       <section class="relative py-8 sm:py-16 text-center flex flex-col items-center gap-6 overflow-hidden">
         
         <!-- BADGE ECOSYSTEM V2.6 -->
-        <div class="inline-flex items-center gap-2 bg-[#090d16] border border-emerald-500/30 px-5 py-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+        <div class="inline-flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--accent-emerald)]/30 px-5 py-2 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-colors duration-500">
           <span class="relative flex h-2.5 w-2.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-emerald)] opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent-emerald)]"></span>
           </span>
-          <span class="text-[11px] font-mono font-black text-emerald-400 uppercase tracking-widest">
+          <span class="text-[11px] font-mono font-black text-[var(--accent-emerald)] uppercase tracking-widest">
             DevKernelPulse v2.6 Ecosystem
           </span>
         </div>
 
-        <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
-          La Piattaforma per <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-sky-400 to-purple-400">Sviluppatori &amp; Sentinel AI</span>
+        <h1 class="text-4xl sm:text-6xl font-black text-[var(--text-main)] tracking-tight leading-tight max-w-4xl mx-auto">
+          La Piattaforma per <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-emerald)] via-[var(--accent-cyan)] to-purple-400">Sviluppatori &amp; Sentinel AI</span>
         </h1>
 
-        <p class="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-sans">
+        <p class="text-[var(--text-muted)] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-sans">
           Notarizzazione del codice, strumenti di sicurezza e aggregatore Hacker News arricchito in tempo reale da Trinity AI.
         </p>
 
         <!-- PULSANTI PRINCIPALI DELL'ECOSISTEMA (4 PILASTRI v2.6-PURE-SQL) -->
-<div class="flex flex-wrap gap-3 justify-center mb-8 relative z-10 font-mono">
-  <NuxtLink
-    to="/news"
-    active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    🌍 DKP Tech Feed
-  </NuxtLink>
+        <div class="flex flex-wrap gap-3 justify-center mb-8 relative z-10 font-mono">
+          <NuxtLink
+            to="/news"
+            active-class="!bg-[var(--accent-emerald)] !text-[var(--bg-kernel)] !border-[var(--accent-emerald)] shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+            class="px-5 py-2.5 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)] text-[var(--accent-emerald)] font-extrabold text-xs rounded-xl transition-all shadow-lg"
+          >
+            🌍 DKP Tech Feed
+          </NuxtLink>
 
-  <NuxtLink
-    to="/nodes"
-    active-class="!bg-purple-500 !text-slate-950 !border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    💬 DKP Talks Hub
-  </NuxtLink>
+          <NuxtLink
+            to="/nodes"
+            active-class="!bg-purple-500 !text-[var(--bg-kernel)] !border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+            class="px-5 py-2.5 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
+          >
+            💬 DKP Talks Hub
+          </NuxtLink>
 
-  <NuxtLink
-    to="/tools"
-    active-class="!bg-sky-400 !text-slate-950 !border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    🛠️ Developer Tools
-  </NuxtLink>
+          <NuxtLink
+            to="/tools"
+            active-class="!bg-[var(--accent-cyan)] !text-[var(--bg-kernel)] !border-[var(--accent-cyan)] shadow-[0_0_20px_rgba(56,189,248,0.3)]"
+            class="px-5 py-2.5 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-cyan)] text-[var(--accent-cyan)] font-extrabold text-xs rounded-xl transition-all shadow-lg"
+          >
+            🛠️ Developer Tools
+          </NuxtLink>
 
-  <NuxtLink
-    to="/blog"
-    active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    ✍️ DKP Editorial Hub
-  </NuxtLink>
-</div>
+          <NuxtLink
+            to="/blog"
+            active-class="!bg-[var(--accent-emerald)] !text-[var(--bg-kernel)] !border-[var(--accent-emerald)] shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+            class="px-5 py-2.5 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)] text-[var(--accent-emerald)] font-extrabold text-xs rounded-xl transition-all shadow-lg"
+          >
+            ✍️ DKP Editorial Hub
+          </NuxtLink>
+        </div>
       </section>
 
       <!-- WIDGET NOTIZIE HACKER NEWS (DKP NODES LIVE STREAM) -->
@@ -113,30 +113,30 @@ function populateFallbackArticles() {
 
       <!-- METRICS GRID -->
       <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-emerald-500/30 transition-colors">
+        <div class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-[var(--accent-emerald)]/30 transition-colors duration-500">
           <span class="text-4xl mb-2">🛡️</span>
-          <h3 class="text-3xl font-black text-white font-mono">1.2M+</h3>
-          <p class="text-xs text-slate-400 font-bold uppercase tracking-widest font-mono">Linee Codice Notarizzate</p>
+          <h3 class="text-3xl font-black text-[var(--text-main)] font-mono">1.2M+</h3>
+          <p class="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest font-mono">Linee Codice Notarizzate</p>
         </div>
-        <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-sky-500/30 transition-colors">
+        <div class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-[var(--accent-cyan)]/30 transition-colors duration-500">
           <span class="text-4xl mb-2">🚀</span>
-          <h3 class="text-3xl font-black text-white font-mono">48K+</h3>
-          <p class="text-xs text-slate-400 font-bold uppercase tracking-widest font-mono">Bounties Risolte ($PULSE)</p>
+          <h3 class="text-3xl font-black text-[var(--text-main)] font-mono">48K+</h3>
+          <p class="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest font-mono">Bounties Risolte ($PULSE)</p>
         </div>
-        <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-purple-500/30 transition-colors">
+        <div class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-purple-500/30 transition-colors duration-500">
           <span class="text-4xl mb-2">📡</span>
-          <h3 class="text-3xl font-black text-white font-mono">Live</h3>
-          <p class="text-xs text-slate-400 font-bold uppercase tracking-widest font-mono">Threat Stream Attivo</p>
+          <h3 class="text-3xl font-black text-[var(--text-main)] font-mono">Live</h3>
+          <p class="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest font-mono">Threat Stream Attivo</p>
         </div>
       </section>
 
       <!-- SEZIONE VAULT DEL BLOG (4 SCHEDE GRID) -->
-      <div v-if="featuredArticles.length > 0" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+      <div v-if="featuredArticles.length > 0" class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 shadow-2xl transition-colors duration-500">
         <div class="flex justify-between items-center mb-6">
-          <h3 class="text-lg font-extrabold text-white flex items-center gap-2 font-sans">
+          <h3 class="text-lg font-extrabold text-[var(--text-main)] flex items-center gap-2 font-sans">
             <span>🔗</span> Approfondimenti dal Vault
           </h3>
-          <NuxtLink to="/blog" class="text-xs font-mono font-bold text-emerald-400 hover:underline">
+          <NuxtLink to="/blog" class="text-xs font-mono font-bold text-[var(--accent-emerald)] hover:underline">
             Vedi tutti gli articoli ➔
           </NuxtLink>
         </div>
@@ -146,17 +146,17 @@ function populateFallbackArticles() {
             v-for="art in featuredArticles" 
             :key="art.id" 
             :to="`/blog/${art.slug || art.id}`"
-            class="bg-[#020420] border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px]"
+            class="bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)]/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px]"
           >
             <div>
-              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+              <span class="text-[10px] font-mono font-bold text-[var(--accent-emerald)] uppercase tracking-wider block mb-1">
                 {{ art.categoryName || art.category || 'Tech' }}
               </span>
-              <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
+              <h4 class="text-xs sm:text-sm font-bold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors leading-snug font-sans">
                 {{ art.title }}
               </h4>
             </div>
-            <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-4 flex items-center gap-1">
+            <span class="text-[11px] font-mono font-bold text-[var(--accent-cyan)] group-hover:underline mt-4 flex items-center gap-1">
               Leggi articolo ➔
             </span>
           </NuxtLink>

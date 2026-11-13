@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-25',
 
+css: ['~/app/assets/css/main.css'],
+
   future: {
     compatibilityVersion: 4
   },
@@ -134,4 +136,5 @@ export default defineNuxtConfig({
       '~/components'
     ]
   }
+  
 })

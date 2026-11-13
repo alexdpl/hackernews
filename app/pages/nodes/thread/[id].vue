@@ -32,7 +32,7 @@ function cleanNodeLabel(raw: string): string {
   return String(raw || '').replace(/^(n\/)+/i, '').trim()
 }
 
-const { data: threadRes, pending, error, refresh } = await useFetch<any>(() => `/api/nodes/post/${threadId.value}`)
+const { data: threadRes, pending, error, refresh } = await useFetch<any>(() => `/api/nodes/posts/${threadId.value}`)
 
 const post = computed(() => {
   const raw = threadRes.value?.post || threadRes.value?.data || (threadRes.value?.id ? threadRes.value : null)

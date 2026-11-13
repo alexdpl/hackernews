@@ -1,4 +1,4 @@
-// server/api/nodes/post/[id].get.ts
+// server/api/nodes/posts/[id].get.ts
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'

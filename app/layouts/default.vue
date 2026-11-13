@@ -1,11 +1,11 @@
 <!-- app/layouts/default.vue -->
 <script setup lang="ts">
-// Layout Master DKP v2.5
+// Layout Master DKP v2.6
 // Navbar e AppFooter vengono caricati automaticamente da app/components/
 </script>
 
 <template>
-  <div class="default-layout min-h-screen flex flex-col bg-[#020617] text-slate-100">
+  <div class="default-layout min-h-screen flex flex-col transition-colors duration-500">
     <!-- Navbar Master DKP -->
     <Navbar />
 
@@ -24,9 +24,10 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #020617;
-  color: #f8fafc;
-  /* 🟢 Assicuriamo che non ci siano proprietà di overflow che rompono gli elementi sticky */
+  /* Utilizziamo le variabili globali definite in main.css */
+  background-color: var(--bg-kernel);
+  color: var(--text-main);
+  /* Assicuriamo che non ci siano proprietà di overflow che rompono gli elementi sticky */
   overflow: visible;
 }
 

@@ -4,32 +4,115 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === DESIGN SYSTEM: "The Shift" (Variabili Tema) === */
+:root {
+  --bg-kernel: #020420;
+  --bg-surface: #090d16;
+  --bg-code: #0d1117;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #34d399;
+}
+
+/* Variante White Sepia / Old Paper */
+html.theme-sepia {
+  --bg-kernel: #f4ecd8 !important;      /* Pergamena calda chiara */
+  --bg-surface: #eaddc5 !important;     /* Superfici card seppia */
+  --bg-code: #ded0b6 !important;        /* Sfondo codice pergamena */
+  --text-main: #2c241b !important;      /* Inchiostro scuro */
+  --text-muted: #5a4a38 !important;     /* Testo secondario */
+  --border-color: #d4c4a8 !important;   /* Bordi carta antica */
+  --accent-cyan: #9c4124 !important;    /* Ruggine / Mattone */
+  --accent-emerald: #1b4332 !important; /* Verde scuro inchiostro */
+}
+
+/* Transizione globale fluida */
+body, div, header, footer, section {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+/* Forziamo il body a cambiare colore con la variabile */
+body {
+  background-color: var(--bg-kernel) !important;
+  color: var(--text-main) !important;
+}
+
+/* Sovrascriviamo le classi fisse di Tailwind quando siamo in tema sepia */
+html.theme-sepia .bg-\[\#020420\],
+html.theme-sepia .bg-\[\#020617\],
+html.theme-sepia .bg-slate-950,
+html.theme-sepia .bg-slate-900 {
+  background-color: var(--bg-kernel) !important;
+}
+
+html.theme-sepia .bg-\[\#090d16\],
+html.theme-sepia .bg-\[\#080d1a\],
+html.theme-sepia .bg-slate-800\/80 {
+  background-color: var(--bg-surface) !important;
+}
+
+html.theme-sepia .text-white,
+html.theme-sepia .text-slate-100,
+html.theme-sepia .text-slate-200,
+html.theme-sepia .text-slate-300 {
+  color: var(--text-main) !important;
+}
+
+html.theme-sepia .text-slate-400,
+html.theme-sepia .text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+html.theme-sepia .border-slate-800,
+html.theme-sepia .border-slate-700,
+html.theme-sepia .border-emerald-500\/30 {
+  border-color: var(--border-color) !important;
+}
+
 /* === STILI TYPOGRAPHY & DKP OVERRIDES === */
 .prose h1, .post-content h1 {
-  @apply text-3xl md:text-4xl font-extrabold text-white mt-8 mb-4 border-b border-slate-800 pb-2;
+  @apply text-3xl md:text-4xl font-extrabold mt-8 mb-4 pb-2;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
 }
 .prose h2, .post-content h2 {
-  @apply text-2xl font-bold text-white mt-6 mb-3;
+  @apply text-2xl font-bold mt-6 mb-3;
+  color: var(--text-main);
 }
 .prose h3, .post-content h3 {
-  @apply text-xl font-bold text-sky-400 mt-4 mb-2;
+  @apply text-xl font-bold mt-4 mb-2;
+  color: var(--accent-cyan);
 }
 .prose p, .post-content p {
-  @apply text-slate-300 text-lg leading-relaxed mb-6;
+  @apply text-lg leading-relaxed mb-6;
+  color: var(--text-main);
+  opacity: 0.9;
 }
 .prose blockquote, .post-content blockquote {
-  @apply border-l-4 border-emerald-400 bg-emerald-500/10 p-4 my-6 text-slate-300 italic rounded-r-lg;
+  @apply p-4 my-6 italic rounded-r-lg;
+  border-left: 4px solid var(--accent-emerald);
+  background-color: color-mix(in srgb, var(--accent-emerald) 10%, transparent);
+  color: var(--text-muted);
 }
 
 /* Tabelle DKP */
 .prose table, .post-content table {
-  @apply w-full border-collapse my-6 bg-[#090d16] rounded-lg overflow-hidden border border-slate-800 text-left;
+  @apply w-full border-collapse my-6 rounded-lg overflow-hidden text-left;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
 }
 .prose th, .post-content th {
-  @apply bg-[#0d1322] text-emerald-400 font-bold p-3 border border-slate-800 text-xs uppercase tracking-wider;
+  @apply font-bold p-3 text-xs uppercase tracking-wider;
+  background-color: color-mix(in srgb, var(--bg-surface) 80%, black);
+  color: var(--accent-emerald);
+  border: 1px solid var(--border-color);
 }
 .prose td, .post-content td {
-  @apply p-3 text-slate-300 border border-slate-800 text-sm;
+  @apply p-3 text-sm;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
 }
 
 /* Rimozione backtick automatica di Tailwind Prose */
@@ -41,15 +124,15 @@
 /* Contenitore blocco <pre> */
 .prose pre,
 .post-content pre {
-  background-color: #0d1117 !important;
-  border: 1px solid #1e293b !important;
+  background-color: var(--bg-code) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 0.75rem !important;
   padding: 1.25rem !important;
   margin: 1.5rem 0 !important;
   overflow-x: auto !important;
 }
 
-/* Reset del codice nei blocchi - LASCIAMO CHE PRISM COLORI I TOKEN */
+/* Reset del codice nei blocchi */
 .prose pre code,
 .post-content pre code {
   background-color: transparent !important;
@@ -61,20 +144,13 @@
   box-shadow: none !important;
 }
 
-/* Forza i colori di PrismJS sui token interni */
-.prose pre code .token,
-.post-content pre code .token,
-:deep(.dkp-code-block code .token) {
-  background: transparent !important;
-}
-
-/* Codice inline (es. `variabile`) */
+/* Codice inline */
 .prose :not(pre) > code,
 .post-content :not(pre) > code {
-  background-color: rgba(30, 41, 59, 0.8) !important;
-  color: #38bdf8 !important;
+  background-color: color-mix(in srgb, var(--bg-surface) 60%, transparent) !important;
+  color: var(--accent-cyan) !important;
   padding: 0.2rem 0.4rem !important;
   border-radius: 0.375rem !important;
-  border: 1px solid rgba(51, 65, 85, 0.6) !important;
+  border: 1px solid var(--border-color) !important;
   font-weight: 500 !important;
 }
