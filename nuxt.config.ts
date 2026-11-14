@@ -117,7 +117,8 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
-        'prismjs'
+        'prismjs',
+		'sanitize-html'
       ]
     }
   },

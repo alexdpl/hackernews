@@ -1,6 +1,7 @@
 <!-- app/pages/admin/mail/index.vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import sanitizeHtml from 'sanitize-html'
 
 definePageMeta({
   middleware: 'admin-only'
@@ -83,14 +84,25 @@ async function mailApi<T = any>(
 
 function sanitizeEmailHtml(rawHtml?: string): string {
   if (!rawHtml) return ''
-  return rawHtml
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
-    .replace(/<object[\s\S]*?>[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed[\s\S]*?>/gi, '')
-    .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/<a\s+([^>]*href=['"][^'"]+['"][^>]*)>/gi, '<a $1 target="_blank" rel="noopener noreferrer">')
+  return sanitizeHtml(rawHtml, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'h3', 'span', 'div']),
+    allowedAttributes: {
+      ...sanitizeHtml.defaults.allowedAttributes,
+      a: ['href', 'name', 'target', 'rel'],
+      img: ['src', 'alt', 'title', 'width', 'height']
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    transformTags: {
+      a: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          target: '_blank',
+          rel: 'noopener noreferrer'
+        }
+      })
+    }
+  })
 }
 
 const sanitizedActiveHtml = computed(() => sanitizeEmailHtml(activeMail.value?.body_html))

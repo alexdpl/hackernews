@@ -1,5 +1,5 @@
 // server/middleware/apiGateway.ts
-import { scryptSync, createHash } from 'node:crypto'
+import { scryptSync } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { apiKeys, apiLogs } from '~~/server/db/schema'
@@ -13,7 +13,7 @@ const TIER_QUOTAS: Record<string, number> = {
 
 function verifyKeyHash(rawKey: string, storedKeyHash: string): boolean {
   const cleanKey = rawKey.trim()
-  // 1. Formato standard scrypt (salt:hash)
+  // Formato supportato: scrypt "salt:hash"
   if (storedKeyHash.includes(':')) {
     const parts = storedKeyHash.split(':')
     if (parts.length !== 2) return false
@@ -21,9 +21,8 @@ function verifyKeyHash(rawKey: string, storedKeyHash: string): boolean {
     const computedHash = scryptSync(cleanKey, salt, 64).toString('hex')
     return computedHash === storedHash
   }
-  // 2. Formato SHA-256 (Master Key / Chiavi di sistema)
-  const sha256Hash = createHash('sha256').update(cleanKey).digest('hex')
-  return sha256Hash === storedKeyHash
+  // Legacy non sicuro non più supportato
+  return false
 }
 
 export default defineEventHandler(async (event) => {

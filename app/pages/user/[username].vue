@@ -31,12 +31,37 @@ const stats = computed(() => profileData.value?.stats || { reputationScore: 99.1
 const recentActivity = computed(() => profileData.value?.recentActivity || [])
 
 const username = computed(() => userData.value.username || rawUsername.value)
-const bio = computed(() => userData.value.bio || 'Lead Engineer Architect & Core Creator of DevKernelPulse.')
+
+// Bio intelligente: se è admin o alexdpl e ha una bio corta/default (es. "Admin"), forza la bio completa da Lead Architect
+const bio = computed(() => {
+  const dbBio = userData.value.bio
+  if (username.value.toLowerCase() === 'alexdpl' && (!dbBio || dbBio === 'Admin' || dbBio.length < 15)) {
+    return 'Lead Engineer Architect & Core Creator of DevKernelPulse. Specializzato in architetture Cloud Native, database Neon Pure SQL e sistemi di notarizzazione on-chain SHA-256.'
+  }
+  return dbBio || 'Lead Engineer Architect & Core Creator of DevKernelPulse.'
+})
+
 const avatar = computed(() => userData.value.avatar || 'https://github.com/alexdpl.png')
-const rankTier = computed(() => userData.value.rankTier || 'S-TIER ARCHITECT')
+
+// Forza il rank corretto S-Tier per l'amministratore
+const rankTier = computed(() => {
+  if (username.value.toLowerCase() === 'alexdpl' || String(userData.value.role || '').toUpperCase() === 'ADMIN') {
+    return 'S-TIER ARCHITECT'
+  }
+  return userData.value.rankTier || 'CORE DEVELOPER'
+})
+
 const xp = computed(() => userData.value.xp ?? 10860)
 const level = computed(() => userData.value.level ?? Math.floor(xp.value / 250) + 1)
-const badges = computed(() => userData.value.badges || ['Developer VIP Member', 'Vault Master'])
+
+// Badge d'élite completi per alexdpl o recuperati dal database per gli altri utenti
+const badges = computed(() => {
+  const dbBadges = userData.value.badges
+  if (username.value.toLowerCase() === 'alexdpl') {
+    return ['S-Tier Architect', 'Developer VIP Member', 'Vault Master', 'Core Creator', 'Early Pioneer']
+  }
+  return Array.isArray(dbBadges) && dbBadges.length > 0 ? dbBadges : ['Developer VIP Member', 'Vault Master']
+})
 
 const github = computed(() => userData.value.github || 'https://github.com/alexdpl')
 const twitter = computed(() => userData.value.twitter || 'https://x.com/alexdpl76')
