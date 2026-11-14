@@ -5,13 +5,16 @@ import DKPAdBanner from '~/components/DKPAdBanner.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
+import DKPnodesRichEditor from '~/components/DKPnodesRichEditor.vue'
+import { buildCategoryNodeTree, cleanNodeLabel } from '~/composables/useDkpNodes'
 
 useHead({
   title: 'DKP Talks Hub - Discussioni Tecniche, Nodi e Community v2.6-PURE-SQL',
   meta: [
     {
       name: 'description',
-      content: 'Esplora i DKP Nodes: discussioni verticali su Rust, JavaScript, AI Models, Web3, Mobile Dev e DevOps.'
+      content: 'Esplora i DKP Nodes: discussioni verticali su Rust, JavaScript, AI Models, Web3, Mobile Dev e DevOps con notarizzazione SHA-256.'
     }
   ]
 })
@@ -22,29 +25,12 @@ const selectedCategoryName = ref<string | null>(null)
 const expandedCategories = ref<Record<string, boolean>>({})
 const searchNodeQuery = ref('')
 
-// Paginazione (10 thread per pagina)
 const currentPage = ref(1)
-
 const isModalOpen = ref(false)
-const composerCategory = ref('')
-const newPostNodeId = ref<number | null>(null)
-const newPostTitle = ref('')
-const newPostContent = ref('')
-const newPostVaultHash = ref('')
-const newPostIsPinned = ref(false)
-const editorTab = ref<'write' | 'preview'>('write')
-const selectedCodeLang = ref<'typescript' | 'sql' | 'rust' | 'bash' | 'python'>('typescript')
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const isSubmitting = ref(false)
-const formError = ref('')
 const toastMsg = ref('')
 
 const { currentUser } = useAuthCore()
-const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
-
-function cleanNodeLabel(raw: string): string {
-  return String(raw || '').replace(/^(n\/)+/i, '').trim()
-}
+const isAdmin = computed(() => String(currentUser.value?.role || '').toUpperCase() === 'ADMIN')
 
 function cleanExcerpt(raw: string): string {
   return String(raw || '')
@@ -56,93 +42,42 @@ function cleanExcerpt(raw: string): string {
 }
 
 const { data: nodesRes } = await useFetch<any>('/api/nodes')
-const nodes = computed<any[]>(() => {
+const vaultConnected = computed(() => nodesRes.value?.vaultConnected !== false)
+
+const nodeTreeState = computed(() => {
   const rawList = Array.isArray(nodesRes.value?.data)
     ? nodesRes.value.data
     : (Array.isArray(nodesRes.value) ? nodesRes.value : [])
-
-  return rawList.map((n: any) => ({
-    ...n,
-    name: cleanNodeLabel(n.name || n.slug)
-  }))
+  return buildCategoryNodeTree(rawList)
 })
 
-function hasToken(text: string, tokens: string[]): boolean {
-  const words = text.split(/[^a-z0-9+#]+/).filter(Boolean)
-  for (const t of tokens) {
-    if (words.includes(t)) return true
-  }
-  return false
-}
+const nodes = computed(() => nodeTreeState.value.nodes)
+const allCategoryNames = computed(() => nodeTreeState.value.categories)
+const allGroupedNodes = computed(() => nodeTreeState.value.groupedNodes)
 
-function resolveNodeCategory(node: any): string {
-  const dbCat = cleanNodeLabel(String(node.category || node.groupName || ''))
-  const lowerDb = dbCat.toLowerCase()
-  if (dbCat.length > 0 && lowerDb !== 'generale' && lowerDb !== 'general') {
-    return dbCat
-  }
-
-  const combined = `${node.slug || ''} ${node.name || ''}`.toLowerCase()
-
-  if (hasToken(combined, ['dkp', 'devkernel', 'devkernelpulse', 'pulse', 'meta', 'announcements', 'talks', 'feedback', 'bounties', 'bounty'])) {
-    return '1. DKP Ecosystem & Core'
-  }
-  if (hasToken(combined, ['web3', 'blockchain', 'crypto', 'ethereum', 'solidity', 'solana', 'defi', 'smart', 'contracts', 'token', 'nft', 'dao', 'bitcoin'])) {
-    return '2. Web3, Crypto & Blockchain'
-  }
-  if (hasToken(combined, ['mobile', 'ios', 'android', 'flutter', 'swift', 'kotlin', 'react-native', 'expo', 'maui', 'dart', 'xcode'])) {
-    return '3. Mobile Development'
-  }
-  if (hasToken(combined, ['ai', 'llm', 'gpt', 'claude', 'neural', 'ml', 'machine', 'deep', 'agent', 'agents', 'rag', 'ollama', 'vision', 'prompt', 'inference'])) {
-    return '4. AI, LLM & Neural Agents'
-  }
-  if (hasToken(combined, ['rust', 'linux', 'kernel', 'cpp', 'c++', 'zig', 'asm', 'os', 'embedded', 'wasm', 'compiler', 'hardware', 'riscv', 'arm'])) {
-    return '5. Systems, Rust & Kernel'
-  }
-  if (hasToken(combined, ['web', 'nuxt', 'vue', 'react', 'ts', 'typescript', 'js', 'javascript', 'css', 'tailwind', 'node', 'frontend', 'backend', 'api', 'svelte', 'angular', 'nextjs'])) {
-    return '6. Web, Frontend & Full-Stack'
-  }
-  if (hasToken(combined, ['cloud', 'gcp', 'aws', 'azure', 'docker', 'k8s', 'kubernetes', 'devops', 'sec', 'security', 'cyber', 'cybersecurity', 'waf', 'sentinel', 'infra', 'linux-sec', 'pentest'])) {
-    return '7. Cloud, DevOps & Security'
-  }
-  if (hasToken(combined, ['sql', 'postgres', 'postgresql', 'neon', 'db', 'database', 'databases', 'data', 'redis', 'kafka', 'duckdb', 'analytics', 'storage'])) {
-    return '8. Databases, Pure SQL & Data'
-  }
-  return '9. Open Source, Tech & Career'
-}
-
+// Sidebar filtrata dalla barra di ricerca rapida
 const groupedNodes = computed<Record<string, any[]>>(() => {
-  const groups: Record<string, any[]> = {}
   const q = searchNodeQuery.value.trim().toLowerCase()
+  if (!q) return allGroupedNodes.value
 
-  for (const node of nodes.value) {
-    const category = resolveNodeCategory(node)
-    if (q) {
-      const matchName = String(node.name || '').toLowerCase().includes(q)
-      const matchSlug = String(node.slug || '').toLowerCase().includes(q)
-      const matchCat = category.toLowerCase().includes(q)
-      if (!matchName && !matchSlug && !matchCat) continue
-    }
-
-    if (!groups[category]) {
-      groups[category] = []
-    }
-    groups[category].push(node)
+  const filtered: Record<string, any[]> = {}
+  for (const [cat, list] of Object.entries(allGroupedNodes.value)) {
+    const matches = list.filter((node: any) =>
+      String(node.name || '').toLowerCase().includes(q) ||
+      String(node.slug || '').toLowerCase().includes(q) ||
+      cat.toLowerCase().includes(q)
+    )
+    if (matches.length > 0) filtered[cat] = matches
   }
-
-  const sortedEntries = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-  const ordered: Record<string, any[]> = {}
-  for (const [cat, list] of sortedEntries) {
-    ordered[cat] = list
-  }
-  return ordered
+  return filtered
 })
 
 const categoryNames = computed(() => Object.keys(groupedNodes.value))
 
-const composerSubNodes = computed(() => {
-  if (!composerCategory.value) return nodes.value
-  return groupedNodes.value[composerCategory.value] || nodes.value
+const activeSelectedNodeId = computed<number | null>(() => {
+  if (!selectedNodeSlug.value) return null
+  const found = nodes.value.find((n: any) => n.slug === selectedNodeSlug.value)
+  return found ? Number(found.id) : null
 })
 
 watch(
@@ -152,21 +87,10 @@ watch(
     if (keys.length > 0 && Object.keys(expandedCategories.value).length === 0) {
       expandedCategories.value[keys[0]] = true
     }
-    if (keys.length > 0 && (!composerCategory.value || !groups[composerCategory.value])) {
-      composerCategory.value = keys[0]
-    }
   },
   { immediate: true }
 )
 
-watch(composerCategory, (cat) => {
-  const list = groupedNodes.value[cat] || []
-  if (list.length > 0 && !list.some((n: any) => n.id === newPostNodeId.value)) {
-    newPostNodeId.value = list[0].id
-  }
-})
-
-// Fetch dei post con supporto a ordinamento, filtro nodo e paginazione (10 per pagina)
 const { data: postsRes, pending: loadingPosts, refresh: refreshPosts } = await useFetch<any>('/api/nodes/posts', {
   query: computed(() => ({
     sort: activeSort.value,
@@ -183,6 +107,8 @@ const rawPosts = computed<any[]>(() => {
   return list.map((p: any) => ({
     ...p,
     nodeName: cleanNodeLabel(p.nodeName || p.nodeSlug || 'General'),
+    vaultHash: p.vaultHash || p.vault_hash || null,
+    vaultBlockNumber: p.vaultBlockNumber ?? p.vault_block_number ?? null,
     isPinned: Boolean(p.isPinned || p.is_pinned)
   }))
 })
@@ -191,7 +117,7 @@ const posts = computed(() => {
   if (selectedNodeSlug.value || !selectedCategoryName.value) {
     return rawPosts.value
   }
-  const allowedSlugs = new Set((groupedNodes.value[selectedCategoryName.value] || []).map((n: any) => n.slug))
+  const allowedSlugs = new Set((allGroupedNodes.value[selectedCategoryName.value] || []).map((n: any) => n.slug))
   return rawPosts.value.filter((p: any) => allowedSlugs.has(p.nodeSlug))
 })
 
@@ -215,23 +141,11 @@ onMounted(async () => {
     } else {
       populateFallbackArticles()
     }
-  } catch (err) {
-    console.error('Errore recupero articoli Vault:', err)
+  } catch {
     populateFallbackArticles()
   }
 })
 
-watch(
-  nodes,
-  (val) => {
-    if (val.length > 0 && !newPostNodeId.value) {
-      newPostNodeId.value = val[0].id
-    }
-  },
-  { immediate: true }
-)
-
-// Reset pagina quando cambiano filtri o ordinamento
 watch([activeSort, selectedNodeSlug, selectedCategoryName], () => {
   currentPage.value = 1
 })
@@ -276,122 +190,10 @@ async function togglePinPostCard(post: any) {
   }
 }
 
-function openComposerModal() {
-  formError.value = ''
-  editorTab.value = 'write'
-
-  if (selectedNodeSlug.value) {
-    const activeNode = nodes.value.find((n: any) => n.slug === selectedNodeSlug.value)
-    if (activeNode) {
-      composerCategory.value = resolveNodeCategory(activeNode)
-      newPostNodeId.value = activeNode.id
-    }
-  } else if (selectedCategoryName.value && groupedNodes.value[selectedCategoryName.value]?.length) {
-    composerCategory.value = selectedCategoryName.value
-    newPostNodeId.value = groupedNodes.value[selectedCategoryName.value][0].id
-  }
-
-  isModalOpen.value = true
-}
-
-function applyMarkdown(prefix: string, suffix = '', placeholder = 'testo') {
-  const el = textareaRef.value
-  if (!el) {
-    newPostContent.value += `${prefix}${placeholder}${suffix}`
-    return
-  }
-
-  const start = el.selectionStart
-  const end = el.selectionEnd
-  const selected = newPostContent.value.substring(start, end) || placeholder
-  const before = newPostContent.value.substring(0, start)
-  const after = newPostContent.value.substring(end)
-
-  newPostContent.value = `${before}${prefix}${selected}${suffix}${after}`
-
-  requestAnimationFrame(() => {
-    el.focus()
-    el.setSelectionRange(start + prefix.length, start + prefix.length + selected.length)
-  })
-}
-
-function insertCodeBlock() {
-  const nl = String.fromCharCode(10)
-  const fence = '```'
-  applyMarkdown(`${nl}${fence}${selectedCodeLang.value}${nl}`, `${nl}${fence}${nl}`, '// Inserisci qui il tuo codice')
-}
-
-function insertHeading() {
-  const nl = String.fromCharCode(10)
-  applyMarkdown(`${nl}## `, nl, 'Titolo Sezione')
-}
-
-function insertQuote() {
-  const nl = String.fromCharCode(10)
-  applyMarkdown(`${nl}> `, nl, 'Citazione tecnica')
-}
-
-function insertHighlight() {
-  applyMarkdown('==', '==', 'testo evidenziato')
-}
-
-// Anteprima formattata Markdown Real-time nel Rich Editor
-const previewHtml = computed(() => {
-  const val = newPostContent.value
-  if (!val) return ''
-  return val
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/==(.*?)==/g, '<mark class="bg-emerald-500/25 text-emerald-300 px-1 rounded">$1</mark>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`([^`\n]+)`/g, '<code class="bg-slate-800 text-sky-400 px-1.5 py-0.5 rounded text-xs">$1</code>')
-    .replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-emerald-400 mt-3 mb-1">$1</h2>')
-    .replace(/^&gt; (.*?)$/gm, '<blockquote class="border-l-4 border-purple-400 pl-3 my-2 text-slate-300 italic">$1</blockquote>')
-    .replace(/\n/g, '<br />')
-})
-
-async function handleCreatePost() {
-  formError.value = ''
-
-  if (!newPostNodeId.value || !newPostTitle.value.trim() || !newPostContent.value.trim()) {
-    formError.value = 'Seleziona un nodo e compila titolo e contenuto della discussione.'
-    return
-  }
-
-  isSubmitting.value = true
-  try {
-    const res: any = await $fetch('/api/nodes/posts', {
-      method: 'POST',
-      body: {
-        nodeId: newPostNodeId.value,
-        title: newPostTitle.value.trim(),
-        content: newPostContent.value.trim(),
-        vaultHash: newPostVaultHash.value.trim() || null,
-        isPinned: newPostIsPinned.value,
-        userId: currentUser.value?.id
-      }
-    })
-
-    if (res && res.success) {
-      if (import.meta.client) {
-        window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
-      }
-
-      newPostTitle.value = ''
-      newPostContent.value = ''
-      newPostVaultHash.value = ''
-      newPostIsPinned.value = false
-      isModalOpen.value = false
-      showNotification('Thread pubblicato con successo! Hai guadagnato +25 XP!')
-      await refreshPosts()
-    } else {
-      formError.value = res?.statusMessage || 'Impossibile pubblicare il thread.'
-    }
-  } catch (err: any) {
-    formError.value = err?.data?.statusMessage || err?.message || 'Errore durante la pubblicazione del thread.'
-  } finally {
-    isSubmitting.value = false
-  }
+async function onThreadPublished() {
+  isModalOpen.value = false
+  showNotification('⛓️ Thread pubblicato e notarizzato SHA-256 con successo! +25 XP')
+  await refreshPosts()
 }
 
 async function handleVote(post: any, direction: 'up' | 'down') {
@@ -441,14 +243,24 @@ function resetAllFilters() {
       <section class="relative py-8 px-6 text-center flex flex-col items-center gap-5 bg-[#090d16] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
         <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-purple-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 
-        <div class="inline-flex items-center gap-2 bg-[#020420] border border-purple-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-          <span class="relative flex h-2.5 w-2.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
-          </span>
-          <span class="text-[11px] font-mono font-black text-purple-400 uppercase tracking-widest">
-            DKP TALKS HUB v2.6-PURE-SQL
-          </span>
+        <div class="flex flex-wrap items-center justify-center gap-2.5">
+          <div class="inline-flex items-center gap-2 bg-[#020420] border border-purple-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+            </span>
+            <span class="text-[11px] font-mono font-black text-purple-400 uppercase tracking-widest">
+              DKP TALKS HUB v2.6-PURE-SQL
+            </span>
+          </div>
+
+          <NuxtLink
+            to="/nodes/n/blockchain-vault"
+            class="inline-flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/35 px-3.5 py-1.5 rounded-full font-mono text-[11px] font-bold text-emerald-400 transition-all no-underline"
+          >
+            <span>⛓️</span>
+            <span>{{ vaultConnected ? 'VAULT ON-CHAIN: n/blockchain-vault' : 'VAULT SYNCING' }}</span>
+          </NuxtLink>
         </div>
 
         <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight max-w-4xl m-0">
@@ -456,22 +268,19 @@ function resetAllFilters() {
         </h1>
 
         <p class="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed font-sans m-0">
-          Spazio di discussione verticale per sviluppatori. Condividi snippet, analizza architetture cloud, partecipa ai nodi tematici e guadagna XP certificati nel network.
+          Spazio di discussione verticale per sviluppatori. Ogni thread viene notarizzato crittograficamente in <strong class="text-emerald-400 font-mono">SHA-256</strong> sul nodo pubblico <strong class="text-sky-400 font-mono">n/blockchain-vault</strong>.
         </p>
 
         <div class="flex flex-wrap gap-3 justify-center relative z-10 font-mono">
           <NuxtLink active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/news">
             DKP Tech Feed
           </NuxtLink>
-
           <NuxtLink active-class="!bg-purple-500 !text-slate-950 !border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/nodes">
             DKP Talks Hub
           </NuxtLink>
-
           <NuxtLink active-class="!bg-sky-400 !text-slate-950 !border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/tools">
             Developer Tools
           </NuxtLink>
-
           <NuxtLink active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/blog">
             DKP Editorial Hub
           </NuxtLink>
@@ -479,7 +288,7 @@ function resetAllFilters() {
 
         <button
           type="button"
-          @click="openComposerModal"
+          @click="isModalOpen = true"
           class="mt-1 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold font-mono text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center gap-2 cursor-pointer"
         >
           <span>+</span> Apri Nuovo Thread - Rich Editor (+25 XP)
@@ -488,8 +297,31 @@ function resetAllFilters() {
 
       <!-- GRIGLIA 2 COLONNE -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <!-- SIDEBAR SINISTRA: CATEGORIE & SOTTO-NODI CON SHRINK-0 -->
+        <!-- SIDEBAR SINISTRA (9 Cat - 163 Nodi + Subnodi) -->
         <aside class="lg:col-span-1 flex flex-col gap-6">
+          <div class="bg-[#090d16] border border-emerald-500/35 rounded-2xl p-4 shadow-xl flex flex-col gap-2.5 font-mono">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+                ⛓️ Proof-of-Code Vault
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
+                PUBLIC NOTARY
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-sans m-0 leading-relaxed">
+              Nodo pubblico ufficiale di notarizzazione SHA-256 e verifica integrità dei thread DKP.
+            </p>
+            <div class="flex items-center justify-between pt-1">
+              <NuxtLink
+                to="/nodes/n/blockchain-vault"
+                class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg no-underline transition-colors"
+              >
+                Apri n/blockchain-vault →
+              </NuxtLink>
+              <span class="text-[10px] text-slate-500">SHA-256 MAINNET</span>
+            </div>
+          </div>
+
           <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
               <h2 class="text-sm font-bold tracking-wider text-white font-mono uppercase flex items-center gap-2 m-0">
@@ -511,7 +343,7 @@ function resetAllFilters() {
                 <option value="">Feed Globale (Tutti i {{ nodes.length }} nodi)</option>
                 <optgroup v-for="(nodeList, catName) in groupedNodes" :key="catName" :label="`${catName} (${nodeList.length})`">
                   <option v-for="node in nodeList" :key="node.id" :value="node.slug">
-                    {{ node.icon || '#' }} n/{{ node.name }} ({{ node.subscribersCount || 0 }})
+                    {{ node.depth > 0 ? `${'—'.repeat(node.depth)}↳ ` : '' }}{{ node.icon || '#' }} n/{{ node.name }} ({{ node.subscribersCount || 0 }})
                   </option>
                 </optgroup>
               </select>
@@ -521,7 +353,7 @@ function resetAllFilters() {
               <input
                 v-model="searchNodeQuery"
                 type="text"
-                aria-label="Filtra categorie o sotto-nodi"
+                aria-label="Filtra categoria o sotto-nodo"
                 placeholder="Cerca categoria o sotto-nodo..."
                 class="w-full bg-[#020420] border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-purple-400 outline-none text-xs"
               />
@@ -572,24 +404,37 @@ function resetAllFilters() {
 
                 <div
                   v-if="expandedCategories[String(catName)] || searchNodeQuery.trim().length > 0"
-                  class="p-1.5 flex flex-col gap-1 border-t border-slate-800/70 max-h-60 overflow-y-auto"
+                  class="p-1.5 flex flex-col gap-1 border-t border-slate-800/70 max-h-64 overflow-y-auto"
                 >
                   <div
                     v-for="node in nodeList"
                     :key="node.id"
                     class="shrink-0 flex items-center justify-between gap-1 rounded-lg px-2 py-1.5 transition-all"
+                    :style="node.depth > 0 ? { paddingLeft: `${0.5 + node.depth * 0.75}rem` } : undefined"
                     :class="selectedNodeSlug === node.slug ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'"
                   >
                     <button
                       type="button"
                       @click="selectNode(node.slug)"
-                      class="flex-1 flex items-center gap-2 text-left bg-transparent border-none p-0 cursor-pointer truncate text-xs text-inherit"
+                      class="flex-1 flex items-center gap-1.5 text-left bg-transparent border-none p-0 cursor-pointer truncate text-xs text-inherit"
                     >
+                      <span v-if="node.depth > 0" class="text-slate-600">↳</span>
                       <span>{{ node.icon || '#' }}</span>
                       <span class="truncate">n/{{ node.name }}</span>
+                      <span
+                        v-if="node.subNodesCount > 0"
+                        class="text-[9px] px-1.5 py-0.2 rounded bg-slate-900 text-emerald-400 border border-slate-800 shrink-0"
+                        :title="`${node.subNodesCount} sotto-nodi`"
+                      >
+                        +{{ node.subNodesCount }}
+                      </span>
                     </button>
 
-                    <NuxtLink :to="`/nodes/n/${node.slug}`" class="text-[10px] text-slate-500 hover:text-emerald-400 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 no-underline shrink-0" title="Apri pagina dedicata del nodo">
+                    <NuxtLink
+                      :to="`/nodes/n/${node.slug}`"
+                      class="text-[10px] text-slate-500 hover:text-emerald-400 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 no-underline shrink-0"
+                      title="Apri pagina dedicata del nodo"
+                    >
                       -&gt;
                     </NuxtLink>
                   </div>
@@ -599,14 +444,14 @@ function resetAllFilters() {
 
             <button
               type="button"
-              @click="openComposerModal"
+              @click="isModalOpen = true"
               class="w-full mt-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold font-mono text-xs py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>+</span> Nuovo Thread (+25 XP)
             </button>
           </div>
 
-          <DKPAdBanner/>
+          <DKPAdBanner />
         </aside>
 
         <!-- MAIN FEED CENTRALE -->
@@ -659,14 +504,14 @@ function resetAllFilters() {
           </div>
 
           <div v-if="loadingPosts" class="p-12 text-center text-emerald-400 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800 animate-pulse">
-            Ingestione discussioni dal DB Neon in corso...
+            Ingestione discussioni e verifica impronte SHA-256 dal DB Neon in corso...
           </div>
 
           <div v-else-if="posts.length === 0" class="p-12 text-center text-slate-400 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800 flex flex-col items-center gap-3">
             <span>Nessun thread pubblicato in questa sezione. Sii il primo a creare una discussione!</span>
             <button
               type="button"
-              @click="openComposerModal"
+              @click="isModalOpen = true"
               class="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs cursor-pointer"
             >
               Scrivi il primo thread
@@ -680,30 +525,16 @@ function resetAllFilters() {
               class="bg-[#090d16] border border-slate-800 hover:border-purple-500/40 rounded-2xl p-5 shadow-xl transition-all flex gap-4 group"
             >
               <div class="flex flex-col items-center justify-start bg-[#020420] p-2.5 rounded-xl border border-slate-800 font-mono text-xs h-fit min-w-[44px]">
-                <button
-                  type="button"
-                  @click="handleVote(post, 'up')"
-                  class="text-slate-500 hover:text-emerald-400 transition-colors text-sm font-bold bg-transparent border-none cursor-pointer"
-                >
-                  ▲
-                </button>
+                <button type="button" @click="handleVote(post, 'up')" class="text-slate-500 hover:text-emerald-400 transition-colors text-sm font-bold bg-transparent border-none cursor-pointer">▲</button>
                 <span class="font-extrabold my-1 text-slate-200">{{ post.karmaScore || 1 }}</span>
-                <button
-                  type="button"
-                  @click="handleVote(post, 'down')"
-                  class="text-slate-500 hover:text-rose-400 transition-colors text-sm font-bold bg-transparent border-none cursor-pointer"
-                >
-                  ▼
-                </button>
+                <button type="button" @click="handleVote(post, 'down')" class="text-slate-500 hover:text-rose-400 transition-colors text-sm font-bold bg-transparent border-none cursor-pointer">▼</button>
               </div>
 
               <div class="flex-1 flex flex-col gap-2 min-w-0">
                 <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400 flex-wrap">
-                  <span v-if="post.isPinned" class="text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">
-                    📌 PINNED
-                  </span>
+                  <span v-if="post.isPinned" class="text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">📌 PINNED</span>
 
-                  <NuxtLink :to="`/nodes/n/${post.nodeSlug}`" class="text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 no-underline" v-if="post.nodeSlug">
+                  <NuxtLink v-if="post.nodeSlug" :to="`/nodes/n/${post.nodeSlug}`" class="text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 no-underline">
                     {{ post.nodeIcon || '#' }} n/{{ post.nodeName || post.nodeSlug }}
                   </NuxtLink>
                   <span v-else class="text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
@@ -713,9 +544,16 @@ function resetAllFilters() {
                   <span class="text-slate-300 font-semibold">@{{ post.authorUsername || post.authorName || 'community' }}</span>
                   <span>-</span>
                   <span>{{ new Date(post.createdAt || Date.now()).toLocaleDateString('it-IT') }}</span>
-                  <span v-if="post.vaultHash" class="ml-auto text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                    VAULT CERTIFIED
-                  </span>
+
+                  <div class="ml-auto">
+                    <VaultTrustBadge
+                      :post-id="post.id"
+                      :vault-hash="post.vaultHash"
+                      :block-number="post.vaultBlockNumber"
+                      :compact="true"
+                      @notarized="(h) => { post.vaultHash = h }"
+                    />
+                  </div>
                 </div>
 
                 <NuxtLink :to="`/nodes/thread/${post.id}`" class="text-base font-bold text-slate-100 group-hover:text-purple-400 transition-colors font-sans leading-snug no-underline">
@@ -732,12 +570,7 @@ function resetAllFilters() {
                   </NuxtLink>
 
                   <div class="flex items-center gap-3">
-                    <button
-                      type="button"
-                      @click="copyPostLink(post.id)"
-                      class="text-slate-400 hover:text-emerald-400 bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
-                      title="Copia link del thread"
-                    >
+                    <button type="button" @click="copyPostLink(post.id)" class="text-slate-400 hover:text-emerald-400 bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors">
                       🔗 Condividi
                     </button>
 
@@ -755,33 +588,18 @@ function resetAllFilters() {
             </article>
           </div>
 
-          <!-- CONTROLLI PAGINAZIONE (10 per pagina) -->
           <div class="flex items-center justify-between bg-[#090d16] border border-slate-800 rounded-xl p-4 font-mono text-xs shadow-xl">
-            <button
-              type="button"
-              @click="prevPage"
-              :disabled="currentPage === 1"
-              class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all"
-            >
+            <button type="button" @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all">
               ← Pagina Precedente
             </button>
-
-            <span class="text-purple-400 font-bold">
-              Pagina {{ currentPage }}
-            </span>
-
-            <button
-              type="button"
-              @click="nextPage"
-              :disabled="posts.length < 10"
-              class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all"
-            >
+            <span class="text-purple-400 font-bold">Pagina {{ currentPage }}</span>
+            <button type="button" @click="nextPage" :disabled="posts.length < 10" class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all">
               Pagina Successiva →
             </button>
           </div>
 
           <div class="pt-6 border-t border-slate-800">
-            <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined"/>
+            <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined" />
           </div>
 
           <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800 flex flex-col gap-4">
@@ -795,7 +613,7 @@ function resetAllFilters() {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <NuxtLink :key="art.id" :to="`/blog/${art.slug || art.id}`" class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px] no-underline" v-for="art in featuredArticles">
+              <NuxtLink v-for="art in featuredArticles" :key="art.id" :to="`/blog/${art.slug || art.id}`" class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px] no-underline">
                 <div>
                   <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
                     {{ art.categoryName || art.category || 'Tech' }}
@@ -812,213 +630,23 @@ function resetAllFilters() {
           </div>
 
           <div class="pt-6 border-t border-slate-800">
-            <DkpNodesHomeWidget/>
+            <DkpNodesHomeWidget />
           </div>
 
-          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM"/>
+          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM" />
         </main>
       </div>
     </div>
 
-    <!-- MODALE RICH EDITOR CLONATO DAL BLOG DKP -->
-    <div
-      v-if="isModalOpen"
-      class="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
-      @click.self="isModalOpen = false"
-    >
-      <div class="bg-[#090d16] border border-purple-500/40 rounded-2xl w-full max-w-4xl p-6 shadow-2xl flex flex-col gap-4 font-sans my-auto">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 class="font-mono text-sm sm:text-base font-black text-white flex items-center gap-2 m-0">
-            DKP Talks Rich Editor <span class="text-xs text-emerald-400 font-normal">- Blog-Grade Engine</span>
-          </h3>
-          <button
-            type="button"
-            @click="isModalOpen = false"
-            class="text-slate-400 hover:text-rose-400 font-bold text-sm bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg cursor-pointer"
-          >
-            X
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#020420] p-3.5 rounded-xl border border-slate-800 font-mono text-xs">
-          <div>
-            <label for="modal-cat-select" class="block text-sky-400 font-bold mb-1 text-[11px]">
-              1. Categoria Principale:
-            </label>
-            <select
-              id="modal-cat-select"
-              v-model="composerCategory"
-              class="w-full bg-[#090d16] border border-slate-700 rounded-xl p-2.5 text-slate-200 focus:border-sky-400 outline-none font-sans"
-            >
-              <option v-for="cat in categoryNames" :key="cat" :value="cat">
-                {{ cat }} ({{ groupedNodes[cat]?.length || 0 }} nodi)
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label for="modal-node-select" class="block text-emerald-400 font-bold mb-1 text-[11px]">
-              2. Sotto-Nodo di Destinazione:
-            </label>
-            <select
-              id="modal-node-select"
-              v-model="newPostNodeId"
-              class="w-full bg-[#090d16] border border-slate-700 rounded-xl p-2.5 text-slate-200 focus:border-emerald-400 outline-none font-sans"
-            >
-              <option v-for="node in composerSubNodes" :key="node.id" :value="node.id">
-                {{ node.icon || '#' }} n/{{ node.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- CHECKBOX PINNED SE ADMIN -->
-        <div v-if="isAdmin" class="flex items-center gap-2 bg-[#020420] border border-amber-500/30 p-3 rounded-xl font-mono text-xs">
-          <input id="modal-pin-check" v-model="newPostIsPinned" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer" />
-          <label for="modal-pin-check" class="text-amber-400 font-bold cursor-pointer">📌 Fissa questo thread in cima al feed (Pinned)</label>
-        </div>
-
-        <div class="font-mono text-xs">
-          <label for="modal-thread-title" class="block text-slate-400 mb-1">Titolo Thread:</label>
-          <input
-            id="modal-thread-title"
-            v-model="newPostTitle"
-            type="text"
-            placeholder="Es. [Architecture] Benchmark Pure SQL vs ORM su Cloud Run..."
-            class="w-full bg-[#020420] border border-slate-800 rounded-xl p-3 text-slate-100 focus:border-purple-400 outline-none font-sans font-bold text-sm"
-          />
-        </div>
-
-        <div class="border border-slate-800 rounded-xl overflow-hidden bg-[#020420]">
-          <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[#0b101d] border-b border-slate-800 font-mono">
-            <div class="flex flex-wrap items-center gap-1.5">
-              <button type="button" @click="applyMarkdown('**', '**', 'grassetto')" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-black border border-slate-700 cursor-pointer">
-                B
-              </button>
-              <button type="button" @click="applyMarkdown('*', '*', 'corsivo')" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs italic border border-slate-700 cursor-pointer">
-                I
-              </button>
-              <button type="button" @click="insertHeading" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold border border-slate-700 cursor-pointer">
-                H2
-              </button>
-              <button type="button" @click="applyMarkdown('`', '`', 'codice')" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-400 text-xs border border-slate-700 cursor-pointer">
-                &lt;/&gt;
-              </button>
-              <button type="button" @click="insertHighlight" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-400 text-xs font-bold border border-slate-700 cursor-pointer" title="Evidenzia">
-                ==H==
-              </button>
-              <button type="button" @click="insertQuote" class="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs border border-slate-700 cursor-pointer">
-                Quote
-              </button>
-
-              <div class="flex items-center gap-1 pl-2 ml-1 border-l border-slate-800">
-                <select
-                  v-model="selectedCodeLang"
-                  aria-label="Linguaggio codice"
-                  class="bg-slate-900 border border-slate-700 text-emerald-400 text-[11px] px-2 py-1 rounded outline-none"
-                >
-                  <option value="typescript">TS</option>
-                  <option value="sql">SQL</option>
-                  <option value="rust">Rust</option>
-                  <option value="bash">Bash</option>
-                  <option value="python">Python</option>
-                </select>
-                <button
-                  type="button"
-                  @click="insertCodeBlock"
-                  class="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold border border-emerald-500/35 cursor-pointer"
-                >
-                  + Code
-                </button>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-              <button
-                type="button"
-                @click="editorTab = 'write'"
-                class="px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer"
-                :class="editorTab === 'write' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'"
-              >
-                Scrivi
-              </button>
-              <button
-                type="button"
-                @click="editorTab = 'preview'"
-                class="px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer"
-                :class="editorTab === 'preview' ? 'bg-sky-400 text-slate-950' : 'text-slate-400 hover:text-white'"
-              >
-                Anteprima
-              </button>
-            </div>
-          </div>
-
-          <textarea
-            v-if="editorTab === 'write'"
-            ref="textareaRef"
-            v-model="newPostContent"
-            rows="8"
-            placeholder="Scrivi il corpo della discussione o incolla il tuo snippet tecnico..."
-            class="w-full bg-transparent p-4 text-slate-100 outline-none font-mono text-xs sm:text-sm leading-relaxed resize-y"
-          ></textarea>
-
-          <div
-            v-else
-            class="p-4 min-h-[200px] max-h-[300px] overflow-y-auto text-sm text-slate-200 leading-relaxed dkp-preview-content"
-            v-html="previewHtml || '<span class=\'text-slate-500 font-mono text-xs\'>Nessun contenuto in anteprima...</span>'"
-          ></div>
-        </div>
-
-        <div class="font-mono text-xs">
-          <label for="modal-vault-hash" class="block text-slate-400 mb-1">Vault SHA-256 Hash (Opzionale):</label>
-          <input
-            id="modal-vault-hash"
-            v-model="newPostVaultHash"
-            type="text"
-            placeholder="Incolla l'hash del DKP Vault per certificarne l'autenticità"
-            class="w-full bg-[#020420] border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-purple-400 outline-none"
-          />
-        </div>
-
-        <div v-if="formError" role="alert" class="bg-rose-500/15 border border-rose-500/40 text-rose-300 px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold">
-          {{ formError }}
-        </div>
-
-        <div class="flex justify-between items-center pt-3 border-t border-slate-800 flex-wrap gap-3">
-          <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
-            Inviando questo post riceverai +25 XP!
-          </span>
-
-          <div class="flex gap-2 font-mono">
-            <button
-              type="button"
-              @click="isModalOpen = false"
-              class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs rounded-xl cursor-pointer"
-            >
-              Annulla
-            </button>
-            <button
-              type="button"
-              @click="handleCreatePost"
-              :disabled="isSubmitting"
-              class="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-[0_0_12px_rgba(16,185,129,0.3)] cursor-pointer disabled:opacity-50"
-            >
-              {{ isSubmitting ? 'Invio in corso...' : 'Pubblica Thread' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-	<!-- MODALE RICH EDITOR COMPONENTIZZATO -->
     <DKPnodesRichEditor
-      :isOpen="isModalOpen"
-      :categories="categoryNames"
-      :groupedNodes="groupedNodes"
-      :initialCategory="composerCategory"
-      :initialNodeId="newPostNodeId"
-      :isAdmin="isAdmin"
+      :is-open="isModalOpen"
+      :categories="allCategoryNames"
+      :grouped-nodes="allGroupedNodes"
+      :initial-category="selectedCategoryName || undefined"
+      :initial-node-id="activeSelectedNodeId"
+      :is-admin="isAdmin"
       @close="isModalOpen = false"
-      @published="isModalOpen = false; showNotification('Thread pubblicato con successo! +25 XP!'); refreshPosts()"
+      @published="onThreadPublished"
     />
   </div>
 </template>

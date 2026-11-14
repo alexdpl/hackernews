@@ -1,4 +1,3 @@
-<!-- app/pages/nodes/thread/[id].vue -->
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -8,6 +7,7 @@ import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DKPAdBanner from '~/components/DKPAdBanner.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
 
 interface AuthorRank {
   color: string
@@ -16,10 +16,7 @@ interface AuthorRank {
   title: string
 }
 
-interface PrismHighlighter {
-  highlightAll: () => void
-}
-
+// Inizializza il gestore globale della copia codice
 useCodeCopy()
 
 const route = useRoute()
@@ -49,6 +46,7 @@ const post = computed(() => {
     karmaScore: Number(raw.karmaScore ?? raw.karma_score ?? 1),
     isPinned: Boolean(raw.isPinned || raw.is_pinned),
     vaultHash: raw.vaultHash || raw.vault_hash || null,
+    vaultBlockNumber: raw.vaultBlockNumber ?? raw.vault_block_number ?? null,
     vaultCertificateId: raw.vaultCertificateId || raw.vault_certificate_id || (raw.vaultHash || raw.vault_hash ? `DKP-NODE-${raw.id}` : null),
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     createdAt: raw.createdAt || raw.created_at || new Date().toISOString(),
@@ -56,12 +54,56 @@ const post = computed(() => {
   }
 })
 
+// Verifica On-Chain live del thread corrente
+const vaultProof = ref<any>(null)
+const isCheckingVault = ref(false)
+const hashCopied = ref(false)
+
+async function loadOnChainProof(autoNotarizeIfMissing = true) {
+  if (!post.value?.id) return
+  isCheckingVault.value = true
+  try {
+    let verifyRes: any = await $fetch('/api/vault/verify', {
+      query: { postId: post.value.id }
+    }).catch(() => null)
+
+    if (!verifyRes?.proof && autoNotarizeIfMissing) {
+      await $fetch('/api/vault/notarize', {
+        method: 'POST',
+        body: { postId: post.value.id }
+      }).catch(() => null)
+
+      verifyRes = await $fetch('/api/vault/verify', {
+        query: { postId: post.value.id }
+      }).catch(() => null)
+    }
+
+    if (verifyRes?.proof) {
+      vaultProof.value = verifyRes.proof
+      if (post.value && !post.value.vaultHash) {
+        post.value.vaultHash = verifyRes.proof.vaultHash
+      }
+    }
+  } finally {
+    isCheckingVault.value = false
+  }
+}
+
+async function copyFullVaultHash() {
+  const hash = vaultProof.value?.vaultHash || post.value?.vaultHash
+  if (!hash || typeof navigator === 'undefined') return
+  await navigator.clipboard.writeText(hash).catch(() => {})
+  hashCopied.value = true
+  showNotification('📋 Hash SHA-256 copiato negli appunti!')
+  setTimeout(() => { hashCopied.value = false }, 2000)
+}
+
 const canEditPost = computed(() => {
   if (!currentUser.value || !post.value) return false
-  return Number(currentUser.value.id) === Number(post.value.userId) || currentUser.value.role === 'ADMIN'
+  return Number(currentUser.value.id) === Number(post.value.userId) || String(currentUser.value.role || '').toUpperCase() === 'ADMIN'
 })
 
-const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
+const isAdmin = computed(() => String(currentUser.value?.role || '').toUpperCase() === 'ADMIN')
 
 const isEditing = ref(false)
 const editTitle = ref('')
@@ -93,6 +135,9 @@ async function saveEdit() {
       showNotification('✨ Post modificato con successo!')
       isEditing.value = false
       await refresh()
+      await loadOnChainProof(false)
+      await nextTick()
+      applyPrism()
     }
   } catch (err: any) {
     showNotification(`❌ Errore: ${err?.data?.statusMessage || 'Impossibile salvare'}`)
@@ -147,6 +192,7 @@ const readTime = computed(() => {
   return Math.max(1, Math.ceil(words / 200))
 })
 
+// Funzione Parser identica e pulita
 function parseDkpMarkdown(contentVal: string): string {
   try {
     if (!contentVal) return ''
@@ -249,95 +295,48 @@ useHead({
   meta: [{ name: 'description', content: computed(() => String(post.value?.content || '').slice(0, 160)) }]
 })
 
+// --- GESTIONE ROBUSTA PRISM JS ---
 let prismTimer: ReturnType<typeof setTimeout> | undefined
 const applyPrism = () => {
-  if (import.meta.client && $prism) {
+  if (import.meta.client) {
     clearTimeout(prismTimer)
     prismTimer = setTimeout(() => {
-      try { ($prism as PrismHighlighter).highlightAll() } catch {}
-    }, 100)
-  }
-}
-
-const showCopyFeedback = (btn: HTMLButtonElement) => {
-  const originalText = btn.innerHTML
-  btn.innerHTML = '✅'
-  setTimeout(() => { btn.innerHTML = originalText }, 2000)
-}
-
-const handleCopyClick = (event: MouseEvent) => {
-  const target = event.target
-  const copyBtn = target instanceof Element ? (target.closest('.dkp-copy-btn') as HTMLButtonElement | null) : null
-  if (copyBtn) {
-    const codeId = copyBtn.getAttribute('data-code-id')
-    if (codeId) {
-      const codeElement = document.getElementById(codeId)
-      if (codeElement) {
-        const textToCopy = codeElement.innerText || codeElement.textContent || ''
-        if (navigator.clipboard && window.isSecureContext) {
-          navigator.clipboard.writeText(textToCopy).then(() => showCopyFeedback(copyBtn))
+      try {
+        if ($prism && typeof ($prism as any).highlightAll === 'function') {
+          ($prism as any).highlightAll()
+        } else if (windowPrism && typeof windowPrism.highlightAll === 'function') {
+          windowPrism.highlightAll()
         }
+      } catch (e) {
+        console.warn('Prism highlight notice:', e)
       }
-    }
+    }, 150)
   }
 }
+
+const windowPrism = (typeof window !== 'undefined' ? (window as any).Prism : null)
 
 watch(parsedContent, async () => {
   await nextTick()
   applyPrism()
 })
 
-onMounted(() => {
-  setTimeout(applyPrism, 200)
-  document.addEventListener('click', handleCopyClick)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleCopyClick)
-})
-
-const commentText = ref('')
-const isSendingComment = ref(false)
-const commentError = ref('')
-const toastMsg = ref('')
-
-function showNotification(msg: string) {
-  toastMsg.value = msg
-  setTimeout(() => { toastMsg.value = '' }, 3500)
-}
-
-async function voteThread(direction: 'up' | 'down') {
-  if (!post.value) return
-  const delta = direction === 'up' ? 1 : -1
-  post.value.karmaScore = (post.value.karmaScore || 0) + delta
-  await $fetch('/api/nodes/vote', {
-    method: 'POST',
-    body: { postId: post.value.id, targetId: post.value.id, targetType: 'post', direction, value: delta, userId: currentUser.value?.id }
-  }).catch(() => null)
-}
-
-async function submitComment() {
-  if (!commentText.value.trim() || !post.value) return
-  commentError.value = ''
-  isSendingComment.value = true
-
-  try {
-    await $fetch('/api/nodes/comments', {
-      method: 'POST',
-      body: { postId: post.value.id, content: commentText.value.trim(), userId: currentUser.value?.id }
-    })
-    if (import.meta.client) window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
-    commentText.value = ''
-    showNotification('💬 Risposta pubblicata! +10 XP accreditati!')
-    await Promise.all([refresh(), refreshComments()])
-    await nextTick()
-    applyPrism()
-  } catch (err: any) {
-    commentError.value = err?.data?.statusMessage || 'Errore durante la pubblicazione del commento.'
-  } finally {
-    isSendingComment.value = false
+watch(
+  () => post.value?.id,
+  (newId) => {
+    if (newId && import.meta.client) {
+      loadOnChainProof(true)
+      nextTick(() => applyPrism())
+    }
   }
-}
+)
+
+onMounted(() => {
+  setTimeout(applyPrism, 300)
+  if (post.value?.id) {
+    loadOnChainProof(true)
+  }
+})
 </script>
 
 <template>
@@ -366,7 +365,7 @@ async function submitComment() {
 
       <div v-else class="flex flex-col gap-8 relative">
         <article class="glass-panel p-6 sm:p-10 rounded-2xl border border-slate-800 bg-[#090d16] shadow-2xl relative overflow-hidden">
-          
+
           <div class="flex flex-col gap-4 mb-8 relative z-10 border-b border-slate-800 pb-4">
             <nav aria-label="Breadcrumb" class="w-full text-sm text-slate-400">
               <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
@@ -380,7 +379,14 @@ async function submitComment() {
               <span v-if="post.isPinned" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-md text-xs font-bold">📌 PINNED THREAD</span>
               <span class="bg-purple-500/15 text-purple-300 border border-purple-500/35 px-3 py-1 rounded-md text-xs font-bold">{{ post.nodeIcon }} n/{{ post.nodeName }}</span>
               <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold">⚡ PURE-SQL THREAD</span>
-              <span v-if="post.vaultHash" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold">🛡️ VAULT CERTIFIED v2.6</span>
+
+              <!-- BADGE TRUST SIGNAL ON-CHAIN INTERATTIVO -->
+              <VaultTrustBadge
+                :post-id="post.id"
+                :vault-hash="vaultProof?.vaultHash || post.vaultHash"
+                :block-number="vaultProof?.blockNumber || post.vaultBlockNumber"
+                @notarized="(h) => (post.vaultHash = h)"
+              />
             </div>
           </div>
 
@@ -406,7 +412,7 @@ async function submitComment() {
 
           <h1 class="text-2xl sm:text-4xl font-black text-white mb-8 leading-tight relative z-10 mt-0">{{ post.title }}</h1>
 
-          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border border-slate-800 mb-10 relative z-10" :style="{ borderColor: `${authorRank.color}45` }">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border border-slate-800 mb-8 relative z-10" :style="{ borderColor: `${authorRank.color}45` }">
             <div class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 shrink-0" :style="{ background: `linear-gradient(135deg, ${authorRank.color}, #0f172a)`, borderColor: authorRank.color }">
                 {{ (post.authorUsername || 'D')[0].toUpperCase() }}
@@ -433,7 +439,71 @@ async function submitComment() {
             <template #fallback><div class="py-10 text-center text-slate-500 animate-pulse font-mono mb-10">⏳ Formattazione in corso...</div></template>
           </ClientOnly>
 
-          <!-- SEZIONE CONDIVISIONE SUBITO SOTTO IL THREAD COME RICHIESTO NEL PNG -->
+          <!-- PANNELLO CERTIFICAZIONE ON-CHAIN SHA-256 (TRUST SIGNAL VISIBILE E VERIFICABILE) -->
+          <div class="bg-[#020420] border border-emerald-500/35 rounded-xl p-5 relative z-10 mb-6 shadow-lg font-mono">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="text-base">⛓️</span>
+                <span class="text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-wider">
+                  Proof-of-Code On-Chain Vault
+                </span>
+                <span
+                  v-if="vaultProof"
+                  class="text-[10px] px-2 py-0.5 rounded font-bold border"
+                  :class="vaultProof.status === 'VERIFIED'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                    : 'bg-rose-500/15 text-rose-300 border-rose-500/40'"
+                >
+                  {{ vaultProof.status === 'VERIFIED' ? '✅ SHA-256 VERIFIED' : '⚠️ MODIFIED POST-HASH' }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span v-if="vaultProof?.blockNumber" class="text-[11px] text-sky-400 font-bold">
+                  Block #{{ vaultProof.blockNumber }}
+                </span>
+                <NuxtLink
+                  to="/nodes/n/blockchain-vault"
+                  class="text-[11px] text-emerald-400 hover:underline no-underline font-bold"
+                >
+                  n/blockchain-vault →
+                </NuxtLink>
+              </div>
+            </div>
+
+            <div v-if="isCheckingVault" class="text-xs text-slate-400 py-2">
+              ⚡ Verifica crittografica SHA-256 sul ledger in corso...
+            </div>
+
+            <div v-else class="flex flex-col gap-2.5 text-xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#090d16] border border-slate-800 rounded-lg p-3">
+                <div class="min-w-0">
+                  <div class="text-[10px] text-slate-500 uppercase">SHA-256 Content Proof Hash</div>
+                  <div class="text-emerald-400 break-all select-all text-[11px] mt-0.5">
+                    {{ vaultProof?.vaultHash || post.vaultHash || 'In attesa di notarizzazione...' }}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="copyFullVaultHash"
+                  class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 font-bold text-[11px] cursor-pointer"
+                >
+                  {{ hashCopied ? '✓ Copiato' : '📋 Copia Hash' }}
+                </button>
+              </div>
+
+              <div v-if="vaultProof" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400">
+                <div class="bg-[#090d16] border border-slate-800/80 rounded-lg p-2.5 truncate">
+                  <span class="text-slate-500">Network:</span> <span class="text-sky-400 font-bold">{{ vaultProof.chainNetwork }}</span>
+                </div>
+                <div class="bg-[#090d16] border border-slate-800/80 rounded-lg p-2.5 truncate">
+                  <span class="text-slate-500">Merkle Root:</span> <span class="text-purple-400">{{ vaultProof.merkleRoot.slice(0, 18) }}…</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEZIONE CONDIVISIONE SUBITO SOTTO IL THREAD -->
           <div class="bg-[#020420] border border-slate-800 rounded-xl p-6 relative z-10 mb-8 shadow-lg">
             <div class="flex flex-col md:flex-row items-center justify-between gap-4">
               <div class="flex items-center gap-3 text-center md:text-left">
@@ -482,10 +552,44 @@ async function submitComment() {
 .glass-panel { backdrop-filter: blur(12px); }
 .prose h1, .post-content h1 { @apply text-2xl font-extrabold text-white mt-8 mb-4 border-b border-slate-800 pb-2; }
 .prose p, .post-content p { @apply text-slate-300 text-base leading-relaxed mb-6; }
-:deep(.dkp-code-wrapper) { background: #0d1117; border: 1px solid #1e293b; border-radius: 8px; margin: 1.2rem 0; }
-:deep(.dkp-code-header) { background: #161b22; padding: 0.5rem 1rem; display: flex; justify-content: space-between; color: #8b949e; font-size: 0.8rem; font-weight: bold; }
-:deep(.dkp-copy-btn) { background: none; border: none; color: #8b949e; cursor: pointer; }
-:deep(.dkp-code-block) { padding: 1rem; margin: 0; overflow-x: auto; font-family: monospace; }
+
+/* Stili specifici per i blocchi codice e colorazione PrismJS */
+:deep(.dkp-code-wrapper) { 
+  background: #0d1117; 
+  border: 1px solid #1e293b; 
+  border-radius: 8px; 
+  margin: 1.2rem 0; 
+  overflow: hidden;
+}
+:deep(.dkp-code-header) { 
+  background: #161b22; 
+  padding: 0.5rem 1rem; 
+  display: flex; 
+  justify-content: space-between; 
+  color: #8b949e; 
+  font-size: 0.8rem; 
+  font-weight: bold; 
+  border-bottom: 1px solid #1e293b;
+}
+:deep(.dkp-copy-btn) { 
+  background: none; 
+  border: none; 
+  color: #8b949e; 
+  cursor: pointer; 
+}
+:deep(.dkp-copy-btn:hover) { 
+  color: #10b981; 
+}
+:deep(.dkp-code-block) { 
+  padding: 1rem; 
+  margin: 0; 
+  overflow-x: auto; 
+  background-color: #0d1117 !important;
+}
+:deep(.dkp-code-block code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+}
 :deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
 :deep(.dkp-inline-code) { background-color: rgba(30, 41, 59, 0.8); color: #38bdf8; padding: 0.2rem 0.4rem; border-radius: 0.375rem; }
 </style>

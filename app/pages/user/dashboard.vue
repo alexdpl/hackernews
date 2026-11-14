@@ -6,6 +6,8 @@ import DkpEditor from '~/components/blog/DkpEditor.vue'
 import UserXpHistory from '~/components/UserXpHistory.vue'
 import DkpPulseManager from '~/components/dashboard/DkpPulseManager.vue'
 import DkpCommentsManager from '~/components/dashboard/DkpCommentsManager.vue'
+import DKPnodesRichEditor from '~/components/DKPnodesRichEditor.vue'
+import { buildCategoryNodeTree } from '~/composables/useDkpNodes'
 
 useDkpSeo({
   title: 'Pannello Riservato Utente — DevKernelPulse v2.6-PURE-SQL',
@@ -13,12 +15,29 @@ useDkpSeo({
   noindex: true
 })
 
+const { data: allNodesRes } = await useFetch<any>('/api/nodes')
+const nodeTree = computed(() => buildCategoryNodeTree(allNodesRes.value?.data || []))
+const editingThreadModal = ref<any>(null)
+
+function openEditThread(thread: any) {
+  editingThreadModal.value = {
+    id: thread.id,
+    title: thread.title,
+    content: thread.content,
+    nodeId: thread.nodeId || thread.node_id,
+    nodeSlug: thread.nodeSlug || thread.node_slug,
+    vaultHash: thread.vaultHash || thread.vault_hash,
+    isPinned: Boolean(thread.isPinned || thread.is_pinned)
+  }
+}
+
 const route = useRoute()
 const router = useRouter()
 const { currentUser } = useAuthCore()
 const { getMainUrl } = useDomain()
 
 const resolvedUserId = computed(() => currentUser.value?.id || 1)
+const isAdmin = computed(() => String(currentUser.value?.role || '').toUpperCase() === 'ADMIN')
 
 const activeTab = computed({
   get: () => (route.query.tab as string) || 'profile',
@@ -36,12 +55,6 @@ const itemsPerPage = 5
 // --- STATI THREAD NODES ---
 const myThreads = ref<any[]>([])
 const isLoadingThreads = ref(false)
-const isEditingThreadModal = ref(false)
-const threadForm = ref({
-  id: null as number | null,
-  title: '',
-  content: ''
-})
 
 async function fetchMyNodesThreads() {
   isLoadingThreads.value = true
@@ -52,35 +65,6 @@ async function fetchMyNodesThreads() {
     console.error('Errore caricamento thread:', err)
   } finally {
     isLoadingThreads.value = false
-  }
-}
-
-function openEditThreadModal(thread: any) {
-  threadForm.value = {
-    id: thread.id,
-    title: thread.title || '',
-    content: thread.content || ''
-  }
-  isEditingThreadModal.value = true
-}
-
-async function saveNodeThread() {
-  if (!threadForm.value.id || !threadForm.value.title.trim()) return
-  try {
-    // Forziamo la chiamata HTTP pura al server backend di Nitro
-    await $fetch(`/api/nodes/posts/${threadForm.value.id}`, {
-      method: 'PATCH',
-      body: {
-        title: threadForm.value.title.trim(),
-        content: threadForm.value.content.trim()
-      }
-    })
-    triggerToast('✅ Thread aggiornato con successo!')
-    isEditingThreadModal.value = false
-    await fetchMyNodesThreads()
-  } catch (err: any) {
-    console.error(err)
-    triggerToast('❌ Errore durante l\'aggiornamento del thread.')
   }
 }
 
@@ -864,7 +848,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                     <td class="p-3 text-slate-400 text-xs">{{ t.createdAt ? t.createdAt.split('T')[0] : 'Oggi' }}</td>
                     <td class="p-3 text-right">
                       <div class="inline-flex gap-2">
-                        <button type="button" @click="openEditThreadModal(t)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-sky-500/20">
+                        <button type="button" @click="openEditThread(t)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-sky-500/20">
                           ✏️ Edit
                         </button>
                         <button type="button" @click="deleteNodeThread(t.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-red-500/20">
@@ -882,59 +866,6 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         <div v-if="contentTab === 'pulse'"><DkpPulseManager/></div>
         <div v-if="contentTab === 'comments'"><DkpCommentsManager/></div>
       </section>
-
-      <!-- MODALE EDITOR ARTICOLO BLOG -->
-      <div v-if="isEditingArticle" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingArticle = false">
-        <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-            <h3 class="text-xl font-black text-white">✏️ Editor Post Blog DKP</h3>
-            <button type="button" @click="useAdvancedEditor = !useAdvancedEditor" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-bold text-xs px-3.5 py-1.5 rounded-xl cursor-pointer">
-              {{ useAdvancedEditor ? '⬅️ Standard' : '✨ Avanzato' }}
-            </button>
-          </div>
-          
-          <div v-if="useAdvancedEditor">
-            <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
-          </div>
-          
-          <div v-else class="flex flex-col gap-4">
-            <input v-model="articleForm.title" type="text" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" placeholder="Titolo post..." />
-            <select v-model="articleForm.category" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400">
-              <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">{{ cat.icon }} {{ cat.name }}</option>
-            </select>
-            <textarea v-model="articleForm.summary" rows="3" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none resize-none" placeholder="Breve estratto (Summary)..."></textarea>
-            <textarea v-model="articleForm.content" rows="6" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none font-mono" placeholder="Contenuto dell'articolo (supporta Markdown)..."></textarea>
-          </div>
-
-          <div class="flex justify-end gap-3 border-t border-slate-800 pt-4">
-            <button type="button" @click="isEditingArticle = false" class="bg-slate-800 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Annulla</button>
-            <button type="button" @click="submitWithStatus('draft')" class="bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Salva in Bozza</button>
-            <button type="button" @click="submitWithStatus('published')" class="bg-emerald-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer">Pubblica Ora</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- MODALE EDIT THREAD NODES -->
-      <div v-if="isEditingThreadModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingThreadModal = false">
-        <div class="bg-[#090d16] border border-purple-500/40 rounded-3xl p-6 sm:p-8 w-full max-w-2xl flex flex-col gap-4 shadow-2xl">
-          <h3 class="text-lg font-black text-white m-0">✏️ Modifica Thread DKP Nodes</h3>
-          
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs text-slate-400">Titolo Discussione</label>
-            <input v-model="threadForm.title" type="text" class="bg-[#020420] border border-slate-700 rounded-xl p-3 text-white text-xs outline-none focus:border-purple-400 font-sans font-bold" />
-          </div>
-
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs text-slate-400">Contenuto (Markdown)</label>
-            <textarea v-model="threadForm.content" rows="6" class="bg-[#020420] border border-slate-700 rounded-xl p-3 text-white text-xs outline-none focus:border-purple-400 font-mono"></textarea>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
-            <button type="button" @click="isEditingThreadModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">Annulla</button>
-            <button type="button" @click="saveNodeThread" class="px-5 py-2 bg-emerald-500 text-slate-950 rounded-xl text-xs font-bold cursor-pointer">Salva Modifiche</button>
-          </div>
-        </div>
-      </div>
 
       <!-- PANNELLO 3: API CONSOLE -->
       <section v-if="activeTab === 'api'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
@@ -1094,5 +1025,48 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
       </section>
 
     </div>
+
+    <!-- MODALE EDITOR ARTICOLO BLOG -->
+    <div v-if="isEditingArticle" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingArticle = false">
+      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+          <h3 class="text-xl font-black text-white">✏️ Editor Post Blog DKP</h3>
+          <button type="button" @click="useAdvancedEditor = !useAdvancedEditor" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-bold text-xs px-3.5 py-1.5 rounded-xl cursor-pointer">
+            {{ useAdvancedEditor ? '⬅️ Standard' : '✨ Avanzato' }}
+          </button>
+        </div>
+        
+        <div v-if="useAdvancedEditor">
+          <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
+        </div>
+        
+        <div v-else class="flex flex-col gap-4">
+          <input v-model="articleForm.title" type="text" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" placeholder="Titolo post..." />
+          <select v-model="articleForm.category" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400">
+            <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">{{ cat.icon }} {{ cat.name }}</option>
+          </select>
+          <textarea v-model="articleForm.summary" rows="3" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none resize-none" placeholder="Breve estratto (Summary)..."></textarea>
+          <textarea v-model="articleForm.content" rows="6" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none font-mono" placeholder="Contenuto dell'articolo (supporta Markdown)..."></textarea>
+        </div>
+
+        <div class="flex justify-end gap-3 border-t border-slate-800 pt-4">
+          <button type="button" @click="isEditingArticle = false" class="bg-slate-800 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Annulla</button>
+          <button type="button" @click="submitWithStatus('draft')" class="bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Salva in Bozza</button>
+          <button type="button" @click="submitWithStatus('published')" class="bg-emerald-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer">Pubblica Ora</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODALE UNIFICATA DKP NODES RICH EDITOR (CORRETTAMENTE POSIZIONATA) -->
+    <DKPnodesRichEditor
+      :is-open="Boolean(editingThreadModal)"
+      :categories="nodeTree.categories"
+      :grouped-nodes="nodeTree.groupedNodes"
+      :edit-post="editingThreadModal"
+      :is-admin="isAdmin"
+      @close="editingThreadModal = null"
+      @updated="async () => { editingThreadModal = null; await fetchMyNodesThreads(); triggerToast('✅ Thread aggiornato con successo!') }"
+    />
+
   </div>
 </template>
