@@ -1,56 +1,92 @@
 // server/utils/mailer.ts
-import nodemailer from 'nodemailer'
+import nodemailer, { type Transporter } from 'nodemailer'
 
-interface SendEmailOptions {
-  from: string
+export interface SendEmailOptions {
+  from?: string
+  replyTo?: string
   to: string
   subject: string
   html: string
+  headers?: Record<string, string>
 }
 
-export async function sendKernelEmail({ from, to, subject, html }: SendEmailOptions) {
-  // 1. Recupero configurazione sia da Nuxt RuntimeConfig che da process.env
-  const config = useRuntimeConfig()
+let cachedTransporter: Transporter | null = null
+let cachedConfigSignature = ''
 
+function getSmtpConfig() {
+  const config = useRuntimeConfig()
   const host = (config.smtpHost as string) || process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com'
   const port = Number((config.smtpPort as string) || process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587)
   const user = (config.smtpUser as string) || process.env.SMTP_USER || process.env.NUXT_SMTP_USER || ''
   const pass = (config.smtpPass as string) || process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || ''
+  const defaultFrom =
+    (config.smtpFrom as string) ||
+    process.env.SMTP_FROM ||
+    process.env.NUXT_SMTP_FROM ||
+    'alex@devkernelpulse.org'
 
-  // 🔍 LOG DI DEBUG IN CONSOLE PER VERIFICARE LE VALORI IN RUNTIME
-  console.log('--------------------------------------------------')
-  console.log('📧 [MAILER DEBUG] Host:', host)
-  console.log('📧 [MAILER DEBUG] Port:', port)
-  console.log('📧 [MAILER DEBUG] User:', user)
-  console.log('📧 [MAILER DEBUG] Pass Length:', pass ? `${pass.length} caratteri` : '❌ MANCANTE')
-  console.log('📧 [MAILER DEBUG] Pass Prefix:', pass ? pass.substring(0, 10) + '...' : 'N/A')
-  console.log('--------------------------------------------------')
+  return { host, port, user, pass, defaultFrom }
+}
 
-  // 2. Controllo di sicurezza prima di tentare l'invio
+function getTransporter(): { transporter: Transporter; defaultFrom: string } {
+  const { host, port, user, pass, defaultFrom } = getSmtpConfig()
+
   if (!user || !pass) {
-    console.error('❌ [MAILER ERROR] Credenziali SMTP non trovate nell ambiente!')
-    throw new Error(`Credenziali SMTP mancanti! User: ${user ? 'OK' : 'MANCANTE'}, Pass: ${pass ? 'OK' : 'MANCANTE'}`)
+    throw new Error(`Credenziali SMTP mancanti (User: ${user ? 'OK' : 'MISSING'}, Pass: ${pass ? 'OK' : 'MISSING'})`)
   }
 
-  // 3. Creazione Transporter Nodemailer
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465, // false per 587 (STARTTLS)
-    auth: {
-      user,
-      pass
+  const signature = `${host}:${port}:${user}`
+  if (!cachedTransporter || cachedConfigSignature !== signature) {
+    cachedTransporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      auth: { user, pass }
+    })
+    cachedConfigSignature = signature
+  }
+
+  return { transporter: cachedTransporter, defaultFrom }
+}
+
+function extractEmailAddress(raw: string): string {
+  const match = raw.match(/<([^>]+)>/)
+  return (match ? match[1] : raw).trim().toLowerCase()
+}
+
+export async function sendKernelEmail({ from, replyTo, to, subject, html, headers }: SendEmailOptions) {
+  const { transporter, defaultFrom } = getTransporter()
+
+  const verifiedSender = defaultFrom.includes('<')
+    ? defaultFrom
+    : `DevKernelPulse <${defaultFrom}>`
+
+  // Previene errore SMTP 550 se "from" usa un alias non autorizzato dal relay
+  const requestedEmail = from ? extractEmailAddress(from) : ''
+  const verifiedEmail = extractEmailAddress(verifiedSender)
+  const isVerifiedDomain = requestedEmail.endsWith('@devkernelpulse.org')
+
+  const effectiveFrom = requestedEmail && isVerifiedDomain
+    ? (from!.includes('<') ? from! : `DevKernelPulse <${requestedEmail}>`)
+    : verifiedSender
+
+  const effectiveReplyTo =
+    replyTo || (requestedEmail && requestedEmail !== verifiedEmail ? requestedEmail : undefined)
+
+  const info = await transporter.sendMail({
+    from: effectiveFrom,
+    replyTo: effectiveReplyTo,
+    to: to.trim(),
+    subject,
+    html,
+    headers: {
+      'X-DKP-Kernel-Version': 'v2.6-PURE-SQL',
+      ...(headers || {})
     }
   })
 
-  // 4. Invio dell'e-mail
-  const info = await transporter.sendMail({
-    from: from || process.env.SMTP_FROM || 'alex@devkernelpulse.org',
-    to,
-    subject,
-    html
-  })
-
-  console.log('✅ [MAILER SUCCESS] Email inviata con ID:', info.messageId)
   return info
 }

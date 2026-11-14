@@ -1,6 +1,6 @@
 <!-- app/pages/admin/nodes/index.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 useHead({
   title: 'DKP Nodes & Forum Control Center v2.6 — DKP Admin',
@@ -8,8 +8,6 @@ useHead({
     { name: 'description', content: 'Gestione Nodi, Subreddits, moderazione discussioni e verifica audit Sentinel AI Vault.' }
   ]
 })
-
-const { getMainUrl, getApiUrl } = useDomain()
 
 // --- INTERFACCE DATI ---
 interface DkpNode {
@@ -44,19 +42,46 @@ interface ThreadPost {
   authorName: string
 }
 
+const adminModules = [
+  { to: '/admin', label: '⚙️ API Gateway' },
+  { to: '/admin/mail', label: '📧 Mail' },
+  { to: '/admin/newsletter', label: '📣 Newsletter' },
+  { to: '/admin/autoresponder', label: '📡 Autoresponder' },
+  { to: '/admin/crawler', label: '🤖 Crawler' },
+  { to: '/admin/blog', label: '📝 Blog' },
+  { to: '/admin/nodes', label: '💬 Gestione Nodi', active: true },
+  { to: '/admin/shop', label: '🛍️ Shop' },
+  { to: '/admin/jobs', label: '💼 Jobs' }
+]
+
 // --- STATI GLOBALI ---
 const nodes = ref<DkpNode[]>([])
 const threads = ref<ThreadPost[]>([])
 const isLoading = ref(false)
+const isSavingNode = ref(false)
 
 // Toast System
 const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error' | 'warning'>('success')
 
+// Filtri & Paginazione Thread
 const searchQuery = ref('')
 const selectedNodeFilter = ref<string>('')
+const sidebarNodeSearch = ref('')
 const activeTab = ref<'all' | 'flagged'>('all')
+const currentPage = ref(1)
+const pageSize = ref(15)
+const serverTotalThreads = ref<number | null>(null)
+
+// Stato Dropdown Albero Nodi
+const expandedParents = ref<Record<string, boolean>>({})
+
+// Quick-Create Dropdown Form
+const quickParentId = ref<number | string | null>(null)
+const quickName = ref('')
+
+const cleanNodePrefix = (val: string) => String(val || '').replace(/^(n\/)+/i, '').trim()
 
 function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
   toastMessage.value = msg
@@ -107,29 +132,72 @@ const filteredEmojis = computed(() => {
 
 const presetColors = ['#38bdf8', '#00dc82', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#10b981', '#6366f1', '#eab308']
 
-const autoSlug = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '')
-const handleNodeNameInput = () => { if (!nodeForm.value.id) nodeForm.value.slug = autoSlug(nodeForm.value.name) }
+const autoSlug = (text: string) =>
+  cleanNodePrefix(text)
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 
-// --- COMPUTED: ORDINAMENTO GERARCHICO (Nodi Principali n/ prima, poi Sub-Nodi n/n/) ---
-const sortedNodes = computed(() => {
-  const mainNodes = nodes.value.filter(n => !n.parentId)
-  const subNodes = nodes.value.filter(n => !!n.parentId)
-  
-  const result: DkpNode[] = []
-  
-  mainNodes.forEach(main => {
-    result.push(main)
-    const children = subNodes.filter(sub => String(sub.parentId) === String(main.id))
-    result.push(...children)
+const handleNodeNameInput = () => {
+  if (!nodeForm.value.id) nodeForm.value.slug = autoSlug(nodeForm.value.name)
+}
+
+// --- GERARCHIA NODI (Replica logica Dropdown della Homepage) ---
+const mainNodes = computed(() => nodes.value.filter(n => !n.parentId))
+
+const nodeTree = computed(() => {
+  const q = sidebarNodeSearch.value.toLowerCase().trim()
+  const childrenByParent = new Map<string, DkpNode[]>()
+  const mainIds = new Set(mainNodes.value.map(m => String(m.id)))
+  const orphans: DkpNode[] = []
+
+  nodes.value.forEach(n => {
+    if (!n.parentId) return
+    const pKey = String(n.parentId)
+    if (!mainIds.has(pKey)) {
+      if (!q || n.name.toLowerCase().includes(q) || n.slug.toLowerCase().includes(q)) {
+        orphans.push(n)
+      }
+      return
+    }
+    const list = childrenByParent.get(pKey) || []
+    list.push(n)
+    childrenByParent.set(pKey, list)
   })
-  
-  const assignedIds = new Set(result.map(r => r.id))
-  subNodes.forEach(sub => {
-    if (!assignedIds.has(sub.id)) result.push(sub)
-  })
-  
-  return result
+
+  const groups = mainNodes.value
+    .map(parent => {
+      const allChildren = childrenByParent.get(String(parent.id)) || []
+      if (!q) return { parent, children: allChildren }
+
+      const parentMatches = parent.name.toLowerCase().includes(q) || parent.slug.toLowerCase().includes(q)
+      const matchingChildren = allChildren.filter(
+        c => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
+      )
+
+      if (parentMatches || matchingChildren.length > 0) {
+        return { parent, children: parentMatches ? allChildren : matchingChildren }
+      }
+      return null
+    })
+    .filter((g): g is { parent: DkpNode; children: DkpNode[] } => g !== null)
+
+  return { groups, orphans }
 })
+
+const toggleParentDropdown = (parentId: number | string) => {
+  const key = String(parentId)
+  expandedParents.value[key] = !expandedParents.value[key]
+}
+
+const expandAllNodes = (expand: boolean) => {
+  const next: Record<string, boolean> = {}
+  mainNodes.value.forEach(m => {
+    next[String(m.id)] = expand
+  })
+  expandedParents.value = next
+}
 
 // --- STATO MODALE VAULT REPORT ---
 const isVaultModalOpen = ref(false)
@@ -139,7 +207,25 @@ const selectedPostForVault = ref<ThreadPost | null>(null)
 const fetchNodes = async () => {
   try {
     const res: any = await $fetch('/api/admin/nodes')
-    if (res?.success) nodes.value = res.data || []
+    if (res?.success && Array.isArray(res.data)) {
+      nodes.value = res.data.map((raw: any) => {
+        const rawParent = raw.parentId ?? raw.parent_id ?? null
+        const normalizedParent = rawParent === 0 || rawParent === '0' || rawParent === '' ? null : rawParent
+        return {
+          ...raw,
+          parentId: normalizedParent,
+          name: cleanNodePrefix(raw.name),
+          slug: cleanNodePrefix(raw.slug),
+          subscribersCount: Number(raw.subscribersCount ?? raw.subscribers_count ?? 0),
+          postsCount: Number(raw.postsCount ?? raw.posts_count ?? 0),
+          isPrivate: Boolean(raw.isPrivate ?? raw.is_private)
+        }
+      })
+
+      if (Object.keys(expandedParents.value).length === 0) {
+        expandAllNodes(nodes.value.length <= 25)
+      }
+    }
   } catch (err: any) {
     console.error('Errore fetch nodi:', err)
     triggerToast('Impossibile caricare i Nodi dal DB.', 'error')
@@ -149,8 +235,23 @@ const fetchNodes = async () => {
 const fetchThreads = async () => {
   isLoading.value = true
   try {
-    const res: any = await $fetch('/api/admin/nodes/posts')
-    if (res?.success) threads.value = res.data || []
+    const res: any = await $fetch('/api/admin/nodes/posts', {
+      query: {
+        page: currentPage.value,
+        limit: pageSize.value,
+        search: searchQuery.value || undefined,
+        node: selectedNodeFilter.value || undefined,
+        status: activeTab.value === 'flagged' ? 'locked' : undefined
+      }
+    })
+    if (res?.success && Array.isArray(res.data)) {
+      threads.value = res.data.map((t: any) => ({
+        ...t,
+        nodeName: cleanNodePrefix(t.nodeName || t.node_name),
+        nodeSlug: cleanNodePrefix(t.nodeSlug || t.node_slug)
+      }))
+      serverTotalThreads.value = typeof res.total === 'number' ? res.total : null
+    }
   } catch (err: any) {
     console.error('Errore fetch thread:', err)
     triggerToast('Impossibile caricare le discussioni.', 'error')
@@ -159,75 +260,193 @@ const fetchThreads = async () => {
   }
 }
 
-// --- COMPUTED THREAD FILTRATI & COUNTER SENTINEL ---
+// --- COMPUTED THREAD FILTRATI & PAGINATI ---
 const filteredThreads = computed(() => {
+  if (serverTotalThreads.value !== null) return threads.value
+
   return threads.value.filter(t => {
-    const matchesSearch = !searchQuery.value || t.title.toLowerCase().includes(searchQuery.value.toLowerCase()) || t.authorName.toLowerCase().includes(searchQuery.value.toLowerCase())
+    const q = searchQuery.value.toLowerCase().trim()
+    const matchesSearch =
+      !q ||
+      (t.title || '').toLowerCase().includes(q) ||
+      (t.authorName || '').toLowerCase().includes(q)
     const matchesNode = !selectedNodeFilter.value || t.nodeSlug === selectedNodeFilter.value
     const matchesTab = activeTab.value === 'all' ? true : t.isLocked
     return matchesSearch && matchesNode && matchesTab
   })
 })
 
+const totalThreadsCount = computed(() =>
+  serverTotalThreads.value !== null ? serverTotalThreads.value : filteredThreads.value.length
+)
+
+const totalPages = computed(() => Math.max(1, Math.ceil(totalThreadsCount.value / pageSize.value)))
+
+const paginatedThreads = computed(() => {
+  if (serverTotalThreads.value !== null) return threads.value
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredThreads.value.slice(start, start + pageSize.value)
+})
+
+const visiblePageNumbers = computed(() => {
+  const total = totalPages.value
+  const cur = currentPage.value
+  const pages: number[] = []
+  const start = Math.max(1, cur - 2)
+  const end = Math.min(total, cur + 2)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
+
 const flaggedCount = computed(() => threads.value.filter(t => t.isLocked).length)
 
+watch([searchQuery, selectedNodeFilter, activeTab, pageSize], () => {
+  currentPage.value = 1
+  if (serverTotalThreads.value !== null) {
+    fetchThreads()
+  }
+})
+
+const goToPage = (page: number) => {
+  const target = Math.min(Math.max(1, page), totalPages.value)
+  if (target === currentPage.value) return
+  currentPage.value = target
+  if (serverTotalThreads.value !== null) {
+    fetchThreads()
+  }
+}
+
 // --- OPERAZIONI NODI ---
-const openNodeModal = (node: DkpNode | null = null) => {
+const createQuickNode = async () => {
+  const cleanName = cleanNodePrefix(quickName.value)
+  if (!cleanName) {
+    return triggerToast('Inserisci il nome del Nodo o Sub-nodo.', 'warning')
+  }
+  const slug = autoSlug(cleanName)
+  if (!slug) {
+    return triggerToast('Nome nodo non valido per generare lo slug.', 'warning')
+  }
+
+  isSavingNode.value = true
+  try {
+    const parentObj = quickParentId.value
+      ? mainNodes.value.find(m => String(m.id) === String(quickParentId.value))
+      : null
+
+    const payload = {
+      parentId: quickParentId.value || null,
+      name: cleanName,
+      slug,
+      description: parentObj
+        ? `Sub-nodo ufficiale di n/${parentObj.name} dedicato a ${cleanName}.`
+        : `Community ufficiale DKP dedicata a ${cleanName}.`,
+      icon: parentObj?.icon || '💬',
+      color: parentObj?.color || '#38bdf8',
+      isPrivate: false
+    }
+
+    const res: any = await $fetch('/api/admin/nodes', { method: 'POST', body: payload })
+    if (res?.success) {
+      triggerToast(
+        quickParentId.value
+          ? `🚀 Sub-nodo n/n/${slug} creato sotto n/${parentObj?.name || 'parent'}!`
+          : `🚀 Nodo principale n/${slug} creato!`,
+        'success'
+      )
+      if (quickParentId.value) {
+        expandedParents.value[String(quickParentId.value)] = true
+      }
+      quickName.value = ''
+      await fetchNodes()
+    }
+  } catch (err: any) {
+    triggerToast(`❌ Errore creazione rapida: ${err?.data?.statusMessage || err?.message || 'DB Error'}`, 'error')
+  } finally {
+    isSavingNode.value = false
+  }
+}
+
+const openNodeModal = (node: DkpNode | null = null, presetParentId: number | string | null = null) => {
   if (node) {
-    nodeForm.value = { 
-      id: node.id, 
+    nodeForm.value = {
+      id: node.id,
       parentId: node.parentId || null,
-      name: node.name, 
-      slug: node.slug, 
-      description: node.description, 
-      icon: node.icon || '💬', 
-      color: node.color || '#38bdf8', 
-      isPrivate: node.isPrivate 
+      name: cleanNodePrefix(node.name),
+      slug: cleanNodePrefix(node.slug),
+      description: node.description,
+      icon: node.icon || '💬',
+      color: node.color || '#38bdf8',
+      isPrivate: node.isPrivate
     }
   } else {
-    nodeForm.value = { id: null, parentId: null, name: '', slug: '', description: '', icon: '💬', color: '#38bdf8', isPrivate: false }
+    const parentObj = presetParentId
+      ? mainNodes.value.find(m => String(m.id) === String(presetParentId))
+      : null
+    const cleanQuick = cleanNodePrefix(quickName.value)
+
+    nodeForm.value = {
+      id: null,
+      parentId: presetParentId || quickParentId.value || null,
+      name: cleanQuick,
+      slug: autoSlug(cleanQuick),
+      description: '',
+      icon: parentObj?.icon || '💬',
+      color: parentObj?.color || '#38bdf8',
+      isPrivate: false
+    }
   }
   selectedEmojiCategory.value = 'ALL'
   isNodeModalOpen.value = true
 }
 
 const saveNode = async () => {
-  if (!nodeForm.value.name || !nodeForm.value.slug || !nodeForm.value.description) {
+  const cleanName = cleanNodePrefix(nodeForm.value.name)
+  const cleanSlug = autoSlug(nodeForm.value.slug || cleanName)
+  if (!cleanName || !cleanSlug || !nodeForm.value.description) {
     return triggerToast('Compila Nome, Slug e Descrizione.', 'warning')
   }
-  isLoading.value = true
+  isSavingNode.value = true
   try {
-    const payload = { ...nodeForm.value }
+    const payload = {
+      ...nodeForm.value,
+      name: cleanName,
+      slug: cleanSlug
+    }
     const url = nodeForm.value.id ? `/api/admin/nodes/${nodeForm.value.id}` : '/api/admin/nodes'
     const method = nodeForm.value.id ? 'PUT' : 'POST'
 
     const res: any = await $fetch(url, { method, body: payload })
     if (res?.success) {
       triggerToast(nodeForm.value.id ? '✅ Nodo aggiornato con successo!' : '🚀 Nuovo Nodo creato!', 'success')
+      if (nodeForm.value.parentId) {
+        expandedParents.value[String(nodeForm.value.parentId)] = true
+      }
+      quickName.value = ''
       await fetchNodes()
       isNodeModalOpen.value = false
     }
   } catch (err: any) {
-    triggerToast(`❌ Errore salvataggio nodo: ${err.message || 'DB Error'}`, 'error')
+    triggerToast(`❌ Errore salvataggio nodo: ${err?.data?.statusMessage || err?.message || 'DB Error'}`, 'error')
   } finally {
-    isLoading.value = false
+    isSavingNode.value = false
   }
 }
 
 const deleteNode = async (id: number | string) => {
   if (!confirm('⚠️ Sei sicuro di voler eliminare questo Nodo? Tutti i thread e commenti associati verranno cancellati.')) return
-  isLoading.value = true
+  isSavingNode.value = true
   try {
     const res: any = await $fetch(`/api/admin/nodes/${id}`, { method: 'DELETE' })
     if (res?.success) {
       triggerToast('🗑️ Nodo eliminato dal database.', 'success')
+      if (selectedNodeFilter.value) selectedNodeFilter.value = ''
       await fetchNodes()
       await fetchThreads()
     }
-  } catch (err: any) {
+  } catch {
     triggerToast('❌ Errore durante l\'eliminazione del nodo.', 'error')
   } finally {
-    isLoading.value = false
+    isSavingNode.value = false
   }
 }
 
@@ -242,7 +461,7 @@ const togglePinThread = async (post: ThreadPost) => {
       post.isPinned = !post.isPinned
       triggerToast(post.isPinned ? '📌 Thread fissato in cima' : '📌 Thread sfissato', 'success')
     }
-  } catch (err) {
+  } catch {
     triggerToast('Errore cambio stato Pin.', 'error')
   }
 }
@@ -257,7 +476,7 @@ const toggleLockThread = async (post: ThreadPost) => {
       post.isLocked = !post.isLocked
       triggerToast(post.isLocked ? '🔒 Thread bloccato (Sentinel AI)' : '🔓 Thread sbloccato', 'warning')
     }
-  } catch (err) {
+  } catch {
     triggerToast('Errore cambio stato Lock.', 'error')
   }
 }
@@ -268,9 +487,15 @@ const deleteThread = async (id: number) => {
     const res: any = await $fetch(`/api/admin/nodes/posts/${id}`, { method: 'DELETE' })
     if (res?.success) {
       threads.value = threads.value.filter(t => t.id !== id)
+      if (serverTotalThreads.value !== null) {
+        serverTotalThreads.value = Math.max(0, serverTotalThreads.value - 1)
+      }
+      if (paginatedThreads.value.length === 0 && currentPage.value > 1) {
+        currentPage.value--
+      }
       triggerToast('🗑️ Thread rimosso dal database.', 'success')
     }
-  } catch (err) {
+  } catch {
     triggerToast('Errore durante l\'eliminazione del thread.', 'error')
   }
 }
@@ -287,7 +512,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 font-sans">
+  <div class="min-h-screen bg-[#020420] text-slate-300 pt-8 pb-28 px-4 sm:px-6 font-sans">
     
     <!-- FLOATING TOAST NOTIFICATION -->
     <Transition name="toast-fade">
@@ -317,43 +542,28 @@ onMounted(() => {
             <span class="text-cyan-400 font-black text-xs tracking-wider uppercase">DKP NODES ADMIN CONTROL CENTER</span>
           </div>
 
-          <NuxtLink :to="getMainUrl('/admin')" external class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all">
+          <NuxtLink to="/admin" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all no-underline">
             🏠 Dashboard Main
           </NuxtLink>
         </div>
 
-        <!-- GRID NAVIGATION -->
-        <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono">
-          <NuxtLink :to="getApiUrl('/admin/api-gateway')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            ⚙️ API Gateway
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/mail')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            📧 Mail
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/newsletter')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            📣 Newsletter
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/crawler')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            🤖 Crawler
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/blog')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            📝 Blog
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/nodes')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-sky-300 bg-sky-500/20 border border-sky-500/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]">
-            💬 Gestione Nodi
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/shop')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            🛍️ Shop
-          </NuxtLink>
-          <NuxtLink :to="getMainUrl('/admin/jobs')" external class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 transition-all">
-            💼 Jobs
+        <nav class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 font-mono">
+          <NuxtLink
+            v-for="mod in adminModules"
+            :key="mod.to"
+            :to="mod.to"
+            class="inline-flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl font-bold text-xs transition-all no-underline truncate"
+            :class="mod.active
+              ? 'text-sky-300 bg-sky-500/20 border border-sky-500/50 shadow-[0_0_10px_rgba(56,189,248,0.2)]'
+              : 'text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15'"
+          >
+            {{ mod.label }}
           </NuxtLink>
         </nav>
       </div>
 
       <!-- HEADER HERO NODES & FORUM v2.6-PURE-SQL -->
       <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
-        <!-- Glow Cosmico -->
         <div class="absolute -right-20 -top-20 w-72 h-72 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -363,98 +573,284 @@ onMounted(() => {
               DKP NODES &amp; SUBREDDITS CONTROL CENTER v2.6-PURE-SQL
             </span>
           </div>
-          <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight m-0">
             Gestione <span class="text-emerald-400">DKP Nodes &amp; Moderazione</span>
           </h1>
-          <p class="text-slate-400 text-xs sm:text-sm max-w-2xl">
-            Crea e gestisci i Nodi della community, modera le discussioni ed esamina la coda di audit Sentinel AI.
+          <p class="text-slate-400 text-xs sm:text-sm max-w-2xl m-0">
+            Organizza Nodi principali (n/) e Sub-nodi (n/n/) con struttura dropdown, modera i thread paginati ed esamina la coda Sentinel AI Vault.
           </p>
+        </div>
+
+        <div class="relative z-10 flex items-center gap-2 font-mono">
+          <button
+            type="button"
+            @click="openNodeModal(null, null)"
+            class="px-4 py-2.5 rounded-xl font-black text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-[0_0_15px_rgba(0,220,130,0.3)] cursor-pointer"
+          >
+            ➕ Nuovo Nodo / Subnodo
+          </button>
         </div>
       </header>
 
-      <!-- MAIN HYBRID GRID (380px / 1fr) -->
+      <!-- MAIN HYBRID GRID -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        <!-- ================= COLONNA SINISTRA: NODI (GERARCHIA REDDIT / SUBREDDIT) ================= -->
+        <!-- ================= COLONNA SINISTRA: CRUD GERARCHICO A DROPDOWN ================= -->
         <aside class="lg:col-span-5 xl:col-span-4 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
           <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-            <h3 class="text-white font-bold text-base flex items-center gap-2">
-              <span>🏷️ Nodi Attivi ({{ nodes.length }})</span>
+            <h3 class="text-white font-bold text-base flex items-center gap-2 m-0">
+              <span>🏷️ Gerarchia Nodi ({{ nodes.length }})</span>
             </h3>
-            <button 
-              @click="openNodeModal()" 
-              class="px-3 py-1.5 rounded-lg font-black text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-[0_0_10px_rgba(0,220,130,0.2)] cursor-pointer"
+            <div class="flex items-center gap-1.5 font-mono text-[10px]">
+              <button
+                type="button"
+                @click="expandAllNodes(true)"
+                class="px-2 py-1 rounded bg-[#040814] border border-slate-800 text-slate-400 hover:text-sky-400 cursor-pointer"
+                title="Espandi tutti i dropdown"
+              >
+                ▾ Apri
+              </button>
+              <button
+                type="button"
+                @click="expandAllNodes(false)"
+                class="px-2 py-1 rounded bg-[#040814] border border-slate-800 text-slate-400 hover:text-sky-400 cursor-pointer"
+                title="Comprimi tutti i dropdown"
+              >
+                ▸ Chiudi
+              </button>
+            </div>
+          </div>
+
+          <!-- QUICK-CREATE DROPDOWN BOX -->
+          <form @submit.prevent="createQuickNode" class="bg-[#040814] border border-slate-800 rounded-xl p-3 flex flex-col gap-2.5 font-mono text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black uppercase text-sky-400 tracking-wider">⚡ Inserimento Rapido Gerarchico</span>
+              <button
+                type="button"
+                @click="openNodeModal(null, quickParentId)"
+                class="text-[10px] text-emerald-400 hover:underline cursor-pointer bg-transparent border-0 p-0"
+              >
+                🎨 Icona &amp; Colori ↗
+              </button>
+            </div>
+
+            <select
+              v-model="quickParentId"
+              aria-label="Seleziona nodo padre o principale"
+              class="w-full bg-[#080d1a] border border-slate-800 text-slate-200 px-3 py-2 rounded-lg font-bold outline-none focus:border-sky-500 transition-all text-xs cursor-pointer"
             >
-              ➕ Nuovo
-            </button>
+              <option :value="null">📂 Livello Root: Nodo Principale (n/)</option>
+              <option v-for="parent in mainNodes" :key="parent.id" :value="parent.id">
+                ↳ Sub-nodo sotto: {{ parent.icon }} n/{{ parent.name }}
+              </option>
+            </select>
+
+            <div class="flex gap-2">
+              <input
+                v-model="quickName"
+                type="text"
+                :placeholder="quickParentId ? 'Nome sub-nodo (es. kubernetes)...' : 'Nome nodo (es. devops)...'"
+                class="flex-1 min-w-0 bg-[#080d1a] border border-slate-800 text-white px-3 py-2 rounded-lg outline-none focus:border-emerald-500 text-xs"
+              />
+              <button
+                type="submit"
+                :disabled="isSavingNode || !quickName.trim()"
+                class="px-3 py-2 rounded-lg font-black text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all cursor-pointer disabled:opacity-40 whitespace-nowrap"
+              >
+                ➕ Crea
+              </button>
+            </div>
+          </form>
+
+          <!-- DROPDOWN NAVIGAZIONE RAPIDA HOMEPAGE-STYLE -->
+          <div class="flex flex-col gap-1.5 font-mono">
+            <label class="text-[10px] text-slate-500 font-bold uppercase">🔍 Filtra Thread per Nodo (Dropdown)</label>
+            <select
+              v-model="selectedNodeFilter"
+              class="w-full bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl font-bold outline-none focus:border-sky-500 transition-all text-xs cursor-pointer"
+            >
+              <option value="">🌐 Tutti i Nodi &amp; Sub-nodi ({{ nodes.length }})</option>
+              <optgroup v-for="group in nodeTree.groups" :key="group.parent.id" :label="`${group.parent.icon || '💬'} n/${group.parent.name}`">
+                <option :value="group.parent.slug">
+                  📂 n/{{ group.parent.name }} (Principale)
+                </option>
+                <option v-for="sub in group.children" :key="sub.id" :value="sub.slug">
+                  ↳ n/n/{{ sub.name }}
+                </option>
+              </optgroup>
+              <optgroup v-if="nodeTree.orphans.length > 0" label="⚠️ Sub-nodi senza padre">
+                <option v-for="orphan in nodeTree.orphans" :key="orphan.id" :value="orphan.slug">
+                  ↳ n/n/{{ orphan.name }}
+                </option>
+              </optgroup>
+            </select>
+
+            <input
+              v-model="sidebarNodeSearch"
+              type="text"
+              placeholder="Cerca nell'albero nodi..."
+              class="w-full bg-[#040814] border border-slate-800 text-slate-200 px-3 py-1.5 rounded-lg outline-none focus:border-sky-500 text-xs mt-1"
+            />
           </div>
 
           <div v-if="!nodes.length" class="p-8 text-center text-slate-500 font-mono text-xs">
-            Nessun nodo registrato. Creane uno nuovo!
+            Nessun nodo registrato. Creane uno dal box qui sopra!
           </div>
 
-          <div v-else class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
-            <div 
-              v-for="node in sortedNodes" 
-              :key="node.id" 
-              :class="[
-                'bg-[#040814] border border-slate-800/90 rounded-xl p-3.5 transition-all hover:border-slate-700',
-                node.parentId ? 'ml-4 border-l-2 border-l-sky-400 bg-[#060b1d]' : ''
-              ]"
+          <!-- ALBERO COLLASSABILE NODI & SUBNODI (Con shrink-0 per evitare compressione) -->
+          <div v-else class="flex flex-col gap-2.5 max-h-[58vh] overflow-y-auto pr-1">
+            <div
+              v-for="group in nodeTree.groups"
+              :key="group.parent.id"
+              class="shrink-0 bg-[#040814] border border-slate-800/90 rounded-xl transition-all hover:border-slate-700"
             >
-              <div class="flex justify-between items-start gap-2">
-                <div class="flex items-center gap-2.5">
-                  <div 
-                    class="w-8 h-8 rounded-lg flex items-center justify-center border text-base"
-                    :style="{ backgroundColor: `${node.color || '#38bdf8'}20`, color: node.color || '#38bdf8', borderColor: `${node.color || '#38bdf8'}40` }"
+              <!-- NODO PRINCIPALE (n/) -->
+              <div class="p-3.5">
+                <div class="flex justify-between items-start gap-2">
+                  <button
+                    type="button"
+                    @click="toggleParentDropdown(group.parent.id)"
+                    class="flex items-center gap-2.5 text-left bg-transparent border-0 p-0 cursor-pointer flex-1 min-w-0"
                   >
-                    <span>{{ node.icon || '💬' }}</span>
-                  </div>
-                  <div class="flex flex-col">
-                    <h4 class="text-white font-bold text-xs sm:text-sm flex items-center gap-1">
-                      <span v-if="node.parentId" class="text-[9px] bg-sky-500/20 text-sky-400 px-1 py-0.2 rounded font-mono font-bold">n/n/</span>
-                      <span v-else class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded font-mono font-bold">n/</span>
-                      {{ node.name }}
-                    </h4>
-                    <span class="text-[10px] text-slate-500 font-mono">
-                      {{ node.parentId ? `/nodes/n/sub/${node.slug}` : `/nodes/n/${node.slug}` }}
-                    </span>
+                    <div
+                      class="w-8 h-8 rounded-lg flex items-center justify-center border text-base shrink-0"
+                      :style="{ backgroundColor: `${group.parent.color || '#38bdf8'}20`, color: group.parent.color || '#38bdf8', borderColor: `${group.parent.color || '#38bdf8'}40` }"
+                    >
+                      <span>{{ group.parent.icon || '💬' }}</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                      <h4 class="text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 m-0">
+                        <span class="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">n/</span>
+                        <span class="truncate">{{ group.parent.name }}</span>
+                        <span
+                          v-if="group.children.length > 0"
+                          class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 shrink-0"
+                        >
+                          {{ expandedParents[String(group.parent.id)] ? '▾' : '▸' }} {{ group.children.length }}
+                        </span>
+                      </h4>
+                      <span class="text-[10px] text-slate-500 font-mono truncate">/nodes/n/{{ group.parent.slug }}</span>
+                    </div>
+                  </button>
+
+                  <div class="flex items-center gap-1 font-mono shrink-0">
+                    <button
+                      type="button"
+                      @click="openNodeModal(null, group.parent.id)"
+                      class="px-2 py-1.5 bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 rounded-lg text-[10px] font-black transition-all cursor-pointer"
+                      title="Aggiungi Sub-nodo sotto questo Nodo"
+                    >
+                      +Sub
+                    </button>
+                    <button
+                      type="button"
+                      @click="openNodeModal(group.parent)"
+                      class="p-1.5 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded-lg text-xs transition-all cursor-pointer"
+                      title="Modifica Nodo"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      @click="deleteNode(group.parent.id)"
+                      class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer"
+                      title="Elimina Nodo"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-1 font-mono">
-                  <button @click="openNodeModal(node)" class="p-1.5 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded-lg text-xs transition-all cursor-pointer" title="Modifica Nodo">✏️</button>
-                  <button @click="deleteNode(node.id)" class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer" title="Elimina Nodo">🗑️</button>
+                <p class="text-[11px] text-slate-400 my-2 line-clamp-1 leading-relaxed">{{ group.parent.description }}</p>
+
+                <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-2 border-t border-slate-800/60">
+                  <span>👥 {{ group.parent.subscribersCount }} Iscritti</span>
+                  <span>💬 {{ group.parent.postsCount || 0 }} Thread</span>
+                  <span v-if="group.parent.isPrivate" class="text-amber-400 font-bold">🔒 Privato</span>
                 </div>
               </div>
 
-              <p class="text-[11px] text-slate-400 my-2 line-clamp-2 leading-relaxed">{{ node.description }}</p>
+              <!-- SUB-NODI DROPDOWN EXPANDED (n/n/) -->
+              <div
+                v-if="group.children.length > 0 && expandedParents[String(group.parent.id)]"
+                class="bg-[#060b1d] border-t border-slate-800/80 px-3 py-2.5 flex flex-col gap-2"
+              >
+                <div
+                  v-for="sub in group.children"
+                  :key="sub.id"
+                  class="shrink-0 bg-[#040814] border border-slate-800/80 border-l-2 border-l-sky-400 rounded-lg p-2.5 flex items-center justify-between gap-2"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-sm shrink-0">{{ sub.icon || '💬' }}</span>
+                    <div class="min-w-0">
+                      <div class="text-xs font-bold text-slate-200 flex items-center gap-1">
+                        <span class="text-[9px] bg-sky-500/20 text-sky-400 px-1 rounded font-mono shrink-0">n/n/</span>
+                        <span class="truncate">{{ sub.name }}</span>
+                      </div>
+                      <span class="text-[10px] text-slate-500 font-mono block truncate">
+                        /nodes/n/sub/{{ sub.slug }} • 💬 {{ sub.postsCount || 0 }}
+                      </span>
+                    </div>
+                  </div>
 
-              <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-2 border-t border-slate-800/60">
-                <span>👥 {{ node.subscribersCount }} Iscritti</span>
-                <span>💬 {{ node.postsCount || 0 }} Thread</span>
-                <span v-if="node.isPrivate" class="text-amber-400 font-bold">🔒 Privato</span>
+                  <div class="flex items-center gap-1 font-mono shrink-0">
+                    <button
+                      type="button"
+                      @click="openNodeModal(sub)"
+                      class="p-1 bg-slate-800 hover:bg-sky-500 hover:text-slate-950 text-sky-400 rounded text-[11px] cursor-pointer"
+                      title="Modifica Sub-nodo"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      @click="deleteNode(sub.id)"
+                      class="p-1 bg-rose-500/15 hover:bg-rose-500 text-rose-400 hover:text-white rounded text-[11px] cursor-pointer"
+                      title="Elimina Sub-nodo"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- EVENTUALI SUB-NODI ORFANI -->
+            <div
+              v-for="orphan in nodeTree.orphans"
+              :key="orphan.id"
+              class="shrink-0 bg-[#060b1d] border border-slate-800 border-l-2 border-l-amber-400 rounded-xl p-3 flex items-center justify-between gap-2"
+            >
+              <div class="min-w-0">
+                <span class="text-xs font-bold text-white block truncate">{{ orphan.icon }} n/n/{{ orphan.name }}</span>
+                <span class="text-[10px] text-amber-400 font-mono">⚠️ Nodo padre non trovato (assegna gerarchia)</span>
+              </div>
+              <div class="flex items-center gap-1 font-mono shrink-0">
+                <button type="button" @click="openNodeModal(orphan)" class="p-1.5 bg-slate-800 text-sky-400 rounded-lg text-xs cursor-pointer">✏️</button>
+                <button type="button" @click="deleteNode(orphan.id)" class="p-1.5 bg-rose-500/15 text-rose-400 rounded-lg text-xs cursor-pointer">🗑️</button>
               </div>
             </div>
           </div>
         </aside>
 
-        <!-- ================= COLONNA DESTRA: THREADS & MODERAZIONE ================= -->
-        <main class="lg:col-span-7 xl:col-span-8 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+        <!-- ================= COLONNA DESTRA: THREADS PAGINATI & MODERAZIONE ================= -->
+        <main class="lg:col-span-7 xl:col-span-8 bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4 min-w-0">
           
-          <!-- CONTROLLI TAB & FILTRI -->
-          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-800 font-mono text-xs">
+          <!-- CONTROLLI TAB, FILTRI & PAGE SIZE -->
+          <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 pb-4 border-b border-slate-800 font-mono text-xs">
             <div class="flex items-center gap-2 flex-wrap">
               <button 
+                type="button"
                 @click="activeTab = 'all'" 
                 :class="[
                   'px-3 py-2 rounded-xl font-bold transition-all cursor-pointer border',
                   activeTab === 'all' ? 'bg-sky-500/15 text-sky-400 border-sky-500/40 shadow-[0_0_10px_rgba(56,189,248,0.2)]' : 'bg-[#040814] text-slate-400 border-slate-800 hover:text-white'
                 ]"
               >
-                Tutti i Thread ({{ threads.length }})
+                Tutti i Thread ({{ totalThreadsCount }})
               </button>
               <button 
+                type="button"
                 @click="activeTab = 'flagged'" 
                 :class="[
                   'px-3 py-2 rounded-xl font-bold transition-all cursor-pointer border flex items-center gap-1.5',
@@ -468,52 +864,71 @@ onMounted(() => {
               </button>
             </div>
 
-            <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="flex items-center gap-2 w-full xl:w-auto flex-wrap">
               <select 
                 v-model="selectedNodeFilter" 
-                class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl font-bold outline-none focus:border-sky-500 transition-all text-xs cursor-pointer"
+                aria-label="Filtra per nodo"
+                class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl font-bold outline-none focus:border-sky-500 transition-all text-xs cursor-pointer max-w-[175px]"
               >
                 <option value="">Tutti i Nodi</option>
-                <option v-for="n in nodes" :key="n.id" :value="n.slug">n/{{ n.name }}</option>
+                <optgroup v-for="group in nodeTree.groups" :key="group.parent.id" :label="`${group.parent.icon || '💬'} n/${group.parent.name}`">
+                  <option :value="group.parent.slug">n/{{ group.parent.name }}</option>
+                  <option v-for="sub in group.children" :key="sub.id" :value="sub.slug">
+                    ↳ n/n/{{ sub.name }}
+                  </option>
+                </optgroup>
               </select>
+
               <input 
                 v-model="searchQuery" 
                 type="text" 
                 placeholder="Cerca thread..." 
-                class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl outline-none focus:border-sky-500 transition-all text-xs w-full sm:w-40" 
+                class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl outline-none focus:border-sky-500 transition-all text-xs flex-1 sm:w-36" 
               />
+
+              <select
+                v-model.number="pageSize"
+                aria-label="Thread per pagina"
+                class="bg-[#040814] border border-slate-800 text-slate-300 px-2.5 py-2 rounded-xl font-bold outline-none focus:border-sky-500 text-xs cursor-pointer"
+                title="Elementi per pagina"
+              >
+                <option :value="10">10 / pag</option>
+                <option :value="15">15 / pag</option>
+                <option :value="25">25 / pag</option>
+                <option :value="50">50 / pag</option>
+              </select>
             </div>
           </div>
 
-          <!-- TABELLA DISCUSSIONI -->
+          <!-- TABELLA DISCUSSIONI PAGINATA -->
           <div v-if="isLoading" class="text-center py-12 text-sky-400 animate-pulse font-mono text-xs">
-            Sincronizzazione discussioni con Neon DB...
+            Sincronizzazione discussioni paginazione Pure SQL...
           </div>
 
           <div v-else class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <table class="w-full text-left border-collapse text-xs">
               <thead>
-                <tr class="bg-[#040814] text-slate-400 font-extrabold text-[11px] uppercase border-b border-slate-800 font-mono">
-                  <th class="p-3.5">TITOLO DISCUSSIONE</th>
-                  <th class="p-3.5">NODO</th>
-                  <th class="p-3.5">AUTORE</th>
-                  <th class="p-3.5">KARMA</th>
-                  <th class="p-3.5">STATO</th>
-                  <th class="p-3.5 text-right">AZIONI MODERAZIONE</th>
+                <tr class="bg-[#040814] text-slate-400 font-extrabold text-[10px] uppercase border-b border-slate-800 font-mono">
+                  <th class="p-2.5">TITOLO DISCUSSIONE</th>
+                  <th class="p-2.5">NODO</th>
+                  <th class="p-2.5">AUTORE</th>
+                  <th class="p-2.5">KARMA</th>
+                  <th class="p-2.5">STATO</th>
+                  <th class="p-2.5 text-right">AZIONI</th>
                 </tr>
               </thead>
               <tbody>
                 <tr 
-                  v-for="post in filteredThreads" 
+                  v-for="post in paginatedThreads" 
                   :key="post.id" 
                   :class="[
                     'border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors',
                     post.isLocked ? 'bg-amber-500/5' : ''
                   ]"
                 >
-                  <td class="p-3.5">
+                  <td class="p-2.5 max-w-[230px]">
                     <div class="flex flex-col">
-                      <NuxtLink :to="`/nodes/thread/${post.id}`" target="_blank" class="font-bold text-white hover:text-sky-400 transition-colors">
+                      <NuxtLink :to="`/nodes/thread/${post.id}`" target="_blank" class="font-bold text-white hover:text-sky-400 transition-colors line-clamp-2">
                         {{ post.title }}
                       </NuxtLink>
                       <span v-if="post.vaultHash" class="text-[10px] text-purple-400 font-mono mt-0.5" title="Vault Proof-of-Code Certificato">
@@ -521,32 +936,34 @@ onMounted(() => {
                       </span>
                     </div>
                   </td>
-                  <td class="p-3.5 font-mono">
+                  <td class="p-2.5 font-mono">
                     <span 
-                      class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                      class="px-2 py-0.5 rounded text-[10px] font-bold border inline-block max-w-[145px] truncate"
                       :style="{ backgroundColor: `${post.nodeColor || '#38bdf8'}15`, color: post.nodeColor || '#38bdf8', borderColor: `${post.nodeColor || '#38bdf8'}30` }"
+                      :title="`n/${post.nodeSlug}`"
                     >
                       {{ post.nodeIcon }} n/{{ post.nodeSlug }}
                     </span>
                   </td>
-                  <td class="p-3.5 font-mono text-slate-400">@{{ post.authorName }}</td>
-                  <td class="p-3.5 font-mono font-bold" :class="post.karmaScore > 0 ? 'text-emerald-400' : 'text-slate-400'">
+                  <td class="p-2.5 font-mono text-slate-400 whitespace-nowrap">@{{ post.authorName }}</td>
+                  <td class="p-2.5 font-mono font-bold whitespace-nowrap" :class="post.karmaScore > 0 ? 'text-emerald-400' : 'text-slate-400'">
                     ▲ {{ post.karmaScore }}
                   </td>
-                  <td class="p-3.5 font-mono">
+                  <td class="p-2.5 font-mono whitespace-nowrap">
                     <span v-if="post.isPinned" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mr-1">
                       📌 Pinned
                     </span>
                     <span v-if="post.isLocked" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                      🔒 Locked (Sentinel)
+                      🔒 Locked
                     </span>
                     <span v-if="!post.isPinned && !post.isLocked" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">
                       Attivo
                     </span>
                   </td>
-                  <td class="p-3.5 text-right font-mono">
-                    <div class="flex justify-end items-center gap-1.5">
+                  <td class="p-2.5 text-right font-mono whitespace-nowrap">
+                    <div class="flex justify-end items-center gap-1">
                       <button 
+                        type="button"
                         v-if="post.vaultHash" 
                         @click="inspectVault(post)" 
                         class="p-1.5 bg-purple-500/15 border border-purple-500/30 hover:bg-purple-500 hover:text-white text-purple-300 rounded-lg text-xs transition-all cursor-pointer" 
@@ -555,6 +972,7 @@ onMounted(() => {
                         🛡️
                       </button>
                       <button 
+                        type="button"
                         @click="togglePinThread(post)" 
                         class="p-1.5 bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 rounded-lg text-xs transition-all cursor-pointer" 
                         :title="post.isPinned ? 'Unpin' : 'Pin in Cima'"
@@ -562,6 +980,7 @@ onMounted(() => {
                         📌
                       </button>
                       <button 
+                        type="button"
                         @click="toggleLockThread(post)" 
                         class="p-1.5 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 rounded-lg text-xs transition-all cursor-pointer" 
                         :title="post.isLocked ? 'Sblocca Discussione' : 'Blocca Discussione'"
@@ -569,6 +988,7 @@ onMounted(() => {
                         🔒
                       </button>
                       <button 
+                        type="button"
                         @click="deleteThread(post.id)" 
                         class="p-1.5 bg-rose-500/15 border border-rose-500/30 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs transition-all cursor-pointer" 
                         title="Elimina Thread"
@@ -579,13 +999,77 @@ onMounted(() => {
                   </td>
                 </tr>
 
-                <tr v-if="filteredThreads.length === 0">
+                <tr v-if="paginatedThreads.length === 0">
                   <td colspan="6" class="p-12 text-center text-slate-500 font-mono text-xs">
                     📂 Nessun thread trovato per i filtri selezionati.
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- BARRA CONTROLLI PAGINAZIONE -->
+          <div
+            v-if="totalThreadsCount > 0"
+            class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80 font-mono text-xs"
+          >
+            <div class="text-slate-400">
+              Pagina <strong class="text-white">{{ currentPage }}</strong> di <strong class="text-white">{{ totalPages }}</strong>
+              • Totale: <strong class="text-sky-400">{{ totalThreadsCount }}</strong> thread
+            </div>
+
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                :disabled="currentPage <= 1"
+                @click="goToPage(1)"
+                class="px-2.5 py-1.5 rounded-lg bg-[#040814] border border-slate-800 text-slate-300 hover:border-sky-500 disabled:opacity-40 cursor-pointer"
+                title="Prima pagina"
+              >
+                «
+              </button>
+              <button
+                type="button"
+                :disabled="currentPage <= 1"
+                @click="goToPage(currentPage - 1)"
+                class="px-3 py-1.5 rounded-lg bg-[#040814] border border-slate-800 text-slate-300 hover:border-sky-500 disabled:opacity-40 cursor-pointer"
+              >
+                ← Prec
+              </button>
+
+              <button
+                v-for="p in visiblePageNumbers"
+                :key="p"
+                type="button"
+                @click="goToPage(p)"
+                :class="[
+                  'px-3 py-1.5 rounded-lg border font-bold cursor-pointer transition-all',
+                  p === currentPage
+                    ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                    : 'bg-[#040814] border-slate-800 text-slate-300 hover:border-sky-500'
+                ]"
+              >
+                {{ p }}
+              </button>
+
+              <button
+                type="button"
+                :disabled="currentPage >= totalPages"
+                @click="goToPage(currentPage + 1)"
+                class="px-3 py-1.5 rounded-lg bg-[#040814] border border-slate-800 text-slate-300 hover:border-sky-500 disabled:opacity-40 cursor-pointer"
+              >
+                Succ →
+              </button>
+              <button
+                type="button"
+                :disabled="currentPage >= totalPages"
+                @click="goToPage(totalPages)"
+                class="px-2.5 py-1.5 rounded-lg bg-[#040814] border border-slate-800 text-slate-300 hover:border-sky-500 disabled:opacity-40 cursor-pointer"
+                title="Ultima pagina"
+              >
+                »
+              </button>
+            </div>
           </div>
         </main>
 
@@ -600,31 +1084,29 @@ onMounted(() => {
         >
           <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-hidden">
             
-            <!-- HEADER MODALE -->
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 class="text-cyan-400 font-bold text-base sm:text-lg">
-                💬 {{ nodeForm.id ? "Modifica Nodo DKP" : "Nuovo Nodo (Subreddit)" }}
+              <h3 class="text-cyan-400 font-bold text-base sm:text-lg m-0">
+                💬 {{ nodeForm.id ? "Modifica Nodo DKP" : "Nuovo Nodo / Sub-nodo DKP" }}
               </h3>
-              <button @click="isNodeModalOpen = false" class="text-slate-500 hover:text-white font-bold text-xl cursor-pointer">✕</button>
+              <button type="button" @click="isNodeModalOpen = false" class="text-slate-500 hover:text-white font-bold text-xl cursor-pointer bg-transparent border-0">✕</button>
             </div>
 
-            <!-- FORM SCROLLABILE -->
             <div class="flex flex-col gap-4 overflow-y-auto pr-1 font-mono text-xs">
               
-              <!-- SELETTORE GERARCHIA PADRE -->
+              <!-- SELETTORE GERARCHIA PADRE (Dropdown stile Homepage) -->
               <div class="flex flex-col gap-1.5">
                 <label class="text-slate-400 font-bold uppercase">TIPO NODO &amp; GERARCHIA *</label>
                 <select 
                   v-model="nodeForm.parentId" 
                   class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all cursor-pointer"
                 >
-                  <option :value="null">📂 Nodo Principale (n/ reddit)</option>
+                  <option :value="null">📂 Nodo Principale (n/ root)</option>
                   <option 
-                    v-for="parent in nodes.filter(n => !n.parentId && n.id !== nodeForm.id)" 
+                    v-for="parent in mainNodes.filter(n => n.id !== nodeForm.id)" 
                     :key="parent.id" 
                     :value="parent.id"
                   >
-                    ↳ Sub-Nodo di: n/{{ parent.name }} (n/n/ subreddit)
+                    ↳ Sub-Nodo di: {{ parent.icon }} n/{{ parent.name }} (n/n/)
                   </option>
                 </select>
               </div>
@@ -708,7 +1190,7 @@ onMounted(() => {
               <!-- PALETTE COLORI -->
               <div class="flex flex-col gap-1.5">
                 <label class="text-slate-400 font-bold uppercase">COLORE ACCENT NODO</label>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <span 
                     v-for="color in presetColors" 
                     :key="color" 
@@ -744,13 +1226,12 @@ onMounted(() => {
 
             </div>
 
-            <!-- FOOTER -->
             <div class="border-t border-slate-800 pt-4 flex justify-end gap-3 font-mono">
               <button @click="isNodeModalOpen = false" type="button" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
                 Annulla
               </button>
-              <button @click="saveNode" type="button" :disabled="isLoading" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
-                {{ isLoading ? 'Salvataggio...' : '💾 Salva Nodo' }}
+              <button @click="saveNode" type="button" :disabled="isSavingNode" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50">
+                {{ isSavingNode ? 'Salvataggio...' : '💾 Salva Nodo' }}
               </button>
             </div>
 
@@ -767,7 +1248,7 @@ onMounted(() => {
         >
           <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-4 font-mono">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 class="text-purple-400 font-black text-base flex items-center gap-2">
+              <h3 class="text-purple-400 font-black text-base flex items-center gap-2 m-0">
                 <span>🛡️ DKP Vault Proof-of-Code Certificate</span>
               </h3>
               <span class="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded font-bold">
@@ -776,8 +1257,8 @@ onMounted(() => {
             </div>
 
             <div class="flex flex-col gap-2 my-2 text-xs">
-              <h4 class="text-white font-bold text-sm">{{ selectedPostForVault.title }}</h4>
-              <p class="text-slate-400">
+              <h4 class="text-white font-bold text-sm m-0">{{ selectedPostForVault.title }}</h4>
+              <p class="text-slate-400 m-0">
                 Autore: <strong class="text-white">@{{ selectedPostForVault.authorName }}</strong> • Data: {{ new Date(selectedPostForVault.createdAt).toLocaleDateString('it-IT') }}
               </p>
               
@@ -787,7 +1268,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <button @click="isVaultModalOpen = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer">
+            <button type="button" @click="isVaultModalOpen = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer">
               Chiudi Report
             </button>
           </div>

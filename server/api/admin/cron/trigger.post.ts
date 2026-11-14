@@ -1,31 +1,34 @@
 // server/api/admin/cron/trigger.post.ts
-import { defineEventHandler, getHeader, createError } from 'h3'
+import { defineEventHandler, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { verifyAdminOrCronAuth } from '~~/server/utils/cronAuth'
 
-export default defineEventHandler(async (event) => {
-  const authHeader = getHeader(event, 'authorization') || ''
-  
-  // Auth flessibile per Admin
-  if (!authHeader.includes('dkp_live_') && !authHeader.includes('admin')) {
-    throw createError({ statusCode: 401, statusMessage: 'Non autorizzato per il trigger' })
-  }
-
+export const runHnTrigger = async (event: any) => {
   const db = await getDb()
   if (!db) throw createError({ statusCode: 500, statusMessage: 'Database offline' })
 
+  await verifyAdminOrCronAuth(event, db)
+
+  const config = useRuntimeConfig(event)
   let imported = 0
   let cachePurged = false
 
   try {
     const topIds: number[] = await $fetch<number[]>('https://hacker-news.firebaseio.com/v0/topstories.json')
-      .then(ids => (Array.isArray(ids) ? ids.slice(0, 15) : [])).catch(() => [])
+      .then(ids => (Array.isArray(ids) ? ids.slice(0, 15) : []))
+      .catch(() => [])
 
-    for (const hnId of topIds) {
-      const item: any = await $fetch(`https://hacker-news.firebaseio.com/v0/item/${hnId}.json`).catch(() => null)
-      if (!item || !item.title || item.type !== 'story') continue
+    // Fetch parallelo non bloccante (ottimizzato per Cloud Run)
+    const settledItems = await Promise.allSettled(
+      topIds.map(hnId => $fetch<any>(`https://hacker-news.firebaseio.com/v0/item/${hnId}.json`))
+    )
 
-      // FIX TABELLA: Usiamo hn_stories e le colonne corrette (hn_id, "by", score)
+    for (const res of settledItems) {
+      if (res.status !== 'fulfilled' || !res.value) continue
+      const item = res.value
+      if (!item.title || item.type !== 'story') continue
+
       const inserted: any = await db.execute(sql`
         INSERT INTO hn_stories (hn_id, title, url, "by", score, type, created_at)
         VALUES (
@@ -41,7 +44,7 @@ export default defineEventHandler(async (event) => {
           score = EXCLUDED.score
         RETURNING id
       `).catch((err: any) => {
-        console.error(`Errore insert HN_ID ${hnId}:`, err.message)
+        console.error(`Errore insert HN_ID ${item.id}:`, err.message)
         return []
       })
 
@@ -51,8 +54,8 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const cfZoneId = process.env.CLOUDFLARE_ZONE_ID
-    const cfApiToken = process.env.CLOUDFLARE_API_TOKEN
+    const cfZoneId = config.cloudflareZoneId || process.env.CLOUDFLARE_ZONE_ID
+    const cfApiToken = config.cloudflareApiToken || process.env.CLOUDFLARE_API_TOKEN
 
     if (cfZoneId && cfApiToken) {
       const cfRes: any = await $fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
@@ -62,11 +65,14 @@ export default defineEventHandler(async (event) => {
       }).catch(() => null)
       cachePurged = Boolean(cfRes?.success)
     } else {
-      cachePurged = true 
+      cachePurged = true
     }
 
     return { success: true, imported, cachePurged, timestamp: new Date().toISOString() }
   } catch (err: any) {
-    throw createError({ statusCode: 500, statusMessage: err?.message || 'Errore interno' })
+    if (err.statusCode) throw err
+    throw createError({ statusCode: 500, statusMessage: err?.message || 'Errore interno trigger' })
   }
-})
+}
+
+export default defineEventHandler(runHnTrigger)

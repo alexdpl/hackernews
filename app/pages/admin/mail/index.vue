@@ -20,14 +20,15 @@ interface MailMessage {
   body_text?: string
   body_html?: string
   direction: 'INBOUND' | 'OUTBOUND'
-  status: 'UNREAD' | 'READ' | 'ARCHIVED' | 'SENT' | 'FAILED'
+  status: 'UNREAD' | 'READ' | 'ARCHIVED' | 'SENT' | 'FAILED' | 'RECEIVED'
+  is_read?: boolean
   is_starred: boolean
   reply_to_id?: number | null
   created_at: string
 }
 
 const adminNavItems = [
-  { to: '/admin/api-gateway', label: '⚙️ API Gateway' },
+  { to: '/admin', label: '⚙️ API Gateway' },
   { to: '/admin/mail', label: '📧 Mail Center', active: true },
   { to: '/admin/newsletter', label: '📣 Newsletter' },
   { to: '/admin/autoresponder', label: '📡 Autoresponder' },
@@ -68,7 +69,18 @@ const composeData = ref({
   replyToId: null as number | null
 })
 
-// Sanitizzazione HTML Anti-XSS per lettura email inbound
+// Unico client centralizzato per tutte le operazioni Mail API (GET / PATCH / POST)
+async function mailApi<T = any>(
+  path = '',
+  options: { method?: 'GET' | 'PATCH' | 'POST'; body?: Record<string, any> } = {}
+): Promise<T> {
+  return await $fetch<T>(`/api/mail${path}`, {
+    method: options.method || 'GET',
+    body: options.body,
+    credentials: 'include'
+  })
+}
+
 function sanitizeEmailHtml(rawHtml?: string): string {
   if (!rawHtml) return ''
   return rawHtml
@@ -83,13 +95,26 @@ function sanitizeEmailHtml(rawHtml?: string): string {
 
 const sanitizedActiveHtml = computed(() => sanitizeEmailHtml(activeMail.value?.body_html))
 
-// Fetch Mails via Nitro Internal Route
+function normalizeMailRow(raw: any): MailMessage {
+  const isUnread =
+    raw.status === 'UNREAD' ||
+    (raw.direction === 'INBOUND' && raw.is_read === false)
+
+  return {
+    ...raw,
+    is_read: raw.is_read ?? !isUnread,
+    is_starred: Boolean(raw.is_starred),
+    status: isUnread ? 'UNREAD' : (raw.status === 'RECEIVED' ? 'READ' : (raw.status || 'READ'))
+  }
+}
+
 async function fetchMails() {
   isLoading.value = true
   try {
-    const res: any = await $fetch('/api/admin/mail')
-    if (res && res.success) {
-      mails.value = Array.isArray(res.mails) ? res.mails : []
+    const res = await mailApi()
+    if (res?.success) {
+      const rawList = Array.isArray(res.mails) ? res.mails : (Array.isArray(res.data) ? res.data : [])
+      mails.value = rawList.map(normalizeMailRow)
       unreadCount.value = Number(res.unreadCount ?? mails.value.filter(m => m.status === 'UNREAD').length)
       if (mails.value.length > 0 && !activeMail.value) {
         activeMail.value = mails.value[0]
@@ -106,6 +131,7 @@ async function fetchMails() {
           body_text: 'Sincronizzazione completata per il dominio devkernelpulse.org (SPF, DKIM, DMARC verificati) su DKP Kernel v2.6-PURE-SQL.',
           direction: 'INBOUND',
           status: 'UNREAD',
+          is_read: false,
           is_starred: true,
           created_at: new Date().toISOString()
         }
@@ -138,19 +164,20 @@ const filteredMails = computed(() => {
 
 async function selectMail(mail: MailMessage) {
   activeMail.value = mail
-  if (mail.status === 'UNREAD') {
+  if (mail.status === 'UNREAD' || mail.is_read === false) {
     mail.status = 'READ'
+    mail.is_read = true
     if (unreadCount.value > 0) unreadCount.value--
-    await $fetch('/api/admin/mail', {
+    await mailApi('', {
       method: 'PATCH',
-      body: { id: mail.id, status: 'READ' }
+      body: { id: mail.id, status: 'READ', is_read: true }
     }).catch(() => null)
   }
 }
 
 async function toggleStar(mail: MailMessage) {
   mail.is_starred = !mail.is_starred
-  await $fetch('/api/admin/mail', {
+  await mailApi('', {
     method: 'PATCH',
     body: { id: mail.id, is_starred: mail.is_starred }
   }).catch(() => null)
@@ -188,12 +215,12 @@ async function handleSendMail() {
   isSending.value = true
 
   try {
-    const res: any = await $fetch('/api/admin/mail/send', {
+    const res = await mailApi('/send', {
       method: 'POST',
       body: composeData.value
     })
 
-    if (res && res.success) {
+    if (res?.success) {
       sendSuccessMsg.value = '⚡ Email inviata con successo tramite Brevo v3!'
       setTimeout(() => {
         showComposeModal.value = false
@@ -201,6 +228,12 @@ async function handleSendMail() {
         composeData.value = { from: 'info@devkernelpulse.org', to: '', subject: '', html: '', replyToId: null }
         fetchMails()
       }, 1100)
+    } else if (res?.queued) {
+      sendSuccessMsg.value = '⏳ Email accodata nella Retry Queue SMTP!'
+      setTimeout(() => {
+        showComposeModal.value = false
+        sendSuccessMsg.value = ''
+      }, 1300)
     } else {
       sendErrorMsg.value = res?.error || res?.statusMessage || 'Errore durante l\'invio dell\'email.'
     }

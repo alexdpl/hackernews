@@ -4,8 +4,6 @@ import { fileURLToPath } from 'node:url'
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-25',
 
-css: ['~/app/assets/css/main.css'],
-
   future: {
     compatibilityVersion: 4
   },
@@ -16,11 +14,33 @@ css: ['~/app/assets/css/main.css'],
     host: 'localhost',
     port: 3000
   },
+  
+  '/api/mail/**': {
+      cache: false,
+      cors: true
+    },
+    '/api/newsletter/**': {
+      cache: false,
+      cors: true
+    },
+    '/api/autoresponder/**': {
+      cache: false,
+      cors: true
+    },
 
   // 🟢 ROUTE RULES: Gestione Caching ed Isolamento API Nitro Engine
   routeRules: {
-    // API Amministrative: Nessuna cache, bypass completo SSR / Vue Router
+    // Pannello Admin & Webmail: Nessuna cache Edge, nessuna interferenza SSR
+    '/admin/**': {
+      ssr: false,
+      cache: false
+    },
+    // API Amministrative & Mail Subdomain: Nessuna cache, CORS abilitato
     '/api/admin/**': {
+      cache: false,
+      cors: true
+    },
+    '/api/mail/**': {
       cache: false,
       cors: true
     },
@@ -75,13 +95,13 @@ css: ['~/app/assets/css/main.css'],
         { name: 'robots', content: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1' },
         { name: 'keywords', content: 'DevKernelPulse, Nuxt 4, OpenUI Studio, OpenRouter, Neon DB, Drizzle ORM, AI Gateway, API Key Management' },
         { name: 'description', content: 'Piattaforma SaaS avanzata per Nuxt 4 con Neural Playground, OpenUI Studio, Proof-of-Code Vault e API Gateway protetto.' },
-        
+
         { property: 'og:type', content: 'website' },
         { property: 'og:site_name', content: 'DevKernelPulse v2.6-PURE-SQL' },
         { property: 'og:title', content: 'DevKernelPulse — The Next-Gen Developer & AI Ecosystem' },
         { property: 'og:description', content: 'Piattaforma SaaS avanzata per Nuxt 4 con Neural Playground, OpenUI Studio, Proof-of-Code Vault e API Gateway protetto.' },
         { property: 'og:image', content: 'https://devkernelpulse.org/og-cover.png' },
-        
+
         { name: 'twitter:card', content: 'summary_large_image' },
         { name: 'twitter:title', content: 'DevKernelPulse v2.6-PURE-SQL' },
         { name: 'twitter:description', content: 'Costruisci, proteggi e monetizza le tue app con Nuxt 4 e IA decentralizzata.' },
@@ -93,7 +113,7 @@ css: ['~/app/assets/css/main.css'],
     }
   },
 
-  // 🟢 VITE BUNDLER OPTIMIZATION (Risolto NUXT_B7002)
+  // 🟢 VITE BUNDLER OPTIMIZATION
   vite: {
     optimizeDeps: {
       include: [
@@ -102,7 +122,7 @@ css: ['~/app/assets/css/main.css'],
     }
   },
 
-  // 🟢 STYLES & TAILWIND (Risolto NUXT_B7027)
+  // 🟢 STYLES & TAILWIND (Unificati senza sovrascrittura)
   modules: [
     '@nuxtjs/tailwindcss'
   ],
@@ -115,6 +135,7 @@ css: ['~/app/assets/css/main.css'],
   },
 
   css: [
+    '~/assets/css/main.css',
     'prismjs/themes/prism-tomorrow.css'
   ],
 
@@ -136,5 +157,4 @@ css: ['~/app/assets/css/main.css'],
       '~/components'
     ]
   }
-  
 })

@@ -16,7 +16,10 @@ const toastType = ref<'success' | 'error' | 'warning'>('success')
 const activeTab = ref<'users' | 'nodes' | 'whitelist' | 'infrastructure' | 'sentinel' | 'moderation'>('users')
 const searchQuery = ref('')
 const isManualTriggering = ref(false)
-const isPurging = ref(false) // Stato per il purge
+const isPurging = ref(false)
+const threadsPage = ref(1)
+const threadsLimit = 10
+const threadsTotal = ref(0)
 
 interface AdminUserKeyItem {
   id: string | number
@@ -109,13 +112,15 @@ function toggleAutoDefend() {
   triggerAction('toggle_autodefend', { enabled: sentinelData.value.autoDefendEnabled })
 }
 
-// 🟢 FIX TASK 4: Trigger News con Header Auth
 async function runManualIngestion() {
   isManualTriggering.value = true
   try {
     const res = await $fetch<any>('/api/admin/cron/trigger', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer dkp_live_admin_session' } // <-- HEADER AGGIUNTO
+      headers: {
+        'Authorization': `Bearer ${DKP_ADMIN_MASTER_KEY}`,
+        'x-api-key': DKP_ADMIN_MASTER_KEY
+      }
     })
 
     if (res?.success) {
@@ -124,7 +129,7 @@ async function runManualIngestion() {
         `⚡ Ingestione completata! Inserted: ${res.imported ?? 0} | Cache Purged: ${res.cachePurged ? 'OK' : 'SKIPPED'}`,
         'success'
       )
-      await fetchAdminNodesData()
+      await fetchAdminNodesData(1)
     } else {
       triggerToast(`⚠️ Warning: ${res?.error || 'Errore esecuzione'}`, 'warning')
     }
@@ -136,15 +141,17 @@ async function runManualIngestion() {
   }
 }
 
-// 🔴 FIX TASK 4: Purge DB Logs con Header Auth
 async function purgeDatabase() {
   if (!confirm("⚠️ Attenzione! Vuoi davvero eliminare tutti i log di ingestione vecchi? Operazione non reversibile.")) return
-  
+
   isPurging.value = true
   try {
     const res = await $fetch<any>('/api/admin/cron/purge', {
       method: 'DELETE',
-      headers: { 'Authorization': 'Bearer dkp_live_admin_session' } // <-- HEADER AGGIUNTO
+      headers: {
+        'Authorization': `Bearer ${DKP_ADMIN_MASTER_KEY}`,
+        'x-api-key': DKP_ADMIN_MASTER_KEY
+      }
     })
 
     if (res?.success) {
@@ -159,6 +166,37 @@ async function purgeDatabase() {
     isPurging.value = false
   }
 }
+
+async function fetchAdminNodesData(page = threadsPage.value) {
+  isLoadingNodes.value = true
+  threadsPage.value = page
+  try {
+    const [nodesRes, threadsRes]: any = await Promise.all([
+      $fetch('/api/admin/nodes').catch(() => ({ success: false, data: [] })),
+      $fetch('/api/admin/nodes/posts', {
+        query: { page, limit: threadsLimit }
+      }).catch(() => ({ success: false, data: [] }))
+    ])
+    if (nodesRes?.success) nodes.value = nodesRes.data || []
+    if (threadsRes?.success) {
+      const rawList = threadsRes.data || []
+      if (typeof threadsRes.total === 'number') {
+        nodeThreads.value = rawList
+        threadsTotal.value = threadsRes.total
+      } else {
+        threadsTotal.value = rawList.length
+        const start = (page - 1) * threadsLimit
+        nodeThreads.value = rawList.slice(start, start + threadsLimit)
+      }
+    }
+  } catch (err) {
+    console.warn('Errore caricamento nodi nella dashboard admin:', err)
+  } finally {
+    isLoadingNodes.value = false
+  }
+}
+
+const totalThreadPages = computed(() => Math.max(1, Math.ceil(threadsTotal.value / threadsLimit)))
 
 async function fetchSentinel() {
   try {
@@ -192,22 +230,6 @@ async function fetchUsers() {
     console.warn('Errore caricamento licenze reali:', err)
   } finally {
     isLoadingUsers.value = false
-  }
-}
-
-async function fetchAdminNodesData() {
-  isLoadingNodes.value = true
-  try {
-    const [nodesRes, threadsRes]: any = await Promise.all([
-      $fetch('/api/admin/nodes').catch(() => ({ success: false, data: [] })),
-      $fetch('/api/admin/nodes/posts').catch(() => ({ success: false, data: [] }))
-    ])
-    if (nodesRes?.success) nodes.value = nodesRes.data || []
-    if (threadsRes?.success) nodeThreads.value = threadsRes.data || []
-  } catch (err) {
-    console.warn('Errore caricamento nodi nella dashboard admin:', err)
-  } finally {
-    isLoadingNodes.value = false
   }
 }
 
@@ -281,6 +303,7 @@ async function deleteThread(id: number) {
     const res: any = await $fetch(`/api/admin/nodes/posts/${id}`, { method: 'DELETE' })
     if (res?.success) {
       nodeThreads.value = nodeThreads.value.filter(t => t.id !== id)
+      threadsTotal.value = Math.max(0, threadsTotal.value - 1)
       triggerToast('🗑️ Thread rimosso dal forum.', 'success')
     }
   } catch {
@@ -291,10 +314,9 @@ async function deleteThread(id: number) {
 onMounted(() => {
   fetchSentinel()
   fetchUsers()
-  fetchAdminNodesData()
+  fetchAdminNodesData(1)
 })
 </script>
-
 <template>
   <div class="max-w-7xl mx-auto flex flex-col gap-6 pb-20 px-4 sm:px-6 pt-6 font-sans text-slate-100">
     
@@ -714,7 +736,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="thread in nodeThreads.slice(0, 10)" :key="thread.id" class="border-b border-slate-800/60 hover:bg-slate-900/40">
+              <tr v-for="thread in nodeThreads" :key="thread.id" class="border-b border-slate-800/60 hover:bg-slate-900/40">
                 <td class="p-3 font-bold text-slate-200">
                   <NuxtLink :to="`/nodes/thread/${thread.id}`" target="_blank" class="hover:text-sky-400">
                     {{ thread.title }}
@@ -755,6 +777,30 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+		  <!-- Barra Paginazione Thread -->
+          <div v-if="threadsTotal > threadsLimit" class="flex items-center justify-between pt-4 mt-4 border-t border-slate-800/80 font-mono text-xs">
+            <span class="text-slate-400">
+              Pagina <strong class="text-white">{{ threadsPage }}</strong> di <strong class="text-white">{{ totalThreadPages }}</strong> ({{ threadsTotal }} thread)
+            </span>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                :disabled="threadsPage <= 1"
+                @click="fetchAdminNodesData(threadsPage - 1)"
+                class="px-3 py-1.5 rounded-lg bg-[#040814] border border-slate-700 text-slate-300 hover:border-sky-400 disabled:opacity-40 cursor-pointer"
+              >
+                ← Precedente
+              </button>
+              <button
+                type="button"
+                :disabled="threadsPage >= totalThreadPages"
+                @click="fetchAdminNodesData(threadsPage + 1)"
+                class="px-3 py-1.5 rounded-lg bg-[#040814] border border-slate-700 text-slate-300 hover:border-sky-400 disabled:opacity-40 cursor-pointer"
+              >
+                Successiva →
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

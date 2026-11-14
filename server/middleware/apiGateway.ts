@@ -1,14 +1,29 @@
 // server/middleware/apiGateway.ts
-import { scryptSync } from 'node:crypto'
+import { scryptSync, createHash } from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { apiKeys, apiLogs } from '~~/server/db/schema'
 
-// Limiti di Quota Mensile configurati per ciascun Tier
 const TIER_QUOTAS: Record<string, number> = {
   FREE: 1000,
   PRO: 50000,
-  ENTERPRISE: 1000000
+  ENTERPRISE: 1000000,
+  ADMIN: 10000000
+}
+
+function verifyKeyHash(rawKey: string, storedKeyHash: string): boolean {
+  const cleanKey = rawKey.trim()
+  // 1. Formato standard scrypt (salt:hash)
+  if (storedKeyHash.includes(':')) {
+    const parts = storedKeyHash.split(':')
+    if (parts.length !== 2) return false
+    const [salt, storedHash] = parts
+    const computedHash = scryptSync(cleanKey, salt, 64).toString('hex')
+    return computedHash === storedHash
+  }
+  // 2. Formato SHA-256 (Master Key / Chiavi di sistema)
+  const sha256Hash = createHash('sha256').update(cleanKey).digest('hex')
+  return sha256Hash === storedKeyHash
 }
 
 export default defineEventHandler(async (event) => {
@@ -23,7 +38,6 @@ export default defineEventHandler(async (event) => {
   const reqHeaders = getRequestHeaders(event)
   const reqQuery = getQuery(event)
 
-  // 1. Estrazione dell'API Key dagli Header o dalla Query Parameter
   let rawApiKey = (reqHeaders['x-api-key'] || reqHeaders['X-API-Key']) as string | undefined
 
   if (!rawApiKey && reqHeaders.authorization) {
@@ -46,64 +60,42 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const db = getDb()
+  const db = await getDb()
 
   try {
-    // 2. Recuperiamo tutte le chiavi attive per confrontare il hash scrypt (che include il sale univoco)
     const keyRecords = await db.select().from(apiKeys).where(eq(apiKeys.status, 'ACTIVE'))
-
-    let matchedKeyRecord = null
-
-    for (const record of keyRecords) {
-      if (!record.keyHash) continue
-      
-      const parts = record.keyHash.split(':')
-      if (parts.length !== 2) continue
-
-      const [salt, storedHash] = parts
-      const computedHash = scryptSync(rawApiKey.trim(), salt, 64).toString('hex')
-
-      if (computedHash === storedHash) {
-        matchedKeyRecord = record
-        break
-      }
-    }
+    const matchedKeyRecord = keyRecords.find(r => r.keyHash && verifyKeyHash(rawApiKey!, r.keyHash)) || null
 
     if (!matchedKeyRecord) {
       setResponseStatus(event, 401)
       return {
         success: false,
         code: 'INVALID_API_KEY',
-        message: 'API Key non valida o inesistente nel sistema.'
+        message: 'API Key non valida, revocata o inesistente nel sistema.'
       }
     }
 
     const keyRecord = matchedKeyRecord
-
-    // 3. Controllo Stato Operativo della Chiave
     const statusUpper = (keyRecord.status || 'ACTIVE').toUpperCase()
     if (statusUpper !== 'ACTIVE') {
       setResponseStatus(event, 403)
       return {
         success: false,
         code: statusUpper === 'SUSPENDED' ? 'KEY_SUSPENDED' : 'KEY_REVOKED',
-        message: `API Key non attiva (Stato: ${statusUpper}). Contatta il supporto o verifica il tuo pannello.`
+        message: `API Key non attiva (Stato: ${statusUpper}).`
       }
     }
 
-    // 4. Verifica dei Limiti e Quota (Rate Limiting)
     const roleTier = (keyRecord.role || 'FREE').toUpperCase()
     const maxQuota = TIER_QUOTAS[roleTier] || TIER_QUOTAS.FREE
     const currentUsage = keyRecord.usageCount || 0
 
-    // Configurazione Header HTTP di Rate Limit standard
     const remaining = Math.max(0, maxQuota - currentUsage)
     setResponseHeader(event, 'X-RateLimit-Limit', maxQuota)
     setResponseHeader(event, 'X-RateLimit-Remaining', remaining)
     setResponseHeader(event, 'X-RateLimit-Tier', roleTier)
 
-    // Se la quota è esaurita
-    if (currentUsage >= maxQuota) {
+    if (roleTier !== 'ADMIN' && currentUsage >= maxQuota) {
       setResponseStatus(event, 429)
       const latencyMs = Math.round(performance.now() - startTime)
       const clientIp = (getRequestHeader(event, 'x-forwarded-for') || event.node.req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim()
@@ -121,11 +113,10 @@ export default defineEventHandler(async (event) => {
       return {
         success: false,
         code: 'QUOTA_EXCEEDED',
-        message: `Quota limite mensile superata per il piano ${roleTier} (${currentUsage}/${maxQuota} chiamate). Sostieni l'upgrade del piano per continuare.`
+        message: `Quota limite mensile superata per il piano ${roleTier} (${currentUsage}/${maxQuota} chiamate).`
       }
     }
 
-    // 5. Incremento atomico del conteggio chiamate su Neon DB
     await db.update(apiKeys)
       .set({
         usageCount: sql`${apiKeys.usageCount} + 1`,
@@ -133,7 +124,6 @@ export default defineEventHandler(async (event) => {
       })
       .where(eq(apiKeys.id, keyRecord.id))
 
-    // 6. Salva il contesto dell'utente/chiave autenticata
     event.context.apiKey = {
       id: keyRecord.id,
       name: keyRecord.name,
@@ -143,7 +133,6 @@ export default defineEventHandler(async (event) => {
       maxQuota
     }
 
-    // 7. Log di audit asincrono al completamento della risposta
     event.node.res.on('finish', () => {
       const latencyMs = Math.round(performance.now() - startTime)
       const statusCode = event.node.res.statusCode
