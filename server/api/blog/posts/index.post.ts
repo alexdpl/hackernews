@@ -1,32 +1,44 @@
+// server/api/blog/posts/index.post.ts
 import crypto from 'node:crypto'
-import postgres from 'postgres'
+import { defineEventHandler, readBody, createError } from 'h3'
+import { sql } from 'drizzle-orm'
+import { getDb } from '../../../utils/db'
+import { BlockchainService } from '../../../utils/blockchainService'
 
 function slugify(text: string): string {
-  return text.toString().toLowerCase().trim().replace(/[\s\W_]+/g, '-').replace(/[^a-z0-9-]+/g, '').replace(/^-+|-+$/g, '')
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W_]+/g, '-')
+    .replace(/[^a-z0-9-]+/g, '')
+    .replace(/^-+|-+$/g, '')
+}
+
+function extractRows(res: any): any[] {
+  return Array.isArray(res) ? res : (res?.rows || [])
 }
 
 export default defineEventHandler(async (event) => {
-  if (event.node?.req?.headers && typeof (event.node.req.headers as any).get !== 'function') {
-    (event.node.req.headers as any).get = (key: string) => (event.node.req.headers as any)[key.toLowerCase()]
-  }
-
   let body: any = {}
   try {
-    body = await readBody(event) || {}
-  } catch (error) {
-    console.error("Errore lettura body:", error)
+    body = (await readBody(event)) || {}
+  } catch {
     throw createError({ statusCode: 400, statusMessage: 'Payload della richiesta non valido.' })
   }
 
-  const { 
-    title, 
-    categoryId, category, 
-    subcategoryId, subCategory, 
-    excerpt, summary, 
-    content, 
-    tags, 
-    vaultHash: reqVaultHash, 
-    status 
+  const {
+    title,
+    categoryId,
+    category,
+    subcategoryId,
+    subCategory,
+    excerpt,
+    summary,
+    content,
+    tags,
+    vaultHash: reqVaultHash,
+    status
   } = body
 
   const cleanTitle = title?.trim()
@@ -38,39 +50,43 @@ export default defineEventHandler(async (event) => {
 
   let cleanTags: string[] = []
   if (Array.isArray(tags)) {
-    cleanTags = tags.map(t => String(t).trim().replace(/^#/, '')).filter(Boolean)
+    cleanTags = tags.map((t) => String(t).trim().replace(/^#/, '')).filter(Boolean)
   } else if (typeof tags === 'string') {
-    cleanTags = tags.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+    cleanTags = tags
+      .split(/[,;]+/)
+      .map((t) => t.trim().replace(/^#/, ''))
+      .filter(Boolean)
   }
 
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    throw createError({ statusCode: 500, statusMessage: 'DATABASE_URL mancante nelle variabili d\'ambiente.' })
+  const db = await getDb()
+  if (!db) {
+    throw createError({ statusCode: 500, statusMessage: 'Connessione al database non disponibile.' })
   }
-
-  // Configurazione SSL flessibile per Cloud Run / Neon / Supabase
-  const isProd = process.env.NODE_ENV === 'production'
-  const sql = postgres(connectionString, { 
-    ssl: isProd ? { rejectUnauthorized: false } : 'prefer' 
-  })
 
   try {
+    await BlockchainService.ensureSchema(db)
+    await db.execute(sql`
+      ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS vault_block_number INTEGER;
+    `).catch(() => null)
+
     // 1. Gestione Categoria
     let finalCategoryId = categoryId ? Number(categoryId) : null
-
     if (!finalCategoryId && category) {
-      const foundCat = await sql`SELECT id FROM blog_categories WHERE name ILIKE ${category} OR slug ILIKE ${slugify(category)} LIMIT 1`
-      if (foundCat.length > 0) {
-        finalCategoryId = foundCat[0].id
-      }
+      const foundCat = extractRows(
+        await db.execute(sql`
+          SELECT id FROM blog_categories
+          WHERE name ILIKE ${category} OR slug ILIKE ${slugify(category)}
+          LIMIT 1;
+        `)
+      )
+      if (foundCat.length > 0) finalCategoryId = Number(foundCat[0].id)
     }
 
     if (!finalCategoryId) {
-      const defaultCat = await sql`SELECT id FROM blog_categories LIMIT 1`
+      const defaultCat = extractRows(await db.execute(sql`SELECT id FROM blog_categories LIMIT 1;`))
       if (defaultCat.length > 0) {
-        finalCategoryId = defaultCat[0].id
+        finalCategoryId = Number(defaultCat[0].id)
       } else {
-        await sql.end()
         throw createError({ statusCode: 400, statusMessage: 'Nessuna categoria disponibile nel DB.' })
       }
     }
@@ -78,83 +94,97 @@ export default defineEventHandler(async (event) => {
     // 2. Gestione Sottocategoria
     let finalSubcategoryId = subcategoryId ? Number(subcategoryId) : null
     if (!finalSubcategoryId && subCategory) {
-      const foundSub = await sql`SELECT id FROM blog_subcategories WHERE name ILIKE ${subCategory} LIMIT 1`
-      if (foundSub.length > 0) {
-        finalSubcategoryId = foundSub[0].id
-      }
+      const foundSub = extractRows(
+        await db.execute(sql`
+          SELECT id FROM blog_subcategories WHERE name ILIKE ${subCategory} LIMIT 1;
+        `)
+      )
+      if (foundSub.length > 0) finalSubcategoryId = Number(foundSub[0].id)
     }
 
-    // 3. Verifica ed estrazione ID Autore reale
-    let authorId: number | null = null
-    try {
-      const usersList = await sql`SELECT id FROM users ORDER BY id ASC LIMIT 1`
-      if (usersList.length > 0) {
-        authorId = usersList[0].id
-      }
-    } catch (e) {
-      console.warn("⚠️ Impossibile interrogare la tabella users.")
-    }
-
+    // 3. Estrazione ID Autore reale
+    const usersList = extractRows(await db.execute(sql`SELECT id FROM users ORDER BY id ASC LIMIT 1;`))
+    const authorId = usersList[0]?.id ? Number(usersList[0].id) : null
     if (!authorId) {
-      await sql.end()
       throw createError({ statusCode: 400, statusMessage: 'Nessun utente trovato nel DB per essere associato come autore.' })
     }
 
-    // 4. Generazione Hash e Certificato Vault
-    const finalVaultHash = reqVaultHash || crypto.createHash('sha256').update(`dkp-direct-${Date.now()}-${generatedSlug}`).digest('hex')
+    // 4. Certificato & Inserimento Articolo Pure-SQL
     const certSuffix = (
       crypto.randomBytes(8).toString('base64url').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + 'AAAAAA'
     ).slice(0, 6)
-    const vaultCertificateId = reqVaultHash ? `DKP-VAULT-CERT-VERIFIED-${certSuffix}` : `DKP-VAULT-CERT-ADMIN-${certSuffix}`
+    const vaultCertificateId = reqVaultHash
+      ? `DKP-VAULT-CERT-VERIFIED-${certSuffix}`
+      : `DKP-VAULT-CERT-ADMIN-${certSuffix}`
 
     const finalStatus = status || 'published'
     const finalExcerpt = excerpt || summary || null
     const finalContent = content || finalExcerpt || 'Contenuto non disponibile.'
+    const pgTagsLiteral = `{${cleanTags.map((t) => `"${t.replace(/"/g, '\\"')}"`).join(',')}}`
 
-    // 5. Inserimento Post (Passando l'array direttamente per supportare text[])
-    const [newPost] = await sql`
-      INSERT INTO blog_posts (
-        title, slug, content, excerpt, category_id, subcategory_id, author_id, tags, status, is_verified, vault_certificate_id, vault_hash, views, likes
-      ) VALUES (
-        ${cleanTitle}, ${generatedSlug}, ${finalContent}, ${finalExcerpt}, ${finalCategoryId}, ${finalSubcategoryId}, ${authorId}, ${cleanTags}, ${finalStatus}, true, ${vaultCertificateId}, ${finalVaultHash}, 0, 0
-      )
-      RETURNING *;
-    `
+    const inserted = extractRows(
+      await db.execute(sql`
+        INSERT INTO blog_posts (
+          title, slug, content, excerpt, category_id, subcategory_id, author_id,
+          tags, status, is_verified, vault_certificate_id, views, likes
+        ) VALUES (
+          ${cleanTitle}, ${generatedSlug}, ${finalContent}, ${finalExcerpt},
+          ${finalCategoryId}, ${finalSubcategoryId}, ${authorId},
+          ${pgTagsLiteral}::text[], ${finalStatus}, true, ${vaultCertificateId}, 0, 0
+        )
+        RETURNING *;
+      `)
+    )
 
-    // 6. Assegnazione XP protetta (Un errore sugli XP non blocca la pubblicazione dell'articolo)
+    const newPost = inserted[0]
+    const postId = Number(newPost.id)
+
+    // 5. Notarizzazione On-Chain nel DKP Vault Ledger unificato (Block #N + Merkle Root)
+    const proof = await BlockchainService.notarizeEntity(db, {
+      entityType: 'blog',
+      entityId: postId,
+      title: cleanTitle,
+      content: finalContent
+    })
+
+    // 6. Assegnazione +150 XP protetta
     try {
-      await sql`
-        UPDATE users 
-        SET xp = COALESCE(xp, 0) + 150 
-        WHERE id = ${authorId}
-      `
-
-      await sql`
-        INSERT INTO xp_transactions (user_id, action, points) 
-        VALUES (${authorId}, ${`Pubblicazione articolo: "${cleanTitle.substring(0, 30)}..."`}, 150)
-      `
+      await db.execute(sql`
+        UPDATE users
+        SET xp = COALESCE(xp, 0) + 150
+        WHERE id = ${authorId};
+      `)
+      await db.execute(sql`
+        INSERT INTO xp_transactions (user_id, action, points)
+        VALUES (${authorId}, ${`Pubblicazione articolo: "${cleanTitle.substring(0, 30)}..."`}, 150);
+      `)
     } catch (xpError: any) {
-      console.warn("⚠️ Warning XP non assegnati:", xpError.message)
+      console.warn('⚠️ Warning XP non assegnati:', xpError.message)
     }
-
-    await sql.end()
 
     return {
       success: true,
-      message: 'Articolo pubblicato con successo!',
-      data: newPost,
+      message: 'Articolo pubblicato e notarizzato SHA-256 con successo!',
+      data: {
+        ...newPost,
+        vault_hash: proof.vaultHash,
+        vaultHash: proof.vaultHash,
+        vault_block_number: proof.blockNumber,
+        vaultBlockNumber: proof.blockNumber
+      },
+      proof
     }
   } catch (error: any) {
-    await sql.end()
-    console.error("\n💥 [DKP VAULT ERROR] ERRORE INSERIMENTO POST:", error.message || error)
+    if (error?.statusCode) throw error
+    console.error('\n💥 [DKP VAULT ERROR] ERRORE INSERIMENTO POST:', error.message || error)
 
     if (error.code === '23505') {
       throw createError({ statusCode: 409, statusMessage: 'Un articolo con questo titolo o slug esiste già.' })
     }
 
-    throw createError({ 
-      statusCode: 500, 
-      statusMessage: `Errore DB [${error.code || 'SQL_ERROR'}]: ${error.message}` 
+    throw createError({
+      statusCode: 500,
+      statusMessage: `Errore DB [${error.code || 'SQL_ERROR'}]: ${error.message}`
     })
-  }
+	}
 })

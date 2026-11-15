@@ -11,8 +11,9 @@ useHead({
 
 // --- INTERFACCE DATI ---
 interface DkpNode {
-  id: number | string
-  parentId?: number | string | null
+  id: number
+  parentId: number | null
+  category?: string | null
   name: string
   slug: string
   description: string
@@ -31,6 +32,7 @@ interface ThreadPost {
   karmaScore: number
   commentsCount: number
   vaultHash?: string
+  vaultBlockNumber?: number | null
   isPinned: boolean
   isLocked: boolean
   createdAt: string
@@ -52,6 +54,14 @@ const adminModules = [
   { to: '/admin/nodes', label: '💬 Gestione Nodi', active: true },
   { to: '/admin/shop', label: '🛍️ Shop' },
   { to: '/admin/jobs', label: '💼 Jobs' }
+]
+
+const defaultCategories = [
+  '1. DKP Ecosystem & Core',
+  '2. AI, LLM & Neural Agents',
+  '3. Systems, Rust & Kernel Dev',
+  '4. Web, Cloud & Pure SQL',
+  '5. Security, Web3 & Vault'
 ]
 
 // --- STATI GLOBALI ---
@@ -78,10 +88,18 @@ const serverTotalThreads = ref<number | null>(null)
 const expandedParents = ref<Record<string, boolean>>({})
 
 // Quick-Create Dropdown Form
-const quickParentId = ref<number | string | null>(null)
+const quickParentId = ref<number | null>(null)
 const quickName = ref('')
 
 const cleanNodePrefix = (val: string) => String(val || '').replace(/^(n\/)+/i, '').trim()
+
+function normalizeNullableId(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === '' || raw === 'null' || raw === 0 || raw === '0') {
+    return null
+  }
+  const num = Number(raw)
+  return Number.isInteger(num) && num > 0 ? num : null
+}
 
 function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'success') {
   toastMessage.value = msg
@@ -93,8 +111,9 @@ function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'succ
 // --- STATO MODALE NODO ---
 const isNodeModalOpen = ref(false)
 const nodeForm = ref({
-  id: null as number | string | null,
-  parentId: null as number | string | null,
+  id: null as number | null,
+  parentId: null as number | null,
+  category: '1. DKP Ecosystem & Core',
   name: '',
   slug: '',
   description: '',
@@ -143,32 +162,35 @@ const handleNodeNameInput = () => {
   if (!nodeForm.value.id) nodeForm.value.slug = autoSlug(nodeForm.value.name)
 }
 
-// --- GERARCHIA NODI (Replica logica Dropdown della Homepage) ---
-const mainNodes = computed(() => nodes.value.filter(n => !n.parentId))
+// --- GERARCHIA NODI ---
+const mainNodes = computed(() => nodes.value.filter(n => n.parentId === null))
+
+const availableParentTargets = computed(() => {
+  return mainNodes.value.filter(n => n.id !== nodeForm.value.id)
+})
 
 const nodeTree = computed(() => {
   const q = sidebarNodeSearch.value.toLowerCase().trim()
-  const childrenByParent = new Map<string, DkpNode[]>()
-  const mainIds = new Set(mainNodes.value.map(m => String(m.id)))
+  const childrenByParent = new Map<number, DkpNode[]>()
+  const mainIds = new Set(mainNodes.value.map(m => m.id))
   const orphans: DkpNode[] = []
 
   nodes.value.forEach(n => {
-    if (!n.parentId) return
-    const pKey = String(n.parentId)
-    if (!mainIds.has(pKey)) {
+    if (n.parentId === null) return
+    if (!mainIds.has(n.parentId)) {
       if (!q || n.name.toLowerCase().includes(q) || n.slug.toLowerCase().includes(q)) {
         orphans.push(n)
       }
       return
     }
-    const list = childrenByParent.get(pKey) || []
+    const list = childrenByParent.get(n.parentId) || []
     list.push(n)
-    childrenByParent.set(pKey, list)
+    childrenByParent.set(n.parentId, list)
   })
 
   const groups = mainNodes.value
     .map(parent => {
-      const allChildren = childrenByParent.get(String(parent.id)) || []
+      const allChildren = childrenByParent.get(parent.id) || []
       if (!q) return { parent, children: allChildren }
 
       const parentMatches = parent.name.toLowerCase().includes(q) || parent.slug.toLowerCase().includes(q)
@@ -186,7 +208,7 @@ const nodeTree = computed(() => {
   return { groups, orphans }
 })
 
-const toggleParentDropdown = (parentId: number | string) => {
+const toggleParentDropdown = (parentId: number) => {
   const key = String(parentId)
   expandedParents.value[key] = !expandedParents.value[key]
 }
@@ -199,9 +221,11 @@ const expandAllNodes = (expand: boolean) => {
   expandedParents.value = next
 }
 
-// --- STATO MODALE VAULT REPORT ---
+// --- STATO MODALE VAULT REPORT LIVE ---
 const isVaultModalOpen = ref(false)
 const selectedPostForVault = ref<ThreadPost | null>(null)
+const liveVaultProof = ref<any>(null)
+const isVerifyingVault = ref(false)
 
 // --- CARICAMENTO DATI ---
 const fetchNodes = async () => {
@@ -209,11 +233,13 @@ const fetchNodes = async () => {
     const res: any = await $fetch('/api/admin/nodes')
     if (res?.success && Array.isArray(res.data)) {
       nodes.value = res.data.map((raw: any) => {
-        const rawParent = raw.parentId ?? raw.parent_id ?? null
-        const normalizedParent = rawParent === 0 || rawParent === '0' || rawParent === '' ? null : rawParent
+        const normalizedId = Number(raw.id)
+        const normalizedParent = normalizeNullableId(raw.parentId ?? raw.parent_id)
         return {
           ...raw,
-          parentId: normalizedParent,
+          id: normalizedId,
+          parentId: normalizedParent === normalizedId ? null : normalizedParent,
+          category: raw.category || '1. DKP Ecosystem & Core',
           name: cleanNodePrefix(raw.name),
           slug: cleanNodePrefix(raw.slug),
           subscribersCount: Number(raw.subscribersCount ?? raw.subscribers_count ?? 0),
@@ -316,7 +342,7 @@ const goToPage = (page: number) => {
   }
 }
 
-// --- OPERAZIONI NODI ---
+// --- OPERAZIONI NODI (CON RESET ESPLICITO PER EVITARE COLLASSO GERARCHICO) ---
 const createQuickNode = async () => {
   const cleanName = cleanNodePrefix(quickName.value)
   if (!cleanName) {
@@ -329,12 +355,15 @@ const createQuickNode = async () => {
 
   isSavingNode.value = true
   try {
-    const parentObj = quickParentId.value
-      ? mainNodes.value.find(m => String(m.id) === String(quickParentId.value))
+    const explicitParentId = normalizeNullableId(quickParentId.value)
+    const parentObj = explicitParentId
+      ? mainNodes.value.find(m => m.id === explicitParentId)
       : null
 
     const payload = {
-      parentId: quickParentId.value || null,
+      parentId: explicitParentId,
+      parent_id: explicitParentId,
+      category: parentObj?.category || '1. DKP Ecosystem & Core',
       name: cleanName,
       slug,
       description: parentObj
@@ -348,15 +377,17 @@ const createQuickNode = async () => {
     const res: any = await $fetch('/api/admin/nodes', { method: 'POST', body: payload })
     if (res?.success) {
       triggerToast(
-        quickParentId.value
+        explicitParentId
           ? `🚀 Sub-nodo n/n/${slug} creato sotto n/${parentObj?.name || 'parent'}!`
-          : `🚀 Nodo principale n/${slug} creato!`,
+          : `🚀 Nodo principale n/${slug} creato a livello Root!`,
         'success'
       )
-      if (quickParentId.value) {
-        expandedParents.value[String(quickParentId.value)] = true
+      if (explicitParentId) {
+        expandedParents.value[String(explicitParentId)] = true
       }
+      // RESET ESPLICITO: impedisce che i prossimi nodi finiscano sotto il vecchio padre
       quickName.value = ''
+      quickParentId.value = null
       await fetchNodes()
     }
   } catch (err: any) {
@@ -366,29 +397,33 @@ const createQuickNode = async () => {
   }
 }
 
-const openNodeModal = (node: DkpNode | null = null, presetParentId: number | string | null = null) => {
+const openNodeModal = (node: DkpNode | null = null, presetParentId: number | null = null) => {
   if (node) {
+    // Modifica Nodo o Sub-nodo esistente
     nodeForm.value = {
-      id: node.id,
-      parentId: node.parentId || null,
+      id: Number(node.id),
+      parentId: normalizeNullableId(node.parentId),
+      category: node.category || '1. DKP Ecosystem & Core',
       name: cleanNodePrefix(node.name),
       slug: cleanNodePrefix(node.slug),
-      description: node.description,
+      description: node.description || '',
       icon: node.icon || '💬',
       color: node.color || '#38bdf8',
-      isPrivate: node.isPrivate
+      isPrivate: Boolean(node.isPrivate)
     }
   } else {
-    const parentObj = presetParentId
-      ? mainNodes.value.find(m => String(m.id) === String(presetParentId))
+    // Creazione nuovo nodo: usa SOLO presetParentId esplicito (se null -> Root puro!)
+    const explicitParent = normalizeNullableId(presetParentId)
+    const parentObj = explicitParent
+      ? mainNodes.value.find(m => m.id === explicitParent)
       : null
-    const cleanQuick = cleanNodePrefix(quickName.value)
 
     nodeForm.value = {
       id: null,
-      parentId: presetParentId || quickParentId.value || null,
-      name: cleanQuick,
-      slug: autoSlug(cleanQuick),
+      parentId: explicitParent,
+      category: parentObj?.category || '1. DKP Ecosystem & Core',
+      name: '',
+      slug: '',
       description: '',
       icon: parentObj?.icon || '💬',
       color: parentObj?.color || '#38bdf8',
@@ -402,26 +437,47 @@ const openNodeModal = (node: DkpNode | null = null, presetParentId: number | str
 const saveNode = async () => {
   const cleanName = cleanNodePrefix(nodeForm.value.name)
   const cleanSlug = autoSlug(nodeForm.value.slug || cleanName)
-  if (!cleanName || !cleanSlug || !nodeForm.value.description) {
+  if (!cleanName || !cleanSlug || !nodeForm.value.description.trim()) {
     return triggerToast('Compila Nome, Slug e Descrizione.', 'warning')
   }
+
+  const normalizedParent = normalizeNullableId(nodeForm.value.parentId)
+  if (nodeForm.value.id && normalizedParent === Number(nodeForm.value.id)) {
+    return triggerToast('Un nodo non può essere padre di se stesso.', 'error')
+  }
+
   isSavingNode.value = true
   try {
     const payload = {
-      ...nodeForm.value,
+      parentId: normalizedParent,
+      parent_id: normalizedParent,
+      category: nodeForm.value.category || '1. DKP Ecosystem & Core',
       name: cleanName,
-      slug: cleanSlug
+      slug: cleanSlug,
+      description: nodeForm.value.description.trim(),
+      icon: nodeForm.value.icon || '💬',
+      color: nodeForm.value.color || '#38bdf8',
+      isPrivate: Boolean(nodeForm.value.isPrivate)
     }
+
     const url = nodeForm.value.id ? `/api/admin/nodes/${nodeForm.value.id}` : '/api/admin/nodes'
     const method = nodeForm.value.id ? 'PUT' : 'POST'
 
     const res: any = await $fetch(url, { method, body: payload })
     if (res?.success) {
-      triggerToast(nodeForm.value.id ? '✅ Nodo aggiornato con successo!' : '🚀 Nuovo Nodo creato!', 'success')
-      if (nodeForm.value.parentId) {
-        expandedParents.value[String(nodeForm.value.parentId)] = true
+      triggerToast(
+        nodeForm.value.id
+          ? '✅ Nodo e gerarchia aggiornati nel DB!'
+          : normalizedParent
+            ? '🚀 Nuovo Sub-nodo creato!'
+            : '🚀 Nuovo Nodo Principale (Root) creato!',
+        'success'
+      )
+      if (normalizedParent) {
+        expandedParents.value[String(normalizedParent)] = true
       }
       quickName.value = ''
+      quickParentId.value = null
       await fetchNodes()
       isNodeModalOpen.value = false
     }
@@ -432,8 +488,8 @@ const saveNode = async () => {
   }
 }
 
-const deleteNode = async (id: number | string) => {
-  if (!confirm('⚠️ Sei sicuro di voler eliminare questo Nodo? Tutti i thread e commenti associati verranno cancellati.')) return
+const deleteNode = async (id: number) => {
+  if (!confirm('⚠️ Sei sicuro di voler eliminare questo Nodo?')) return
   isSavingNode.value = true
   try {
     const res: any = await $fetch(`/api/admin/nodes/${id}`, { method: 'DELETE' })
@@ -500,9 +556,45 @@ const deleteThread = async (id: number) => {
   }
 }
 
-const inspectVault = (post: ThreadPost) => {
+// --- AUDIT & NOTARIZZAZIONE LIVE ON-CHAIN ---
+const inspectVault = async (post: ThreadPost) => {
   selectedPostForVault.value = post
+  liveVaultProof.value = null
   isVaultModalOpen.value = true
+  isVerifyingVault.value = true
+
+  try {
+    const res: any = await $fetch('/api/vault/verify', {
+      query: { postId: post.id, entityType: 'forum' }
+    })
+    if (res?.proof) {
+      liveVaultProof.value = res.proof
+      post.vaultHash = res.proof.vaultHash
+    }
+  } catch {
+    triggerToast('⚠️ Errore verifica live su DKP Vault.', 'warning')
+  } finally {
+    isVerifyingVault.value = false
+  }
+}
+
+const forceNotarizeThread = async (post: ThreadPost) => {
+  isVerifyingVault.value = true
+  try {
+    const res: any = await $fetch('/api/vault/notarize', {
+      method: 'POST',
+      body: { entityType: 'forum', entityId: post.id }
+    })
+    if (res?.proof) {
+      liveVaultProof.value = res.proof
+      post.vaultHash = res.proof.vaultHash
+      triggerToast(`⛓️ Thread #${post.id} notarizzato sul Block #${res.proof.blockNumber}!`, 'success')
+    }
+  } catch {
+    triggerToast('❌ Errore durante la notarizzazione on-chain.', 'error')
+  } finally {
+    isVerifyingVault.value = false
+  }
 }
 
 onMounted(() => {
@@ -577,7 +669,7 @@ onMounted(() => {
             Gestione <span class="text-emerald-400">DKP Nodes &amp; Moderazione</span>
           </h1>
           <p class="text-slate-400 text-xs sm:text-sm max-w-2xl m-0">
-            Organizza Nodi principali (n/) e Sub-nodi (n/n/) con struttura dropdown, modera i thread paginati ed esamina la coda Sentinel AI Vault.
+            Organizza Nodi principali (n/) e Sub-nodi (n/n/) con gerarchia esplicita, modera i thread paginati ed esamina la coda Sentinel AI Vault.
           </p>
         </div>
 
@@ -587,7 +679,7 @@ onMounted(() => {
             @click="openNodeModal(null, null)"
             class="px-4 py-2.5 rounded-xl font-black text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-[0_0_15px_rgba(0,220,130,0.3)] cursor-pointer"
           >
-            ➕ Nuovo Nodo / Subnodo
+            ➕ Nuovo Nodo Principale (Root)
           </button>
         </div>
       </header>
@@ -649,7 +741,7 @@ onMounted(() => {
               <input
                 v-model="quickName"
                 type="text"
-                :placeholder="quickParentId ? 'Nome sub-nodo (es. kubernetes)...' : 'Nome nodo (es. devops)...'"
+                :placeholder="quickParentId ? 'Nome sub-nodo (es. kubernetes)...' : 'Nome nodo root (es. vault)...'"
                 class="flex-1 min-w-0 bg-[#080d1a] border border-slate-800 text-white px-3 py-2 rounded-lg outline-none focus:border-emerald-500 text-xs"
               />
               <button
@@ -697,7 +789,7 @@ onMounted(() => {
             Nessun nodo registrato. Creane uno dal box qui sopra!
           </div>
 
-          <!-- ALBERO COLLASSABILE NODI & SUBNODI (Con shrink-0 per evitare compressione) -->
+          <!-- ALBERO COLLASSABILE NODI & SUBNODI -->
           <div v-else class="flex flex-col gap-2.5 max-h-[58vh] overflow-y-auto pr-1">
             <div
               v-for="group in nodeTree.groups"
@@ -788,7 +880,7 @@ onMounted(() => {
                         <span class="truncate">{{ sub.name }}</span>
                       </div>
                       <span class="text-[10px] text-slate-500 font-mono block truncate">
-                        /nodes/n/sub/{{ sub.slug }} • 💬 {{ sub.postsCount || 0 }}
+                        /nodes/n/{{ sub.slug }} • 💬 {{ sub.postsCount || 0 }}
                       </span>
                     </div>
                   </div>
@@ -840,7 +932,7 @@ onMounted(() => {
           <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 pb-4 border-b border-slate-800 font-mono text-xs">
             <div class="flex items-center gap-2 flex-wrap">
               <button 
-                type="button"
+                type="button" 
                 @click="activeTab = 'all'" 
                 :class="[
                   'px-3 py-2 rounded-xl font-bold transition-all cursor-pointer border',
@@ -850,7 +942,7 @@ onMounted(() => {
                 Tutti i Thread ({{ totalThreadsCount }})
               </button>
               <button 
-                type="button"
+                type="button" 
                 @click="activeTab = 'flagged'" 
                 :class="[
                   'px-3 py-2 rounded-xl font-bold transition-all cursor-pointer border flex items-center gap-1.5',
@@ -867,7 +959,7 @@ onMounted(() => {
             <div class="flex items-center gap-2 w-full xl:w-auto flex-wrap">
               <select 
                 v-model="selectedNodeFilter" 
-                aria-label="Filtra per nodo"
+                aria-label="Filtra per nodo" 
                 class="bg-[#040814] border border-slate-800 text-slate-200 px-3 py-2 rounded-xl font-bold outline-none focus:border-sky-500 transition-all text-xs cursor-pointer max-w-[175px]"
               >
                 <option value="">Tutti i Nodi</option>
@@ -931,8 +1023,8 @@ onMounted(() => {
                       <NuxtLink :to="`/nodes/thread/${post.id}`" target="_blank" class="font-bold text-white hover:text-sky-400 transition-colors line-clamp-2">
                         {{ post.title }}
                       </NuxtLink>
-                      <span v-if="post.vaultHash" class="text-[10px] text-purple-400 font-mono mt-0.5" title="Vault Proof-of-Code Certificato">
-                        🛡️ Proof-of-Code
+                      <span v-if="post.vaultHash" class="text-[10px] text-emerald-400 font-mono mt-0.5" title="Vault Proof-of-Code Certificato">
+                        ⛓️ Proof-of-Code
                       </span>
                     </div>
                   </td>
@@ -964,12 +1056,11 @@ onMounted(() => {
                     <div class="flex justify-end items-center gap-1">
                       <button 
                         type="button"
-                        v-if="post.vaultHash" 
                         @click="inspectVault(post)" 
                         class="p-1.5 bg-purple-500/15 border border-purple-500/30 hover:bg-purple-500 hover:text-white text-purple-300 rounded-lg text-xs transition-all cursor-pointer" 
-                        title="Ispeziona Proof-of-Code Vault"
+                        title="Verifica On-Chain / Notarizza Vault"
                       >
-                        🛡️
+                        ⛓️
                       </button>
                       <button 
                         type="button"
@@ -1093,20 +1184,33 @@ onMounted(() => {
 
             <div class="flex flex-col gap-4 overflow-y-auto pr-1 font-mono text-xs">
               
-              <!-- SELETTORE GERARCHIA PADRE (Dropdown stile Homepage) -->
+              <!-- SELETTORE GERARCHIA PADRE ESPLICITO -->
               <div class="flex flex-col gap-1.5">
                 <label class="text-slate-400 font-bold uppercase">TIPO NODO &amp; GERARCHIA *</label>
                 <select 
                   v-model="nodeForm.parentId" 
                   class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all cursor-pointer"
                 >
-                  <option :value="null">📂 Nodo Principale (n/ root)</option>
+                  <option :value="null">📂 Nodo Principale (n/ root — Nessun Padre)</option>
                   <option 
-                    v-for="parent in mainNodes.filter(n => n.id !== nodeForm.id)" 
+                    v-for="parent in availableParentTargets" 
                     :key="parent.id" 
                     :value="parent.id"
                   >
                     ↳ Sub-Nodo di: {{ parent.icon }} n/{{ parent.name }} (n/n/)
+                  </option>
+                </select>
+              </div>
+
+              <!-- CATEGORIA ECOSISTEMA -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-slate-400 font-bold uppercase">CATEGORIA ECOSISTEMA</label>
+                <select
+                  v-model="nodeForm.category"
+                  class="bg-[#040814] border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all cursor-pointer"
+                >
+                  <option v-for="cat in defaultCategories" :key="cat" :value="cat">
+                    {{ cat }}
                   </option>
                 </select>
               </div>
@@ -1118,8 +1222,8 @@ onMounted(() => {
                     v-model="nodeForm.name" 
                     @input="handleNodeNameInput" 
                     type="text" 
-                    placeholder="Es. devops, rust" 
-                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all"
+                    placeholder="Es. vault, rust" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all" 
                     required 
                   />
                 </div>
@@ -1129,8 +1233,8 @@ onMounted(() => {
                   <input 
                     v-model="nodeForm.slug" 
                     type="text" 
-                    placeholder="devops" 
-                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all"
+                    placeholder="vault" 
+                    class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold outline-none focus:border-sky-500 transition-all" 
                     required 
                   />
                 </div>
@@ -1142,7 +1246,7 @@ onMounted(() => {
                   v-model="nodeForm.description" 
                   rows="2" 
                   placeholder="Di cosa si parla in questo nodo..." 
-                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-sky-500 transition-all"
+                  class="bg-[#040814] border border-slate-800 text-white px-3.5 py-2.5 rounded-xl outline-none focus:border-sky-500 transition-all" 
                   required
                 ></textarea>
               </div>
@@ -1239,38 +1343,71 @@ onMounted(() => {
         </div>
       </Transition>
 
-      <!-- ================= MODALE VAULT PROOF OF CODE ================= -->
+      <!-- ================= MODALE VAULT PROOF OF CODE LIVE ================= -->
       <Transition name="fade">
         <div 
           v-if="isVaultModalOpen && selectedPostForVault" 
           class="fixed inset-0 z-50 bg-[#020420]/80 backdrop-blur-sm flex items-center justify-center p-4" 
           @click.self="isVaultModalOpen = false"
         >
-          <div class="bg-[#080d1a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-4 font-mono">
+          <div class="bg-[#080d1a] border border-emerald-500/40 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-4 font-mono">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 class="text-purple-400 font-black text-base flex items-center gap-2 m-0">
-                <span>🛡️ DKP Vault Proof-of-Code Certificate</span>
+              <h3 class="text-emerald-400 font-black text-base flex items-center gap-2 m-0">
+                <span>⛓️ DKP Vault Proof-of-Code Live Audit</span>
               </h3>
-              <span class="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded font-bold">
-                NODES SENTINEL AUDIT
+              <span class="text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-bold">
+                {{ liveVaultProof?.status || 'CHECKING...' }}
               </span>
             </div>
 
-            <div class="flex flex-col gap-2 my-2 text-xs">
-              <h4 class="text-white font-bold text-sm m-0">{{ selectedPostForVault.title }}</h4>
+            <div class="flex flex-col gap-2.5 my-1 text-xs">
+              <h4 class="text-white font-bold text-sm m-0 font-sans">{{ selectedPostForVault.title }}</h4>
               <p class="text-slate-400 m-0">
                 Autore: <strong class="text-white">@{{ selectedPostForVault.authorName }}</strong> • Data: {{ new Date(selectedPostForVault.createdAt).toLocaleDateString('it-IT') }}
               </p>
-              
-              <div class="bg-[#040814] border border-slate-800 rounded-xl p-3 flex flex-col gap-1 mt-2">
-                <span class="text-[10px] text-slate-500 font-bold uppercase">SHA-256 PROOF-OF-CODE CHECKSUM:</span>
-                <code class="text-purple-400 text-[11px] break-all font-mono font-bold">{{ selectedPostForVault.vaultHash }}</code>
+
+              <div v-if="isVerifyingVault" class="py-4 text-center text-emerald-400 animate-pulse">
+                ⚡ Verifica crittografica SHA-256 on-chain in corso...
               </div>
+              
+              <template v-else>
+                <div class="bg-[#040814] border border-slate-800 rounded-xl p-3 flex flex-col gap-1">
+                  <span class="text-[10px] text-slate-500 font-bold uppercase">SHA-256 PROOF-OF-CODE CHECKSUM:</span>
+                  <code class="text-emerald-400 text-[11px] break-all font-mono font-bold">
+                    {{ liveVaultProof?.vaultHash || selectedPostForVault.vaultHash || 'Non ancora notarizzato' }}
+                  </code>
+                </div>
+
+                <div v-if="liveVaultProof" class="grid grid-cols-2 gap-2 text-[11px]">
+                  <div class="bg-[#040814] border border-slate-800 rounded-lg p-2.5">
+                    <span class="text-slate-500 block text-[10px]">BLOCK NUMBER</span>
+                    <span class="text-sky-400 font-bold">#{{ liveVaultProof.blockNumber }}</span>
+                  </div>
+                  <div class="bg-[#040814] border border-slate-800 rounded-lg p-2.5 truncate">
+                    <span class="text-slate-500 block text-[10px]">MERKLE ROOT</span>
+                    <span class="text-purple-400">{{ liveVaultProof.merkleRoot?.slice(0, 16) }}…</span>
+                  </div>
+                </div>
+              </template>
             </div>
 
-            <button type="button" @click="isVaultModalOpen = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer">
-              Chiudi Report
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                @click="forceNotarizeThread(selectedPostForVault)"
+                :disabled="isVerifyingVault"
+                class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                ⛓️ Ri-Notarizza On-Chain
+              </button>
+              <button
+                type="button"
+                @click="isVaultModalOpen = false"
+                class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Chiudi
+              </button>
+            </div>
           </div>
         </div>
       </Transition>

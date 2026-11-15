@@ -3,15 +3,19 @@
 import { ref } from 'vue'
 
 useHead({
-  title: 'Guida Ecosistema & Architettura v2.6-PURE-SQL — DKP Docs',
+  title: 'Guida Ecosistema, Blockchain Vault© & Architettura v2.6-PURE-SQL — DKP Docs',
   meta: [
-    { name: 'description', content: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.6-PURE-SQL, DKP Nodes, Sentinella Gemini, Integrazione OpenRouter AI, OpenUI Studio e Gamification XP.' }
+    {
+      name: 'description',
+      content: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.6-PURE-SQL, DKP Blockchain Vault©, Forum e Blog On-Chain, DKP Nodes, Sentinella Gemini e Gamification XP.'
+    }
   ]
 })
 
 const activeSection = ref('architettura')
 const sections = [
   { id: 'architettura', title: '🏗️ Architettura DKP', icon: '⚡' },
+  { id: 'blockchain-vault', title: '⛓️ DKP Blockchain Vault©', icon: '🔐' },
   { id: 'moduli', title: '🛠️ Moduli, Nodes & OpenUI', icon: '🧩' },
   { id: 'cli-toolkit', title: '⚡ DKP CLI Toolkit', icon: '💻' },
   { id: 'gamification', title: '🏆 Gamification & XP System', icon: '🎮' },
@@ -30,7 +34,7 @@ function scrollToSection(id: string) {
 <template>
   <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12 font-sans">
     <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8">
-      
+
       <!-- SIDEBAR NAVIGAZIONE DOCS -->
       <aside class="lg:sticky lg:top-20 h-fit bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col gap-5 shadow-xl">
         <div>
@@ -41,18 +45,32 @@ function scrollToSection(id: string) {
         </div>
 
         <nav class="flex flex-col gap-1 font-mono text-xs">
-          <button 
-            v-for="item in sections" 
-            :key="item.id" 
+          <button
+            v-for="item in sections"
+            :key="item.id"
             @click="scrollToSection(item.id)"
-            :class="['text-left px-3 py-2.5 rounded-xl font-bold transition-all cursor-pointer', activeSection === item.id ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40']"
+            :class="[
+              'text-left px-3 py-2.5 rounded-xl font-bold transition-all cursor-pointer',
+              activeSection === item.id
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            ]"
           >
             {{ item.title }}
           </button>
         </nav>
 
-        <div class="pt-3 border-t border-slate-800">
-          <NuxtLink to="/docs/api" class="block text-center bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md">
+        <div class="pt-3 border-t border-slate-800 flex flex-col gap-2">
+          <NuxtLink
+            to="/nodes/n/blockchain-vault"
+            class="block text-center bg-[#020420] hover:border-emerald-400 text-emerald-400 border border-emerald-500/40 font-mono font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all no-underline"
+          >
+            ⛓️ Apri Nodo Vault ↗
+          </NuxtLink>
+          <NuxtLink
+            to="/docs/api"
+            class="block text-center bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md no-underline"
+          >
             🔌 Documentazione API ↗
           </NuxtLink>
         </div>
@@ -60,17 +78,17 @@ function scrollToSection(id: string) {
 
       <!-- CONTENUTO PRINCIPALE -->
       <main class="flex flex-col gap-8">
-        
+
         <!-- HERO DOCS -->
         <header class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-3 shadow-xl">
           <div class="text-xs font-mono font-semibold text-sky-400">
-            Docs / Ecosistema &amp; Architettura v2.6-PURE-SQL
+            Docs / Ecosistema, DKP Blockchain Vault© &amp; Architettura v2.6-PURE-SQL
           </div>
           <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
             DevKernelPulse Knowledge Base
           </h1>
           <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-            Guida completa all'architettura modulare DKP v2.6-PURE-SQL: dal motore Proof-of-Code Vault su Neon DB ai DKP Nodes, la Sentinella SAST con Gemini 2.0 Flash, l'OpenUI Live Engine e il sistema di reputazione XP.
+            Guida completa all'architettura modulare DKP v2.6-PURE-SQL: dal ledger crittografico <strong class="text-emerald-400">DKP Blockchain Vault©</strong> con Forum &amp; Blog On-Chain ai DKP Nodes, la Sentinella SAST con Gemini 2.0 Flash, l'OpenUI Live Engine e il sistema di reputazione XP.
           </p>
         </header>
 
@@ -80,10 +98,16 @@ function scrollToSection(id: string) {
             <span>🏗️</span> Architettura di Sistema DKP v2.6-PURE-SQL
           </h2>
           <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-            <strong class="text-white">DevKernelPulse (DKP)</strong> è costruito secondo un paradigma reattivo ad alte prestazioni, alimentato da <strong class="text-emerald-400">Nuxt 4 (Vue 3, Nitro Engine)</strong>, database serverless <strong class="text-sky-400">Neon PostgreSQL</strong> con ORM <strong class="text-slate-200">Drizzle</strong>, e un'infrastruttura AI decentralizzata tramite OpenRouter.
+            <strong class="text-white">DevKernelPulse (DKP)</strong> è costruito secondo un paradigma reattivo Pure-SQL ad alte prestazioni, alimentato da <strong class="text-emerald-400">Nuxt 4 (Vue 3, Nitro Engine)</strong>, database serverless <strong class="text-sky-400">Neon PostgreSQL</strong> con ledger crittografico concatenato e un'infrastruttura AI decentralizzata tramite OpenRouter.
           </p>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
+              <h4 class="text-sm font-bold text-emerald-400 font-sans">⛓️ DKP Blockchain Vault© Ledger</h4>
+              <p class="text-xs text-slate-400 leading-relaxed font-sans">
+                Registro immutabile Pure-SQL (<code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">dkp_vault_ledger</code>) che concatena blocchi SHA-256 con <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">previous_hash</code> e <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">merkle_root</code> per ogni thread del Forum e articolo del Blog.
+              </p>
+            </div>
             <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
               <h4 class="text-sm font-bold text-emerald-400 font-sans">🌐 Edge Processing &amp; AI Gateway</h4>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
@@ -91,23 +115,63 @@ function scrollToSection(id: string) {
               </p>
             </div>
             <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-              <h4 class="text-sm font-bold text-emerald-400 font-sans">🛡️ Pulse Sentinel &amp; SAST Engine</h4>
+              <h4 class="text-sm font-bold text-emerald-400 font-sans">🛡️ Pulse Sentinel© &amp; SAST Engine©</h4>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
                 Sentinella integrata su <strong class="text-slate-200">Google Gemini 2.0 Flash</strong> per l'analisi statica del codice, la moderazione istantanea dei DKP Nodes e la prevenzione injection.
               </p>
             </div>
             <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-              <h4 class="text-sm font-bold text-emerald-400 font-sans">🧠 OpenRouter Trinity Pipeline</h4>
+              <h4 class="text-sm font-bold text-emerald-400 font-sans">🗄️ Neon Serverless DB Pure-SQL</h4>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
-                Integrazione unificata multi-LLM (Vercel AI SDK) con supporto streaming in tempo reale per DKP Flash, DKP Coder e DKP Pro.
+                Persistenza dati ultra-veloce con query SQL parametriche pure, gestione atomica di voti/karma, transazioni XP e tabelle <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">node_posts</code>, <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">blog_posts</code> e <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">dkp_vault_ledger</code>.
               </p>
             </div>
-            <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-              <h4 class="text-sm font-bold text-emerald-400 font-sans">🗄️ Neon Serverless DB &amp; Drizzle</h4>
+          </div>
+        </section>
+
+        <!-- SEZIONE 1B: DKP BLOCKCHAIN VAULT & FORUM/BLOG ON-CHAIN -->
+        <section id="blockchain-vault" class="bg-[#090d16] border border-emerald-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-[0_0_30px_rgba(16,185,129,0.06)]">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2 font-sans m-0">
+              <span>⛓️</span> DKP Blockchain Vault© &amp; Contenuti On-Chain
+            </h2>
+            <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
+              DKP-VAULT-MAINNET-v2.6
+            </span>
+          </div>
+
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+            Con la release <strong class="text-white">v2.6-PURE-SQL</strong>, sia le discussioni della community (<strong class="text-purple-400">DKP Talks Hub / Nodes</strong>) sia gli articoli tecnici (<strong class="text-emerald-400">DKP Editorial Hub / Blog</strong>) sono protetti nativamente dal motore <strong class="text-emerald-400">DKP Blockchain Vault©</strong>.
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+              <div class="text-xs font-mono font-black text-purple-400">💬 Forum On-Chain (DKP Nodes)</div>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
-                Persistenza dati ultra-veloce, gestione atomica dei contatori <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">usage_count</code>, transazioni di Gamification XP e tabelle <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">api_keys</code> / <code class="text-sky-400 bg-slate-900 px-1 py-0.5 rounded font-mono">vault</code>.
+                Ogni thread pubblicato su <code class="text-sky-400 font-mono">/nodes</code> viene firmato con hash SHA-256 deterministico, riceve un numero di blocco progressivo (<code class="text-emerald-400 font-mono">Block #N</code>) e mostra il badge <code class="text-emerald-400 font-mono">VaultTrustBadge</code> con verifica live.
               </p>
             </div>
+
+            <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+              <div class="text-xs font-mono font-black text-emerald-400">✍️ Editorial Blog On-Chain</div>
+              <p class="text-xs text-slate-400 leading-relaxed font-sans">
+                Ogni articolo pubblicato su <code class="text-sky-400 font-mono">/blog</code> viene notarizzato su <code class="text-sky-400 font-mono">dkp_vault_ledger</code> con certificato <code class="text-emerald-400 font-mono">Proof-of-Code On-Chain Vault</code>, Merkle Root e controllo anti-alterazione post-pubblicazione.
+              </p>
+            </div>
+
+            <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
+              <div class="text-xs font-mono font-black text-sky-400">🔍 Auditor Pubblico n/blockchain-vault</div>
+              <p class="text-xs text-slate-400 leading-relaxed font-sans">
+                Il nodo dedicato <NuxtLink to="/nodes/n/blockchain-vault" class="text-emerald-400 underline">n/blockchain-vault</NuxtLink> espone l'explorer dei blocchi notarizzati e consente l'audit istantaneo tramite hash SHA-256 a 64 caratteri o ID entità.
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 font-mono text-xs text-slate-300 flex flex-col gap-1.5">
+            <div class="text-[11px] text-slate-500 uppercase font-bold">Struttura Crittografica Blocco DKP Vault©</div>
+            <code class="text-emerald-400 break-all">
+              BlockHash = SHA256( blockNumber | previousHash | entityType | entityId | title | content | timestamp )
+            </code>
           </div>
         </section>
 
@@ -117,15 +181,25 @@ function scrollToSection(id: string) {
             <span>🛠️</span> Moduli Proprietari DKP v2.6-PURE-SQL
           </h2>
           <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-            La piattaforma offre una suite completa di strumenti integrati per la sicurezza, la produttività dello sviluppatore e il rendering UI in tempo reale:
+            La piattaforma offre una suite completa di strumenti integrati per la sicurezza, la notarizzazione on-chain, la produttività dello sviluppatore e il rendering UI in tempo reale:
           </p>
 
           <div class="flex flex-col gap-4 mt-2">
-            
+
+            <div class="bg-[#020420] border border-slate-800 border-l-4 border-l-emerald-500 rounded-xl p-5 flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-base">⛓️</span>
+                <h3 class="text-sm font-bold text-white font-sans">DKP Blockchain Vault© &amp; Multi-Entity Notarization Engine</h3>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed font-sans">
+                Motore unificato (<code class="text-sky-400 font-mono">BlockchainService</code>) con endpoint <code class="text-sky-400 font-mono">/api/vault/notarize</code>, <code class="text-sky-400 font-mono">/api/vault/verify</code> e <code class="text-sky-400 font-mono">/api/vault/ledger</code>. Garantisce immutabilità verificabile per thread del forum, articoli editoriali e snippet di codice.
+              </p>
+            </div>
+
             <div class="bg-[#020420] border border-slate-800 border-l-4 border-l-blue-500 rounded-xl p-5 flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <span class="text-base">🛡️</span>
-                <h3 class="text-sm font-bold text-white font-sans">Pulse Sentinel SAST &amp; DKP Nodes Moderation</h3>
+                <h3 class="text-sm font-bold text-white font-sans">Pulse Sentinel SAST© &amp; DKP Nodes Moderation</h3>
               </div>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
                 Sistema di moderazione intelligente alimentato da <strong class="text-slate-200">dots-studio/dots-3-note</strong> (<code class="text-sky-400 font-mono">dots-studio/dots-3-note</code>). Analizza i post della community nei DKP Nodes e scansiona il codice prevenendo vulnerabilità prima della pubblicazione.
@@ -155,26 +229,16 @@ function scrollToSection(id: string) {
             <div class="bg-[#020420] border border-slate-800 rounded-xl p-5 flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <span class="text-base">🧠</span>
-                <h3 class="text-sm font-bold text-white font-sans">Neural Playground &amp; DKP Trinity Engine</h3>
+                <h3 class="text-sm font-bold text-white font-sans">Neural Playground© &amp; DKP Trinity Engine©</h3>
               </div>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
-                Sandbox interattiva per il testing e la generazione AI in streaming. Alimentata dalla nuova suite di modelli OpenRouter:
+                Sandbox interattiva per il testing e la generazione AI in streaming. Alimentata dalla suite di modelli OpenRouter:
               </p>
               <ul class="flex flex-col gap-1.5 mt-2 ml-4 font-mono text-xs text-slate-300 list-disc">
                 <li>⚡ <strong class="text-white">DKP-Flash:</strong> <code class="text-sky-400">dots-studio/dots-3-note</code> — Risposta istantanea e moderazione.</li>
                 <li>💻 <strong class="text-white">DKP-Coder:</strong> <code class="text-sky-400">cohere/north-mini-code</code> — Specializzato in blocchi di codice e componenti OpenUI.</li>
-                <li>🧠 <strong class="text-white">DKP-Pro:</strong> <code class="text-sky-400">nvidia/nemotron-3-ultra-550b</code> — Architetture avanzate con output e possibilità che sviluppi varianti.</li>
+                <li>🧠 <strong class="text-white">DKP-Pro:</strong> <code class="text-sky-400">nvidia/nemotron-3-ultra-550b</code> — Architetture avanzate con varianti multiple.</li>
               </ul>
-            </div>
-
-            <div class="bg-[#020420] border border-slate-800 border-l-4 border-l-emerald-500 rounded-xl p-5 flex flex-col gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-base">📜</span>
-                <h3 class="text-sm font-bold text-white font-sans">Proof-of-Code Vault v2.6</h3>
-              </div>
-              <p class="text-xs text-slate-400 leading-relaxed font-sans">
-                Permette di generare un'impronta digitale immutabile (SHA-256) del tuo sorgente o output OpenUI, notarizzandolo direttamente sul database Neon con reward XP immediato.
-              </p>
             </div>
 
           </div>
@@ -186,7 +250,7 @@ function scrollToSection(id: string) {
             <span>⚡</span> DKP CLI Toolkit v2.6-PURE-SQL
           </h2>
           <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-            L'interfaccia a riga di comando nativa per sviluppatori. Consente di interrogare l'ecosistema DKP direttamente dai terminali locali e di interagire con le API di produzione.
+            L'interfaccia a riga di comando nativa per sviluppatori. Consente di interrogare l'ecosistema DKP direttamente dai terminali locali e di interagire con le API di produzione e il Blockchain Vault.
           </p>
 
           <div class="bg-[#020420] border border-slate-800 rounded-xl overflow-hidden mt-2 font-mono">
@@ -205,7 +269,7 @@ dkp auth login --key dkp_live_xxx
 <span class="text-slate-500 italic"># Generazione UI da Terminale tramite Trinity (Dots-3 Engine)</span>
 dkp ui generate "Dashboard Tailwind Dark"
 
-<span class="text-slate-500 italic"># Notarizzazione istantanea sul Vault Cloud</span>
+<span class="text-slate-500 italic"># Notarizzazione istantanea sul DKP Blockchain Vault©</span>
 dkp vault notarize https://miosito.com
 
 <span class="text-slate-500 italic"># Verifica stato API Gateway &amp; Sentinel</span>
@@ -219,7 +283,7 @@ dkp status</code></pre>
             <span>🏆</span> Gamification &amp; XP Reputation Engine
           </h2>
           <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-            Ogni interazione su DevKernelPulse genera <strong class="text-emerald-400">Experience Points (XP)</strong> registrati in tempo reale nella tabella <code class="text-sky-400 font-mono">api_keys</code> e <code class="text-sky-400 font-mono">users</code> su Neon DB, incrementando il tuo rank sviluppatore.
+            Ogni interazione su DevKernelPulse genera <strong class="text-emerald-400">Experience Points (XP)</strong> e Karma registrati in tempo reale su Neon DB Pure-SQL, incrementando il tuo rank sviluppatore.
           </p>
 
           <div class="overflow-x-auto border border-slate-800 rounded-xl mt-2">
@@ -227,20 +291,25 @@ dkp status</code></pre>
               <thead class="bg-[#020420] text-white border-b border-slate-800">
                 <tr>
                   <th class="p-3">Azione Utente</th>
-                  <th class="p-3">Guadagno XP</th>
+                  <th class="p-3">Guadagno XP / Karma</th>
                   <th class="p-3">Target Backend / Funzione</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800 text-slate-300">
                 <tr class="hover:bg-slate-800/30 transition-colors">
-                  <td class="p-3"><strong class="text-white">Notarizzazione Vault (Web o CLI)</strong></td>
-                  <td class="p-3"><span class="bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+100 XP</span></td>
-                  <td class="p-3"><code class="text-sky-400">/api/user/vault</code></td>
+                  <td class="p-3"><strong class="text-white">Pubblicazione Articolo Blog On-Chain</strong></td>
+                  <td class="p-3"><span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+150 XP</span></td>
+                  <td class="p-3"><code class="text-sky-400">/api/blog/posts + Vault</code></td>
                 </tr>
                 <tr class="hover:bg-slate-800/30 transition-colors">
-                  <td class="p-3"><strong class="text-white">Pubblicazione Post / Node Moderato</strong></td>
+                  <td class="p-3"><strong class="text-white">Notarizzazione DKP Blockchain Vault©</strong></td>
+                  <td class="p-3"><span class="bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+100 XP</span></td>
+                  <td class="p-3"><code class="text-sky-400">/api/vault/notarize</code></td>
+                </tr>
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                  <td class="p-3"><strong class="text-white">Pubblicazione Thread On-Chain (DKP Nodes)</strong></td>
                   <td class="p-3"><span class="bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+50 XP</span></td>
-                  <td class="p-3"><code class="text-sky-400">/api/nodes / Pulse Sentinel</code></td>
+                  <td class="p-3"><code class="text-sky-400">/api/nodes/posts + Sentinel</code></td>
                 </tr>
                 <tr class="hover:bg-slate-800/30 transition-colors">
                   <td class="p-3"><strong class="text-white">Generazione OpenUI / DKP-Coder</strong></td>
@@ -248,14 +317,9 @@ dkp status</code></pre>
                   <td class="p-3"><code class="text-sky-400">/api/ai/chat.post.ts</code></td>
                 </tr>
                 <tr class="hover:bg-slate-800/30 transition-colors">
-                  <td class="p-3"><strong class="text-white">Esecuzione Neural Playground (Trinity)</strong></td>
-                  <td class="p-3"><span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+15 XP</span></td>
-                  <td class="p-3"><code class="text-sky-400">streamText (Gemini / Nemotron)</code></td>
-                </tr>
-                <tr class="hover:bg-slate-800/30 transition-colors">
-                  <td class="p-3"><strong class="text-white">Comandi Web Terminal Shell</strong></td>
-                  <td class="p-3"><span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+5 XP / +50 XP</span></td>
-                  <td class="p-3"><code class="text-sky-400">/api/tools/terminal-exec</code></td>
+                  <td class="p-3"><strong class="text-white">Upvote Community Thread (▲)</strong></td>
+                  <td class="p-3"><span class="bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold px-2 py-0.5 rounded text-[11px]">+1 Karma</span></td>
+                  <td class="p-3"><code class="text-sky-400">/api/nodes/posts/[id]/vote</code></td>
                 </tr>
               </tbody>
             </table>
@@ -267,8 +331,15 @@ dkp status</code></pre>
           <h2 class="text-xl font-bold text-white flex items-center gap-2 pb-3 border-b border-slate-800 font-sans">
             <span>💡</span> Best Practices per gli Sviluppatori
           </h2>
-          
+
           <div class="flex flex-col gap-4">
+            <div class="bg-[#020420] border-l-4 border-l-emerald-400 border border-slate-800 p-4 rounded-r-xl flex flex-col gap-1">
+              <h4 class="text-sm font-bold text-white font-sans">⛓️ Verifica Crittografica e Integrità Anti-Manomissione</h4>
+              <p class="text-xs text-slate-400 leading-relaxed font-sans">
+                Ogni modifica al titolo o al contenuto di un thread o di un articolo aggiorna automaticamente la catena su <code class="text-sky-400 font-mono">dkp_vault_ledger</code>. Puoi verificare in qualsiasi momento l'integrità tramite <code class="text-sky-400 font-mono">/api/vault/verify</code> o sul nodo <NuxtLink to="/nodes/n/blockchain-vault" class="text-emerald-400 underline">n/blockchain-vault</NuxtLink>.
+              </p>
+            </div>
+
             <div class="bg-[#020420] border-l-4 border-l-sky-400 border border-slate-800 p-4 rounded-r-xl flex flex-col gap-1">
               <h4 class="text-sm font-bold text-white font-sans">⚡ Model Routing Intelligente</h4>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
@@ -276,17 +347,10 @@ dkp status</code></pre>
               </p>
             </div>
 
-            <div class="bg-[#020420] border-l-4 border-l-emerald-400 border border-slate-800 p-4 rounded-r-xl flex flex-col gap-1">
-              <h4 class="text-sm font-bold text-white font-sans">🔑 Sicurezza e Crittografia API</h4>
-              <p class="text-xs text-slate-400 leading-relaxed font-sans">
-                Le chiavi DKP (es. <code class="text-sky-400 font-mono">dkp_live_...</code>) non vengono mai memorizzate in chiaro. Il sistema salva e confronta in tempo reale unicamente l'hash crittografato (SHA-256) per la massima sicurezza aziendale.
-              </p>
-            </div>
-
             <div class="bg-[#020420] border-l-4 border-l-purple-500 border border-slate-800 p-4 rounded-r-xl flex flex-col gap-1">
               <h4 class="text-sm font-bold text-white font-sans">🛡️ Moderazione Nodes &amp; Pulse Sentinel</h4>
               <p class="text-xs text-slate-400 leading-relaxed font-sans">
-                Tutti i contributi pubblicati nei DKP Nodes passano automaticamente la scansione della Sentinella Gemini prima di essere visibili nel feed principale.
+                Tutti i contributi pubblicati nei DKP Nodes passano automaticamente la scansione della Sentinella Gemini prima di essere notarizzati sul ledger e resi visibili nel feed principale.
               </p>
             </div>
           </div>

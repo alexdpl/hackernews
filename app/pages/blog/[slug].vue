@@ -5,7 +5,8 @@ import { useRoute } from "vue-router";
 import { useBlog } from "~/composables/useBlog";
 import SocialShare from "~/components/blog/SocialShare.vue";
 import DkpRelatedPosts from "~/components/blog/DkpRelatedPosts.vue";
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue';
+import DkpNodesHomeWidget from "~/components/DkpNodesHomeWidget.vue";
+import VaultTrustBadge from "~/components/VaultTrustBadge.vue";
 
 interface BlogPost {
   id?: string | number;
@@ -30,6 +31,7 @@ interface BlogPost {
   tags?: string[];
   vaultCertificateId?: string;
   vaultHash?: string;
+  vaultBlockNumber?: number | null;
 }
 
 interface BlogApiResponse {
@@ -65,6 +67,76 @@ const post = computed<BlogPost | null>(() => {
   const res = apiResponse.value as unknown as BlogApiResponse | null;
   return res?.data || null;
 });
+
+// --- BLOCKCHAIN VAULT LIVE VERIFICATION (BLOG) ---
+const vaultProof = ref<any>(null);
+const isCheckingVault = ref(false);
+const hashCopied = ref(false);
+const toastMsg = ref("");
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+function showNotification(msg: string) {
+  toastMsg.value = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastMsg.value = "";
+  }, 3500);
+}
+
+async function loadOnChainBlogProof(autoNotarizeIfMissing = true) {
+  if (!post.value?.id && !slug) return;
+  isCheckingVault.value = true;
+  try {
+    const queryParams: Record<string, any> = {
+      entityType: "blog",
+      slug: post.value?.slug || slug,
+    };
+    if (post.value?.id && !Number.isNaN(Number(post.value.id))) {
+      queryParams.entityId = Number(post.value.id);
+    }
+
+    let verifyRes: any = await $fetch("/api/vault/verify", {
+      query: queryParams,
+    }).catch(() => null);
+
+    if (!verifyRes?.proof && autoNotarizeIfMissing && post.value?.id && !Number.isNaN(Number(post.value.id))) {
+      await $fetch("/api/vault/notarize", {
+        method: "POST",
+        body: {
+          entityType: "blog",
+          entityId: Number(post.value.id),
+        },
+      }).catch(() => null);
+
+      verifyRes = await $fetch("/api/vault/verify", {
+        query: queryParams,
+      }).catch(() => null);
+    }
+
+    if (verifyRes?.proof) {
+      vaultProof.value = verifyRes.proof;
+      if (post.value && !post.value.vaultHash) {
+        post.value.vaultHash = verifyRes.proof.vaultHash;
+      }
+      if (post.value && !post.value.vaultBlockNumber) {
+        post.value.vaultBlockNumber = verifyRes.proof.blockNumber;
+      }
+    }
+  } finally {
+    isCheckingVault.value = false;
+  }
+}
+
+async function copyFullVaultHash() {
+  const hash = vaultProof.value?.vaultHash || post.value?.vaultHash;
+  if (!hash || typeof navigator === "undefined") return;
+  await navigator.clipboard.writeText(hash).catch(() => {});
+  hashCopied.value = true;
+  showNotification("📋 Hash SHA-256 dell'articolo copiato negli appunti!");
+  setTimeout(() => {
+    hashCopied.value = false;
+  }, 2000);
+}
 
 const readTime = computed(() => {
   const text = post.value?.content || post.value?.description || "";
@@ -224,6 +296,15 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => post.value?.id,
+  (newId) => {
+    if (newId && import.meta.client) {
+      loadOnChainBlogProof(true);
+    }
+  }
+);
+
 let prismTimer: ReturnType<typeof setTimeout> | undefined;
 const applyPrism = () => {
   if (import.meta.client && $prism) {
@@ -287,10 +368,15 @@ watch(parsedContent, async () => {
 onMounted(() => {
   setTimeout(applyPrism, 200);
   document.addEventListener("click", handleCopyClick);
+  if (post.value?.id || slug) {
+    loadOnChainBlogProof(true);
+  }
 });
 
 onUnmounted(() => {
   document.removeEventListener("click", handleCopyClick);
+  clearTimeout(prismTimer);
+  clearTimeout(toastTimer);
 });
 
 function handleLike() {
@@ -304,6 +390,14 @@ function handleLike() {
 
 <template>
   <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-10">
+    <div
+      v-if="toastMsg"
+      role="status"
+      class="fixed top-6 right-6 z-[10000] bg-[#041a13]/95 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl font-mono text-xs font-bold"
+    >
+      {{ toastMsg }}
+    </div>
+
     <div class="max-w-4xl mx-auto flex flex-col gap-6">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -387,7 +481,7 @@ function handleLike() {
               </ol>
             </nav>
 
-            <!-- Badges Categoria e Verifica -->
+            <!-- Badges Categoria, Verifica & Blockchain Vault -->
             <div class="flex items-center gap-3 flex-wrap justify-start">
               <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
                 {{ post.categoryName || post.category || "Generale" }}
@@ -400,6 +494,15 @@ function handleLike() {
               <span v-if="post.isVerified" class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                 🛡️ DKP Verified v2.6
               </span>
+
+              <VaultTrustBadge
+                v-if="post.id"
+                entity-type="blog"
+                :post-id="Number(post.id)"
+                :vault-hash="vaultProof?.vaultHash || post.vaultHash"
+                :block-number="vaultProof?.blockNumber || post.vaultBlockNumber"
+                @notarized="(h) => { if (post) post.vaultHash = h }"
+              />
             </div>
           </div>
 
@@ -480,38 +583,74 @@ function handleLike() {
             </span>
           </div>
 
-          <!-- CERTIFICATO VAULT NOTARIZATION -->
+          <!-- CERTIFICATO ON-CHAIN BLOCKCHAIN VAULT (UNIFICATO FORUM + BLOG) -->
           <div
-            v-if="post.isVerified && post.vaultCertificateId"
-            class="mt-8 bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.05)] z-10 mb-8"
+            class="mt-8 bg-[#020420] border border-emerald-500/35 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.06)] z-10 mb-8 font-mono"
           >
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-800">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="text-lg">⛓️</span>
+                <h3 class="text-emerald-400 font-black text-sm sm:text-base tracking-wide uppercase m-0">
+                  Proof-of-Code On-Chain Vault v2.6
+                </h3>
+                <span
+                  v-if="vaultProof"
+                  class="text-[10px] px-2 py-0.5 rounded font-bold border"
+                  :class="vaultProof.status === 'VERIFIED'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                    : 'bg-rose-500/15 text-rose-300 border-rose-500/40'"
+                >
+                  {{ vaultProof.status === 'VERIFIED' ? '✅ SHA-256 VERIFIED' : '⚠️ MODIFIED POST-HASH' }}
+                </span>
+              </div>
+
               <div class="flex items-center gap-3">
-                <div class="bg-emerald-500/20 p-2 rounded-lg border border-emerald-500/30">
-                  <span class="text-emerald-400 text-xl">🛡️</span>
-                </div>
-                <div>
-                  <h3 class="text-emerald-400 font-bold text-lg tracking-wide uppercase">
-                    Vault Notarization Certificate v2.6
-                  </h3>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    Proof of Code &amp; Security Scan by Pulse Sentinel AI
-                  </p>
-                </div>
+                <span v-if="vaultProof?.blockNumber" class="text-xs text-sky-400 font-bold">
+                  Block #{{ vaultProof.blockNumber }}
+                </span>
+                <NuxtLink
+                  to="/nodes/n/blockchain-vault"
+                  class="text-xs text-emerald-400 hover:underline no-underline font-bold"
+                >
+                  n/blockchain-vault →
+                </NuxtLink>
               </div>
             </div>
-            <div class="bg-[#090d16] border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-300 relative z-10">
-              <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
-                <span class="text-slate-500 font-semibold">CERTIFICATE_ID:</span>
-                <span class="text-emerald-400 font-bold select-all">{{ post.vaultCertificateId }}</span>
+
+            <div v-if="isCheckingVault" class="text-xs text-slate-400 py-2">
+              ⚡ Verifica crittografica SHA-256 dell'articolo sul ledger in corso...
+            </div>
+
+            <div v-else class="flex flex-col gap-3 text-xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#090d16] border border-slate-800 rounded-lg p-3.5">
+                <div class="min-w-0">
+                  <div class="text-[10px] text-slate-500 uppercase">SHA-256 Editorial Content Proof Hash</div>
+                  <div class="text-emerald-400 break-all select-all text-[11px] mt-1">
+                    {{ vaultProof?.vaultHash || post.vaultHash || 'In attesa di notarizzazione...' }}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="copyFullVaultHash"
+                  class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 font-bold text-[11px] cursor-pointer"
+                >
+                  {{ hashCopied ? '✓ Copiato' : '📋 Copia Hash' }}
+                </button>
               </div>
-              <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
-                <span class="text-slate-500 font-semibold">TIMESTAMP:</span>
-                <span class="text-slate-300">{{ new Date(post.updatedAt || post.createdAt || Date.now()).toISOString() }}</span>
-              </div>
-              <div class="flex flex-col gap-2">
-                <span class="text-slate-500 font-semibold">SHA-256 SECURE CHECKSUM:</span>
-                <span class="text-sky-400 select-all break-all bg-[#020420] p-2 rounded border border-slate-800">{{ post.vaultHash }}</span>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-400">
+                <div class="bg-[#090d16] border border-slate-800/80 rounded-lg p-2.5 truncate">
+                  <span class="text-slate-500">Certificate:</span>
+                  <span class="text-emerald-400 font-bold ml-1">{{ post.vaultCertificateId || `DKP-BLOG-${post.id}` }}</span>
+                </div>
+                <div class="bg-[#090d16] border border-slate-800/80 rounded-lg p-2.5 truncate">
+                  <span class="text-slate-500">Network:</span>
+                  <span class="text-sky-400 font-bold ml-1">{{ vaultProof?.chainNetwork || 'DKP-VAULT-MAINNET-v2.6' }}</span>
+                </div>
+                <div class="bg-[#090d16] border border-slate-800/80 rounded-lg p-2.5 truncate">
+                  <span class="text-slate-500">Merkle Root:</span>
+                  <span class="text-purple-400 ml-1">{{ vaultProof?.merkleRoot ? `${vaultProof.merkleRoot.slice(0, 16)}…` : 'Generazione...' }}</span>
+                </div>
               </div>
             </div>
           </div>

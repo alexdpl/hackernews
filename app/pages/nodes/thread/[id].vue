@@ -1,3 +1,4 @@
+<!-- app/pages/nodes/thread/[id].vue -->
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -16,7 +17,6 @@ interface AuthorRank {
   title: string
 }
 
-// Inizializza il gestore globale della copia codice
 useCodeCopy()
 
 const route = useRoute()
@@ -24,6 +24,17 @@ const threadId = computed(() => String(route.params.id || ''))
 const { currentUser } = useAuthCore()
 const { $prism } = useNuxtApp()
 const { getAuthorRank } = useBlog()
+
+const toastMsg = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | undefined
+
+function showNotification(msg: string) {
+  toastMsg.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastMsg.value = ''
+  }, 4000)
+}
 
 function cleanNodeLabel(raw: string): string {
   return String(raw || '').replace(/^(n\/)+/i, '').trim()
@@ -54,7 +65,44 @@ const post = computed(() => {
   }
 })
 
-// Verifica On-Chain live del thread corrente
+// --- UPVOTE / KARMA THREAD ---
+const isVoting = ref(false)
+const hasVotedDirection = ref<'up' | 'down' | null>(null)
+
+async function voteThread(direction: 'up' | 'down' = 'up') {
+  if (!post.value || isVoting.value) return
+  isVoting.value = true
+
+  const delta = direction === 'up' ? 1 : -1
+  post.value.karmaScore = Number(post.value.karmaScore || 0) + delta
+  hasVotedDirection.value = direction
+
+  try {
+    const res: any = await $fetch(`/api/nodes/posts/${post.value.id}/vote`, {
+      method: 'POST',
+      body: {
+        direction,
+        userId: currentUser.value?.id || 1
+      }
+    })
+
+    if (typeof res?.karmaScore === 'number') {
+      post.value.karmaScore = res.karmaScore
+    } else if (typeof res?.data?.karmaScore === 'number') {
+      post.value.karmaScore = res.data.karmaScore
+    }
+
+    showNotification(direction === 'up' ? '▲ Upvote registrato! +Karma' : '▼ Voto registrato.')
+  } catch (err: any) {
+    post.value.karmaScore = Number(post.value.karmaScore || 0) - delta
+    hasVotedDirection.value = null
+    showNotification(`⚠️ ${err?.data?.statusMessage || 'Impossibile registrare il voto.'}`)
+  } finally {
+    isVoting.value = false
+  }
+}
+
+// --- VERIFICA ON-CHAIN LIVE ---
 const vaultProof = ref<any>(null)
 const isCheckingVault = ref(false)
 const hashCopied = ref(false)
@@ -172,6 +220,7 @@ async function deleteCurrentPost() {
   }
 }
 
+// --- COMMENTI ---
 const { data: commentsRes, refresh: refreshComments } = await useFetch<any>('/api/nodes/comments', {
   query: computed(() => ({ postId: threadId.value }))
 })
@@ -184,6 +233,42 @@ const comments = computed<any[]>(() => {
   return []
 })
 
+const commentText = ref('')
+const commentError = ref('')
+const isSendingComment = ref(false)
+
+async function submitComment() {
+  if (!post.value) return
+  const trimmed = commentText.value.trim()
+  if (!trimmed) {
+    commentError.value = 'Inserisci il testo della risposta prima di pubblicare.'
+    return
+  }
+
+  commentError.value = ''
+  isSendingComment.value = true
+
+  try {
+    await $fetch('/api/nodes/comments', {
+      method: 'POST',
+      body: {
+        postId: post.value.id,
+        content: trimmed,
+        userId: currentUser.value?.id || 1
+      }
+    })
+    commentText.value = ''
+    showNotification('💬 Risposta pubblicata! +10 XP')
+    await refreshComments()
+    await nextTick()
+    applyPrism()
+  } catch (err: any) {
+    commentError.value = err?.data?.statusMessage || 'Errore durante la pubblicazione del commento.'
+  } finally {
+    isSendingComment.value = false
+  }
+}
+
 const readTime = computed(() => {
   const text = post.value?.content || ''
   if (!text) return 1
@@ -192,7 +277,6 @@ const readTime = computed(() => {
   return Math.max(1, Math.ceil(words / 200))
 })
 
-// Funzione Parser identica e pulita
 function parseDkpMarkdown(contentVal: string): string {
   try {
     if (!contentVal) return ''
@@ -295,8 +379,9 @@ useHead({
   meta: [{ name: 'description', content: computed(() => String(post.value?.content || '').slice(0, 160)) }]
 })
 
-// --- GESTIONE ROBUSTA PRISM JS ---
 let prismTimer: ReturnType<typeof setTimeout> | undefined
+const windowPrism = (typeof window !== 'undefined' ? (window as any).Prism : null)
+
 const applyPrism = () => {
   if (import.meta.client) {
     clearTimeout(prismTimer)
@@ -313,8 +398,6 @@ const applyPrism = () => {
     }, 150)
   }
 }
-
-const windowPrism = (typeof window !== 'undefined' ? (window as any).Prism : null)
 
 watch(parsedContent, async () => {
   await nextTick()
@@ -336,6 +419,11 @@ onMounted(() => {
   if (post.value?.id) {
     loadOnChainProof(true)
   }
+})
+
+onUnmounted(() => {
+  clearTimeout(prismTimer)
+  clearTimeout(toastTimer)
 })
 </script>
 
@@ -380,7 +468,6 @@ onMounted(() => {
               <span class="bg-purple-500/15 text-purple-300 border border-purple-500/35 px-3 py-1 rounded-md text-xs font-bold">{{ post.nodeIcon }} n/{{ post.nodeName }}</span>
               <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold">⚡ PURE-SQL THREAD</span>
 
-              <!-- BADGE TRUST SIGNAL ON-CHAIN INTERATTIVO -->
               <VaultTrustBadge
                 :post-id="post.id"
                 :vault-hash="vaultProof?.vaultHash || post.vaultHash"
@@ -390,14 +477,12 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- AZIONI EDIT / DELETE / PIN -->
           <div v-if="canEditPost || isAdmin" class="flex items-center gap-2 mb-6 font-mono flex-wrap">
             <button v-if="canEditPost" type="button" @click="startEditing" class="px-3.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-lg text-xs font-bold cursor-pointer">✏️ Modifica</button>
             <button v-if="isAdmin" type="button" @click="togglePinPost" class="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold cursor-pointer">📌 {{ post.isPinned ? 'Rimuovi Pin' : 'Pinna Thread' }}</button>
             <button v-if="canEditPost" type="button" @click="deleteCurrentPost" class="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold cursor-pointer">🗑️ Elimina</button>
           </div>
 
-          <!-- MODALE EDIT -->
           <div v-if="isEditing" class="bg-[#020420] border border-sky-500/50 rounded-2xl p-6 mb-8 font-mono shadow-2xl relative z-20">
             <h3 class="text-sky-400 font-bold text-base mb-4 mt-0">🛠️ Modifica Contenuto Thread v2.6</h3>
             <div class="flex flex-col gap-4">
@@ -431,7 +516,31 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <button type="button" @click="voteThread('up')" class="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 font-bold cursor-pointer">▲ {{ post.karmaScore }} Karma</button>
+
+            <div class="flex items-center gap-2 font-mono">
+              <button
+                type="button"
+                @click="voteThread('up')"
+                :disabled="isVoting"
+                :class="[
+                  'px-3.5 py-2 rounded-xl border font-extrabold text-xs transition-all cursor-pointer flex items-center gap-1.5',
+                  hasVotedDirection === 'up'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.35)]'
+                    : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/35'
+                ]"
+              >
+                ▲ {{ post.karmaScore }} Karma
+              </button>
+              <button
+                type="button"
+                @click="voteThread('down')"
+                :disabled="isVoting"
+                class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-rose-500/15 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-500/35 font-bold text-xs transition-all cursor-pointer"
+                title="Downvote"
+              >
+                ▼
+              </button>
+            </div>
           </div>
 
           <ClientOnly>
@@ -439,7 +548,7 @@ onMounted(() => {
             <template #fallback><div class="py-10 text-center text-slate-500 animate-pulse font-mono mb-10">⏳ Formattazione in corso...</div></template>
           </ClientOnly>
 
-          <!-- PANNELLO CERTIFICAZIONE ON-CHAIN SHA-256 (TRUST SIGNAL VISIBILE E VERIFICABILE) -->
+          <!-- PANNELLO CERTIFICAZIONE ON-CHAIN SHA-256 -->
           <div class="bg-[#020420] border border-emerald-500/35 rounded-xl p-5 relative z-10 mb-6 shadow-lg font-mono">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
               <div class="flex items-center gap-2">
@@ -503,7 +612,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- SEZIONE CONDIVISIONE SUBITO SOTTO IL THREAD -->
+          <!-- CONDIVISIONE -->
           <div class="bg-[#020420] border border-slate-800 rounded-xl p-6 relative z-10 mb-8 shadow-lg">
             <div class="flex flex-col md:flex-row items-center justify-between gap-4">
               <div class="flex items-center gap-3 text-center md:text-left">
@@ -526,7 +635,9 @@ onMounted(() => {
               <textarea v-model="commentText" rows="4" placeholder="Scrivi la tua risposta..." class="w-full bg-[#090d16] border border-slate-800 rounded-xl p-3.5 text-slate-200 text-xs font-mono outline-none"></textarea>
               <div v-if="commentError" class="text-xs font-mono text-rose-400">⚠️ {{ commentError }}</div>
               <div class="flex justify-end">
-                <button type="submit" :disabled="isSendingComment" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-mono font-extrabold text-xs rounded-xl cursor-pointer">🚀 Pubblica Risposta (+10 XP)</button>
+                <button type="submit" :disabled="isSendingComment" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-mono font-extrabold text-xs rounded-xl cursor-pointer disabled:opacity-50">
+                  {{ isSendingComment ? 'Invio...' : '🚀 Pubblica Risposta (+10 XP)' }}
+                </button>
               </div>
             </form>
             <div v-for="c in comments" :key="c.id" class="bg-[#090d16] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
@@ -553,7 +664,6 @@ onMounted(() => {
 .prose h1, .post-content h1 { @apply text-2xl font-extrabold text-white mt-8 mb-4 border-b border-slate-800 pb-2; }
 .prose p, .post-content p { @apply text-slate-300 text-base leading-relaxed mb-6; }
 
-/* Stili specifici per i blocchi codice e colorazione PrismJS */
 :deep(.dkp-code-wrapper) { 
   background: #0d1117; 
   border: 1px solid #1e293b; 

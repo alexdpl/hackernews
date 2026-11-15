@@ -52,14 +52,76 @@ const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 5
 
-// --- STATI THREAD NODES ---
+// --- STATI, RICERCA E PAGINAZIONE THREAD NODES ---
 const myThreads = ref<any[]>([])
 const isLoadingThreads = ref(false)
+const threadSearchQuery = ref('')
+const threadNodeFilter = ref('all')
+const threadCurrentPage = ref(1)
+const threadsPerPage = 5
+
+const availableThreadNodes = computed(() => {
+  const seen = new Map<string, string>()
+  for (const t of myThreads.value) {
+    const slug = String(t.nodeSlug || t.node_slug || 'general')
+    const label = String(t.nodeName || t.node_name || slug)
+    if (!seen.has(slug)) seen.set(slug, label)
+  }
+  return Array.from(seen.entries()).map(([slug, name]) => ({ slug, name }))
+})
+
+const filteredAndPaginatedThreads = computed(() => {
+  const q = threadSearchQuery.value.trim().toLowerCase()
+  const nodeFilter = threadNodeFilter.value
+
+  const filtered = myThreads.value.filter((t) => {
+    const tNodeSlug = String(t.nodeSlug || t.node_slug || 'general')
+    if (nodeFilter !== 'all' && tNodeSlug !== nodeFilter) return false
+
+    if (!q) return true
+    const title = String(t.title || '').toLowerCase()
+    const content = String(t.content || '').toLowerCase()
+    const nodeName = String(t.nodeName || t.node_name || tNodeSlug).toLowerCase()
+    const vaultHash = String(t.vaultHash || t.vault_hash || '').toLowerCase()
+
+    return (
+      title.includes(q) ||
+      content.includes(q) ||
+      nodeName.includes(q) ||
+      vaultHash.includes(q)
+    )
+  })
+
+  const totalItems = filtered.length
+  const totalPages = Math.max(1, Math.ceil(totalItems / threadsPerPage))
+  const safePage = Math.min(Math.max(1, threadCurrentPage.value), totalPages)
+  const start = (safePage - 1) * threadsPerPage
+
+  return {
+    items: filtered.slice(start, start + threadsPerPage),
+    totalItems,
+    totalPages,
+    currentPage: safePage,
+    startIndex: totalItems === 0 ? 0 : start + 1,
+    endIndex: Math.min(start + threadsPerPage, totalItems)
+  }
+})
+
+watch([threadSearchQuery, threadNodeFilter], () => {
+  threadCurrentPage.value = 1
+})
 
 async function fetchMyNodesThreads() {
   isLoadingThreads.value = true
   try {
-    const res: any = await $fetch('/api/nodes/posts?author=me').catch(() => null)
+    const res: any = await $fetch('/api/nodes/posts', {
+      query: {
+        author: 'me',
+        authorId: resolvedUserId.value,
+        sort: 'new',
+        limit: 200
+      }
+    }).catch(() => null)
     myThreads.value = res?.data || res?.posts || (Array.isArray(res) ? res : [])
   } catch (err) {
     console.error('Errore caricamento thread:', err)
@@ -73,6 +135,9 @@ async function deleteNodeThread(id: number) {
   try {
     await $fetch(`/api/nodes/posts/${id}`, { method: 'DELETE' })
     myThreads.value = myThreads.value.filter(t => t.id !== id)
+    if (threadCurrentPage.value > filteredAndPaginatedThreads.value.totalPages) {
+      threadCurrentPage.value = filteredAndPaginatedThreads.value.totalPages
+    }
     triggerToast('🗑️ Thread rimosso.')
   } catch (err: any) {
     console.error(err)
@@ -512,11 +577,11 @@ async function saveArticle() {
     const res: any = await $fetch(url, { method: isUpdate ? 'PUT' : 'POST', body: payload }).catch(() => ({ success: true }))
 
     if (res && res.success !== false) {
-      triggerToast(isUpdate ? '✅ Articolo aggiornato!' : '🎉 Articolo creato con successo!')
+      triggerToast(isUpdate ? '✅ Articolo aggiornato!' : '🎉 Articolo creato e notarizzato SHA-256!')
 
       if (!isUpdate) {
         articles.value.unshift({
-          id: Date.now(),
+          id: res?.data?.id || Date.now(),
           title: payload.title,
           category: payload.category,
           subCategory: payload.subCategory,
@@ -742,7 +807,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             🚀 Condivisioni (HN)
           </button>
           <button @click="contentTab = 'nodes'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'nodes' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
-            🌐 Forum (Nodes)
+            🌐 Forum (Nodes) ({{ myThreads.length }})
           </button>
           <button @click="contentTab = 'comments'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'comments' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
             💬 Commenti Articoli
@@ -809,56 +874,159 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </div>
         </div>
 
-        <!-- TAB NODES (FORUM) CON EDIT E DELETE PERFETTI -->
+        <!-- TAB NODES (FORUM) CON RICERCA, FILTRO NODO, VAULT BADGE E PAGINAZIONE -->
         <div v-if="contentTab === 'nodes'" class="flex flex-col gap-6 font-mono">
-          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
+          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
               <div>
                 <h2 class="text-xl font-black text-white font-sans m-0">I Miei Thread (DKP Nodes)</h2>
-                <p class="text-slate-400 text-xs sm:text-sm mt-1">Gestisci, modifica ed elimina le discussioni aperte nella community.</p>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1 font-sans">Gestisci, cerca, modifica ed elimina le discussioni notarizzate nella community.</p>
+              </div>
+
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+                <div class="relative flex-1 sm:w-64">
+                  <input
+                    v-model="threadSearchQuery"
+                    type="text"
+                    placeholder="🔍 Cerca thread, nodo o hash..."
+                    class="w-full bg-[#020420] border border-slate-700 text-white p-2.5 pr-8 rounded-xl text-xs outline-none focus:border-emerald-400 transition-colors"
+                  />
+                  <button
+                    v-if="threadSearchQuery"
+                    type="button"
+                    @click="threadSearchQuery = ''"
+                    title="Pulisci ricerca"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer bg-transparent border-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <select
+                  v-model="threadNodeFilter"
+                  class="bg-[#020420] border border-slate-700 text-purple-300 font-bold p-2.5 rounded-xl text-xs outline-none focus:border-emerald-400 cursor-pointer"
+                >
+                  <option value="all">Tutti i Nodi ({{ myThreads.length }})</option>
+                  <option v-for="node in availableThreadNodes" :key="node.slug" :value="node.slug">
+                    n/{{ node.name }}
+                  </option>
+                </select>
+
+                <button
+                  type="button"
+                  @click="fetchMyNodesThreads"
+                  class="bg-slate-900 hover:bg-emerald-500/15 text-sky-400 hover:text-emerald-400 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                >
+                  🔄 Aggiorna
+                </button>
               </div>
             </div>
 
-            <div v-if="isLoadingThreads" class="text-center py-8 text-slate-500 text-xs">
-              Caricamento thread...
+            <div v-if="isLoadingThreads" class="text-center py-8 text-emerald-400 text-xs animate-pulse">
+              ⚡ Caricamento thread dal Vault...
             </div>
 
-            <div v-else-if="myThreads.length === 0" class="text-center py-10 text-slate-500 text-xs italic">
+            <div v-else-if="myThreads.length === 0" class="text-center py-10 text-slate-500 text-xs italic bg-[#020420] border border-slate-800 rounded-2xl">
               Non hai ancora pubblicato alcuna discussione nei DKP Nodi.
             </div>
 
-            <div v-else class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs sm:text-sm">
-                <thead>
-                  <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
-                    <th class="p-3">Titolo Discussione</th>
-                    <th class="p-3">Nodo</th>
-                    <th class="p-3">Karma</th>
-                    <th class="p-3">Risposte</th>
-                    <th class="p-3">Data</th>
-                    <th class="p-3 text-right">Gestione</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                  <tr v-for="t in myThreads" :key="t.id" class="hover:bg-slate-900/40 transition-colors">
-                    <td class="p-3 font-bold text-white font-sans">{{ t.title }}</td>
-                    <td class="p-3 text-purple-400 font-bold">n/{{ t.nodeName || t.node_name || t.nodeSlug || 'general' }}</td>
-                    <td class="p-3 text-sky-400">▲ {{ t.karmaScore || t.karma || 0 }}</td>
-                    <td class="p-3 text-slate-400">{{ t.commentsCount || 0 }}</td>
-                    <td class="p-3 text-slate-400 text-xs">{{ t.createdAt ? t.createdAt.split('T')[0] : 'Oggi' }}</td>
-                    <td class="p-3 text-right">
-                      <div class="inline-flex gap-2">
-                        <button type="button" @click="openEditThread(t)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-sky-500/20">
-                          ✏️ Edit
-                        </button>
-                        <button type="button" @click="deleteNodeThread(t.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-red-500/20">
-                          🗑️ Del
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div v-else-if="filteredAndPaginatedThreads.totalItems === 0" class="text-center py-10 text-slate-400 text-xs bg-[#020420] border border-slate-800 rounded-2xl flex flex-col items-center gap-3">
+              <span>Nessun thread trovato per "<strong class="text-white">{{ threadSearchQuery }}</strong>".</span>
+              <button
+                type="button"
+                @click="threadSearchQuery = ''; threadNodeFilter = 'all'"
+                class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+              >
+                Reimposta filtri
+              </button>
+            </div>
+
+            <div v-else class="flex flex-col gap-4">
+              <div class="overflow-x-auto bg-[#020420] border border-slate-800 rounded-2xl">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                  <thead>
+                    <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                      <th class="p-3.5">Titolo Discussione</th>
+                      <th class="p-3.5">Nodo</th>
+                      <th class="p-3.5">Vault On-Chain</th>
+                      <th class="p-3.5">Karma</th>
+                      <th class="p-3.5">Risposte</th>
+                      <th class="p-3.5">Data</th>
+                      <th class="p-3.5 text-right">Gestione</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                    <tr v-for="t in filteredAndPaginatedThreads.items" :key="t.id" class="hover:bg-slate-900/40 transition-colors">
+                      <td class="p-3.5 font-bold text-white font-sans max-w-xs sm:max-w-md">
+                        <NuxtLink
+                          :to="`/nodes/post/${t.id}`"
+                          class="text-white hover:text-emerald-400 transition-colors no-underline line-clamp-2"
+                        >
+                          {{ t.title }}
+                        </NuxtLink>
+                      </td>
+                      <td class="p-3.5 text-purple-400 font-bold whitespace-nowrap">
+                        n/{{ t.nodeName || t.node_name || t.nodeSlug || 'general' }}
+                      </td>
+                      <td class="p-3.5 whitespace-nowrap">
+                        <span
+                          v-if="t.vaultHash || t.vault_hash"
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold"
+                          :title="`SHA-256: ${t.vaultHash || t.vault_hash}`"
+                        >
+                          ⛓️ #{{ t.vaultBlockNumber || t.vault_block_number || 'VERIFIED' }}
+                        </span>
+                        <span v-else class="text-[10px] text-slate-500">In attesa</span>
+                      </td>
+                      <td class="p-3.5 text-sky-400 whitespace-nowrap">▲ {{ t.karmaScore || t.karma || 0 }}</td>
+                      <td class="p-3.5 text-slate-400 whitespace-nowrap">💬 {{ t.commentsCount || 0 }}</td>
+                      <td class="p-3.5 text-slate-400 text-xs whitespace-nowrap">{{ t.createdAt ? t.createdAt.split('T')[0] : 'Oggi' }}</td>
+                      <td class="p-3.5 text-right whitespace-nowrap">
+                        <div class="inline-flex gap-2">
+                          <button type="button" @click="openEditThread(t)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-sky-500/20">
+                            ✏️ Edit
+                          </button>
+                          <button type="button" @click="deleteNodeThread(t.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-red-500/20">
+                            🗑️ Del
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- BARRA PAGINAZIONE THREAD -->
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-xs text-slate-400">
+                <div>
+                  Mostrando <span class="text-white font-bold">{{ filteredAndPaginatedThreads.startIndex }}–{{ filteredAndPaginatedThreads.endIndex }}</span>
+                  di <span class="text-emerald-400 font-bold">{{ filteredAndPaginatedThreads.totalItems }}</span> thread
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    :disabled="filteredAndPaginatedThreads.currentPage <= 1"
+                    @click="threadCurrentPage--"
+                    class="px-3 py-1.5 rounded-xl bg-[#020420] border border-slate-700 text-slate-200 hover:border-emerald-400 disabled:opacity-40 disabled:pointer-events-none font-bold cursor-pointer transition-colors"
+                  >
+                    ← Precedente
+                  </button>
+
+                  <span class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-black">
+                    Pagina {{ filteredAndPaginatedThreads.currentPage }} / {{ filteredAndPaginatedThreads.totalPages }}
+                  </span>
+
+                  <button
+                    type="button"
+                    :disabled="filteredAndPaginatedThreads.currentPage >= filteredAndPaginatedThreads.totalPages"
+                    @click="threadCurrentPage++"
+                    class="px-3 py-1.5 rounded-xl bg-[#020420] border border-slate-700 text-slate-200 hover:border-emerald-400 disabled:opacity-40 disabled:pointer-events-none font-bold cursor-pointer transition-colors"
+                  >
+                    Successiva →
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1057,7 +1225,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
       </div>
     </div>
 
-    <!-- MODALE UNIFICATA DKP NODES RICH EDITOR (CORRETTAMENTE POSIZIONATA) -->
+    <!-- MODALE UNIFICATA DKP NODES RICH EDITOR -->
     <DKPnodesRichEditor
       :is-open="Boolean(editingThreadModal)"
       :categories="nodeTree.categories"

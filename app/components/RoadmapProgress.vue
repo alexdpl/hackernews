@@ -2,11 +2,29 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const { data: roadmap } = await useFetch('/api/roadmap', {
-  default: () => ({ overallCompletion: 0 }),
+const props = withDefaults(
+  defineProps<{
+    completion?: number | null
+  }>(),
+  {
+    completion: null
+  }
+)
+
+const { data: roadmap } = await useFetch<{ overallCompletion?: number }>('/api/roadmap', {
+  key: 'dkp-roadmap-progress',
+  default: () => ({ overallCompletion: 74 })
 })
 
-const pct = computed(() => roadmap.value?.overallCompletion ?? 0)
+const pct = computed(() => {
+  if (typeof props.completion === 'number' && !Number.isNaN(props.completion)) {
+    return Math.max(0, Math.min(100, Math.round(props.completion)))
+  }
+  const apiVal = roadmap.value?.overallCompletion
+  return typeof apiVal === 'number' && !Number.isNaN(apiVal)
+    ? Math.max(0, Math.min(100, Math.round(apiVal)))
+    : 74
+})
 </script>
 
 <template>
@@ -15,11 +33,11 @@ const pct = computed(() => roadmap.value?.overallCompletion ?? 0)
       <span class="label">🚀 Ecosistema DKP <span class="version-tag font-mono">v2.6-PURE-SQL</span></span>
       <NuxtLink to="/roadmap" class="pct font-mono">{{ pct }}%</NuxtLink>
     </div>
-    <div 
-      class="track" 
-      role="progressbar" 
-      :aria-valuenow="pct" 
-      aria-valuemin="0" 
+    <div
+      class="track"
+      role="progressbar"
+      :aria-valuenow="pct"
+      aria-valuemin="0"
       aria-valuemax="100"
       :aria-valuetext="`${pct}% completato`"
     >
@@ -30,21 +48,23 @@ const pct = computed(() => roadmap.value?.overallCompletion ?? 0)
 
 <style scoped>
 .dkp-progress-widget {
+  width: 100%;
   max-width: 480px;
+  margin: 0 auto;
   padding: 1rem 1.25rem;
   background: #090d16;
   border: 1px solid #1e293b;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
 }
-.row { 
-  display: flex; 
-  justify-content: space-between; 
+.row {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: .6rem; 
-  font-size: .85rem; 
-  font-weight: 700; 
-  color: #cbd5e1; 
+  margin-bottom: .6rem;
+  font-size: .85rem;
+  font-weight: 700;
+  color: #cbd5e1;
 }
 .version-tag {
   font-size: 0.7rem;
@@ -55,24 +75,24 @@ const pct = computed(() => roadmap.value?.overallCompletion ?? 0)
   border-radius: 6px;
   margin-left: 0.25rem;
 }
-.pct { 
-  color: #00dc82; 
-  text-decoration: none; 
+.pct {
+  color: #00dc82;
+  text-decoration: none;
   font-weight: 800;
 }
-.pct:hover { 
-  text-decoration: underline; 
+.pct:hover {
+  text-decoration: underline;
 }
-.track { 
-  height: 6px; 
-  background: #1e293b; 
-  border-radius: 999px; 
-  overflow: hidden; 
+.track {
+  height: 6px;
+  background: #1e293b;
+  border-radius: 999px;
+  overflow: hidden;
 }
-.fill { 
-  height: 100%; 
-  background: linear-gradient(90deg, #38bdf8, #00dc82); 
-  border-radius: 999px; 
-  transition: width .6s cubic-bezier(0.16, 1, 0.3, 1); 
+.fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #00dc82);
+  border-radius: 999px;
+  transition: width .6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 </style>

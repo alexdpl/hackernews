@@ -1,7 +1,7 @@
-// server/api/blog/index.get.ts
+// server/api/blog/posts/index.get.ts
 import { eq, desc } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { blogPosts, blogCategories, blogSubcategories, users } from '~~/drizzle/schema' 
+import { getDb } from '../../../utils/db'
+import { blogPosts, blogCategories, blogSubcategories, users } from '../../../../drizzle/schema'
 
 function getSafeQuery(event: any): Record<string, any> {
   try {
@@ -19,14 +19,6 @@ function getSafeQuery(event: any): Record<string, any> {
 }
 
 export default defineEventHandler(async (event) => {
-  // 🚨 HACK / POLYFILL: Inganniamo il bug di pnpm/h3 sugli headers se si attiva nelle query GET
-  if (event.node?.req?.headers && typeof (event.node.req.headers as any).get !== 'function') {
-    (event.node.req.headers as any).get = (key: string) => (event.node.req.headers as any)[key.toLowerCase()]
-  }
-  if (event.req?.headers && typeof (event.req.headers as any).get !== 'function') {
-    (event.req.headers as any).get = (key: string) => (event.req.headers as any)[key.toLowerCase()]
-  }
-
   const query = getSafeQuery(event)
   const categorySlug = query.category ? String(query.category) : null
   const subcategorySlug = query.subcategory || query.subCategory ? String(query.subcategory || query.subCategory) : null
@@ -48,36 +40,37 @@ export default defineEventHandler(async (event) => {
       .leftJoin(users, eq(blogPosts.authorId, users.id))
       .orderBy(desc(blogPosts.createdAt))
 
-    // Rimodelliamo i dati
-    postsList = rawPosts.map(row => ({
+    postsList = rawPosts.map((row) => ({
       ...row.post,
       category: row.category,
       subcategory: row.subcategory,
       author: row.author ? { id: row.author.id, username: row.author.username, avatarUrl: row.author.avatarUrl } : null
     }))
-    
-    // Filtro status
+
     if (query.public === 'true') {
-      postsList = postsList.filter(p => p.status === 'published')
+      postsList = postsList.filter((p) => p.status === 'published')
     }
 
     let filteredPosts = [...postsList]
 
-    // Filtro Categoria
     if (categorySlug) {
       filteredPosts = filteredPosts.filter(
-        (p) => p.category?.slug === categorySlug || String(p.categoryId) === categorySlug || p.category?.name?.toLowerCase() === categorySlug.toLowerCase()
+        (p) =>
+          p.category?.slug === categorySlug ||
+          String(p.categoryId) === categorySlug ||
+          p.category?.name?.toLowerCase() === categorySlug.toLowerCase()
       )
     }
 
-    // Filtro Sottocategoria
     if (subcategorySlug) {
       filteredPosts = filteredPosts.filter(
-        (p) => p.subcategory?.slug === subcategorySlug || String(p.subcategoryId) === subcategorySlug || p.subcategory?.name?.toLowerCase() === subcategorySlug.toLowerCase()
+        (p) =>
+          p.subcategory?.slug === subcategorySlug ||
+          String(p.subcategoryId) === subcategorySlug ||
+          p.subcategory?.name?.toLowerCase() === subcategorySlug.toLowerCase()
       )
     }
 
-    // NORMALIZZAZIONE DATI PER IL FRONTEND
     const normalizedPosts = filteredPosts.map((p) => {
       const catName = p.category?.name || 'Generale'
       const subName = p.subcategory?.name || ''
@@ -87,18 +80,23 @@ export default defineEventHandler(async (event) => {
       if (Array.isArray(p.tags)) {
         tagsArray = p.tags
       } else if (typeof p.tags === 'string') {
-        try { tagsArray = JSON.parse(p.tags) } catch { tagsArray = [] }
+        try {
+          tagsArray = JSON.parse(p.tags)
+        } catch {
+          tagsArray = []
+        }
       }
 
       return {
         ...p,
-        category: catName,            
-        categoryName: catName,          
-        categoryObject: p.category,    
-        subCategory: subName,          
+        category: catName,
+        categoryName: catName,
+        categoryObject: p.category,
+        subCategory: subName,
         subcategoryName: subName,
         subcategoryObject: p.subcategory,
-        authorName: authorName,
+        authorName,
+        vaultBlockNumber: (p as any).vaultBlockNumber ?? (p as any).vault_block_number ?? null,
         tags: tagsArray
       }
     })

@@ -1,8 +1,8 @@
 // server/api/nodes/index.get.ts
 import { defineEventHandler } from 'h3'
 import { sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { VaultService } from '~~/server/services/vault.service'
+import { getDb } from '../../utils/db'
+import { VaultService } from '../../services/vault.service'
 
 function stripNodePrefix(raw: string): string {
   return String(raw || '').replace(/^(n\/)+/i, '').trim()
@@ -18,9 +18,13 @@ export default defineEventHandler(async () => {
     const vaultConnected = await VaultService.ensureForumVaultConnection().catch(() => false)
 
     const result: any = await db.execute(sql`
-      SELECT *
-      FROM nodes
-      ORDER BY id ASC;
+      SELECT
+        n.*,
+        COUNT(p.id)::int AS "realPostsCount"
+      FROM nodes n
+      LEFT JOIN node_posts p ON p.node_id = n.id
+      GROUP BY n.id
+      ORDER BY n.id ASC;
     `)
 
     const rows = Array.isArray(result) ? result : (result?.rows || [])
@@ -43,6 +47,8 @@ export default defineEventHandler(async () => {
         (parentRow ? stripNodePrefix(parentRow.name) : '')
       ).trim()
 
+      const computedPosts = Number(r.realPostsCount ?? r.posts_count ?? r.postsCount ?? 0)
+
       return {
         ...r,
         id: Number(r.id),
@@ -59,8 +65,8 @@ export default defineEventHandler(async () => {
         category: dbCategory,
         subscribersCount: Number(r.subscribers_count ?? r.subscribersCount ?? 0),
         subscribers_count: Number(r.subscribers_count ?? r.subscribersCount ?? 0),
-        postsCount: Number(r.posts_count ?? r.postsCount ?? 0),
-        posts_count: Number(r.posts_count ?? r.postsCount ?? 0),
+        postsCount: computedPosts,
+        posts_count: computedPosts,
         isVaultNode: r.slug === 'blockchain-vault'
       }
     })

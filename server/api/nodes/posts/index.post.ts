@@ -1,10 +1,10 @@
 // server/api/nodes/posts/index.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
-import { scanWithSentinelAI } from '~~/server/utils/sentinelAi'
-import { generateVaultProof } from '~~/server/utils/vaultCrypto'
-import { awardNodeXpAndBadges, GamificationRules } from '~~/server/utils/gamification'
+import { getDb } from '../../../utils/db'
+import { scanWithSentinelAI } from '../../../utils/sentinelAi'
+import { BlockchainService } from '../../../utils/blockchainService'
+import { awardNodeXpAndBadges, GamificationRules } from '../../../utils/gamification'
 
 export default defineEventHandler(async (event) => {
   const db = await getDb()
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const nodeId = Number(body.nodeId)
   const title = body.title?.trim()
   const content = body.content?.trim()
-  const requestVaultProof = Boolean(body.requestVaultProof) // Flag dal frontend
+  const requestVaultProof = body.requestVaultProof !== false
 
   if (!nodeId || !title || !content) {
     throw createError({ statusCode: 400, statusMessage: 'Compilare tutti i campi obbligatori.' })
@@ -25,34 +25,38 @@ export default defineEventHandler(async (event) => {
     const scan = await scanWithSentinelAI(title, content)
 
     if (!scan.isAllowed) {
-      throw createError({ 
-        statusCode: 422, 
-        statusMessage: scan.flagReason || 'Contenuto bloccato da Sentinel AI.' 
+      throw createError({
+        statusCode: 422,
+        statusMessage: scan.flagReason || 'Contenuto bloccato da Sentinel AI.'
       })
     }
 
-    // 2. Generazione Firma Vault SHA-256 (se richiesta dall'utente)
-    let vaultHash: string | null = null
-    if (requestVaultProof) {
-      const proof = generateVaultProof(title, content, authorId)
-      vaultHash = proof.hash
-    }
-
-    // 3. Inserimento del Thread nel Database
+    // 2. Inserimento del Thread nel Database
     const insertResult: any = await db.execute(sql`
       INSERT INTO node_posts (
-        node_id, author_id, title, content, karma_score, 
-        comments_count, vault_hash, is_pinned, is_locked
+        node_id, author_id, title, content, karma_score,
+        comments_count, is_pinned, is_locked
       )
       VALUES (
-        ${nodeId}, ${authorId}, ${title}, ${content}, 1, 
-        0, ${vaultHash}, false, ${scan.isFlagged}
+        ${nodeId}, ${authorId}, ${title}, ${content}, 1,
+        0, false, ${scan.isFlagged}
       )
       RETURNING id, created_at
     `)
 
     const newPost = insertResult?.rows?.[0] || insertResult?.[0]
-    const postId = newPost.id
+    const postId = Number(newPost.id)
+
+    // 3. Notarizzazione On-Chain SHA-256 nel DKP Vault Ledger
+    let proof = null
+    if (requestVaultProof) {
+      proof = await BlockchainService.notarizeEntity(db, {
+        entityType: 'forum',
+        entityId: postId,
+        title,
+        content
+      })
+    }
 
     // 4. Se Sentinel AI ha flaggato il post, lascia un commento automatico di moderazione
     if (scan.botComment) {
@@ -71,14 +75,14 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      message: 'Thread pubblicato con successo.',
+      message: 'Thread pubblicato e notarizzato con successo.',
       data: {
         id: postId,
-        vaultHash,
+        vaultHash: proof?.vaultHash || null,
+        blockNumber: proof?.blockNumber || null,
         isFlagged: scan.isFlagged
       }
     }
-
   } catch (error: any) {
     console.error('💥 [CREATE NODE POST ERROR]:', error?.message)
     if (error.statusCode) throw error

@@ -1,10 +1,15 @@
+<!-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpRoadmapProgress from '~/components/RoadmapProgress.vue'
 
 useHead({
   title: 'Roadmap Ecosistema 2026-2027 v2.6-PURE-SQL — DevKernelPulse',
   meta: [
-    { name: 'description', content: 'Piano ufficiale di sviluppo dell\'ecosistema DKP v2.6: SDK Pubblica @devkernelpulse/sdk, Firewall Live SSE, OpenUI Studio e Visione Futura 2027.' }
+    {
+      name: 'description',
+      content: 'Piano ufficiale di sviluppo dell\'ecosistema DKP v2.6: DKP Blockchain Vault©, Forum e Blog On-Chain, SDK Pubblica @devkernelpulse/sdk, Firewall Live SSE e Visione Futura 2027.'
+    }
   ]
 })
 
@@ -19,7 +24,7 @@ interface RoadmapMilestone {
   features: string[]
 }
 
-const milestones = ref<RoadmapMilestone[]>([
+const fallbackMilestones: RoadmapMilestone[] = [
   {
     id: 'q1-2026',
     quarter: 'Q1 2026',
@@ -56,26 +61,27 @@ const milestones = ref<RoadmapMilestone[]>([
     version: 'v2.5-GOLD',
     status: 'completed',
     progress: 100,
-    description: 'Rilascio delle tecnologie di sicurezza in tempo reale e Blog Engine Pro.',
+    description: 'Rilascio delle tecnologie di sicurezza in tempo reale e Blog Engine Pro©.',
     features: [
       'Firewall di Sicurezza con streaming Live SSE',
-      'Blog Engine Pro con Code Vault e Tabelle Markdown',
+      'Blog Engine Pro© con Code Vault e Tabelle Markdown',
       'API Key Management con Rate Limiting Nitro Enterprise'
     ]
   },
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'Neural Gateway, Trinity & DKP Nodes v2.6-PURE-SQL',
+    phaseTitle: 'DKP Blockchain Vault©, Forum & Blog On-Chain v2.6-PURE-SQL',
     version: 'v2.6-PURE-SQL',
     status: 'completed',
     progress: 100,
-    description: 'Infrastruttura AI decentralizzata, moderazione automatica Nodes tramite Gemini 2.0 e Paywall Dinamico basato su PURE-SQL.',
+    description: 'Notarizzazione crittografica SHA-256 concatenata su ledger Pure-SQL per Forum (DKP Nodes), Blog Editoriale e nodo pubblico n/blockchain-vault.',
     features: [
-      'OpenUI Studio: Generazione Tailwind Live',
-      'DKP Trinity Engine (Dots-3, North Mini-Code, Nemotron-3)',
-      'Pulse Sentinel SAST & DKP Nodes Moderation',
-      'Proof of Code Vault con hash SHA-256 deterministico'
+      'DKP Blockchain Vault© (dkp_vault_ledger con Block #N, previous_hash e Merkle Root)',
+      'Forum On-Chain (DKP Nodes) con notarizzazione automatica, upvote karma e badge VaultTrustBadge',
+      'Editorial Blog On-Chain con certificato Proof-of-Code e audit anti-manomissione live',
+      'Nodo Pubblico Auditor n/blockchain-vault con verifica istantanea hash SHA-256',
+      'OpenUI Studio, DKP Trinity Engine© & Pulse Sentinel SAST©'
     ]
   },
   {
@@ -121,10 +127,21 @@ const milestones = ref<RoadmapMilestone[]>([
       'Web3 Settlement per Bounty in $PULSE su PR merged'
     ]
   }
-])
+]
 
-const { data: apiRoadmap } = await useFetch('/api/roadmap', {
-  default: () => ({ overallCompletion: null })
+const { data: apiRoadmap } = await useFetch<{
+  overallCompletion?: number
+  milestones?: RoadmapMilestone[]
+}>('/api/roadmap', {
+  key: 'dkp-roadmap-page',
+  default: () => ({
+    overallCompletion: 74,
+    milestones: fallbackMilestones
+  })
+})
+
+const milestones = computed<RoadmapMilestone[]>(() => {
+  return apiRoadmap.value?.milestones?.length ? apiRoadmap.value.milestones : fallbackMilestones
 })
 
 const overallCompletion = computed(() => {
@@ -133,8 +150,7 @@ const overallCompletion = computed(() => {
   }
   const completedCount = milestones.value.filter(m => m.status === 'completed').length
   const inProgressSum = milestones.value.filter(m => m.status === 'in-progress').reduce((acc, m) => acc + m.progress, 0)
-  const totalWeight = (completedCount * 100) + inProgressSum
-  return Math.round(totalWeight / milestones.value.length)
+  return Math.round(((completedCount * 100) + inProgressSum) / milestones.value.length)
 })
 
 const activeFilter = ref<'all' | 'completed' | 'in-progress' | 'upcoming'>('all')
@@ -148,7 +164,7 @@ const filteredMilestones = computed(() => {
 <template>
   <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
     <div class="max-w-5xl mx-auto flex flex-col gap-10">
-      
+
       <!-- HERO ROADMAP -->
       <header class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-10 text-center flex flex-col items-center gap-6 shadow-2xl relative overflow-hidden">
         <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/40 px-3.5 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
@@ -163,51 +179,40 @@ const filteredMilestones = computed(() => {
         </h1>
 
         <p class="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed font-sans">
-          Trasparenza totale sullo stato di avanzamento delle funzionalità, integrazioni IA, lancio SDK ufficiale e la nuova visione strategica basata sullo standard v2.6 PURE-SQL.
+          Trasparenza totale sullo stato di avanzamento delle funzionalità, DKP Blockchain Vault©, Forum &amp; Blog On-Chain, lancio SDK ufficiale e visione strategica basata sullo standard v2.6 PURE-SQL.
         </p>
 
-        <!-- CARTELLO PROGRESSO GLOBALE -->
-        <div class="bg-[#020420] border border-slate-800 rounded-xl p-5 w-full max-w-xl flex flex-col gap-2.5 shadow-md">
-          <div class="flex justify-between items-center text-xs sm:text-sm font-bold text-slate-300 font-sans">
-            <span>Stato Avanzamento Globale Ecosistema:</span>
-            <strong class="text-emerald-400 font-mono text-base">{{ overallCompletion }}%</strong>
-          </div>
-          <div class="h-2 bg-slate-800 rounded-full overflow-hidden w-full">
-            <div 
-              class="h-full bg-gradient-to-r from-sky-400 to-emerald-400 rounded-full transition-all duration-500" 
-              :style="{ width: overallCompletion + '%' }"
-            ></div>
-          </div>
-        </div>
+        <!-- IL TUO COMPONENTE ORIGINALE CON AGGIORNAMENTO AUTOMATICO -->
+        <DkpRoadmapProgress :completion="overallCompletion" />
       </header>
 
       <!-- BARRA FILTRI -->
       <div class="flex justify-center">
         <div class="flex gap-2 flex-wrap justify-center font-mono text-xs">
-          <button 
-            type="button" 
-            @click="activeFilter = 'all'" 
+          <button
+            type="button"
+            @click="activeFilter = 'all'"
             :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'all' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
           >
             Tutte le Fasi
           </button>
-          <button 
-            type="button" 
-            @click="activeFilter = 'completed'" 
+          <button
+            type="button"
+            @click="activeFilter = 'completed'"
             :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'completed' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
           >
             🟢 Completati (Lanciati)
           </button>
-          <button 
-            type="button" 
-            @click="activeFilter = 'in-progress'" 
+          <button
+            type="button"
+            @click="activeFilter = 'in-progress'"
             :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'in-progress' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
           >
             ⚡ In Corso
           </button>
-          <button 
-            type="button" 
-            @click="activeFilter = 'upcoming'" 
+          <button
+            type="button"
+            @click="activeFilter = 'upcoming'"
             :class="['px-4 py-2 rounded-full font-bold border transition-all cursor-pointer', activeFilter === 'upcoming' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400' : 'bg-[#090d16] border-slate-800 text-slate-400 hover:border-emerald-500/40 hover:text-emerald-400']"
           >
             🔮 Visione Futura
@@ -217,12 +222,10 @@ const filteredMilestones = computed(() => {
 
       <!-- TIMELINE LIST -->
       <div class="relative pl-8 sm:pl-10 before:absolute before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800 flex flex-col gap-8">
-        
         <div v-for="item in filteredMilestones" :key="item.id" class="relative group">
-          
           <!-- TIMELINE MARKER DOT -->
           <div class="absolute -left-8 sm:-left-10 top-6 -translate-x-1/2 z-10">
-            <span 
+            <span
               :class="[
                 'block w-4 h-4 rounded-full border-4 bg-[#020420] transition-all',
                 item.status === 'completed' ? 'border-emerald-400 bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)]' : '',
@@ -234,7 +237,6 @@ const filteredMilestones = computed(() => {
 
           <!-- MILESTONE CARD -->
           <article class="bg-[#090d16] border border-slate-800 hover:border-sky-500/50 rounded-2xl p-6 sm:p-8 shadow-xl transition-all hover:-translate-y-0.5 flex flex-col gap-4">
-            
             <div class="flex justify-between items-center flex-wrap gap-3 font-mono">
               <div class="flex items-center gap-2.5">
                 <span class="text-base font-extrabold text-white">{{ item.quarter }}</span>
@@ -243,7 +245,7 @@ const filteredMilestones = computed(() => {
                 </span>
               </div>
 
-              <div 
+              <div
                 :class="[
                   'text-xs font-bold px-3 py-1 rounded-lg border',
                   item.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : '',
@@ -269,10 +271,8 @@ const filteredMilestones = computed(() => {
                 </li>
               </ul>
             </div>
-
           </article>
         </div>
-
       </div>
 
     </div>
