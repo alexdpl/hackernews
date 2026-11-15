@@ -1,5 +1,4 @@
 // sdk/src/index.ts
-// sdk/src/index.ts
 export { DKPClient, type DKPClientConfig } from './client.js';
 export { BlogModule } from './modules/blog.js';
 export { VaultModule } from './modules/vault.js';

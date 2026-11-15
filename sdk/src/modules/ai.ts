@@ -10,7 +10,6 @@ export class AIModule {
   constructor(private client: DKPClient) {}
 
   async chat(payload: ChatPayload) {
-    // Usa il RequestStream per generare i chunk
     return this.client.requestStream(`/ai/chat`, {
       method: 'POST',
       body: JSON.stringify(payload)

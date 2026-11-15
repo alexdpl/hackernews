@@ -1,19 +1,25 @@
 {
   "name": "@devkernelpulse/sdk",
-  "version": "1.0.0-beta",
-  "description": "DevKernelPulse SDK: AI Trinity, Vault Notarization & Blog Integration",
+  "version": "1.0.0",
+  "description": "DevKernelPulse SDK: AI Trinity, DKP Blockchain Vault©, Forum/Blog On-Chain & Sentinel SAST",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "ai",
     "vault",
     "devkernelpulse",
     "security",
-    "blog"
+    "blog",
+    "blockchain",
+    "pure-sql"
   ],
   "author": "DevKernelPulse Team",
   "license": "MIT",

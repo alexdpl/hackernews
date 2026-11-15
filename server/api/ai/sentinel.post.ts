@@ -1,12 +1,22 @@
 // server/api/ai/sentinel.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { generateText } from 'ai'
-import { getSmartAIProvider } from '~~/server/utils/aiRouter'
+import { getSmartAIProvider } from '../../utils/aiRouter'
+import { callOpenRouterStructured } from '../../utils/openrouterStructured'
 
 export interface SentinelApiRequest {
   title?: string
   content: string
   contextType?: 'COMMENT' | 'POST' | 'CODE_SCAN'
+}
+
+export interface SentinelStructuredDecision {
+  isAllowed: boolean
+  isFlagged: boolean
+  riskScore: number
+  flagReason: string
+  suggestedAction: 'approve' | 'flag_admin' | 'reject'
+  detectedThreats: string[]
 }
 
 export interface SentinelApiResponse {
@@ -15,11 +25,19 @@ export interface SentinelApiResponse {
   timestamp: string
 }
 
+const SENTINEL_SYSTEM_PROMPT = `Sei DKP Pulse Sentinel, un firewall e moderatore AI per DevKernelPulse v2.6.
+Analizza il contenuto e valuta il livello di sicurezza.
+Linee guida:
+- Contenuto sicuro = tech, coding, snippet di codice, discussioni civili -> isAllowed: true, isFlagged: false, suggestedAction: "approve", flagReason: "".
+- Contenuto dubbio = link sospetti o linguaggio ambiguo -> isAllowed: true, isFlagged: true, suggestedAction: "flag_admin".
+- Contenuto bloccato = spam commerciale, odio, credential leak reali o exploit malevoli attivi -> isAllowed: false, isFlagged: true, suggestedAction: "reject".`
+
 export default defineEventHandler(async (event): Promise<SentinelApiResponse> => {
   try {
     const body = await readBody<SentinelApiRequest>(event)
     const content = body?.content?.trim()
     const title = body?.title?.trim() || 'Senza Titolo'
+    const contextType = body?.contextType || 'POST'
 
     if (!content) {
       throw createError({
@@ -29,33 +47,67 @@ export default defineEventHandler(async (event): Promise<SentinelApiResponse> =>
       })
     }
 
-    // 1. Inizializziamo lo Smart AI Router
-    const aiRouter = getSmartAIProvider()
-    
-    const systemPrompt = `Sei DKP Pulse Sentinel, un firewall e moderatore AI. Analizza il seguente contenuto e restituisci ESATTAMENTE e SOLO un JSON valido con questa struttura:
-    {
-      "isAllowed": boolean,
-      "isFlagged": boolean,
-      "riskScore": numero da 0 a 100,
-      "flagReason": "stringa vuota se ok, motivo se bloccato",
-      "suggestedAction": "approve" | "flag_admin" | "reject",
-      "detectedThreats": ["array di stringhe con minacce, o array vuoto"]
-    }
-    Linee guida:
-    - Contenuto sicuro = tech, coding, discussioni civili.
-    - Contenuto bloccato = spam, odio, codice malevolo evidente.`
+    // 1. Chiamata primaria con OpenRouter Structured Outputs (strict: true + Response Healing)
+    const structuredRes = await callOpenRouterStructured<SentinelStructuredDecision>({
+      schemaName: 'dkp_sentinel_firewall_decision',
+      model: 'google/gemini-2.0-flash-001',
+      temperature: 0.1,
+      systemPrompt: SENTINEL_SYSTEM_PROMPT,
+      userPrompt: `CONTESTO: ${contextType}\nTITOLO: ${title}\nCONTENUTO:\n${content.slice(0, 8000)}`,
+      schema: {
+        type: 'object',
+        properties: {
+          isAllowed: { type: 'boolean', description: 'True se il contenuto può essere pubblicato' },
+          isFlagged: { type: 'boolean', description: 'True se richiede attenzione o moderazione' },
+          riskScore: { type: 'number', description: 'Punteggio rischio da 0 a 100' },
+          flagReason: { type: 'string', description: 'Stringa vuota se sicuro, motivo dettagliato se flaggato/bloccato' },
+          suggestedAction: {
+            type: 'string',
+            enum: ['approve', 'flag_admin', 'reject'],
+            description: 'Azione consigliata dal firewall'
+          },
+          detectedThreats: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Elenco minacce rilevate oppure array vuoto'
+          }
+        },
+        required: ['isAllowed', 'isFlagged', 'riskScore', 'flagReason', 'suggestedAction', 'detectedThreats']
+      },
+      fallback: {
+        isAllowed: true,
+        isFlagged: false,
+        riskScore: 0,
+        flagReason: '',
+        suggestedAction: 'approve',
+        detectedThreats: []
+      }
+    })
 
-    // 2. Chiamata con Circuit Breaker usando "generateText" invece di "streamText"
+    if (!structuredRes.fallbackUsed) {
+      return {
+        success: true,
+        data: {
+          ...structuredRes.data,
+          evaluatedByLlm: true,
+          structuredSchema: 'dkp_sentinel_firewall_decision',
+          providerUsed: `OpenRouter Structured (${structuredRes.providerModel})`
+        },
+        timestamp: new Date().toISOString()
+      }
+    }
+
+    // 2. Fallback sul tuo Smart AI Router (Circuit Breaker) se OpenRouter direct non è disponibile
+    const aiRouter = getSmartAIProvider()
     const result = await aiRouter.executeWithFallback(async (client, modelName) => {
       return await generateText({
         model: client(modelName),
-        system: systemPrompt,
+        system: `${SENTINEL_SYSTEM_PROMPT}\nRestituisci SOLO JSON con: isAllowed, isFlagged, riskScore, flagReason, suggestedAction, detectedThreats.`,
         prompt: `TITOLO: ${title}\nCONTENUTO: ${content}`,
-        temperature: 0.1, // Bassa per JSON deterministico
+        temperature: 0.1
       })
-    }, 'dkp-flash') // DKP-Flash (Gemini) è velocissimo ed economico per moderare
+    }, 'dkp-flash')
 
-    // 3. Parsing e pulizia del JSON restituito dall'AI
     const rawResponse = result.text.replace(/```json/g, '').replace(/```/g, '').trim()
     const parsedData = JSON.parse(rawResponse)
 
@@ -64,11 +116,10 @@ export default defineEventHandler(async (event): Promise<SentinelApiResponse> =>
       data: {
         ...parsedData,
         evaluatedByLlm: true,
-        providerUsed: 'Smart AI Router (Circuit Breaker)'
+        providerUsed: 'Smart AI Router (Circuit Breaker Fallback)'
       },
       timestamp: new Date().toISOString()
     }
-
   } catch (error: any) {
     console.error('❌ [Sentinel API Endpoint Error]:', error)
     if (error.statusCode) throw error
@@ -77,7 +128,7 @@ export default defineEventHandler(async (event): Promise<SentinelApiResponse> =>
     return {
       success: false,
       data: {
-        isAllowed: true, 
+        isAllowed: true,
         isFlagged: true,
         riskScore: 50,
         flagReason: 'Errore interno Sentinel AI Router. Approvato con riserva (Fail-open).',
