@@ -15,7 +15,23 @@ useDkpSeo({
   noindex: true
 })
 
-const { data: allNodesRes } = await useFetch<any>('/api/nodes')
+const { data: allNodesRes } = useFetch<any>('/api/nodes', {
+  server: false,
+  lazy: true,
+  transform: (res: any) => ({
+    data: (res?.data || []).map((n: any) => ({
+      id: n.id,
+      name: n.name,
+      slug: n.slug,
+      icon: n.icon,
+      color: n.color,
+      category: n.category,
+      categoryId: n.categoryId ?? n.category_id,
+      categoryName: n.categoryName ?? n.category_name
+    }))
+  })
+})
+
 const nodeTree = computed(() => buildCategoryNodeTree(allNodesRes.value?.data || []))
 const editingThreadModal = ref<any>(null)
 
@@ -574,30 +590,22 @@ async function saveArticle() {
 
   try {
     const url = isUpdate ? `/api/blog/posts/${articleForm.value.id}` : '/api/blog/posts'
-    const res: any = await $fetch(url, { method: isUpdate ? 'PUT' : 'POST', body: payload }).catch(() => ({ success: true }))
+    const res: any = await $fetch(url, {
+      method: isUpdate ? 'PUT' : 'POST',
+      body: payload
+    })
 
-    if (res && res.success !== false) {
-      triggerToast(isUpdate ? '✅ Articolo aggiornato!' : '🎉 Articolo creato e notarizzato SHA-256!')
-
-      if (!isUpdate) {
-        articles.value.unshift({
-          id: res?.data?.id || Date.now(),
-          title: payload.title,
-          category: payload.category,
-          subCategory: payload.subCategory,
-          summary: payload.excerpt,
-          content: payload.content,
-          tags: payload.tags,
-          status: payload.status,
-          date: new Date().toISOString().split('T')[0]
-        })
-      }
+    if (res && res.success) {
+      triggerToast(isUpdate ? '✅ Articolo aggiornato sul DB!' : '🎉 Articolo pubblicato e notarizzato SHA-256!')
+      await fetchUserArticles()
       isEditingArticle.value = false
     } else {
-      triggerToast('❌ Errore salvataggio post.')
+      triggerToast(`❌ ${res?.message || 'Errore salvataggio post.'}`)
     }
-  } catch {
-    triggerToast('❌ Errore di rete.')
+  } catch (err: any) {
+    const serverMsg = err?.data?.statusMessage || err?.data?.message || err?.statusMessage || 'Errore durante il salvataggio sul server.'
+    console.error('[Save Article Error]:', err)
+    triggerToast(`❌ ${serverMsg}`)
   }
 }
 

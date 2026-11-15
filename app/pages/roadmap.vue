@@ -64,7 +64,7 @@ const fallbackMilestones: RoadmapMilestone[] = [
     description: 'Rilascio delle tecnologie di sicurezza in tempo reale e Blog Engine Pro©.',
     features: [
       'Firewall di Sicurezza con streaming Live SSE',
-      'Blog Engine Pro© con Code Vault e Tabelle Markdown',
+      'Blog Engine Pro con Code Vault e Tabelle Markdown',
       'API Key Management con Rate Limiting Nitro Enterprise'
     ]
   },
@@ -81,7 +81,7 @@ const fallbackMilestones: RoadmapMilestone[] = [
       'Forum On-Chain (DKP Nodes) con notarizzazione automatica, upvote karma e badge VaultTrustBadge',
       'Editorial Blog On-Chain con certificato Proof-of-Code e audit anti-manomissione live',
       'Nodo Pubblico Auditor n/blockchain-vault con verifica istantanea hash SHA-256',
-      'OpenUI Studio, DKP Trinity Engine© & Pulse Sentinel SAST©'
+      'Neural Playground© & OpenUI Studio©, DKP Trinity Engine© & Pulse Sentinel SAST©'
     ]
   },
   {
