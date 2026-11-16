@@ -142,7 +142,7 @@ jobs:
       - name: 🔎 Verifica presenza suite Playwright dedicata
         id: check_e2e
         run: |
-          if [ -d "tests/e2e" ] || [ -d "e2e" ] || find . -maxdepth 3 -name "*.e2e.spec.ts" | grep -q .; then
+          if [ -d "tests/playwright" ] || [ -d "tests/e2e" ] || [ -d "e2e" ] || find . -maxdepth 3 -name "*.e2e.spec.ts" | grep -q .; then
             echo "has_tests=true" >> $GITHUB_OUTPUT
           else
             echo "has_tests=false" >> $GITHUB_OUTPUT
@@ -166,6 +166,10 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm exec playwright install --with-deps chromium
+
+      - name: 🏗️ Build Produzione per E2E
+        if: steps.check_e2e.outputs.has_tests == 'true'
+        run: pnpm run build
 
       - name: 🧪 Esecuzione E2E Tests
         if: steps.check_e2e.outputs.has_tests == 'true'

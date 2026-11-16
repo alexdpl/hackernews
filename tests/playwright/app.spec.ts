@@ -1,90 +1,86 @@
-import { fileURLToPath } from 'node:url'
-import { afterAll, describe, expect, it } from 'vitest'
-import { $fetch, fetch, setup } from '@nuxt/test-utils/e2e'
-import { startMockHackerNews } from './mock-hn'
+// tests/playwright/app.spec.ts
+import { test, expect } from '@playwright/test'
 
-const mock = await startMockHackerNews()
-process.env.HN_API_BASE = mock.url
+test.describe('DKP v2.6 Pure-SQL — Server API & AI/SEO Endpoints', () => {
+  test('restituisce campagne attive da /api/ads/active anche senza DB', async ({ request }) => {
+    const res = await request.get('/api/ads/active?placement=global&limit=3')
+    expect(res.status()).toBe(200)
 
-await setup({
-  rootDir: fileURLToPath(new URL('../..', import.meta.url)),
-  server: true,
-  env: {
-    HN_API_BASE: mock.url,
-  },
-})
+    const body = await res.json()
+    expect(body.success).toBe(true)
+    expect(body.circuit).toBe('DKP-ADS-v2.6-PURE-SQL')
+    expect(Array.isArray(body.ads)).toBe(true)
+    expect(body.ads.length).toBeGreaterThan(0)
+    expect(body.ads[0]).toHaveProperty('title')
+    expect(body.ads[0]).toHaveProperty('url')
+  })
 
-afterAll(() => mock.close())
+  test('valida i parametri di /api/ads/track (400 su payload vuoto, 200 su tracking valido)', async ({ request }) => {
+    const invalidRes = await request.post('/api/ads/track', {
+      data: {},
+    })
+    expect(invalidRes.status()).toBe(400)
 
-describe('server api', () => {
-  it('returns a feed', async () => {
-    const feed = await $fetch<{ id: number, title: string }[]>('/api/hn/feeds')
-    expect(feed).toHaveLength(2)
-    expect(feed[0]).toMatchObject({
-      id: 100,
-      title: 'A top story',
-      user: 'daniel',
-      points: 42,
-      comments_count: 2,
+    const validRes = await request.post('/api/ads/track', {
+      data: {
+        campaignId: 'dkp-house-01',
+        actionType: 'impression',
+      },
+    })
+    expect(validRes.status()).toBe(200)
+    const tracked = await validRes.json()
+    expect(tracked).toMatchObject({
+      success: true,
+      tracked: 'impression',
+      campaignId: 'dkp-house-01',
     })
   })
 
-  it('rejects unknown feeds and invalid pages', async () => {
-    for (const query of ['?feed=nope', '?page=abc']) {
-      const res = await fetch(`/api/hn/feeds${query}`)
-      expect(res.status).toBe(422)
-    }
+  test('espone correttamente robots.txt, sitemap.xml e rss.xml', async ({ request }) => {
+    const robots = await request.get('/robots.txt')
+    expect(robots.status()).toBe(200)
+    expect(await robots.text()).toContain('Sitemap:')
+
+    const sitemap = await request.get('/sitemap.xml')
+    expect(sitemap.status()).toBe(200)
+    const sitemapText = await sitemap.text()
+    expect(sitemapText).toContain('<urlset')
+    expect(sitemapText).toContain('https://devkernelpulse.org')
+
+    const rss = await request.get('/rss.xml')
+    expect(rss.status()).toBe(200)
+    expect(await rss.text()).toContain('<rss')
   })
 
-  it('returns an item with nested comments', async () => {
-    const item = await $fetch<{ comments: { id: number, comments: { id: number }[] }[] }>('/api/hn/item?id=100')
-    expect(item.comments.map(c => c.id)).toEqual([200, 201])
-    expect(item.comments[0]!.comments.map(c => c.id)).toEqual([202])
-  })
+  test('espone i manifesti AI Visibility (llms.txt e ai-knowledge.json)', async ({ request }) => {
+    const llms = await request.get('/llms.txt')
+    expect(llms.status()).toBe(200)
+    expect(await llms.text()).toContain('DevKernelPulse')
 
-  it('validates item ids', async () => {
-    expect((await fetch('/api/hn/item')).status).toBe(422)
-    expect((await fetch('/api/hn/item?id=abc')).status).toBe(400)
-  })
-
-  it('returns a user', async () => {
-    const user = await $fetch<{ id: string, karma: number }>('/api/hn/user?id=daniel')
-    expect(user).toMatchObject({ id: 'daniel', karma: 1234 })
-  })
-
-  it('validates user ids', async () => {
-    expect((await fetch('/api/hn/user')).status).toBe(422)
+    const aiJson = await request.get('/ai-knowledge.json')
+    expect(aiJson.status()).toBe(200)
+    const data = await aiJson.json()
+    expect(data).toBeTruthy()
   })
 })
 
-describe('pages', () => {
-  it('server-renders the news feed on the home page', async () => {
-    const html = await $fetch<string>('/')
-    expect(html).toContain('A top story')
-    expect(html).toContain('(example.com)')
-    expect(html).toContain('Ask HN: A question')
+test.describe('DKP v2.6 Pure-SQL — Pages SSR & Navigazione', () => {
+  test('renderizza la homepage senza errori server', async ({ page }) => {
+    const res = await page.goto('/')
+    expect(res?.status()).toBe(200)
+    await expect(page.locator('body')).toBeVisible()
   })
 
-  it('server-renders feed pages', async () => {
-    const html = await $fetch<string>('/ask/1')
-    expect(html).toContain('A top story')
+  test('renderizza le rotte principali (/blog, /nodes, /shop, /docs/api, /tools/proof-of-code) senza 500', async ({ page }) => {
+    const routes = ['/blog', '/nodes', '/shop', '/docs/api', '/tools/proof-of-code']
+    for (const route of routes) {
+      const res = await page.goto(route)
+      expect(res?.status() ?? 500, `Rotta ${route} ha restituito errore server`).toBeLessThan(500)
+    }
   })
 
-  it('redirects unknown feeds', async () => {
-    const res = await fetch('/nope/1', { redirect: 'manual' })
-    expect([301, 302, 307, 308]).toContain(res.status)
-  })
-
-  it('server-renders an item page with comments', async () => {
-    const html = await $fetch<string>('/item/100')
-    expect(html).toContain('A top story')
-    expect(html).toContain('A comment')
-    expect(html).toContain('A nested reply')
-  })
-
-  it('server-renders a user page', async () => {
-    const html = await $fetch<string>('/user/daniel')
-    expect(html).toContain('daniel')
-    expect(html).toContain('1234')
+  test('gestisce rotte inesistenti senza crash 500', async ({ request }) => {
+    const res = await request.get('/rotta-inesistente-dkp-test')
+    expect(res.status()).toBeLessThan(500)
   })
 })
