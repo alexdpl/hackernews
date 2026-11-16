@@ -58,7 +58,7 @@ jobs:
           fi
           echo "✅ Architettura Pure-SQL v2.6 verificata."
 
-      - name: 🧪 Esecuzione Unit Tests (Vitest)
+      - name: 🧪 Esecuzione Unit & Nuxt Tests (Vitest)
         run: |
           if node -e "require.resolve('vitest/package.json')" >/dev/null 2>&1; then
             pnpm exec vitest run --passWithNoTests
@@ -94,26 +94,42 @@ jobs:
       - name: 🔥 Smoke Test Runtime Server Nitro
         env:
           PORT: 3000
+          NITRO_PORT: 3000
           HOST: 127.0.0.1
+          NITRO_HOST: 127.0.0.1
           NUXT_PUBLIC_SITE_URL: https://devkernelpulse.org
         run: |
-          node .output/server/index.mjs &
+          node .output/server/index.mjs > /tmp/nitro.log 2>&1 &
           SERVER_PID=$!
           trap "kill $SERVER_PID 2>/dev/null || true" EXIT
 
-          for i in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:3000/ >/dev/null 2>&1; then
-              echo "✅ Homepage HTTP 200 OK"
+          echo "⏳ Attesa avvio server Nitro su 127.0.0.1:3000..."
+          READY=0
+          for i in $(seq 1 25); do
+            if curl -s -o /dev/null http://127.0.0.1:3000/robots.txt; then
+              READY=1
               break
             fi
             sleep 1
           done
 
-          curl -fsS http://127.0.0.1:3000/ >/dev/null
-          curl -fsS http://127.0.0.1:3000/robots.txt >/dev/null && echo "✅ robots.txt OK"
-          curl -fsS http://127.0.0.1:3000/sitemap.xml >/dev/null && echo "✅ sitemap.xml OK"
-          curl -fsS http://127.0.0.1:3000/llms.txt >/dev/null && echo "✅ llms.txt OK"
-          curl -fsS http://127.0.0.1:3000/ai-knowledge.json >/dev/null && echo "✅ ai-knowledge.json OK"
+          if [ "$READY" -ne 1 ]; then
+            echo "❌ Il server Nitro non si è avviato entro 25 secondi. Log:"
+            cat /tmp/nitro.log
+            exit 1
+          fi
+
+          for route in "/" "/robots.txt" "/sitemap.xml" "/rss.xml" "/llms.txt" "/llms-full.txt" "/ai-knowledge.json"; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:3000${route}")
+            echo "GET ${route} -> HTTP ${CODE}"
+            if [ "$CODE" -ge 500 ] || [ "$CODE" -eq 000 ]; then
+              echo "❌ Errore critico su ${route} (HTTP ${CODE}). Log server:"
+              cat /tmp/nitro.log
+              exit 1
+            fi
+          done
+
+          echo "✅ Tutti gli endpoint v2.6 (Core, SEO & AI Visibility) rispondono correttamente!"
 
   e2e-tests:
     name: 🎭 Playwright E2E Tests
@@ -123,10 +139,10 @@ jobs:
       - name: 📥 Checkout del codice
         uses: actions/checkout@v4
 
-      - name: 🔎 Verifica presenza suite Playwright
+      - name: 🔎 Verifica presenza suite Playwright dedicata
         id: check_e2e
         run: |
-          if [ -d "tests/e2e" ] || [ -d "e2e" ] || find . -maxdepth 3 -name "*.spec.ts" | grep -q .; then
+          if [ -d "tests/e2e" ] || [ -d "e2e" ] || find . -maxdepth 3 -name "*.e2e.spec.ts" | grep -q .; then
             echo "has_tests=true" >> $GITHUB_OUTPUT
           else
             echo "has_tests=false" >> $GITHUB_OUTPUT
