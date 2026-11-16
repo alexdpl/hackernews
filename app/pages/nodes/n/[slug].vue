@@ -426,10 +426,10 @@ function copyPostLink(postId: number) {
           Pagina Successiva →
         </button>
       </div>
-	  <DkpAdStrip :topic="String(route.params.slug || '')" />
+	 <DkpAdsWidget placement="nodeTalks" />
       <DKPRelatedThreads :currentNodeSlug="nodeSlug" />
       <DkpNodesHomeWidget />
-	  <DkpAdsWidget placement="nodeTalks" />
+	   <DkpAdStrip :topic="String(route.params.slug || '')" />
     </div>
 
     <DKPnodesRichEditor

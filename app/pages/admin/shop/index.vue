@@ -88,8 +88,8 @@ const globalCtr = computed(() => {
   return ((adsStats.value.totalClicks / adsStats.value.totalImpressions) * 100).toFixed(2)
 })
 
-// 2. Fetch Affiliazioni Amazon & Libri Tecnici (/api/v2.5/ads/active)
-const { data: affiliateData, refresh: refreshAffiliates } = await useFetch<any>('/api/v2.5/ads/active', {
+// 2. Fetch Affiliazioni Amazon & Libri Tecnici (/api/ads/active)
+const { data: affiliateData, refresh: refreshAffiliates } = await useFetch<any>('/api/ads/active', {
   key: 'admin-affiliate-books',
   server: false,
   lazy: true
@@ -613,7 +613,7 @@ async function runRealStripeTest(plan: ApiPlanItem) {
           v-if="filteredAffiliateBooks.length === 0"
           class="col-span-full p-10 text-center text-slate-500 font-mono text-xs bg-[#080d1a] rounded-2xl border border-slate-800"
         >
-          Nessun libro affiliato recuperato da <code>/api/v2.5/ads/active</code>.
+          Nessun libro affiliato recuperato da <code>/api/ads/active</code>.
         </div>
 
         <article

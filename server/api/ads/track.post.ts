@@ -4,12 +4,24 @@ import { getDb } from '../../utils/db'
 import { DkpAdsService } from '../../utils/dkpAdsService'
 
 export default defineEventHandler(async (event) => {
-  const body = (await readBody(event).catch(() => ({}))) || {}
-  const campaignId = String(body.campaignId || '').trim()
-  const type = body.type === 'click' ? 'click' : body.type === 'impression' ? 'impression' : null
+  let body: any = await readBody(event).catch(() => ({}))
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch {
+      body = {}
+    }
+  }
+
+  const campaignId = String(body?.campaignId || body?.id || '').trim()
+  const rawType = String(body?.type || body?.actionType || '').trim().toLowerCase()
+  const type = rawType === 'click' ? 'click' : rawType === 'impression' ? 'impression' : null
 
   if (!campaignId || !type) {
-    throw createError({ statusCode: 400, statusMessage: 'Parametri campaignId e type (impression|click) obbligatori.' })
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Parametri campaignId e type/actionType (impression|click) obbligatori.'
+    })
   }
 
   try {

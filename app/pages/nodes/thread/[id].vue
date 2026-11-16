@@ -649,10 +649,9 @@ onUnmounted(() => {
             </div>
           </section>
           <DkpAdsWidget placement="feedInline" :compact="true" />
-          <DkpAdStrip :topic="thread?.nodeName" :tags="thread?.tags" />
           <DKPRelatedThreads :currentNodeSlug="post.nodeSlug || undefined" />
           <DkpNodesHomeWidget />
-         
+          <DkpAdStrip :topic="thread?.nodeName" :tags="thread?.tags" />
         </article>
       </div>
     </div>

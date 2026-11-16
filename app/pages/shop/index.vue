@@ -129,7 +129,7 @@ const coreProducts: ShopProduct[] = [
   }
 ]
 
-// 2. Fallback Libri Tecnici (usati solo se /api/v2.5/ads/active non restituisce record)
+// 2. Fallback Libri Tecnici (usati solo se /api/ads/active non restituisce record)
 const fallbackAffiliateBooks: ShopProduct[] = [
   {
     id: 'book-ddia',
@@ -169,8 +169,8 @@ const fallbackAffiliateBooks: ShopProduct[] = [
   }
 ]
 
-// 3. Caricamento dinamico dei tuoi link affiliati Amazon da /api/v2.5/ads/active
-const { data: affiliateRes } = await useFetch<any>('/api/v2.5/ads/active', {
+// 3. Caricamento dinamico dei tuoi link affiliati Amazon da /api/ads/active
+const { data: affiliateRes } = await useFetch<any>('/api/ads/active', {
   key: 'shop-affiliate-books',
   server: false,
   lazy: true
@@ -232,7 +232,7 @@ const filteredProducts = computed(() => {
   })
 })
 
-// Apertura Libro Affiliato Amazon + Tracking Click su /api/v2.5/ads/track
+// Apertura Libro Affiliato Amazon + Tracking Click su /api/ads/track
 function openAffiliateProduct(product: ShopProduct) {
   if (product.dbCampaignId && !String(product.dbCampaignId).startsWith('fallback-')) {
     const payload = JSON.stringify({
@@ -240,9 +240,9 @@ function openAffiliateProduct(product: ShopProduct) {
       actionType: 'click'
     })
     if (import.meta.client && navigator.sendBeacon) {
-      navigator.sendBeacon('/api/v2.5/ads/track', new Blob([payload], { type: 'application/json' }))
+      navigator.sendBeacon('/api/ads/track', new Blob([payload], { type: 'application/json' }))
     } else {
-      $fetch('/api/v2.5/ads/track', {
+      $fetch('/api/ads/track', {
         method: 'POST',
         body: { campaignId: product.dbCampaignId, actionType: 'click' }
       }).catch(() => null)

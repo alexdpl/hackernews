@@ -41,7 +41,7 @@ function normalizeSafeUrl(rawUrl?: string): string {
   return clean
 }
 
-// Fallback curati (usati solo se /api/v2.5/ads/active restituisce meno di 3 libri)
+// Fallback curati (usati solo se /api/ads/active restituisce meno di 3 libri)
 const fallbackBooks: AffiliateItem[] = [
   {
     id: 'fallback-book-1',
@@ -108,9 +108,9 @@ function trackAffiliateEvent(campaignId: string | number, actionType: 'impressio
 
   const payload = JSON.stringify({ campaignId, actionType })
   if (import.meta.client && navigator.sendBeacon) {
-    navigator.sendBeacon('/api/v2.5/ads/track', new Blob([payload], { type: 'application/json' }))
+    navigator.sendBeacon('/api/ads/track', new Blob([payload], { type: 'application/json' }))
   } else {
-    $fetch('/api/v2.5/ads/track', {
+    $fetch('/api/ads/track', {
       method: 'POST',
       body: { campaignId, actionType }
     }).catch(() => null)
@@ -119,7 +119,7 @@ function trackAffiliateEvent(campaignId: string | number, actionType: 'impressio
 
 onMounted(async () => {
   try {
-    const res = await $fetch<any>('/api/v2.5/ads/active')
+    const res = await $fetch<any>('/api/ads/active')
     if (res?.success && Array.isArray(res.ads) && res.ads.length > 0) {
       rawDbAds.value = res.ads.map((ad: any) => {
         const safeUrl = normalizeSafeUrl(ad.url || ad.targetUrl)
