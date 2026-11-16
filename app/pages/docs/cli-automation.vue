@@ -1,6 +1,7 @@
 <!-- app/pages/docs/cli-automation.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
@@ -276,7 +277,9 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
         </section>
 
       </div>
-
+<div class="mt-2 mb-6">
+       <DkpAdsWidget placement="docs" />
+      </div>
       <!-- FOOTER LINK -->
       <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-slate-800 font-mono text-xs">
         <NuxtLink to="/tools" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
@@ -286,7 +289,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
           Esplora API Reference v2.6-PURE-SQL ➔
         </NuxtLink>
       </div>
-
+	  
     </div>
   </div>
 </template>

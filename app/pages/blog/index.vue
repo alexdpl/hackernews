@@ -3,7 +3,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useBlog } from '~/composables/useBlog'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 
 useHead({
   title: 'DKP Editorial Hub & Technical Blog v2.6-PURE-SQL — DevKernelPulse',
@@ -292,8 +294,8 @@ function changePage(page: number) {
         </div>
       </div>
 
-      <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip />
+      <!-- BANNER DKP ADS Widget -->
+      <DkpAdsWidget placement="blogSidebar" />
 
       <!-- BARRA CATEGORIE DINAMICHE -->
       <nav class="flex justify-center gap-2 flex-wrap">
@@ -521,6 +523,10 @@ function changePage(page: number) {
           </article>
         </div>
       </template>
+      <!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
+            <div class="pt-6 border-t border-slate-800 relative z-10">
+              <DKPRelatedThreads />
+            </div>
 
       <!-- WIDGET INTEGRATO NELLA NEWSROOM -->
       <div class="mt-4 border-t border-slate-800 pt-8">
@@ -528,7 +534,7 @@ function changePage(page: number) {
       </div>
 
       <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip />
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LETTURE TECNICHE" />
 
       <!-- CONTROLLI PAGINAZIONE NUMERATA -->
       <div v-if="totalPages > 1" class="flex justify-center items-center gap-3 mt-4 pt-6 border-t border-slate-800 font-mono">

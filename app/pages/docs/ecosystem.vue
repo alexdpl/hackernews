@@ -1,15 +1,11 @@
 <!-- app/pages/docs/ecosystem.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import DKPAdBanner from '~/components/DKPAdBanner.vue'
 
-useHead({
+useDkpSeo({
   title: 'Guida Ecosistema, Blockchain Vault© & Architettura v2.6-PURE-SQL — DKP Docs',
-  meta: [
-    {
-      name: 'description',
-      content: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.6-PURE-SQL, DKP Blockchain Vault©, Forum e Blog On-Chain, DKP Nodes, Sentinella Gemini e Gamification XP.'
-    }
-  ]
+  description: 'Documentazione ufficiale sull\'architettura di DevKernelPulse v2.6-PURE-SQL, DKP Blockchain Vault©, Forum e Blog On-Chain, DKP Nodes, Sentinella Gemini e Gamification XP.'
 })
 
 const activeSection = ref('architettura')
@@ -74,6 +70,7 @@ function scrollToSection(id: string) {
             🔌 Documentazione API ↗
           </NuxtLink>
         </div>
+		<DKPAdBanner />
       </aside>
 
       <!-- CONTENUTO PRINCIPALE -->
@@ -128,7 +125,6 @@ function scrollToSection(id: string) {
             </div>
           </div>
         </section>
-
         <!-- SEZIONE 1B: DKP BLOCKCHAIN VAULT & FORUM/BLOG ON-CHAIN -->
         <section id="blockchain-vault" class="bg-[#090d16] border border-emerald-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-[0_0_30px_rgba(16,185,129,0.06)]">
           <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
@@ -357,7 +353,7 @@ dkp status</code></pre>
         </section>
 
       </main>
-
+	 
     </div>
   </div>
 </template>

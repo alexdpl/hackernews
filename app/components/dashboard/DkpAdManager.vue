@@ -1,23 +1,70 @@
 <!-- app/components/dashboard/DkpAdManager.vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 
-const emit = defineEmits(['campaign-created'])
+const props = defineProps<{
+  username?: string
+  email?: string
+}>()
+
+const emit = defineEmits<{
+  (e: 'campaign-created', campaign?: any): void
+  (e: 'toast', message: string): void
+}>()
 
 const isLoading = ref(false)
 const message = ref<{ text: string; type: 'success' | 'error' } | null>(null)
 
 const form = ref({
-  advertiserEmail: '', 
+  buyerName: props.username || 'alexdpl',
+  buyerEmail: props.email || '',
   title: '',
-  snippet: '',
+  tagline: '',
+  categoryTag: 'LIBRI AMAZON',
+  ctaText: 'Vedi su Amazon',
   targetUrl: '',
-  budgetCredits: 100
+  placement: 'global' as 'nodeTalks' | 'feedInline' | 'blogSidebar' | 'global',
+  billingModel: 'CLICKS' as 'CLICKS' | 'IMPRESSIONS' | 'HYBRID',
+  maxClicks: 100,
+  maxImpressions: 10000,
+  accentColor: 'amber' as 'emerald' | 'sky' | 'purple' | 'amber'
+})
+
+watch(
+  () => [props.username, props.email],
+  ([nextUser, nextEmail]) => {
+    if (nextUser) form.value.buyerName = nextUser
+    if (nextEmail && !form.value.buyerEmail) form.value.buyerEmail = nextEmail
+  },
+  { immediate: true }
+)
+
+const quotaSummary = computed(() => {
+  if (form.value.billingModel === 'CLICKS') {
+    return `${form.value.maxClicks} Click Garantiti`
+  }
+  if (form.value.billingModel === 'IMPRESSIONS') {
+    return `${form.value.maxImpressions.toLocaleString('it-IT')} Impressioni`
+  }
+  return `${form.value.maxClicks} Click + ${form.value.maxImpressions.toLocaleString('it-IT')} Imp`
+})
+
+const accentPreviewClasses = computed(() => {
+  switch (form.value.accentColor) {
+    case 'sky':
+      return { border: 'border-sky-500/40', badge: 'bg-sky-500/15 text-sky-400 border-sky-500/30', btn: 'bg-sky-500 text-slate-950' }
+    case 'purple':
+      return { border: 'border-purple-500/40', badge: 'bg-purple-500/15 text-purple-400 border-purple-500/30', btn: 'bg-purple-500 text-white' }
+    case 'amber':
+      return { border: 'border-amber-500/40', badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30', btn: 'bg-amber-400 text-slate-950' }
+    default:
+      return { border: 'border-emerald-500/40', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', btn: 'bg-emerald-500 text-slate-950' }
+  }
 })
 
 async function submitAdCampaign() {
-  if (!form.value.title || !form.value.targetUrl || !form.value.advertiserEmail) {
-    message.value = { text: 'Compila tutti i campi obbligatori.', type: 'error' }
+  if (!form.value.title.trim() || !form.value.targetUrl.trim()) {
+    message.value = { text: '❌ Inserisci Titolo e URL di destinazione.', type: 'error' }
     return
   }
 
@@ -25,27 +72,39 @@ async function submitAdCampaign() {
   message.value = null
 
   try {
-    await $fetch('/api/v2.5/ads', {
+    const res: any = await $fetch('/api/ads/purchase', {
       method: 'POST',
-      body: form.value
+      body: {
+        title: form.value.title.trim(),
+        tagline: form.value.tagline.trim() || 'Risorsa consigliata dalla redazione DevKernelPulse.',
+        categoryTag: form.value.categoryTag.trim() || 'LIBRI AMAZON',
+        badge: 'SPONSORED',
+        ctaText: form.value.ctaText.trim() || 'Scopri di più',
+        targetUrl: form.value.targetUrl.trim(),
+        placement: form.value.placement,
+        billingModel: form.value.billingModel,
+        maxClicks: Number(form.value.maxClicks || 100),
+        maxImpressions: Number(form.value.maxImpressions || 10000),
+        accentColor: form.value.accentColor,
+        buyerName: form.value.buyerName.trim() || 'alexdpl',
+        buyerEmail: form.value.buyerEmail.trim()
+      }
     })
 
-    message.value = { 
-      text: '🚀 Campagna creata! È in rotazione nel network.', 
-      type: 'success' 
+    if (res?.success) {
+      const successMsg = '🚀 Link inserito in rotazione nel network DKP!'
+      message.value = { text: successMsg, type: 'success' }
+      emit('toast', successMsg)
+
+      form.value.title = ''
+      form.value.tagline = ''
+      form.value.targetUrl = ''
+      emit('campaign-created', res.campaign)
+    } else {
+      message.value = { text: '❌ Errore durante il salvataggio.', type: 'error' }
     }
-    
-    // Reset del form
-    form.value = { advertiserEmail: '', title: '', snippet: '', targetUrl: '', budgetCredits: 100 }
-    
-    // Avvisa la pagina madre di aggiornare la lista a destra!
-    emit('campaign-created')
-    
   } catch (err: any) {
-    message.value = { 
-      text: err.data?.statusMessage || 'Errore durante la creazione.', 
-      type: 'error' 
-    }
+    message.value = { text: err?.data?.statusMessage || 'Errore di connessione al circuito DKP Ads.', type: 'error' }
   } finally {
     isLoading.value = false
   }
@@ -53,136 +112,212 @@ async function submitAdCampaign() {
 </script>
 
 <template>
-  <div class="ad-manager-card">
-    <div class="card-header">
-      <h3 class="card-title">📡 Lancio Campagna</h3>
-      <span class="badge">PRO</span>
+  <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col gap-5 text-slate-100">
+    <div class="flex justify-between items-start gap-3 border-b border-slate-800 pb-4">
+      <div>
+        <span class="text-[10px] font-mono font-black text-emerald-400 uppercase tracking-wider">
+          CLICKS + IMPRESSIONS ENGINE
+        </span>
+        <h3 class="text-lg sm:text-xl font-black text-white m-0 mt-0.5">
+          📡 Nuovo Link / Campagna
+        </h3>
+      </div>
+      <span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg text-[10px] font-mono font-black uppercase shrink-0">
+        AFFILIATE &amp; ADS
+      </span>
     </div>
-    
-    <p class="card-desc">
-      Acquista crediti e metti il tuo prodotto in rotazione in tutto l'ecosistema DevKernelPulse.
-    </p>
 
-    <form @submit.prevent="submitAdCampaign" class="ad-form">
-      <div class="form-group">
-        <label>Email Inserzionista *</label>
-        <input v-model="form.advertiserEmail" type="email" placeholder="es. info@tuostartup.com" required />
+    <!-- ANTEPRIMA LIVE -->
+    <div :class="['bg-[#020420] border rounded-2xl p-4 flex flex-col gap-2 transition-all', accentPreviewClasses.border]">
+      <div class="flex items-center justify-between font-mono text-[10px]">
+        <span :class="['px-2 py-0.5 rounded border font-black uppercase', accentPreviewClasses.badge]">
+          {{ form.categoryTag || 'SPONSORED' }}
+        </span>
+        <span class="text-slate-500">{{ quotaSummary }}</span>
       </div>
-
-      <div class="form-group">
-        <label>Titolo Annuncio (Max 120 car.) *</label>
-        <input v-model="form.title" type="text" maxlength="120" placeholder="es. Lancia il tuo SaaS..." required />
+      <p class="text-white font-bold text-sm m-0 truncate">
+        {{ form.title || 'Titolo libro Amazon o risorsa tecnica' }}
+      </p>
+      <p class="text-slate-400 text-xs m-0 line-clamp-2">
+        {{ form.tagline || 'Breve descrizione per gli sviluppatori...' }}
+      </p>
+      <div class="flex items-center justify-between pt-2 mt-1 border-t border-slate-800/80">
+        <span class="text-[11px] font-mono text-sky-400 truncate max-w-[58%]">
+          {{ form.targetUrl || 'https://amazon.it/dp/...' }}
+        </span>
+        <span :class="['px-3 py-1 rounded-lg font-mono font-black text-[11px]', accentPreviewClasses.btn]">
+          {{ form.ctaText || 'Scopri di più' }} ➔
+        </span>
       </div>
+    </div>
 
-      <div class="form-group">
-        <label>Snippet Descrittivo (Opzionale)</label>
-        <textarea v-model="form.snippet" rows="3" maxlength="255" placeholder="Descrivi brevemente la tua offerta..."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label>URL di Destinazione (Link Affiliato) *</label>
-        <input v-model="form.targetUrl" type="url" placeholder="es. https://amazon.it/..." required />
-      </div>
-
-      <div class="form-summary">
-        <div class="summary-item">
-          <span>Pacchetto Selezionato:</span>
-          <span class="highlight">Base ({{ form.budgetCredits }} Click)</span>
+    <form @submit.prevent="submitAdCampaign" class="flex flex-col gap-3.5 font-mono text-xs">
+      <!-- SELETTORE MODALITÀ QUOTA (CLICK vs IMPRESSION vs IBRIDO) -->
+      <div class="flex flex-col gap-1.5">
+        <label class="text-[10px] font-bold text-slate-400 uppercase">Modello Rotazione</label>
+        <div class="grid grid-cols-3 gap-1.5 bg-[#020420] p-1 border border-slate-800 rounded-xl">
+          <button
+            type="button"
+            @click="form.billingModel = 'CLICKS'"
+            :class="[
+              'py-2 px-2 rounded-lg text-[11px] font-black cursor-pointer border-none transition-colors',
+              form.billingModel === 'CLICKS' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white bg-transparent'
+            ]"
+          >
+            🖱️ A Click
+          </button>
+          <button
+            type="button"
+            @click="form.billingModel = 'IMPRESSIONS'"
+            :class="[
+              'py-2 px-2 rounded-lg text-[11px] font-black cursor-pointer border-none transition-colors',
+              form.billingModel === 'IMPRESSIONS' ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:text-white bg-transparent'
+            ]"
+          >
+            👁️ Impressioni
+          </button>
+          <button
+            type="button"
+            @click="form.billingModel = 'HYBRID'"
+            :class="[
+              'py-2 px-2 rounded-lg text-[11px] font-black cursor-pointer border-none transition-colors',
+              form.billingModel === 'HYBRID' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white bg-transparent'
+            ]"
+          >
+            ⚡ Ibrido
+          </button>
         </div>
-        <div class="summary-item">
-          <span>Costo stimato:</span>
-          <span class="highlight">Gratuito (Fase Beta)</span>
+      </div>
+
+      <!-- QUOTA CLICK / IMPRESSIONI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div v-if="form.billingModel === 'CLICKS' || form.billingModel === 'HYBRID'" class="flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">Target Click</label>
+          <select
+            v-model.number="form.maxClicks"
+            class="bg-[#020420] border border-slate-800 focus:border-emerald-400 text-emerald-400 font-bold p-3 rounded-xl outline-none cursor-pointer"
+          >
+            <option :value="100">100 Click (Standard Libri)</option>
+            <option :value="250">250 Click</option>
+            <option :value="500">500 Click</option>
+            <option :value="1000">1.000 Click</option>
+          </select>
+        </div>
+
+        <div v-if="form.billingModel === 'IMPRESSIONS' || form.billingModel === 'HYBRID'" class="flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">Target Impressioni</label>
+          <select
+            v-model.number="form.maxImpressions"
+            class="bg-[#020420] border border-slate-800 focus:border-sky-400 text-sky-400 font-bold p-3 rounded-xl outline-none cursor-pointer"
+          >
+            <option :value="10000">10.000 Impressioni</option>
+            <option :value="50000">50.000 Impressioni</option>
+            <option :value="200000">200.000 Impressioni</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">Tag Categoria</label>
+          <input
+            v-model="form.categoryTag"
+            type="text"
+            placeholder="es. LIBRI AMAZON"
+            class="bg-[#020420] border border-slate-800 focus:border-emerald-400 text-amber-400 font-bold p-3 rounded-xl outline-none"
+          />
         </div>
       </div>
 
-      <div v-if="message" :class="['alert-message', message.type]">
+      <div class="flex flex-col gap-1">
+        <label class="text-[10px] font-bold text-slate-400 uppercase">Titolo Annuncio / Libro *</label>
+        <input
+          v-model="form.title"
+          type="text"
+          maxlength="120"
+          placeholder="es. Designing Data-Intensive Applications"
+          required
+          class="bg-[#020420] border border-slate-800 focus:border-emerald-400 text-white p-3 rounded-xl outline-none"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[10px] font-bold text-slate-400 uppercase">Snippet Descrittivo</label>
+        <textarea
+          v-model="form.tagline"
+          rows="2"
+          maxlength="240"
+          placeholder="Perché ogni developer dovrebbe leggerlo..."
+          class="bg-[#020420] border border-slate-800 focus:border-emerald-400 text-white p-3 rounded-xl outline-none resize-none"
+        ></textarea>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[10px] font-bold text-slate-400 uppercase">URL Destinazione / Link Affiliato *</label>
+        <input
+          v-model="form.targetUrl"
+          type="text"
+          placeholder="https://www.amazon.it/dp/..."
+          required
+          class="bg-[#020420] border border-slate-800 focus:border-emerald-400 text-sky-400 p-3 rounded-xl outline-none"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div class="flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">Posizione</label>
+          <select
+            v-model="form.placement"
+            class="bg-[#020420] border border-slate-800 text-white p-2.5 rounded-xl outline-none cursor-pointer"
+          >
+            <option value="global">Global</option>
+            <option value="nodeTalks">Nodi &amp; Forum</option>
+            <option value="feedInline">Feed HN</option>
+            <option value="blogSidebar">Blog Sidebar</option>
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">Pulsante CTA</label>
+          <input
+            v-model="form.ctaText"
+            type="text"
+            maxlength="32"
+            class="bg-[#020420] border border-slate-800 text-white p-2.5 rounded-xl outline-none"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">Accento</label>
+          <select
+            v-model="form.accentColor"
+            class="bg-[#020420] border border-slate-800 text-white p-2.5 rounded-xl outline-none cursor-pointer"
+          >
+            <option value="amber">Amber</option>
+            <option value="emerald">Emerald</option>
+            <option value="sky">Sky</option>
+            <option value="purple">Purple</option>
+          </select>
+        </div>
+      </div>
+
+      <div
+        v-if="message"
+        :class="[
+          'p-3 rounded-xl text-xs font-bold text-center border',
+          message.type === 'success'
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+            : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+        ]"
+      >
         {{ message.text }}
       </div>
 
-      <button type="submit" :disabled="isLoading" class="submit-btn">
-        <span v-if="isLoading">⏳ Generazione nel Vault...</span>
-        <span v-else>🚀 Lancia Campagna</span>
+      <button
+        type="submit"
+        :disabled="isLoading"
+        class="mt-1 w-full py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-black text-xs sm:text-sm cursor-pointer border-none transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+      >
+        {{ isLoading ? '⏳ Salvataggio sul Vault...' : '🚀 Metti in Rotazione' }}
       </button>
     </form>
   </div>
 </template>
-
-<style scoped>
-.ad-manager-card {
-  background: #090d16;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 2rem;
-  width: 100%; /* Si adatta alla colonna della griglia! */
-  color: #f8fafc;
-  font-family: system-ui, sans-serif;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 1rem;
-}
-
-.card-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin: 0;
-  color: #fff;
-}
-
-.badge {
-  background: rgba(0, 220, 130, 0.1);
-  color: #00dc82;
-  border: 1px solid rgba(0, 220, 130, 0.3);
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.card-desc { color: #94a3b8; font-size: 0.85rem; line-height: 1.5; margin-bottom: 2rem; }
-.ad-form { display: flex; flex-direction: column; gap: 1.25rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-label { font-size: 0.75rem; font-weight: 800; color: #cbd5e1; text-transform: uppercase; }
-
-input, textarea {
-  background: #020420;
-  border: 1px solid #1e293b;
-  color: #fff;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-input:focus, textarea:focus { border-color: #00dc82; }
-
-.form-summary {
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px dashed #334155;
-  padding: 1rem;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-.summary-item { display: flex; justify-content: space-between; color: #94a3b8; }
-.highlight { color: #00dc82; font-weight: 800; }
-
-.alert-message { padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; text-align: center; }
-.success { background: rgba(0, 220, 130, 0.1); color: #00dc82; border: 1px solid rgba(0, 220, 130, 0.3); }
-.error { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-
-.submit-btn {
-  background: #00dc82; color: #020420; border: none; padding: 0.9rem; border-radius: 8px; font-size: 1rem; font-weight: 800; cursor: pointer; transition: all 0.2s ease;
-}
-.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 220, 130, 0.2); }
-.submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-</style>

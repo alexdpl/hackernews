@@ -1,6 +1,9 @@
 <!-- app/pages/tools/ai-repo-scanner.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue' 
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
+
 
 useDkpSeo({
   title: 'AI Repository & Link Scanner v2.6-PURE-SQL — DKP Tools',
@@ -307,6 +310,12 @@ function loadPreset(url: string) {
       </div>
     </Transition>
   </div>
+  <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
+	  <div class="mt-2 mb-6">
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+      </div>
 </template>
 
 <style scoped>

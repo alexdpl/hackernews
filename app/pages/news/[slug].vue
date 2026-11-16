@@ -6,7 +6,7 @@ import { useBlog } from '~/composables/useBlog'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DKPAdBanner from '~/components/DKPAdBanner.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 interface AuthorRank {
@@ -649,7 +649,10 @@ useHead({
                 </div>
               </div>
             </section>
-
+           <!-- BANNER ECOSISTEMA / ADS -->
+            <div class="pt-4 border-t border-slate-800 relative z-10">
+              <DkpAdsWidget placement="global" />
+            </div>
             <!-- APPROFONDIMENTI DAL VAULT EDITORIAL HUB (WIDGET 4 COLONNE) -->
             <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800 flex flex-col gap-4 relative z-10">
               <div class="flex items-center justify-between">
@@ -691,14 +694,9 @@ useHead({
             <div class="pt-6 border-t border-slate-800 relative z-10">
               <DkpNodesHomeWidget />
             </div>
-
-            <!-- BANNER ECOSISTEMA / ADS -->
-            <div class="pt-4 border-t border-slate-800 relative z-10">
-              <DKPAdBanner />
-            </div>
           </article>
 
-          <DkpAdStrip categoryTag="DKP NEWS DETAIL SPONSORED" />
+          <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
         </div>
       </template>
 

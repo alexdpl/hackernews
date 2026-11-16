@@ -2,15 +2,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import DkpRoadmapProgress from '~/components/RoadmapProgress.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 
-useHead({
+useDkpSeo({
   title: 'Roadmap Ecosistema 2026-2027 v2.6-PURE-SQL — DevKernelPulse',
-  meta: [
-    {
-      name: 'description',
-      content: 'Piano ufficiale di sviluppo dell\'ecosistema DKP v2.6: DKP Blockchain Vault©, Forum e Blog On-Chain, SDK Pubblica @devkernelpulse/sdk, Firewall Live SSE e Visione Futura 2027.'
-    }
-  ]
+  description: 'Piano ufficiale di sviluppo dell\'ecosistema DKP v2.6: DKP Blockchain Vault©, Forum e Blog On-Chain, SDK Pubblica @devkernelpulse/sdk, Firewall Live SSE e Visione Futura 2027.'
 })
 
 interface RoadmapMilestone {
@@ -274,7 +270,7 @@ const filteredMilestones = computed(() => {
           </article>
         </div>
       </div>
-
+     <DkpAdsWidget placement="docs" />
     </div>
   </div>
 </template>

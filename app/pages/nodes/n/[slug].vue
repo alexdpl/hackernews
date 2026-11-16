@@ -6,7 +6,7 @@ import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
 import DKPnodesRichEditor from '~/components/DKPnodesRichEditor.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DKPAdBanner from '~/components/DKPAdBanner.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import { buildCategoryNodeTree, cleanNodeLabel, resolveMainCategory } from '~/composables/useDkpNodes'
 
@@ -426,11 +426,10 @@ function copyPostLink(postId: number) {
           Pagina Successiva →
         </button>
       </div>
-
+	  <DkpAdStrip :topic="String(route.params.slug || '')" />
       <DKPRelatedThreads :currentNodeSlug="nodeSlug" />
       <DkpNodesHomeWidget />
-      <DkpAdStrip categoryTag="DKP NODES TALKS STREAM" />
-      <DKPAdBanner />
+	  <DkpAdsWidget placement="nodeTalks" />
     </div>
 
     <DKPnodesRichEditor

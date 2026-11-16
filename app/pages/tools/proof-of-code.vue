@@ -1,6 +1,8 @@
 <!-- app/pages/tools/proof-of-code.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue' 
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
 
 const auth = useAuthCore() || {}
 const currentUser = auth.currentUser || ref({ id: 1 })
@@ -253,6 +255,12 @@ async function notarizeCode() {
       
     </div>
   </div>
+  <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
+	  <div class="mt-2 mb-6">
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+      </div>
 </template>
 
 <style scoped>

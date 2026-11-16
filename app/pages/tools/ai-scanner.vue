@@ -1,6 +1,8 @@
 <!-- app/pages/tools/ai-scanner.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue' 
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
 
 // 1. Estrazione ultra-sicura con Fallback
 const auth = useAuthCore() || {}
@@ -358,6 +360,12 @@ async function notarizeToVault() {
       </div>
     </div>
   </div>
+  <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
+	  <div class="mt-2 mb-6">
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+      </div>
 </template>
 
 <style scoped>

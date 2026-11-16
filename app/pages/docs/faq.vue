@@ -1,12 +1,11 @@
 <!-- app/pages/docs/faq.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 
-useHead({
+useDkpSeo({
   title: 'Domande Frequenti (FAQ) & Knowledge Base AI — DKP v2.6-PURE-SQL',
-  meta: [
-    { name: 'description', content: 'Tutte le risposte sull\'ecosistema DevKernelPulse v2.6-PURE-SQL: OpenUI Studio, DKP Trinity AI Models, Neon Pure SQL Gateway crittografato, Vault e Pulse Sentinel.' }
-  ]
+  description: 'Tutte le risposte sull\'ecosistema DevKernelPulse v2.6-PURE-SQL: OpenUI Studio, DKP Trinity AI Models, Neon Pure SQL Gateway crittografato, Vault e Pulse Sentinel.'
 })
 
 const activeId = ref<string | null>('ai-1')
@@ -323,7 +322,8 @@ const filteredFaqData = computed(() => {
           </NuxtLink>
         </div>
       </div>
-
+       <DkpAdsWidget placement="docs" />
+      
     </div>
   </div>
 </template>

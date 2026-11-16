@@ -1,8 +1,14 @@
 // server/api/user/contents.get.ts
 import { defineEventHandler, getQuery, getCookie, setResponseHeaders } from 'h3'
-import { eq, desc } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { users, posts } from '~~/server/db/schema'
+import { extractSqlRows, parseSessionUser } from '~~/server/utils/dkpComments'
+
+function formatIsoDate(val: any): string {
+  if (!val) return new Date().toISOString().split('T')[0]
+  if (val instanceof Date) return val.toISOString().split('T')[0]
+  return String(val).split('T')[0]
+}
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
@@ -11,65 +17,166 @@ export default defineEventHandler(async (event) => {
   })
 
   const query = getQuery(event)
-  const usernameParam = query.username ? String(query.username) : null
+  const session = parseSessionUser(event)
   const cookieUsername = getCookie(event, 'dkp_user')
-  const username = usernameParam || cookieUsername || 'alexdpl'
 
-  const db = getDb()
+  const username = String(query.username || session?.username || cookieUsername || '').trim()
+  let userId: number | null = query.userId ? Number(query.userId) : (session?.id || null)
+
+  if (!userId && !username) {
+    return {
+      success: true,
+      hnPosts: [],
+      blogPosts: [],
+      nodeThreads: [],
+      stats: { hnCount: 0, blogCount: 0, nodeCount: 0, totalPoints: 0 }
+    }
+  }
 
   try {
-    // 1. Individuazione utente per username o query param userId
-    let userId: number | null = query.userId ? Number(query.userId) : null
-
-    if (!userId) {
-      const userRecords = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1)
-      if (userRecords.length === 0) {
-        return { success: true, hnPosts: [] }
-      }
-      userId = userRecords[0].id
+    const db = await getDb()
+    if (!db) {
+      return { success: false, error: 'Database Neon non disponibile.', hnPosts: [], blogPosts: [], nodeThreads: [] }
     }
 
-    // 2. Recupero dei post/condivisioni reali scritti dall'utente dal database Neon
-    const userPosts = await db.select({
-      id: posts.id,
-      title: posts.title,
-      url: posts.url,
-      type: posts.type,
-      points: posts.points,
-      commentsCount: posts.commentsCount,
-      createdAt: posts.createdAt
-    })
-    .from(posts)
-    .where(eq(posts.userId, userId))
-    .orderBy(desc(posts.createdAt))
-
-    // 3. Formattazione sicura delle date
-    const hnPosts = userPosts.map(p => {
-      let dateStr = '2026-10-12'
-      if (p.createdAt) {
-        if (p.createdAt instanceof Date) {
-          dateStr = p.createdAt.toISOString().split('T')[0]
-        } else {
-          dateStr = String(p.createdAt).split('T')[0]
-        }
+    // 1. Risolve ID e username reali dell'utente su Neon DB
+    let resolvedUsername = username
+    if (!userId && username) {
+      const userRes = await db.execute(sql`
+        SELECT id, username FROM users WHERE LOWER(username) = LOWER(${username}) LIMIT 1;
+      `).catch(() => null)
+      const uRow = extractSqlRows(userRes)[0]
+      if (uRow) {
+        userId = Number(uRow.id)
+        resolvedUsername = String(uRow.username || username)
       }
+    } else if (userId && !resolvedUsername) {
+      const userRes = await db.execute(sql`
+        SELECT username FROM users WHERE id = ${userId} LIMIT 1;
+      `).catch(() => null)
+      const uRow = extractSqlRows(userRes)[0]
+      if (uRow?.username) resolvedUsername = String(uRow.username)
+    }
 
+    if (!userId && !resolvedUsername) {
       return {
-        ...p,
-        createdAt: dateStr
+        success: true,
+        hnPosts: [],
+        blogPosts: [],
+        nodeThreads: [],
+        stats: { hnCount: 0, blogCount: 0, nodeCount: 0, totalPoints: 0 }
       }
-    })
+    }
+
+    // 2. Recupero Post HN / News (Pure-SQL)
+    const postsRes = userId
+      ? await db.execute(sql`
+          SELECT
+            id,
+            title,
+            url,
+            COALESCE(type, 'story') AS type,
+            COALESCE(points, 1) AS points,
+            COALESCE(comments_count, 0) AS "commentsCount",
+            created_at AS "createdAt"
+          FROM posts
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC
+          LIMIT 100;
+        `).catch(() => null)
+      : null
+
+    const hnPosts = extractSqlRows(postsRes).map((p: any) => ({
+      id: Number(p.id),
+      section: 'HN',
+      title: String(p.title || 'Senza titolo'),
+      url: p.url || null,
+      targetLink: `/item/${p.id}`,
+      type: String(p.type || 'story'),
+      points: Number(p.points || 1),
+      commentsCount: Number(p.commentsCount || 0),
+      createdAt: formatIsoDate(p.createdAt)
+    }))
+
+    // 3. Recupero Articoli Blog (tollerante se la tabella ha colonne diverse)
+    const blogRes = resolvedUsername
+      ? await db.execute(sql`
+          SELECT
+            id,
+            slug,
+            title,
+            COALESCE(status, 'published') AS status,
+            COALESCE(views, 0) AS views,
+            created_at AS "createdAt"
+          FROM blog_posts
+          WHERE LOWER(COALESCE(author, '')) = LOWER(${resolvedUsername})
+             OR (${userId || 0} > 0 AND author_id = ${userId || 0})
+          ORDER BY created_at DESC
+          LIMIT 50;
+        `).catch(() => null)
+      : null
+
+    const blogPosts = extractSqlRows(blogRes).map((b: any) => ({
+      id: Number(b.id),
+      section: 'BLOG',
+      slug: b.slug || String(b.id),
+      title: String(b.title || 'Articolo Blog'),
+      targetLink: `/blog/${b.slug || b.id}`,
+      status: String(b.status || 'published').toUpperCase(),
+      views: Number(b.views || 0),
+      createdAt: formatIsoDate(b.createdAt)
+    }))
+
+    // 4. Recupero Discussioni nei Nodi / Forum
+    const nodesRes = resolvedUsername
+      ? await db.execute(sql`
+          SELECT
+            id,
+            title,
+            COALESCE(node_slug, 'general') AS "nodeSlug",
+            COALESCE(replies_count, 0) AS "repliesCount",
+            created_at AS "createdAt"
+          FROM node_threads
+          WHERE LOWER(COALESCE(author, '')) = LOWER(${resolvedUsername})
+             OR (${userId || 0} > 0 AND user_id = ${userId || 0})
+          ORDER BY created_at DESC
+          LIMIT 50;
+        `).catch(() => null)
+      : null
+
+    const nodeThreads = extractSqlRows(nodesRes).map((n: any) => ({
+      id: Number(n.id),
+      section: 'NODE',
+      title: String(n.title || 'Discussione Nodo'),
+      nodeSlug: String(n.nodeSlug || 'general'),
+      targetLink: `/nodes/thread/${n.id}`,
+      repliesCount: Number(n.repliesCount || 0),
+      createdAt: formatIsoDate(n.createdAt)
+    }))
+
+    const totalPoints = hnPosts.reduce((acc, item) => acc + item.points, 0)
 
     return {
       success: true,
-      hnPosts
+      hnPosts,
+      blogPosts,
+      nodeThreads,
+      stats: {
+        hnCount: hnPosts.length,
+        blogCount: blogPosts.length,
+        nodeCount: nodeThreads.length,
+        totalPoints
+      }
     }
   } catch (err: any) {
-    console.error('❌ Errore API contents:', err?.message || err)
-    return { 
-      success: false, 
-      error: err?.message || 'Errore database', 
-      hnPosts: [] 
+    console.error('❌ Errore API user/contents:', err?.message || err)
+    return {
+      success: false,
+      error: err?.message || 'Errore database',
+      hnPosts: [],
+      blogPosts: [],
+      nodeThreads: [],
+      stats: { hnCount: 0, blogCount: 0, nodeCount: 0, totalPoints: 0 }
     }
   }
 })

@@ -7,6 +7,9 @@ import SocialShare from "~/components/blog/SocialShare.vue";
 import DkpRelatedPosts from "~/components/blog/DkpRelatedPosts.vue";
 import DkpNodesHomeWidget from "~/components/DkpNodesHomeWidget.vue";
 import VaultTrustBadge from "~/components/VaultTrustBadge.vue";
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 
 interface BlogPost {
   id?: string | number;
@@ -694,9 +697,10 @@ function handleLike() {
 
           <!-- WIDGET INTEGRATO NELLA PAGINA ARTICOLO -->
           <div class="mb-10 pt-4 border-t border-slate-800">
+		  <DkpAdsWidget placement="blogSidebar" :compact="true" />
             <DkpNodesHomeWidget />
           </div>
-
+         <DKPRelatedThreads />
           <!-- ARTICOLI CORRELATI -->
           <DkpRelatedPosts
             v-if="post && post.id"

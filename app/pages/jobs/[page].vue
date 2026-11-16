@@ -3,7 +3,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -226,6 +228,9 @@ useHead({
         <p>📭 Nessun'altra offerta trovata in questa pagina.</p>
         <NuxtLink to="/jobs" class="text-sky-400 underline font-bold">Torna alla prima pagina</NuxtLink>
       </div>
+     <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
 
       <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
@@ -258,12 +263,16 @@ useHead({
             </span>
           </NuxtLink>
         </div>
-        
+        <!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
+            <div class="pt-6 border-t border-slate-800 relative z-10">
+              <DKPRelatedThreads />
+            </div>
+
         <DkpNodesHomeWidget />
       </div>    
 
       <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip categoryTag="DKP JOBS SPONSORED FEED" />
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
     </div>
   </div>
 </template>

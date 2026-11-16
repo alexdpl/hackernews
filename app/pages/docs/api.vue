@@ -1,6 +1,7 @@
 <!-- app/pages/docs/api.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 
 useDkpSeo({
   title: 'API Reference v2.6-PURE-SQL Interattiva — DKP Docs',
@@ -520,6 +521,9 @@ function copyCodeSnippet() {
 
           </div>
         </main>
+      </div>
+<div class="mt-2 mb-6">
+       <DkpAdsWidget placement="docs" />
       </div>
 
       <!-- FOOTER NAVIGATION -->

@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
+import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue' 
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
 // 1. Fetch dal motore DB Neon (15 discussioni per pagina)
@@ -215,7 +217,9 @@ useHead({
           <NuxtLink to="/submit?type=ask" class="text-emerald-400 underline font-bold">Sii il primo ad aprire una discussione!</NuxtLink>
         </div>
       </div>
-
+<div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
       <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
         <div class="flex justify-between items-center">
@@ -247,12 +251,16 @@ useHead({
             </span>
           </NuxtLink>
         </div>
-        
+        <!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
+            <div class="pt-6 border-t border-slate-800 relative z-10">
+              <DKPRelatedThreads />
+            </div>
+
         <DkpNodesHomeWidget />
       </div>
 
       <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip categoryTag="DKP ASK SPONSORED FEED" />
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
     </div>
   </div>
 </template>

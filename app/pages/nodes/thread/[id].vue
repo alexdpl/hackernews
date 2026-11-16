@@ -6,7 +6,7 @@ import { useBlog } from '~/composables/useBlog'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DKPAdBanner from '~/components/DKPAdBanner.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
 
@@ -648,11 +648,11 @@ onUnmounted(() => {
               <div class="text-xs sm:text-sm text-slate-200 dkp-preview-content" v-html="parseDkpMarkdown(String(c.content || ''))"></div>
             </div>
           </section>
-
-          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM" />
+          <DkpAdsWidget placement="feedInline" :compact="true" />
+          <DkpAdStrip :topic="thread?.nodeName" :tags="thread?.tags" />
           <DKPRelatedThreads :currentNodeSlug="post.nodeSlug || undefined" />
           <DkpNodesHomeWidget />
-          <DKPAdBanner />
+         
         </article>
       </div>
     </div>

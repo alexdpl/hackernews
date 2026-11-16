@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
 useHead({
@@ -222,7 +223,7 @@ function parseTags(tags: any): string[] {
       </div>
 
       <!-- BANNER AD TOP -->
-      <DkpAdStrip categoryTag="DKP TECH FEED SPONSORED" />
+      <DkpAdsWidget placement="global" />
 
       <!-- FEED GRID -->
       <div v-if="pending" class="text-center py-20 bg-[#090d16] border border-slate-800 rounded-2xl text-emerald-400 font-mono text-xs animate-pulse">
@@ -365,7 +366,7 @@ function parseTags(tags: any): string[] {
       </div>
 
       <!-- BANNER AD SPONSORED STREAM -->
-      <DkpAdStrip categoryTag="DKP NODES AI SPONSORED STREAM" />
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
 
       <!-- FOOTER BADGE -->
       <div class="flex justify-center mt-2">

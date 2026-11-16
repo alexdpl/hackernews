@@ -3,6 +3,13 @@
 import { ref, computed, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+
+useDkpSeo({
+  title: 'Show DKP — Progetti & GitHub Trending v2.6-PURE-SQL',
+  description: 'Vetrina dei migliori progetti Open Source e repository GitHub sincronizzati da DKP Crawler.'
+})
+
 
 // 1. Fetch dall'endpoint unificato DB Neon per type 'show'
 const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
@@ -108,12 +115,6 @@ function populateFallbackArticles() {
   ]
 }
 
-useHead({
-  title: 'Show DKP — Progetti & GitHub Trending v2.6-PURE-SQL',
-  meta: [
-    { name: 'description', content: 'Vetrina dei migliori progetti Open Source e repository GitHub sincronizzati da DKP Crawler.' }
-  ]
-})
 </script>
 
 <template>
@@ -223,7 +224,9 @@ useHead({
           <NuxtLink to="/submit?type=show" class="text-emerald-400 underline font-bold">Invia il tuo primo progetto!</NuxtLink>
         </div>
       </div>
-
+<div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
       <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
         <div class="flex justify-between items-center">
@@ -260,7 +263,7 @@ useHead({
       </div>
 
       <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip categoryTag="DKP SHOWCASE SPONSORED FEED" />
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
     </div>
   </div>
 </template>

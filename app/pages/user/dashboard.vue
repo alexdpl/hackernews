@@ -60,7 +60,16 @@ const activeTab = computed({
   set: (val: string) => router.replace({ query: { ...route.query, tab: val } })
 })
 
-const contentTab = ref<'blog' | 'pulse' | 'nodes' | 'comments'>('blog')
+const contentTab = computed<'blog' | 'pulse' | 'nodes' | 'comments'>({
+  get: () => {
+    const sub = String(route.query.subtab || '').toLowerCase()
+    if (sub === 'pulse' || sub === 'nodes' || sub === 'comments') return sub
+    return 'blog'
+  },
+  set: (val) => {
+    router.replace({ query: { ...route.query, tab: 'content', subtab: val } })
+  }
+})
 
 // --- STATI E PAGINAZIONE POST BLOG ---
 const articles = ref<any[]>([])
@@ -670,7 +679,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
       </div>
     </Transition>
 
-    <div class="max-w-6xl mx-auto flex flex-col gap-6">
+    <div class="max-w-7xl mx-auto flex flex-col gap-6">
       
       <!-- HEADER USER CARD -->
       <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative overflow-hidden">
@@ -712,30 +721,38 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </div>
         </div>
 
-        <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="w-full sm:w-auto bg-slate-950 border border-emerald-500/40 text-emerald-400 font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500/10 transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.25)] text-center shrink-0 relative z-10 font-mono no-underline">
-          🌐 Vedi Profilo Pubblico
-        </NuxtLink>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto shrink-0 relative z-10 font-mono">
+          <NuxtLink to="/user/ads" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-sky-500/20 transition-all text-center no-underline">
+            📢 I Miei Link &amp; Ads
+          </NuxtLink>
+          <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="bg-slate-950 border border-emerald-500/40 text-emerald-400 font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500/10 transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.25)] text-center no-underline">
+            🌐 Profilo Pubblico
+          </NuxtLink>
+        </div>
       </div>
 
-      <!-- TABS NAVIGATION BAR -->
-      <nav class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 bg-[#090d16] p-2 border border-slate-800 rounded-2xl shadow-xl font-mono">
+      <!-- TABS NAVIGATION BAR UNIFICATA (7 SEZIONI ALLINEATE CON /user/ads) -->
+      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 bg-[#090d16] p-2 border border-slate-800 rounded-2xl shadow-xl font-mono">
         <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'profile' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'profile'">
-          ⚙️ Profilo &amp; Social
+          ⚙️ Profilo
         </button>
         <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'content' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'content'">
-          📰 I Miei Contenuti
+          📰 Contenuti &amp; Commenti
         </button>
         <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'vault' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'vault'">
-          🛡️ Proof of Code Vault ({{ vaultCertificates.length }})
+          🛡️ Vault ({{ vaultCertificates.length }})
         </button>
         <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'api' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'api'">
-          🔑 DKP API Console ({{ apiKeysList.length }})
+          🔑 API Console ({{ apiKeysList.length }})
         </button>
         <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'gamification' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'gamification'">
-          🏆 Gamification &amp; XP
+          🏆 XP &amp; Livelli
         </button>
+        <NuxtLink to="/user/ads" class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-all text-center truncate no-underline">
+          📢 I Miei Link &amp; Ads
+        </NuxtLink>
         <NuxtLink to="/bounties" class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all text-center truncate no-underline">
-          🎯 Bounty &amp; $PULSE
+          🎯 Bounties
         </NuxtLink>
       </nav>
 
@@ -805,11 +822,11 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         </form>
       </section>
 
-      <!-- PANNELLO 2: CONTENUTI -->
+      <!-- PANNELLO 2: CONTENUTI & COMMENTI UNIFICATI -->
       <section v-if="activeTab === 'content'" class="flex flex-col gap-6">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-[#090d16] border border-slate-800 p-2 rounded-2xl shadow-xl font-mono">
           <button @click="contentTab = 'blog'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'blog' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
-            📝 Articoli Blog
+            📝 Articoli Blog ({{ articles.length }})
           </button>
           <button @click="contentTab = 'pulse'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'pulse' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
             🚀 Condivisioni (HN)
@@ -818,7 +835,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             🌐 Forum (Nodes) ({{ myThreads.length }})
           </button>
           <button @click="contentTab = 'comments'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'comments' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
-            💬 Commenti Articoli
+            💬 Commenti Unificati
           </button>
         </div>
 
@@ -1039,8 +1056,19 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </div>
         </div>
 
-        <div v-if="contentTab === 'pulse'"><DkpPulseManager/></div>
-        <div v-if="contentTab === 'comments'"><DkpCommentsManager/></div>
+        <!-- TAB CONDIVISIONI HN -->
+        <div v-if="contentTab === 'pulse'">
+          <DkpPulseManager />
+        </div>
+
+        <!-- TAB COMMENTI UNIFICATI (HN / BLOG / FORUM) -->
+        <div v-if="contentTab === 'comments'">
+          <DkpCommentsManager
+            :username="currentUser?.username || 'alexdpl'"
+            :user-id="resolvedUserId"
+            @toast="triggerToast"
+          />
+        </div>
       </section>
 
       <!-- PANNELLO 3: API CONSOLE -->
@@ -1197,7 +1225,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           <span class="text-2xl font-black text-emerald-400">{{ userProfileData.xp }} XP</span>
         </div>
         <button @click="activateEarlyPioneerBeta" class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl text-sm cursor-pointer">⚡ Attiva Status "Early Pioneer"</button>
-        <UserXpHistory :history="xpHistoryList"/>
+        <UserXpHistory :history="xpHistoryList" />
       </section>
 
     </div>
@@ -1213,7 +1241,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         </div>
         
         <div v-if="useAdvancedEditor">
-          <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }"/>
+          <DkpEditor :modelValue="articleForm" @update:modelValue="articleForm = { ...articleForm, ...$event }" />
         </div>
         
         <div v-else class="flex flex-col gap-4">

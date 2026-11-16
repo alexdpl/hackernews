@@ -3,15 +3,12 @@
 import { ref, onMounted } from 'vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 
-useHead({
-  title: 'DevKernelPulse — The Developer Ecosystem & AI Tech Stream v2.6',
-  meta: [
-    {
-      name: 'description',
-      content: 'Infrastruttura per sviluppatori, strumenti di sicurezza notarizzati e newsroom AI in tempo reale da Hacker News.'
-    }
-  ]
+useDkpSeo({
+  title: 'DevKernelPulse — The Developer Ecosystem & AI Tech Stream v2.6 Pure SQL',
+  description: 'Infrastruttura per sviluppatori, strumenti di sicurezza notarizzati, newsroom AI e servizi avanzati on-chain.'
 })
 
 // Recupero dinamico di 4 articoli in evidenza dal Vault
@@ -107,10 +104,10 @@ function populateFallbackArticles() {
           </NuxtLink>
         </div>
       </section>
-
-      <!-- WIDGET NOTIZIE HACKER NEWS (DKP NODES LIVE STREAM) -->
-      <DkpNodesHomeWidget />
-
+      <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
+      
       <!-- METRICS GRID -->
       <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2 shadow-xl hover:border-[var(--accent-emerald)]/30 transition-colors duration-500">
@@ -129,7 +126,10 @@ function populateFallbackArticles() {
           <p class="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest font-mono">Threat Stream Attivo</p>
         </div>
       </section>
-
+ <!-- WIDGET NOTIZIE HACKER NEWS (DKP NODES LIVE STREAM) -->
+	  <div class="mt-2 mb-6">
+      <DkpNodesHomeWidget />
+      </div>
       <!-- SEZIONE VAULT DEL BLOG (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 shadow-2xl transition-colors duration-500">
         <div class="flex justify-between items-center mb-6">
@@ -162,10 +162,14 @@ function populateFallbackArticles() {
           </NuxtLink>
         </div>
       </div>
+<!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
+            <div class="pt-6 border-t border-slate-800 relative z-10">
+              <DKPRelatedThreads />
+            </div>
 
       <!-- BANNER AD SPONSORED ECOSYSTEM -->
       <div class="mt-2 mb-6">
-        <DkpAdStrip categoryTag="DKP ECOSYSTEM HOME SPONSORED" />
+        <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
       </div>
 
     </div>

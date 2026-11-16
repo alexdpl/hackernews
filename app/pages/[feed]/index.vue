@@ -4,6 +4,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue' 
 
 const route = useRoute()
 const currentFeed = computed(() => (route.params.feed as string) || 'feed')
@@ -202,7 +204,9 @@ useHead({
       <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs">
         📭 Nessuna notizia presente in questo stream al momento.
       </div>
-
+      <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
       <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
       <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
         <div class="flex justify-between items-center">
@@ -234,12 +238,15 @@ useHead({
             </span>
           </NuxtLink>
         </div>
-
+<!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
+            <div class="pt-6 border-t border-slate-800 relative z-10">
+              <DKPRelatedThreads />
+            </div>
         <DkpNodesHomeWidget />
       </div>
 
       <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip categoryTag="DKP NEWS SPONSORED FEED" />
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
     </div>
   </div>
 </template>

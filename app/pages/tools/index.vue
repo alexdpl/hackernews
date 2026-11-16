@@ -1,12 +1,12 @@
 <!-- app/pages/tools/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
-useHead({
+useDkpSeo({
   title: 'Toolkit & Developer Tools v2.6-PURE-SQL — DevKernelPulse',
-  meta: [
-    { name: 'description', content: 'Suite ufficiale di strumenti professionali DKP: Neural Playground, AI Repo Scanner, Code Vault, CLI Toolkit e API Management.' }
-  ]
+  description: 'Suite ufficiale di strumenti professionali DKP: Neural Playground, AI Repo Scanner, Code Vault, CLI Toolkit e API Management.'
 })
 
 interface DkpTool {
@@ -322,7 +322,12 @@ const filteredTools = computed(() => {
           </div>
         </div>
       </div>
-
+<div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
+	  <div class="mt-2 mb-6">
+      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+      </div>
       <!-- EMPTY STATE -->
       <div v-if="filteredTools.length === 0" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl">
         <span class="text-4xl block mb-4">🔍</span>

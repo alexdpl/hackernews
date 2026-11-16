@@ -1,6 +1,7 @@
 <!-- app/pages/bounties/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 
 useDkpSeo({
   title: 'Bounty Board & $PULSE Economy Hub — DevKernelPulse v2.5-GOLD',
@@ -341,6 +342,9 @@ async function purchaseItem(item: any) {
 
     </div>
   </div>
+  <div class="mt-2 mb-6">
+       <DkpAdsWidget placement="global" />
+      </div>
 </template>
 
 <style scoped>

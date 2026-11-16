@@ -1,6 +1,7 @@
 <!-- app/pages/docs/sdk.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
+import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 
 useDkpSeo({
   title: 'SDK Ufficiale @devkernelpulse/sdk v2.6-PURE-SQL — Integrazione TS/JS & CLI',
@@ -356,7 +357,8 @@ function copySnippet(key: string, text: string) {
           </NuxtLink>
         </div>
       </div>
-
+       <DkpAdsWidget placement="docs" />
+      
     </div>
   </div>
 </template>

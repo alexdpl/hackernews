@@ -1,13 +1,12 @@
 <!-- app/pages/nodes/index.vue -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import DKPAdBanner from '~/components/DKPAdBanner.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
-import DKPnodesRichEditor from '~/components/DKPnodesRichEditor.vue'
 import { buildCategoryNodeTree, cleanNodeLabel } from '~/composables/useDkpNodes'
+import DKPAdBanner from '~/components/DKPAdBanner.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useHead({
   title: 'DKP Talks Hub - Discussioni Tecniche, Nodi e Community v2.6-PURE-SQL',
@@ -632,8 +631,8 @@ function resetAllFilters() {
           <div class="pt-6 border-t border-slate-800">
             <DkpNodesHomeWidget />
           </div>
-
-          <DkpAdStrip categoryTag="DKP NODES TALKS STREAM" />
+          <AdsDkpAdsWidget placement="nodeTalks" />
+         <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
         </main>
       </div>
     </div>

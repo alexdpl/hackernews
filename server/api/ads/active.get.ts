@@ -1,34 +1,26 @@
 // server/api/ads/active.get.ts
-import { defineEventHandler } from 'h3'
-import { sql } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db'
+import { defineEventHandler, getQuery } from 'h3'
+import { getDb } from '../../utils/db'
+import { DkpAdsService, type AdPlacement } from '../../utils/dkpAdsService'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event)
+  const placement = String(query.placement || 'nodeTalks') as AdPlacement
+  const limit = Math.max(1, Math.min(6, Number(query.limit || 3)))
+
+  let db: any = null
   try {
-    const db = await getDb()
-    if (!db) return { success: false }
+    db = await getDb()
+  } catch {
+    db = null
+  }
 
-    // Cerca 1 annuncio attivo a caso con budget > 0
-    const res: any = await db.execute(sql`
-      SELECT id, title, snippet, target_url AS "targetUrl", category_tag AS "categoryTag"
-      FROM dkp_ads
-      WHERE status = 'ACTIVE' AND budget_credits > 0
-      ORDER BY RANDOM()
-      LIMIT 1;
-    `)
-    
-    const row = Array.isArray(res) ? res[0] : res?.rows?.[0]
-    
-    if (row) {
-      // Aggiorna le impression in background (fire and forget)
-      db.execute(sql`UPDATE dkp_ads SET impressions_count = COALESCE(impressions_count, 0) + 1 WHERE id = ${row.id}`).catch(() => {})
-      
-      return { success: true, data: row }
-    }
-    
-    return { success: false, message: 'Nessun annuncio attivo.' }
-  } catch (err: any) {
-    console.error('❌ Errore Ads API:', err?.message)
-    return { success: false }
+  const campaigns = await DkpAdsService.serveBatch(db, placement, limit)
+
+  return {
+    success: true,
+    circuit: 'DKP-ADS-v2.6-PURE-SQL',
+    data: campaigns,
+    campaigns
   }
 })
