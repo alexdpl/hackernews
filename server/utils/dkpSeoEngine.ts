@@ -94,7 +94,15 @@ export async function fetchIndexableDkpContent(): Promise<{
     threads: [] as DkpIndexableItem[]
   }
 
-  const db = await getDb().catch(() => null)
+  const hasDbUrl = Boolean(process.env.NUXT_DATABASE_URL || process.env.DATABASE_URL)
+  if (!hasDbUrl) return result
+
+  let db: any = null
+  try {
+    db = await getDb()
+  } catch {
+    db = null
+  }
   if (!db) return result
 
   // 1. BLOG POSTS (blog_posts)
