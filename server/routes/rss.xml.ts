@@ -1,61 +1,62 @@
 // server/routes/rss.xml.ts
-import { defineEventHandler, setHeader } from 'h3'
+import { defineEventHandler, setResponseHeaders } from 'h3'
+import {
+  DKP_CANONICAL_ORIGIN,
+  escapeXml,
+  fetchIndexableDkpContent
+} from '~~/server/utils/dkpSeoEngine'
 
 export default defineEventHandler(async (event) => {
-  setHeader(event, 'Content-Type', 'text/xml; charset=utf-8')
+  setResponseHeaders(event, {
+    'Content-Type': 'application/rss+xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=300, s-maxage=600'
+  })
 
-  const baseUrl = 'https://devkernelpulse.org'
   const currentDate = new Date().toUTCString()
+  const { posts, threads } = await fetchIndexableDkpContent()
 
-  // Tentiamo di prelevare gli articoli dal blog/news dinamicamente
-  let itemsXml = ''
-  try {
-    const blogRes: any = await $fetch('/api/blog/posts').catch(() => null)
-    const posts = blogRes?.posts || blogRes || []
-    
-    if (Array.isArray(posts) && posts.length > 0) {
-      itemsXml = posts.map((post: any) => {
-        const title = post.title || 'Aggiornamento DevKernelPulse'
-        const slug = post.slug || post.id || 'news'
-        const link = `${baseUrl}/blog/${slug}`
-        const description = post.description || post.excerpt || 'Nuovo articolo tecnico dall\'ecosistema DKP v2.5-GOLD.'
-        const pubDate = post.createdAt ? new Date(post.createdAt).toUTCString() : currentDate
-        
-        return `
-    <item>
-      <title><![CDATA[${title}]]></title>
-      <link>${link}</link>
-      <guid>${link}</guid>
-      <description><![CDATA[${description}]]></description>
+  // Combina gli ultimi articoli del blog e le discussioni principali in ordine cronologico
+  const feedItems = [...posts, ...threads]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 50)
+
+  let itemsXml = feedItems
+    .map((item) => {
+      const pubDate = new Date(item.updatedAt).toUTCString()
+      const badgePrefix = item.kind === 'blog' ? '[BLOG]' : '[FORUM]'
+      const hashNote = item.notarizationHash ? ` • Verified SHA-256: ${item.notarizationHash}` : ''
+
+      return `    <item>
+      <title><![CDATA[${badgePrefix} ${item.title}]]></title>
+      <link>${escapeXml(item.url)}</link>
+      <guid isPermaLink="true">${escapeXml(item.url)}</guid>
+      <category><![CDATA[${item.category}]]></category>
+      <description><![CDATA[${item.description}${hashNote}]]></description>
       <pubDate>${pubDate}</pubDate>
     </item>`
-      }).join('')
-    }
-  } catch (e) {
-    // Fallback con elemento di default se il fetch fallisce
-  }
+    })
+    .join('\n')
 
-  // Se non ci sono post dinamici, inseriamo la release di punta v2.5-GOLD
   if (!itemsXml) {
-    itemsXml = `
-    <item>
-      <title><![CDATA[DevKernelPulse v2.5-GOLD Released: Neural Gateway & OpenUI Studio]]></title>
-      <link>${baseUrl}/roadmap</link>
-      <guid>${baseUrl}/roadmap</guid>
-      <description><![CDATA[Rilasciata la versione v2.5-GOLD di DevKernelPulse con OpenRouter AI Gateway, DKP Trinity Models, API Metering e Paywall Dinamico su Neon DB.]]></description>
+    itemsXml = `    <item>
+      <title><![CDATA[DevKernelPulse v2.6-PURE-SQL: Architecture, AI Gateway & Proof of Code Vault]]></title>
+      <link>${DKP_CANONICAL_ORIGIN}/roadmap</link>
+      <guid isPermaLink="true">${DKP_CANONICAL_ORIGIN}/roadmap</guid>
+      <description><![CDATA[Ecosistema SaaS e community tecnica su Nuxt 4, Neon PostgreSQL Pure SQL, AI Trinity e notarizzazione SHA-256 on-chain.]]></description>
       <pubDate>${currentDate}</pubDate>
     </item>`
   }
 
-  return `<?xml version="1.0" encoding="UTF-8" ?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>DevKernelPulse - Tech Feed &amp; AI Ecosystem</title>
-    <link>${baseUrl}</link>
-    <description>Notizie tech, architetture software avanzate, aggiornamenti sull'ecosistema DevKernelPulse v2.5-GOLD e guide sullo sviluppo con Nuxt 4 e IA.</description>
+    <title>DevKernelPulse v2.6-PURE-SQL — Engineering Blog &amp; Forum Feed</title>
+    <link>${DKP_CANONICAL_ORIGIN}</link>
+    <description>Articoli tecnici, discussioni del forum, architetture Nuxt 4 + Neon Pure SQL, AI Security e Proof of Code Vault.</description>
     <language>it-IT</language>
-    <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml" />
-    ${itemsXml}
+    <lastBuildDate>${currentDate}</lastBuildDate>
+    <atom:link href="${DKP_CANONICAL_ORIGIN}/rss.xml" rel="self" type="application/rss+xml" />
+${itemsXml}
   </channel>
 </rss>`
 })

@@ -9,10 +9,16 @@ export interface DkpSeoOptions {
   description?: MaybeRef<string>
   image?: MaybeRef<string>
   keywords?: MaybeRef<string>
-  type?: 'website' | 'article'
+  type?: 'website' | 'article' | 'forum' | 'collection'
   noindex?: MaybeRef<boolean>
   publishedTime?: MaybeRef<string>
   modifiedTime?: MaybeRef<string>
+  authorName?: MaybeRef<string>
+  authorUrl?: MaybeRef<string>
+  section?: MaybeRef<string>
+  commentCount?: MaybeRef<number>
+  notarizationHash?: MaybeRef<string>
+  canonicalPath?: MaybeRef<string>
 }
 
 export function useDkpSeo(options: DkpSeoOptions) {
@@ -26,7 +32,7 @@ export function useDkpSeo(options: DkpSeoOptions) {
 
     const description =
       unref(options.description) ||
-      'DevKernelPulse v2.6-PURE-SQL — Ecosistema SaaS su Nuxt 4, Neon PostgreSQL Pure SQL, API Gateway crittografato, OpenUI Studio AI e Proof of Code Vault.'
+      'DevKernelPulse v2.6-PURE-SQL — Community tecnica, blog ingegneristico, nodi forum, API Gateway crittografato e Proof of Code Vault on-chain.'
 
     const rawImage = unref(options.image) || `${baseUrl}/dkp-logo.svg`
     const image = rawImage.startsWith('http')
@@ -35,21 +41,29 @@ export function useDkpSeo(options: DkpSeoOptions) {
 
     const keywords =
       unref(options.keywords) ||
-      'DevKernelPulse, DKP, Nuxt 4, Neon PostgreSQL, Pure SQL, OpenRouter, Trinity AI, OpenUI Studio, API Gateway, Proof of Code'
+      'DevKernelPulse, DKP, Nuxt 4, Neon PostgreSQL, Pure SQL, Forum Sviluppatori, OpenRouter, Trinity AI, Proof of Code, SHA-256'
 
-    // Canonical pulito basato su route.path (evita duplicazioni da query string)
-    const cleanPath = route.path === '/' ? '/' : route.path.replace(/\/+$/, '')
+    const explicitPath = unref(options.canonicalPath)
+    const rawPath = explicitPath || route.path
+    const cleanPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/, '')
     const canonicalUrl = `${baseUrl}${cleanPath}`
 
     const isNoindex = Boolean(unref(options.noindex))
-    const ogType = options.type || 'website'
+    const seoType = options.type || 'website'
+    const ogType = seoType === 'article' || seoType === 'forum' ? 'article' : 'website'
+
     const publishedTime = unref(options.publishedTime)
     const modifiedTime = unref(options.modifiedTime)
+    const authorName = unref(options.authorName) || 'Alessandro De Paola'
+    const authorUrl = unref(options.authorUrl) || `${baseUrl}/user/alexdpl`
+    const section = unref(options.section)
+    const commentCount = unref(options.commentCount)
+    const notarizationHash = unref(options.notarizationHash)
 
     const meta: Record<string, string>[] = [
       { name: 'description', content: description },
       { name: 'keywords', content: keywords },
-      { name: 'author', content: 'Alessandro De Paola (@alexdpl)' },
+      { name: 'author', content: authorName },
       { name: 'generator', content: 'DevKernelPulse v2.6-PURE-SQL' },
       { name: 'theme-color', content: '#020420' },
       {
@@ -82,52 +96,172 @@ export function useDkpSeo(options: DkpSeoOptions) {
     if (ogType === 'article' && modifiedTime) {
       meta.push({ property: 'article:modified_time', content: modifiedTime })
     }
+    if (ogType === 'article' && section) {
+      meta.push({ property: 'article:section', content: section })
+    }
+    if (notarizationHash) {
+      meta.push({ name: 'dkp:notarization-sha256', content: notarizationHash })
+    }
 
-    const jsonLd =
-      ogType === 'article'
-        ? {
-            '@context': 'https://schema.org',
-            '@type': 'TechArticle',
-            headline: title,
-            description,
-            image,
-            url: canonicalUrl,
-            ...(publishedTime ? { datePublished: publishedTime } : {}),
-            ...(modifiedTime ? { dateModified: modifiedTime } : {}),
-            author: {
-              '@type': 'Person',
-              name: 'Alessandro De Paola'
-            },
-            publisher: {
-              '@type': 'Organization',
-              name: siteName,
-              logo: {
-                '@type': 'ImageObject',
-                url: `${baseUrl}/dkp-logo.svg`
+    // Costruzione BreadcrumbList automatico dai segmenti URL
+    const segments = cleanPath.split('/').filter(Boolean)
+    const breadcrumbItems = [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl
+      },
+      ...segments.map((seg, idx) => ({
+        '@type': 'ListItem',
+        position: idx + 2,
+        name: decodeURIComponent(seg).replace(/[-_]+/g, ' '),
+        item: `${baseUrl}/${segments.slice(0, idx + 1).join('/')}`
+      }))
+    ]
+
+    const publisherNode = {
+      '@type': 'Organization',
+      name: siteName,
+      url: baseUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/dkp-logo.svg`
+      }
+    }
+
+    const authorNode = {
+      '@type': 'Person',
+      name: authorName,
+      url: authorUrl
+    }
+
+    const notarizationProps = notarizationHash
+      ? {
+          identifier: {
+            '@type': 'PropertyValue',
+            propertyID: 'DKP-SHA256-VAULT',
+            value: notarizationHash
+          },
+          creativeWorkStatus: 'Verified On-Chain'
+        }
+      : {}
+
+    let mainEntityJsonLd: Record<string, any>
+
+    if (seoType === 'article') {
+      mainEntityJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': canonicalUrl
+        },
+        headline: title,
+        description,
+        image,
+        url: canonicalUrl,
+        inLanguage: 'it-IT',
+        ...(section ? { articleSection: section } : {}),
+        ...(publishedTime ? { datePublished: publishedTime } : {}),
+        ...(modifiedTime ? { dateModified: modifiedTime } : {}),
+        ...(typeof commentCount === 'number' ? { commentCount } : {}),
+        ...notarizationProps,
+        author: authorNode,
+        publisher: publisherNode
+      }
+    } else if (seoType === 'forum') {
+      mainEntityJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'DiscussionForumPosting',
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': canonicalUrl
+        },
+        headline: title,
+        text: description,
+        url: canonicalUrl,
+        inLanguage: 'it-IT',
+        ...(section ? { about: section } : {}),
+        ...(publishedTime ? { datePublished: publishedTime } : {}),
+        ...(modifiedTime ? { dateModified: modifiedTime } : {}),
+        ...(typeof commentCount === 'number'
+          ? {
+              interactionStatistic: {
+                '@type': 'InteractionCounter',
+                interactionType: 'https://schema.org/CommentAction',
+                userInteractionCount: commentCount
               }
             }
-          }
-        : {
-            '@context': 'https://schema.org',
-            '@type': 'WebSite',
-            name: siteName,
-            description,
-            url: canonicalUrl
-          }
+          : {}),
+        ...notarizationProps,
+        author: authorNode,
+        publisher: publisherNode
+      }
+    } else if (seoType === 'collection') {
+      mainEntityJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: title,
+        description,
+        url: canonicalUrl,
+        inLanguage: 'it-IT',
+        isPartOf: {
+          '@type': 'WebSite',
+          name: siteName,
+          url: baseUrl
+        }
+      }
+    } else {
+      mainEntityJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: siteName,
+        description,
+        url: baseUrl,
+        inLanguage: 'it-IT',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${baseUrl}/news?q={search_term_string}`,
+          'query-input': 'required name=search_term_string'
+        }
+      }
+    }
+
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: breadcrumbItems
+    }
 
     return {
       title,
+      htmlAttrs: {
+        lang: 'it'
+      },
       meta,
       link: [
         {
           rel: 'canonical',
           href: canonicalUrl
+        },
+        {
+          rel: 'alternate',
+          type: 'application/rss+xml',
+          title: 'DevKernelPulse RSS Feed',
+          href: `${baseUrl}/rss.xml`
         }
       ],
       script: [
         {
+          key: 'dkp-ld-main',
           type: 'application/ld+json',
-          innerHTML: JSON.stringify(jsonLd)
+          innerHTML: JSON.stringify(mainEntityJsonLd)
+        },
+        {
+          key: 'dkp-ld-breadcrumb',
+          type: 'application/ld+json',
+          innerHTML: JSON.stringify(breadcrumbJsonLd)
         }
       ]
     }

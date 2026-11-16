@@ -1,64 +1,66 @@
 // server/routes/sitemap.xml.ts
-import { defineEventHandler } from 'h3'
+import { defineEventHandler, setResponseHeaders } from 'h3'
+import {
+  DKP_CANONICAL_ORIGIN,
+  DKP_STATIC_ROUTES,
+  escapeXml,
+  fetchIndexableDkpContent
+} from '~~/server/utils/dkpSeoEngine'
 
 export default defineEventHandler(async (event) => {
-  const baseUrl = 'https://devkernelpulse.org'
-  const sql = usePureSql()
-
-  const staticPages = [
-    '',
-    '/news',
-    '/nodes',
-    '/shop',
-    '/bounties',
-    '/tools',
-    '/tools/terminal',
-    '/tools/openui-studio',
-    '/tools/cli-toolkit',
-    '/tools/proof-of-code',
-    '/tools/ai-scanner',
-    '/tools/ai-repo-scanner'
-  ]
-
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`
-  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`
-
-  // 1. Pagine Statiche Root
-  staticPages.forEach((route) => {
-    xml += `  <url>\n`
-    xml += `    <loc>${baseUrl}${route}</loc>\n`
-    xml += `    <lastmod>${new Date().toISOString()}</lastmod>\n`
-    xml += `    <changefreq>${route === '' ? 'daily' : 'weekly'}</changefreq>\n`
-    xml += `    <priority>${route === '' ? '1.0' : '0.8'}</priority>\n`
-    xml += `  </url>\n`
+  setResponseHeaders(event, {
+    'Content-Type': 'application/xml; charset=utf-8',
+    'Cache-Control': 'public, max-age=300, s-maxage=600',
+    'X-Robots-Tag': 'noindex'
   })
 
-  // 2. Articoli Dinamici Blog (Recuperati da Neon Pure SQL)
-  try {
-    const postsData: any = await sql`
-      SELECT slug, updated_at, created_at 
-      FROM blog_posts 
-      WHERE status = 'published'
-      ORDER BY created_at DESC
-      LIMIT 1000
-    `
-    const dynamicPosts = Array.isArray(postsData) ? postsData : (postsData.rows || [])
+  const nowIso = new Date().toISOString()
+  const { posts, nodes, threads } = await fetchIndexableDkpContent()
 
-    dynamicPosts.forEach((post) => {
-      const lastModDate = post.updated_at || post.created_at || new Date()
-      xml += `  <url>\n`
-      xml += `    <loc>${baseUrl}/blog/${post.slug}</loc>\n`
-      xml += `    <lastmod>${new Date(lastModDate).toISOString()}</lastmod>\n`
-      xml += `    <changefreq>monthly</changefreq>\n`
-      xml += `    <priority>0.7</priority>\n`
-      xml += `  </url>\n`
-    })
-  } catch (err) {
-    console.error('❌ [SITEMAP DB ERROR]: Impossibile estrarre i post:', err)
+  const urls: string[] = []
+
+  // 1. Pagine Statiche Core, Docs, Tools e Legali
+  for (const entry of DKP_STATIC_ROUTES) {
+    urls.push(`  <url>
+    <loc>${escapeXml(`${DKP_CANONICAL_ORIGIN}${entry.path}`)}</loc>
+    <lastmod>${nowIso}</lastmod>
+    <changefreq>${entry.changefreq}</changefreq>
+    <priority>${entry.priority}</priority>
+  </url>`)
   }
 
-  xml += `</urlset>`
+  // 2. Nodi della Community
+  for (const node of nodes) {
+    urls.push(`  <url>
+    <loc>${escapeXml(node.url)}</loc>
+    <lastmod>${escapeXml(node.updatedAt)}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`)
+  }
 
-  event.node.res.setHeader('Content-Type', 'text/xml')
-  return xml
+  // 3. Articoli del Blog (v2.6 Pure SQL)
+  for (const post of posts) {
+    urls.push(`  <url>
+    <loc>${escapeXml(post.url)}</loc>
+    <lastmod>${escapeXml(post.updatedAt)}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>`)
+  }
+
+  // 4. Thread del Forum & Discussioni
+  for (const thread of threads) {
+    urls.push(`  <url>
+    <loc>${escapeXml(thread.url)}</loc>
+    <lastmod>${escapeXml(thread.updatedAt)}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.75</priority>
+  </url>`)
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join('\n')}
+</urlset>`
 })

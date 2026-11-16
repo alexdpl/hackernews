@@ -1,101 +1,105 @@
 # ==========================================================================
-# 🤖 AI CRAWLERS & LLM SEARCH ENGINES (OpenAI, Perplexity, Anthropic, Bing, Google)
+# 🤖 AI CRAWLERS & LLM SEARCH ENGINES (OpenAI, Perplexity, Anthropic, Google)
 # ==========================================================================
 
-# ChatGPT & OpenAI Search Crawler
 User-agent: GPTBot
 Allow: /
 Disallow: /admin/
 Disallow: /user/
+Disallow: /api/
 Disallow: /shop/success
 
-# ChatGPT User Agent (per citazioni in tempo reale)
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /admin/
+Disallow: /user/
+Disallow: /api/
 
-# Perplexity AI Search Crawler
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin/
+Disallow: /user/
+Disallow: /api/
+
 User-agent: PerplexityBot
 Allow: /
 Disallow: /admin/
 Disallow: /user/
+Disallow: /api/
 
-# Anthropic Claude Crawler
 User-agent: ClaudeBot
 User-agent: Claude-Web
 Allow: /
 Disallow: /admin/
 Disallow: /user/
+Disallow: /api/
 
-# Microsoft Copilot & Bing AI Crawler
-User-agent: OAI-SearchBot
+User-agent: Google-Extended
 Allow: /
+Disallow: /admin/
+Disallow: /user/
+Disallow: /api/
 
-# Common Crawl (utilizzato per addestrare i modelli di fondazione)
 User-agent: CCBot
+Allow: /blog/
+Allow: /nodes/
 Allow: /docs/
 Allow: /roadmap
 Allow: /features
+Disallow: /admin/
+Disallow: /user/
+Disallow: /api/
 
-# Apple Intelligence Crawler
 User-agent: Applebot-Extended
+Allow: /blog/
+Allow: /nodes/
 Allow: /docs/
 Allow: /roadmap
+Disallow: /admin/
+Disallow: /user/
+Disallow: /api/
 
 # ==========================================================================
-# 🌐 STANDARD SEARCH ENGINES & GENERAL BOT RULES
+# 🌐 STANDARD SEARCH ENGINES (Googlebot, Bingbot, DuckDuckBot, Yandex)
 # ==========================================================================
 User-agent: *
 
-# 🛑 ESCLUSIONI (DISALLOW) - Aree Riservate, Transazionali e Dinamiche
+# 🛑 ESCLUSIONI — Aree Riservate, API Interne e Flussi Transazionali
 Disallow: /admin/
 Disallow: /user/
-Disallow: /user/*
-Disallow: /item/
-Disallow: /item/*
-Disallow: /blog/*
-Disallow: /jobs/*
-Disallow: /newest/*
-Disallow: /news/*
-Disallow: /*/feed/
-Disallow: /feed/
+Disallow: /api/
+Disallow: /login
+Disallow: /submit
 Disallow: /shop/success
+Disallow: /bounties
 
-# 🟢 INCLUSIONI (ALLOW) - Pagine Pubbliche, Docs, Tool e Shop
-Allow: /about
+# 🟢 INCLUSIONI — Blog, Nodi, Thread Forum, Feed, Docs & Tools
+Allow: /
+Allow: /blog/
+Allow: /nodes/
+Allow: /item/
+Allow: /news
+Allow: /newest
 Allow: /ask
-Allow: /contact
-Allow: /features
-Allow: /guidelines
-Allow: /jobs$
-Allow: /login
-Allow: /newest$
-Allow: /news$
-Allow: /roadmap
 Allow: /show
-Allow: /status
-Allow: /submit
-
-# Documentazione Tecnica v2.6-PURE-SQL
-Allow: /docs/api
-Allow: /docs/ecosystem
-Allow: /docs/sdk
+Allow: /jobs
 Allow: /docs/
-Allow: /docs/*
-
-# Pagine Legali
-Allow: /legal/cookies
-Allow: /legal/privacy
-Allow: /legal/terms
-
-# DKP Shop SaaS & API Pass
-Allow: /shop/
-Allow: /shop
-
-# DKP Tools Suite & OpenUI Playground
 Allow: /tools/
-Allow: /tools/*
+Allow: /shop/
+Allow: /about
+Allow: /features
+Allow: /roadmap
+Allow: /status
+Allow: /contact
+Allow: /legal/
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /ai-knowledge.json
+Allow: /rss.xml
+Allow: /sitemap.xml
 
 # ==========================================================================
-# 🗺️ SITEMAP REFERENCE
+# 🗺️ SITEMAP & AI MANIFEST REFERENCES
 # ==========================================================================
 Sitemap: https://devkernelpulse.org/sitemap.xml
+LLMs-Txt: https://devkernelpulse.org/llms.txt

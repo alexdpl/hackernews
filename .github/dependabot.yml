@@ -1,17 +1,31 @@
 version: 2
 updates:
-  # Monitora le dipendenze npm
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      nuxt-and-vue-ecosystem:
+        patterns:
+          - "nuxt*"
+          - "@nuxt/*"
+          - "vue*"
+          - "@vue/*"
+          - "nitro*"
+          - "h3"
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "security"
 
-  # Monitora e aggiorna automaticamente le GitHub Actions stesse
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    labels:
+      - "dependencies"
+      - "ci-cd"

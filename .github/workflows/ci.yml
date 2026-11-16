@@ -1,73 +1,147 @@
-name: 🚀 DKP CI/CD Pipeline (v2.5-GOLD)
+name: 🚀 DKP CI Pipeline (v2.6-PURE-SQL)
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+
+concurrency:
+  group: dkp-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  NODE_ENV: production
+  NITRO_PRESET: node-server
+
 jobs:
-  quality-and-unit-tests:
-    name: 🧪 Quality & Unit Tests
+  quality-and-integrity:
+    name: 🧪 Typecheck, Unit Tests & Pure-SQL Audit
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout del codice
         uses: actions/checkout@v4
+
       - name: ⚙️ Setup PNPM Engine
         uses: pnpm/action-setup@v4
         with:
           version: 12
-      - name: 🟢 Setup Node.js Environment
+
+      - name: 🟢 Setup Node.js 20 + PNPM Cache
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm'
+
       - name: 📦 Installazione Dipendenze
         run: pnpm install --frozen-lockfile
+
+      - name: 🔧 Nuxt Prepare (Generazione Tipi v2.6)
+        run: pnpm nuxi prepare
+
       - name: 🔍 Validazione Tipi TypeScript
-        run: pnpm nuxi typecheck || true
-      - name: 🧪 Esecuzione Unit & Nuxt Tests (Vitest)
-        run: pnpm exec vitest run || true
+        run: pnpm nuxi typecheck
+
+      - name: 🛡️ Audit Pure-SQL (Zero Legacy ORM / v2.5)
+        run: |
+          echo "Verifica assenza endpoint legacy /api/v2.5/ nel codice sorgente..."
+          if grep -rn "/api/v2\.5/" app/ server/ 2>/dev/null; then
+            echo "❌ Trovati riferimenti legacy /api/v2.5/! Aggiorna agli endpoint v2.6."
+            exit 1
+          fi
+          echo "✅ Architettura Pure-SQL v2.6 verificata."
+
+      - name: 🧪 Esecuzione Unit Tests (Vitest)
+        run: pnpm exec vitest run --passWithNoTests
+
+  build-and-smoke-test:
+    name: 🏗️ Production Build & Nitro Runtime Smoke Gate
+    runs-on: ubuntu-latest
+    needs: [quality-and-integrity]
+    steps:
+      - name: 📥 Checkout del codice
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup PNPM Engine
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: 🟢 Setup Node.js 20 + PNPM Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: 📦 Installazione Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: 🚀 Build Produzione Nitro Engine (v2.6)
+        run: pnpm run build
+
+      - name: 🔥 Smoke Test Runtime Server Nitro
+        env:
+          PORT: 3000
+          HOST: 127.0.0.1
+          NUXT_PUBLIC_SITE_URL: https://devkernelpulse.org
+        run: |
+          node .output/server/index.mjs &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID 2>/dev/null || true" EXIT
+
+          echo "⏳ Attesa avvio server Nitro sulla porta 3000..."
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null 2>&1; then
+              echo "✅ Homepage HTTP 200 OK"
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:3000/ >/dev/null
+          curl -fsS http://127.0.0.1:3000/robots.txt >/dev/null && echo "✅ robots.txt OK" || echo "⚠️ robots.txt da verificare nel Blocco 2"
+          curl -fsS http://127.0.0.1:3000/sitemap.xml >/dev/null && echo "✅ sitemap.xml OK" || echo "⚠️ sitemap.xml da verificare nel Blocco 2"
+          curl -fsS http://127.0.0.1:3000/llms.txt >/dev/null && echo "✅ llms.txt OK" || echo "⚠️ llms.txt da verificare nel Blocco 3"
 
   e2e-tests:
     name: 🎭 Playwright E2E Tests
     runs-on: ubuntu-latest
+    needs: [build-and-smoke-test]
     steps:
       - name: 📥 Checkout del codice
         uses: actions/checkout@v4
-      - name: ⚙️ Setup PNPM Engine
-        uses: pnpm/action-setup@v4
-        with:
-          version: 12
-      - name: 🟢 Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: 📦 Installazione Dipendenze
-        run: pnpm install --frozen-lockfile
-      - name: 🎭 Installazione Browser Playwright
-        run: pnpm exec playwright install --with-deps
-      - name: 🧪 Esecuzione E2E Tests
-        run: pnpm exec playwright test || true
 
-  build-and-validate:
-    name: 🏗️ Production Build Validation
-    runs-on: ubuntu-latest
-    needs: [quality-and-unit-tests, e2e-tests]
-    steps:
-      - name: 📥 Checkout del codice
-        uses: actions/checkout@v4
+      - name: 🔎 Verifica presenza suite Playwright
+        id: check_e2e
+        run: |
+          if [ -d "tests/e2e" ] || [ -d "e2e" ] || find . -maxdepth 3 -name "*.spec.ts" | grep -q .; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: ⚙️ Setup PNPM Engine
+        if: steps.check_e2e.outputs.has_tests == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 12
-      - name: 🟢 Setup Node.js Environment
+
+      - name: 🟢 Setup Node.js 20 + PNPM Cache
+        if: steps.check_e2e.outputs.has_tests == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: 📦 Installazione Dipendenze
-        run: pnpm install --frozen-lockfile
-      - name: 🚀 Test di Build Nitro Engine
-        run: pnpm run build
+          cache: 'pnpm'
+
+      - name: 📦 Installazione Dipendenze & Browser
+        if: steps.check_e2e.outputs.has_tests == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: 🧪 Esecuzione E2E Tests
+        if: steps.check_e2e.outputs.has_tests == 'true'
+        run: pnpm exec playwright test
