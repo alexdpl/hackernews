@@ -44,7 +44,7 @@ jobs:
 
       - name: 🔍 Validazione Tipi TypeScript
         run: |
-          if pnpm list vue-tsc --depth=0 >/dev/null 2>&1; then
+          if node -e "require.resolve('vue-tsc/package.json')" >/dev/null 2>&1; then
             pnpm nuxi typecheck
           else
             echo "⚠️ vue-tsc non presente in devDependencies: salto typecheck."
@@ -60,10 +60,10 @@ jobs:
 
       - name: 🧪 Esecuzione Unit Tests (Vitest)
         run: |
-          if pnpm list vitest --depth=0 >/dev/null 2>&1; then
+          if node -e "require.resolve('vitest/package.json')" >/dev/null 2>&1; then
             pnpm exec vitest run --passWithNoTests
           else
-            echo "⚠️ vitest non presente: salto unit test."
+            echo "⚠️ vitest non presente in devDependencies: salto unit test."
           fi
 
   build-and-smoke-test:
