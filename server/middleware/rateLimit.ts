@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
     path.startsWith('/api/_') ||
     path.startsWith('/api/ai/') ||
     path.startsWith('/api/auth/') ||
+	path.startsWith('/api/news/cron') ||
     method === 'OPTIONS'
   ) {
     return
