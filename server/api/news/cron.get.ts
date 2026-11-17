@@ -1,21 +1,14 @@
 // server/api/news/cron.get.ts
-import { defineEventHandler, getQuery, createError } from 'h3'
+import { defineEventHandler, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { ingestHnFeed } from '~~/server/utils/hnFetcher'
 import { processUnprocessedStories } from '~~/server/utils/hnAiPipeline'
 import { getDb } from '~~/server/utils/db'
+import { verifyAdminOrCronAuth } from '~~/server/utils/cronAuth'
 
 export default defineEventHandler(async (event) => {
-  const query = getQuery(event)
-  const cronSecret = process.env.CRON_SECRET || 'dkp_cron_secret_2026'
-
-  // Protezione opzionale in produzione per evitare chiamate non autorizzate
-  if (process.env.NODE_ENV === 'production' && query.key !== cronSecret) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: '[Sentinel Cron] Chiave di sincronizzazione non valida.'
-    })
-  }
+  const db = await getDb()
+  await verifyAdminOrCronAuth(event, db)
 
   console.log('[HN Auto-Sync] Avvio ciclo automatico di sincronizzazione...')
 
