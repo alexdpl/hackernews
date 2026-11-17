@@ -27,7 +27,7 @@ const { getMainUrl } = useDomain()
             DevKernel<span class="text-emerald-400">Pulse</span>
           </span>
           <span class="text-[10px] font-mono font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-            v2.6-PURE-SQL
+            v2.6
           </span>
         </NuxtLink>
 

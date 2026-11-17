@@ -1,13 +1,12 @@
 // server/api/auth/logout.post.ts
-import { defineEventHandler, deleteCookie } from 'h3'
+import { defineEventHandler } from 'h3'
+import { clearCrossSubdomainSessionCookie } from '~~/server/utils/session'
 
 export default defineEventHandler((event) => {
-  // Elimina sia il nuovo cookie ufficiale che eventuali rimasugli del vecchio
-  deleteCookie(event, 'dkp_session', { path: '/' })
-  deleteCookie(event, 'dkp_user', { path: '/' })
-  
-  return { 
+  clearCrossSubdomainSessionCookie(event)
+
+  return {
     success: true,
-    message: 'Logout completato e sessione distrutta (v2.5-GOLD).'
+    message: 'Logout completato e sessione distrutta (DKP v2.6-PURE-SQL).'
   }
 })

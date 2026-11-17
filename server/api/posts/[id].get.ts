@@ -1,19 +1,19 @@
 // server/api/posts/[id].get.ts
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { eq, or } from 'drizzle-orm'
-import { getDb } from '~~/server/utils/db' // 👈 'getDb' con la 'B' maiuscola
+import { getDb } from '~~/server/utils/db'
 import { blogPosts, blogCategories } from '~~/server/db/schema'
 
 export default defineEventHandler(async (event) => {
-  const idOrSlug = getRouterParam(event, 'id')
+  const idOrSlug = String(getRouterParam(event, 'id') || '').trim()
 
   if (!idOrSlug) {
     throw createError({ statusCode: 400, statusMessage: 'Parametro ID/Slug mancante' })
   }
 
-  const db = getDb()
+  const db = await getDb()
   const numId = Number(idOrSlug)
-  const isNumeric = !isNaN(numId)
+  const isNumeric = /^\d+$/.test(idOrSlug) && Number.isSafeInteger(numId) && numId > 0 && numId <= 2147483647
 
   try {
     const result = await db
@@ -24,9 +24,14 @@ export default defineEventHandler(async (event) => {
         content: blogPosts.content,
         excerpt: blogPosts.excerpt,
         status: blogPosts.status,
+        isVerified: blogPosts.isVerified,
+        vaultHash: blogPosts.vaultHash,
+        vaultCertificateId: blogPosts.vaultCertificateId,
         views: blogPosts.views,
         likes: blogPosts.likes,
+        authorId: blogPosts.authorId,
         createdAt: blogPosts.createdAt,
+        updatedAt: blogPosts.updatedAt,
         categoryId: blogPosts.categoryId,
         category: blogCategories.name
       })

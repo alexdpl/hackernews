@@ -12,18 +12,30 @@ export default defineEventHandler(async (event) => {
   const body = (await readBody(event).catch(() => ({}))) || {}
   const rawPostId = body.postId ?? body.itemId ?? body.storyId
   const numericPostId = Number(rawPostId)
-  const parentId = body.parentId ? Number(body.parentId) : null
+  const numericParentId = body.parentId ? Number(body.parentId) : null
   const targetType = String(body.targetType || 'post').trim().toLowerCase().slice(0, 50)
   const cleanText = String(body.text || body.content || '').trim()
 
+  // Identità ricavata SOLO dalla sessione lato server (mai dal body)
   const session = parseSessionUser(event)
-  const author = (session?.username || String(body.author || 'community').trim()).slice(0, 255)
-  const targetUserId = session?.id || (body.userId ? Number(body.userId) : 0)
+  if (!session?.id || Number(session.id) <= 0) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Devi effettuare il login per pubblicare un commento.'
+    })
+  }
 
   if (!rawPostId || Number.isNaN(numericPostId) || numericPostId <= 0 || cleanText.length === 0) {
     throw createError({
       statusCode: 400,
       statusMessage: 'postId e testo del commento sono obbligatori.'
+    })
+  }
+
+  if (numericParentId !== null && (Number.isNaN(numericParentId) || numericParentId <= 0)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'parentId non valido.'
     })
   }
 
@@ -42,14 +54,36 @@ export default defineEventHandler(async (event) => {
 
     await ensureUnifiedCommentsSchema(db)
 
-    // Risolve l'ID utente dal DB se abbiamo lo username ma non l'ID numerico
-    let resolvedUserId: number | null = targetUserId > 0 ? targetUserId : null
-    if (!resolvedUserId && author && author !== 'community') {
-      const userRes = await db.execute(sql`
-        SELECT id FROM users WHERE LOWER(username) = LOWER(${author}) LIMIT 1;
-      `).catch(() => null)
-      const foundUser = extractSqlRows(userRes)[0]
-      if (foundUser?.id) resolvedUserId = Number(foundUser.id)
+    // Verifica che l'utente della sessione esista realmente nel DB
+    const userRes = await db.execute(sql`
+      SELECT id, username FROM users WHERE id = ${Number(session.id)} LIMIT 1;
+    `)
+    const dbUser = extractSqlRows(userRes)[0]
+    if (!dbUser?.id) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Sessione non valida o utente inesistente.'
+      })
+    }
+
+    const resolvedUserId = Number(dbUser.id)
+    const author = String(dbUser.username || session.username || 'member').slice(0, 255)
+
+    // Se il target è un thread dei nodi, verifica esistenza e stato is_locked
+    if (targetType === 'node' || targetType === 'thread') {
+      const threadRes = await db.execute(sql`
+        SELECT id, is_locked AS "isLocked"
+        FROM node_posts
+        WHERE id = ${numericPostId}
+        LIMIT 1;
+      `)
+      const targetThread = extractSqlRows(threadRes)[0]
+      if (!targetThread) {
+        throw createError({ statusCode: 404, statusMessage: 'Discussione non trovata.' })
+      }
+      if (targetThread.isLocked) {
+        throw createError({ statusCode: 403, statusMessage: 'Questo thread è bloccato e non accetta nuovi commenti.' })
+      }
     }
 
     // Inserimento sincronizzato su colonne unificate (text + content, author + user_id)
@@ -67,7 +101,7 @@ export default defineEventHandler(async (event) => {
       VALUES (
         ${numericPostId},
         ${resolvedUserId},
-        ${parentId && !Number.isNaN(parentId) ? parentId : null},
+        ${numericParentId},
         ${targetType},
         ${author},
         ${cleanText},
@@ -82,19 +116,20 @@ export default defineEventHandler(async (event) => {
         target_type AS "targetType",
         author,
         text,
+        content,
         created_at AS "createdAt";
     `)
 
     const newComment = extractSqlRows(result)[0] || null
 
-    // Incremento contatore commenti sul modulo di appartenenza
+    // Incremento contatore commenti sulla tabella corretta dello schema
     if (targetType === 'blog') {
       await db.execute(sql`
         UPDATE blog_posts SET comments_count = COALESCE(comments_count, 0) + 1 WHERE id = ${numericPostId};
       `).catch(() => {})
     } else if (targetType === 'node' || targetType === 'thread') {
       await db.execute(sql`
-        UPDATE node_threads SET replies_count = COALESCE(replies_count, 0) + 1 WHERE id = ${numericPostId};
+        UPDATE node_posts SET comments_count = COALESCE(comments_count, 0) + 1 WHERE id = ${numericPostId};
       `).catch(() => {})
     } else {
       await db.execute(sql`
@@ -105,25 +140,23 @@ export default defineEventHandler(async (event) => {
       `).catch(() => {})
     }
 
-    // Gamification Pure-SQL (+10 XP)
+    // Gamification Pure-SQL (+10 XP solo per utente autenticato verificato)
     const rewardXp = 10
-    if (resolvedUserId && resolvedUserId > 0) {
-      await db.execute(sql`
-        UPDATE users SET xp = COALESCE(xp, 0) + ${rewardXp} WHERE id = ${resolvedUserId};
-      `).catch(() => {})
+    await db.execute(sql`
+      UPDATE users SET xp = COALESCE(xp, 0) + ${rewardXp} WHERE id = ${resolvedUserId};
+    `).catch(() => {})
 
-      await db.execute(sql`
-        INSERT INTO xp_transactions (user_id, action, points, created_at)
-        VALUES (${resolvedUserId}, ${`Comment on ${targetType.toUpperCase()} ID #${numericPostId}`}, ${rewardXp}, NOW());
-      `).catch(() => {})
-    }
+    await db.execute(sql`
+      INSERT INTO xp_transactions (user_id, action, points, created_at)
+      VALUES (${resolvedUserId}, ${`Comment on ${targetType.toUpperCase()} ID #${numericPostId}`}, ${rewardXp}, NOW());
+    `).catch(() => {})
 
     return {
       success: true,
       message: 'Commento aggiunto con successo! +10 XP ⚡',
       data: newComment,
       comment: newComment,
-      xpAwarded: resolvedUserId ? rewardXp : 0
+      xpAwarded: rewardXp
     }
   } catch (err: any) {
     console.error('❌ [COMMENTS POST ERROR]:', err)

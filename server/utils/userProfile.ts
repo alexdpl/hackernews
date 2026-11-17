@@ -2,130 +2,214 @@
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 
+function extractRows(res: any): any[] {
+  return Array.isArray(res) ? res : (res?.rows || [])
+}
+
+function computeRankFromXp(xp: number, isFounder: boolean): { level: number; rankTier: string } {
+  if (isFounder || xp >= 10000) return { level: Math.max(2, Math.floor(xp / 2500) + 1), rankTier: 'S-TIER ARCHITECT' }
+  if (xp >= 5000) return { level: Math.floor(xp / 1500) + 1, rankTier: 'KERNEL CORE' }
+  if (xp >= 1500) return { level: Math.floor(xp / 750) + 1, rankTier: 'SYSTEM CONTRIBUTOR' }
+  if (xp >= 300) return { level: Math.floor(xp / 300) + 1, rankTier: 'VERIFIED BUILDER' }
+  return { level: 1, rankTier: 'COMMUNITY MEMBER' }
+}
+
 export async function fetchUserProfileData(usernameParam: string) {
-  const rawUser = usernameParam?.trim() || 'alexdpl'
-  const username = rawUser.replace(/^@/, '') // Rimuove eventuale @ iniziale digitata nella URL
+  const rawUser = String(usernameParam || '').trim() || 'alexdpl'
+  const username = rawUser.replace(/^@+/, '').slice(0, 100)
+  if (!username) return null
+
   const db = await getDb()
+  if (!db) return null
 
+  // Migrazione non distruttiva (senza sovrascrivere default personali su altri utenti)
   try {
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS users (
-        username VARCHAR(255) PRIMARY KEY,
-        email VARCHAR(255) NOT NULL DEFAULT '',
-        bio TEXT DEFAULT '',
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(100) DEFAULT 'Kernel Architect'`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS level INT DEFAULT 2`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_tier VARCHAR(100) DEFAULT 'S-TIER ARCHITECT'`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT true`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(500) DEFAULT 'https://github.com/alexdpl.png'`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS github VARCHAR(255) DEFAULT 'https://github.com/alexdpl'`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(255) DEFAULT 'https://x.com/alexdpl76'`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS linkedin VARCHAR(255) DEFAULT 'https://linkedin.com/in/alexdpl'`)
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS reddit VARCHAR(255) DEFAULT 'https://reddit.com/user/alexdpl'`)
-  } catch (err) {
-    // Skip migration notice
-  }
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';`).catch(() => null)
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500);`).catch(() => null)
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS github VARCHAR(255);`).catch(() => null)
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS twitter VARCHAR(255);`).catch(() => null)
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS linkedin VARCHAR(255);`).catch(() => null)
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS reddit VARCHAR(255);`).catch(() => null)
+  } catch {}
 
-  let userData: any = null
+  let userRow: any = null
   try {
-    const res: any = await db.execute(sql`
-      SELECT 
-        username, 
-        bio, 
-        role, 
-        level, 
-        rank_tier AS "rankTier", 
-        verified, 
-        avatar, 
-        github, 
-        twitter, 
-        linkedin, 
-        reddit, 
+    const res = await db.execute(sql`
+      SELECT
+        id,
+        username,
+        bio,
+        role,
+        COALESCE(xp, 0)::int AS xp,
+        avatar_url AS "avatarUrl",
+        github,
+        twitter,
+        linkedin,
+        reddit,
         created_at AS "createdAt"
-      FROM users 
+      FROM users
       WHERE LOWER(username) = LOWER(${username})
+      LIMIT 1;
     `)
-    userData = res[0] || res?.rows?.[0]
-  } catch (err) {
-    userData = null
+    userRow = extractRows(res)[0] || null
+  } catch {
+    userRow = null
   }
 
-  // Se l'utente non è censito o ha campi vuoti, forniamo i dati ufficiali completi della piattaforma DKP
-  if (!userData || !userData.bio || userData.bio.trim() === '') {
-    userData = {
-      username: username,
-      bio: 'Lead Engineer Architect & Core Creator of DevKernelPulse. Building high-performance developer tools, AI workflows and serverless architectures.',
-      role: 'S-TIER ARCHITECT',
-      level: 2,
-      rankTier: 'S-TIER ARCHITECT',
-      verified: true,
-      avatar: username.toLowerCase() === 'alexdpl' ? 'https://github.com/alexdpl.png' : `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`,
-      github: `https://github.com/${username}`,
-      twitter: 'https://x.com/alexdpl76',
-      linkedin: 'https://linkedin.com/in/alexdpl',
-      reddit: 'https://reddit.com/user/alexdpl',
-      createdAt: new Date().toISOString()
-    }
+  const isFounder = username.toLowerCase() === 'alexdpl'
+
+  // Se l'utente non esiste nel DB (e non è il profilo fondatore), restituisce null -> l'API risponderà 404
+  if (!userRow && !isFounder) {
+    return null
   }
 
-  // Recupero statistiche reali o fallback sicuro ad alte prestazioni
-  let statsData: any = { karma: 1086, totalSubmissions: 18 }
+  const resolvedUsername = userRow?.username || 'alexdpl'
+  const userId = userRow?.id ? Number(userRow.id) : null
+
+  // Recupero metriche reali dall'ecosistema DKP
+  let storiesKarma = 0
+  let storiesCount = 0
+  let blogPostsCount = 0
+  let talksThreadsCount = 0
+  let totalCommentsCount = 0
+
   try {
-    const statsRes: any = await db.execute(sql`
-      SELECT 
-        COALESCE(SUM(points), 1086) AS karma,
-        COUNT(*) AS "totalSubmissions"
+    const storiesRes = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(points), 0)::int AS karma,
+        COUNT(*)::int AS total
       FROM pulse_stories
-      WHERE LOWER(author) = LOWER(${username})
+      WHERE LOWER(author) = LOWER(${resolvedUsername});
     `)
-    const row = statsRes[0] || statsRes?.rows?.[0]
-    if (row && Number(row.totalSubmissions) > 0) {
-      statsData = row
-    }
-  } catch (err) {
-    // Usa fallback
+    const sRow = extractRows(storiesRes)[0]
+    storiesKarma = Number(sRow?.karma || 0)
+    storiesCount = Number(sRow?.total || 0)
+  } catch {}
+
+  if (userId) {
+    try {
+      const blogRes = await db.execute(sql`
+        SELECT COUNT(*)::int AS total
+        FROM blog_posts
+        WHERE author_id = ${userId} AND COALESCE(status, 'published') = 'published';
+      `)
+      blogPostsCount = Number(extractRows(blogRes)[0]?.total || 0)
+    } catch {}
+
+    try {
+      const threadsRes = await db.execute(sql`
+        SELECT COUNT(*)::int AS total
+        FROM node_posts
+        WHERE author_id = ${userId};
+      `)
+      talksThreadsCount = Number(extractRows(threadsRes)[0]?.total || 0)
+    } catch {}
   }
 
-  const xpTotal = Number(statsData.karma || 1086) * 10
-  const submissionsCount = Number(statsData.totalSubmissions || 18)
+  try {
+    const commentsRes = await db.execute(sql`
+      SELECT COUNT(*)::int AS total
+      FROM comments
+      WHERE LOWER(author) = LOWER(${resolvedUsername})
+        ${userId ? sql`OR user_id = ${userId}` : sql``};
+    `)
+    totalCommentsCount = Number(extractRows(commentsRes)[0]?.total || 0)
+  } catch {}
+
+  const dbXp = Number(userRow?.xp || 0)
+  const xpTotal = Math.max(dbXp, storiesKarma * 10, isFounder ? 10860 : 0)
+  const { level, rankTier } = computeRankFromXp(xpTotal, isFounder)
+
+  const normalizedRole = String(userRow?.role || (isFounder ? 'ADMIN' : 'USER')).toUpperCase()
+  const displayRole = normalizedRole === 'ADMIN' ? 'S-TIER ARCHITECT' : 'Kernel Builder'
+  const verified = normalizedRole === 'ADMIN' || xpTotal >= 1500
+
+  // Attività recenti reali dal database
+  const recentActivity: Array<{ type: string; title: string; time: string }> = []
+  if (userId) {
+    try {
+      const recentThreadsRes = await db.execute(sql`
+        SELECT title, created_at
+        FROM node_posts
+        WHERE author_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 3;
+      `)
+      for (const row of extractRows(recentThreadsRes)) {
+        recentActivity.push({
+          type: 'post',
+          title: `Avviata discussione: ${row.title}`,
+          time: row.created_at ? new Date(row.created_at).toLocaleDateString('it-IT') : 'Recente'
+        })
+      }
+
+      const recentBlogsRes = await db.execute(sql`
+        SELECT title, created_at
+        FROM blog_posts
+        WHERE author_id = ${userId} AND COALESCE(status, 'published') = 'published'
+        ORDER BY created_at DESC
+        LIMIT 2;
+      `)
+      for (const row of extractRows(recentBlogsRes)) {
+        recentActivity.push({
+          type: 'vault',
+          title: `Pubblicato articolo tecnico: ${row.title}`,
+          time: row.created_at ? new Date(row.created_at).toLocaleDateString('it-IT') : 'Recente'
+        })
+      }
+    } catch {}
+  }
+
+  const badges: string[] = []
+  if (isFounder || normalizedRole === 'ADMIN') {
+    badges.push('Core Creator', 'Vault Master', 'Developer VIP Member')
+  }
+  if (verified) badges.push('Early Pioneer')
+  if (blogPostsCount > 0) badges.push('Editorial Author')
+  if (talksThreadsCount > 0) badges.push('Talks Contributor')
+  if (badges.length === 0) badges.push('DKP Member')
 
   return {
     user: {
-      username: userData.username || username,
-      fullName: 'Alex DPL',
-      bio: userData.bio,
-      avatar: userData.avatar,
-      role: userData.role || 'Kernel Architect',
-      xp: xpTotal > 0 ? xpTotal : 10860,
-      level: Number(userData.level || 2),
-      rankTier: userData.rankTier || 'S-TIER ARCHITECT',
-      verified: Boolean(userData.verified ?? true),
-      vaultHashCount: submissionsCount,
-      createdAt: userData.createdAt,
-      badges: ['Developer VIP Member', 'Early Pioneer', 'Core Creator', 'Vault Master'],
-      github: userData.github,
-      twitter: userData.twitter,
-      linkedin: userData.linkedin,
-      reddit: userData.reddit
+      id: userId,
+      username: resolvedUsername,
+      fullName: isFounder ? 'Alessandro De Paola' : resolvedUsername,
+      bio:
+        (userRow?.bio && String(userRow.bio).trim()) ||
+        (isFounder
+          ? 'Lead Engineer Architect & Core Creator of DevKernelPulse. Building high-performance developer tools, AI workflows and serverless architectures.'
+          : 'Membro attivo della community DevKernelPulse.'),
+      avatar:
+        userRow?.avatarUrl ||
+        (isFounder
+          ? 'https://github.com/alexdpl.png'
+          : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(resolvedUsername)}`),
+      role: displayRole,
+      xp: xpTotal,
+      level,
+      rankTier,
+      verified,
+      vaultHashCount: storiesCount + blogPostsCount + talksThreadsCount,
+      createdAt: userRow?.createdAt || new Date().toISOString(),
+      badges,
+      github: userRow?.github || (isFounder ? 'https://github.com/alexdpl' : null),
+      twitter: userRow?.twitter || (isFounder ? 'https://x.com/alexdpl76' : null),
+      linkedin: userRow?.linkedin || (isFounder ? 'https://linkedin.com/in/alexdpl' : null),
+      reddit: userRow?.reddit || (isFounder ? 'https://reddit.com/user/alexdpl' : null)
     },
     stats: {
-      blogPostsCount: 8,
-      talksThreadsCount: 24,
-      totalCommentsCount: 142,
-      reputationScore: 98.4,
-      notarizedCodeCount: submissionsCount
+      blogPostsCount,
+      talksThreadsCount,
+      totalCommentsCount,
+      reputationScore: Math.min(99.9, Number((70 + Math.min(29.9, xpTotal / 400)).toFixed(1))),
+      notarizedCodeCount: blogPostsCount + talksThreadsCount
     },
-    recentActivity: [
-      { type: 'vault', title: 'Notarizzato algoritmo JWT_Validator.ts nel Vault', time: '2 ore fa' },
-      { type: 'scan', title: 'Audit AI completato su repo nuxt/nuxt', time: '1 giorno fa' },
-      { type: 'post', title: 'Pubblicato articolo su Telemetria SSE Live', time: '2 giorni fa' }
-    ],
-    activeBounties: [
-      { id: 101, title: 'Refactor componente Captcha equazionale', reward: '500 XP', nodeSlug: 'security', status: 'open' },
-      { id: 102, title: 'Ottimizzazione indici SQL su Neon DB', reward: '1200 XP', nodeSlug: 'dev', status: 'open' }
-    ]
+    recentActivity,
+    activeBounties: isFounder
+      ? [
+          { id: 101, title: 'Refactor componente Captcha equazionale', reward: '500 XP', nodeSlug: 'security', status: 'open' },
+          { id: 102, title: 'Ottimizzazione indici SQL su Neon DB', reward: '1200 XP', nodeSlug: 'dev', status: 'open' }
+        ]
+      : []
   }
 }

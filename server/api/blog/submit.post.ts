@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { AI_MODELS } from '~~/server/utils/ai'
+import { extractDkpUserFromEvent } from '~~/server/utils/session'
 
 // --- 1. PULSE SENTINEL SAST: Regole di Sicurezza Statiche (Euristiche Locali) ---
 const SECURITY_RULES = [
@@ -26,7 +27,7 @@ const SECURITY_RULES = [
   {
     id: 'SEC-003',
     name: 'Exposed Database Credentials',
-    pattern: /postgres:\/\/[a-zA-Z0-9_]+:[a-zA-Z0-9_]+@.*?:[0-9]{4}\/[a-zA-Z0-9_]+/,
+    pattern: /postgres(?:ql)?:\/\/[a-zA-Z0-9_]+:[^@\s]+@[^\s/]+(?::[0-9]{2,5})?\/[a-zA-Z0-9_]+/,
     severity: 'CRITICAL' as const,
     description: 'Possibile stringa di connessione a database con password in chiaro.'
   }
@@ -41,20 +42,48 @@ const BlogVaultAuditSchema = z.object({
   summary: z.string().describe("Breve sintesi dell'audit in lingua italiana per il report Vault")
 })
 
+function slugify(raw: string): string {
+  return String(raw || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function extractRows(res: any): any[] {
+  return Array.isArray(res) ? res : (res?.rows || [])
+}
+
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event) || {}
+  const sessionUser = extractDkpUserFromEvent(event)
+  if (!sessionUser?.id || Number(sessionUser.id) <= 0) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Devi effettuare il login per inviare un articolo al DKP Vault.'
+    })
+  }
+
+  const body = (await readBody(event).catch(() => ({}))) || {}
   const { title, content, category, subcategory, excerpt, tags } = body
 
-  if (!title || !content) {
+  const cleanTitle = String(title || '').trim()
+  const cleanContent = String(content || '').trim()
+
+  if (!cleanTitle || !cleanContent) {
     throw createError({ statusCode: 400, statusMessage: 'Titolo e contenuto sono obbligatori per l\'analisi.' })
+  }
+
+  if (cleanTitle.length > 255) {
+    throw createError({ statusCode: 400, statusMessage: 'Il titolo non può superare i 255 caratteri.' })
   }
 
   // A. ESTRAZIONE FRAMMENTI DI CODICE (Code Extraction Engine)
   const codeBlockRegex = /```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g
-  let match: RegExpExecArray | null;
+  let match: RegExpExecArray | null
   const extractedSnippets: Array<{ language: string; code: string }> = []
 
-  while ((match = codeBlockRegex.exec(content)) !== null) {
+  while ((match = codeBlockRegex.exec(cleanContent)) !== null) {
     extractedSnippets.push({
       language: match[1].trim() || 'unknown',
       code: match[2].trim()
@@ -69,7 +98,7 @@ export default defineEventHandler(async (event) => {
   extractedSnippets.forEach((snippet, index) => {
     const issuesFound: any[] = []
 
-    SECURITY_RULES.forEach(rule => {
+    SECURITY_RULES.forEach((rule) => {
       if (rule.pattern.test(snippet.code)) {
         issuesFound.push({
           ruleId: rule.id,
@@ -107,10 +136,10 @@ export default defineEventHandler(async (event) => {
       schema: BlogVaultAuditSchema,
       system: `Sei DKP Vault Audit Engine. Valuti la sicurezza, l'autenticità e il rischio di plagio degli articoli per DevKernelPulse.
 Se sono presenti credenziali esposte o vulnerabilità critiche, forza il punteggio di sicurezza a livelli bassi.`,
-      prompt: `Titolo: "${title}"
+      prompt: `Titolo: "${cleanTitle}"
 Estratto Contenuto:
 """
-${content.substring(0, 3000)}
+${cleanContent.substring(0, 3000)}
 """
 
 Snippet di codice estratti (${extractedSnippets.length}):
@@ -119,12 +148,12 @@ ${extractedSnippets.map((s, idx) => `Snippet #${idx + 1} (${s.language}):\n${s.c
 Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${totalIssues})`
     })
 
-    const finalSastCheck = staticSastStatus === 'CRITICAL' 
-      ? 'CRITICAL' 
+    const finalSastCheck = staticSastStatus === 'CRITICAL'
+      ? 'CRITICAL'
       : (llmResult.sastCheck === 'CRITICAL' ? 'CRITICAL' : (staticSastStatus === 'WARNING' || llmResult.sastCheck === 'WARNING' ? 'WARNING' : 'PASSED'))
 
-    const finalSecurityScore = staticSastStatus === 'CRITICAL' 
-      ? Math.min(15, llmResult.securityScore) 
+    const finalSecurityScore = staticSastStatus === 'CRITICAL'
+      ? Math.min(15, llmResult.securityScore)
       : llmResult.securityScore
 
     aiReport = {
@@ -139,81 +168,179 @@ Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${tot
   }
 
   // D. GENERAZIONE HASH CRITTOGRAFICO SHA-256 VAULT (Proof-of-Code)
-  const rawDataForHashing = extractedSnippets.length > 0 
-    ? extractedSnippets.map(s => s.code).join('|||') 
-    : content
+  const rawDataForHashing = extractedSnippets.length > 0
+    ? extractedSnippets.map((s) => s.code).join('|||')
+    : cleanContent
 
   const vaultHash = crypto
     .createHash('sha256')
-    .update(`DKP_BLOG_VAULT::${title}::${rawDataForHashing}::${Date.now()}`)
+    .update(`DKP_BLOG_VAULT::${cleanTitle}::${rawDataForHashing}::${Date.now()}`)
     .digest('hex')
 
-  // E. PERSISTENZA SU NEON DB CON ALGORITMO ANTI-404 / ANTI-409 (SLUG RESOLUTION)
+  // E. PERSISTENZA SU NEON DB ALLINEATA ALLO SCHEMA REALE
   let savedPostRecord: any = null
+  const baseSlug = slugify(body.slug || cleanTitle) || `post-${Date.now()}`
+  let finalSlug = baseSlug
 
   try {
     const db = await getDb()
     if (db) {
-      // 1. Generazione slug base dal titolo o parametro custom
-      const rawSlug = body.slug || title
-      const baseSlug = rawSlug
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') || `post-${Date.now()}`
+      // Verifica utente reale nel DB
+      const userRows = extractRows(
+        await db.execute(sql`SELECT id, role FROM users WHERE id = ${Number(sessionUser.id)} LIMIT 1;`)
+      )
+      const dbUser = userRows[0]
+      if (!dbUser?.id) {
+        throw createError({ statusCode: 401, statusMessage: 'Utente sessione non valido.' })
+      }
+      const authorId = Number(dbUser.id)
 
-      let finalSlug = baseSlug
-
-      // 2. Controllo preventivo esistenza slug per neutralizzare l'errore 409 Conflict
-      const checkRes: any = await db.execute(sql`
-        SELECT id FROM blog_posts WHERE slug = ${finalSlug} LIMIT 1
+      // Assicura eventuali colonne extra di telemetria audit se non ancora presenti
+      await db.execute(sql`
+        ALTER TABLE blog_posts
+          ADD COLUMN IF NOT EXISTS sast_status VARCHAR(20),
+          ADD COLUMN IF NOT EXISTS security_score INTEGER,
+          ADD COLUMN IF NOT EXISTS authenticity_score INTEGER;
       `).catch(() => null)
 
-      const existingRows = checkRes?.rows || checkRes || []
-      if (Array.isArray(existingRows) && existingRows.length > 0) {
-        // Se lo slug esiste già su NeonDB, aggiungiamo un suffisso timestamp univoco
+      // Rileva tipo colonna tags (ARRAY vs JSONB)
+      const colInfo = extractRows(
+        await db.execute(sql`
+          SELECT data_type, udt_name
+          FROM information_schema.columns
+          WHERE table_name = 'blog_posts' AND column_name = 'tags'
+          LIMIT 1;
+        `)
+      )[0]
+      const tagsDataType = String(colInfo?.data_type || '').toUpperCase()
+      const tagsUdtName = String(colInfo?.udt_name || '').toLowerCase()
+      const isPgArray = tagsDataType === 'ARRAY' || tagsUdtName.startsWith('_')
+      const isJsonb = tagsDataType === 'JSONB' || tagsDataType === 'JSON'
+
+      const cleanTags: string[] = Array.isArray(tags)
+        ? tags.map((t: any) => String(t).trim().replace(/^#/, '')).filter(Boolean)
+        : ['DKP', 'Vault', 'Sentinel']
+
+      const tagsSqlExpr = isPgArray
+        ? sql`${`{${cleanTags.map((t) => `"${t.replace(/"/g, '\\"')}"`).join(',')}}`}::text[]`
+        : isJsonb
+          ? sql`${JSON.stringify(cleanTags)}::jsonb`
+          : sql`${JSON.stringify(cleanTags)}`
+
+      // Risolvi category_id da blog_categories
+      const catName = String(category || 'DKP Ecosystem & Releases').trim()
+      const catSlug = slugify(catName) || 'dkp-ecosystem-releases'
+      let categoryId: number | null = null
+
+      const existingCat = extractRows(
+        await db.execute(sql`
+          SELECT id FROM blog_categories WHERE slug = ${catSlug} OR name ILIKE ${catName} LIMIT 1;
+        `)
+      )[0]
+
+      if (existingCat?.id) {
+        categoryId = Number(existingCat.id)
+      } else {
+        const createdCat = extractRows(
+          await db.execute(sql`
+            INSERT INTO blog_categories (name, slug)
+            VALUES (${catName}, ${catSlug})
+            ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+            RETURNING id;
+          `).catch(() => [])
+        )[0]
+        if (createdCat?.id) categoryId = Number(createdCat.id)
+      }
+
+      // Risolvi subcategory_id da blog_subcategories
+      let subcategoryId: number | null = null
+      if (subcategory && categoryId) {
+        const subName = String(subcategory).trim()
+        const subSlug = slugify(subName)
+        if (subSlug) {
+          const existingSub = extractRows(
+            await db.execute(sql`
+              SELECT id FROM blog_subcategories WHERE slug = ${subSlug} OR name ILIKE ${subName} LIMIT 1;
+            `)
+          )[0]
+
+          if (existingSub?.id) {
+            subcategoryId = Number(existingSub.id)
+          } else {
+            const createdSub = extractRows(
+              await db.execute(sql`
+                INSERT INTO blog_subcategories (category_id, name, slug)
+                VALUES (${categoryId}, ${subName}, ${subSlug})
+                ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+                RETURNING id;
+              `).catch(() => [])
+            )[0]
+            if (createdSub?.id) subcategoryId = Number(createdSub.id)
+          }
+        }
+      }
+
+      // Controllo preventivo slug per evitare conflitto 23505
+      const existingRows = extractRows(
+        await db.execute(sql`SELECT id FROM blog_posts WHERE slug = ${finalSlug} LIMIT 1;`)
+      )
+      if (existingRows.length > 0) {
         finalSlug = `${baseSlug}-${Date.now().toString(36)}`
       }
 
-      // 3. Inserimento sicuro e atomico
+      const isVerified = aiReport.sastCheck === 'PASSED'
+      const postStatus = aiReport.sastCheck === 'CRITICAL'
+        ? 'rejected_vault'
+        : (isVerified ? 'published' : 'pending_vault')
+      const certSuffix = crypto.randomBytes(4).toString('hex').toUpperCase()
+      const vaultCertificateId = `DKP-VAULT-SENTINEL-${certSuffix}`
+
       const insertRes: any = await db.execute(sql`
         INSERT INTO blog_posts (
           title,
           slug,
           content,
           excerpt,
-          category,
-          subcategory,
+          category_id,
+          subcategory_id,
+          author_id,
           tags,
+          status,
+          is_verified,
+          vault_certificate_id,
           vault_hash,
           sast_status,
           security_score,
           authenticity_score,
           created_at
         ) VALUES (
-          ${title},
+          ${cleanTitle},
           ${finalSlug},
-          ${content},
-          ${excerpt || aiReport.summary || ''},
-          ${category || 'DKP Ecosystem & Releases'},
-          ${subcategory || 'Sentinel & Threat Stream'},
-          ${JSON.stringify(tags || ['DKP', 'Vault', 'Sentinel'])},
+          ${cleanContent},
+          ${String(excerpt || aiReport.summary || '').trim()},
+          ${categoryId},
+          ${subcategoryId},
+          ${authorId},
+          ${tagsSqlExpr},
+          ${postStatus},
+          ${isVerified},
+          ${vaultCertificateId},
           ${vaultHash},
           ${aiReport.sastCheck},
           ${aiReport.securityScore},
           ${aiReport.authenticityScore},
-          CURRENT_TIMESTAMP
+          NOW()
         )
-        RETURNING id, slug, title;
+        RETURNING id, slug, title, status, is_verified AS "isVerified", vault_hash AS "vaultHash", vault_certificate_id AS "vaultCertificateId";
       `).catch((insertErr: any) => {
         console.warn('⚠️ [BLOG INSERT WARN]:', insertErr?.message)
         return null
       })
 
-      savedPostRecord = insertRes?.rows?.[0] || insertRes?.[0] || null
+      savedPostRecord = extractRows(insertRes)[0] || null
     }
   } catch (dbErr: any) {
+    if (dbErr?.statusCode) throw dbErr
     console.warn('⚠️ [NEON DB PERSISTENCE WARN]:', dbErr?.message)
   }
 
@@ -222,8 +349,8 @@ Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${tot
     success: true,
     message: 'Analisi Pulse Sentinel completata e articolo notarizzato su NeonDB.',
     post: savedPostRecord || {
-      title,
-      slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      title: cleanTitle,
+      slug: finalSlug,
       vaultHash
     },
     vaultData: {

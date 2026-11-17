@@ -3,6 +3,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../../../utils/db'
 import { BlockchainService } from '../../../utils/blockchainService'
+import { extractDkpUserFromEvent } from '../../../utils/session'
 
 function extractRows(res: any): any[] {
   return Array.isArray(res) ? res : (res?.rows || [])
@@ -12,6 +13,10 @@ export default defineEventHandler(async (event) => {
   const rawSlug = String(getRouterParam(event, 'slug') || '').trim()
   if (!rawSlug) {
     throw createError({ statusCode: 400, statusMessage: 'Slug articolo mancante.' })
+  }
+
+  if (rawSlug.length > 255) {
+    throw createError({ statusCode: 400, statusMessage: 'Slug articolo non valido.' })
   }
 
   const db = await getDb()
@@ -26,9 +31,15 @@ export default defineEventHandler(async (event) => {
       ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS vault_block_number INTEGER;
     `).catch(() => null)
 
-    const isNumericId = /^\d+$/.test(rawSlug)
+    const parsedNum = Number(rawSlug)
+    const isNumericId =
+      /^\d+$/.test(rawSlug) &&
+      Number.isSafeInteger(parsedNum) &&
+      parsedNum > 0 &&
+      parsedNum <= 2147483647
+
     const whereCondition = isNumericId
-      ? sql`(p.slug = ${rawSlug} OR p.id = ${Number(rawSlug)})`
+      ? sql`(p.slug = ${rawSlug} OR p.id = ${parsedNum})`
       : sql`p.slug = ${rawSlug}`
 
     const result = await db.execute(sql`
@@ -53,12 +64,35 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato.' })
     }
 
+    // Protezione bozze / articoli in revisione Vault: visibili solo ad autore o ADMIN
+    const postStatus = String(row.status || 'published')
+    if (postStatus !== 'published') {
+      const sessionUser = extractDkpUserFromEvent(event)
+      let canPreview = false
+
+      if (sessionUser?.id && Number(sessionUser.id) > 0) {
+        const requesterRes = await db.execute(sql`
+          SELECT id, role FROM users WHERE id = ${Number(sessionUser.id)} LIMIT 1;
+        `)
+        const requester = extractRows(requesterRes)[0]
+        if (requester) {
+          const isOwner = Number(requester.id) === Number(row.author_id)
+          const isAdmin = String(requester.role || '').toUpperCase() === 'ADMIN'
+          canPreview = isOwner || isAdmin
+        }
+      }
+
+      if (!canPreview) {
+        throw createError({ statusCode: 404, statusMessage: 'Articolo non trovato.' })
+      }
+    }
+
     const postId = Number(row.id)
     let vaultHash = row.vault_hash || null
     let vaultBlockNumber = row.vault_block_number ? Number(row.vault_block_number) : null
 
-    // Se l'articolo non ha ancora un blocco nel ledger unificato, lo notarizza automaticamente
-    if (!vaultHash || !vaultBlockNumber) {
+    // Notarizza automaticamente solo gli articoli pubblicati che non hanno ancora un blocco nel ledger
+    if (postStatus === 'published' && (!vaultHash || !vaultBlockNumber)) {
       const proof = await BlockchainService.notarizeEntity(db, {
         entityType: 'blog',
         entityId: postId,
@@ -90,13 +124,14 @@ export default defineEventHandler(async (event) => {
     const normalized = {
       ...row,
       id: postId,
+      status: postStatus,
       categoryName: row.category_name || 'Generale',
       category: row.category_name || 'Generale',
       subcategoryName: row.subcategory_name || '',
       subCategory: row.subcategory_name || '',
       authorName: row.author_name || 'Alessandro De Paola',
       authorXp: Number(row.author_xp || 0),
-      isVerified: Boolean(row.is_verified ?? true),
+      isVerified: Boolean(row.is_verified),
       vaultCertificateId: row.vault_certificate_id || `DKP-VAULT-BLOG-${postId}`,
       vaultHash,
       vaultBlockNumber,

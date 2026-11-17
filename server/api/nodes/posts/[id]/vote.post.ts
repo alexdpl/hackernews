@@ -2,21 +2,34 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../../../../utils/db'
+import { extractDkpUserFromEvent } from '../../../../utils/session'
 
 function extractRows(res: any): any[] {
   return Array.isArray(res) ? res : (res?.rows || [])
 }
 
 export default defineEventHandler(async (event) => {
-  const postId = Number(getRouterParam(event, 'id'))
-  if (!postId || Number.isNaN(postId)) {
+  const sessionUser = extractDkpUserFromEvent(event)
+  if (!sessionUser?.id || Number(sessionUser.id) <= 0) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Devi effettuare il login per votare una discussione.'
+    })
+  }
+
+  const rawPostId = String(getRouterParam(event, 'id') || '').trim()
+  const postId = Number(rawPostId)
+  if (!/^\d+$/.test(rawPostId) || !Number.isSafeInteger(postId) || postId <= 0 || postId > 2147483647) {
     throw createError({ statusCode: 400, statusMessage: 'ID thread non valido.' })
   }
 
-  const body = (await readBody(event)) || {}
-  const direction = body.direction === 'down' ? 'down' : 'up'
+  const body = (await readBody(event).catch(() => ({}))) || {}
+  if (body.direction !== 'up' && body.direction !== 'down') {
+    throw createError({ statusCode: 400, statusMessage: 'Direzione voto non valida (usa "up" o "down").' })
+  }
+
+  const direction: 'up' | 'down' = body.direction
   const voteValue = direction === 'up' ? 1 : -1
-  const userId = Number(event.context.user?.id || body.userId || 1)
 
   const db = await getDb()
   if (!db) {
@@ -24,21 +37,32 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 1. Assicura tabella voti univoci per utente/thread
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS node_post_votes (
-        id SERIAL PRIMARY KEY,
-        post_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        vote_type SMALLINT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        UNIQUE (post_id, user_id)
-      );
+    // 1. Verifica utente autenticato su DB
+    const userRes = await db.execute(sql`
+      SELECT id FROM users WHERE id = ${Number(sessionUser.id)} LIMIT 1;
     `)
+    const dbUser = extractRows(userRes)[0]
+    if (!dbUser?.id) {
+      throw createError({ statusCode: 401, statusMessage: 'Sessione non valida o utente inesistente.' })
+    }
+    const userId = Number(dbUser.id)
 
-    // 2. Verifica esistenza thread
+    // 2. Assicura tabella canonica node_votes (allineata a server/db/schema.ts)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS node_votes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        post_id INTEGER REFERENCES node_posts(id) ON DELETE CASCADE,
+        comment_id INTEGER REFERENCES node_comments(id) ON DELETE CASCADE,
+        vote_value INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT unique_node_post_vote UNIQUE (user_id, post_id)
+      );
+    `).catch(() => null)
+
+    // 3. Verifica esistenza thread
     const postRes = await db.execute(sql`
-      SELECT id, author_id, COALESCE(karma_score, 0)::int AS karma_score
+      SELECT id, author_id AS "authorId", COALESCE(karma_score, 0)::int AS "karmaScore"
       FROM node_posts
       WHERE id = ${postId}
       LIMIT 1;
@@ -48,10 +72,10 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: 'Thread non trovato.' })
     }
 
-    // 3. Controlla voto precedente dell'utente su questo thread
+    // 4. Controlla voto precedente dell'utente su questo thread
     const existingRes = await db.execute(sql`
-      SELECT id, vote_type::int AS vote_type
-      FROM node_post_votes
+      SELECT id, vote_value::int AS "voteValue"
+      FROM node_votes
       WHERE post_id = ${postId} AND user_id = ${userId}
       LIMIT 1;
     `)
@@ -63,14 +87,14 @@ export default defineEventHandler(async (event) => {
     if (!existing) {
       // Nuovo voto
       await db.execute(sql`
-        INSERT INTO node_post_votes (post_id, user_id, vote_type)
-        VALUES (${postId}, ${userId}, ${voteValue});
+        INSERT INTO node_votes (user_id, post_id, vote_value, created_at)
+        VALUES (${userId}, ${postId}, ${voteValue}, NOW());
       `)
       delta = voteValue
-    } else if (Number(existing.vote_type) === voteValue) {
+    } else if (Number(existing.voteValue) === voteValue) {
       // Secondo click sullo stesso tasto -> rimuove il voto (toggle)
       await db.execute(sql`
-        DELETE FROM node_post_votes
+        DELETE FROM node_votes
         WHERE id = ${Number(existing.id)};
       `)
       delta = -voteValue
@@ -78,21 +102,21 @@ export default defineEventHandler(async (event) => {
     } else {
       // Cambio voto (es. da downvote a upvote -> +2)
       await db.execute(sql`
-        UPDATE node_post_votes
-        SET vote_type = ${voteValue}, created_at = NOW()
+        UPDATE node_votes
+        SET vote_value = ${voteValue}, created_at = NOW()
         WHERE id = ${Number(existing.id)};
       `)
-      delta = voteValue - Number(existing.vote_type)
+      delta = voteValue - Number(existing.voteValue)
     }
 
-    // 4. Aggiorna karma_score su node_posts
+    // 5. Aggiorna karma_score su node_posts
     const updatedRes = await db.execute(sql`
       UPDATE node_posts
       SET karma_score = COALESCE(karma_score, 0) + ${delta}
       WHERE id = ${postId}
-      RETURNING karma_score::int AS karma_score;
+      RETURNING karma_score::int AS "karmaScore";
     `)
-    const newKarma = Number(extractRows(updatedRes)[0]?.karma_score ?? Number(post.karma_score) + delta)
+    const newKarma = Number(extractRows(updatedRes)[0]?.karmaScore ?? Number(post.karmaScore) + delta)
 
     return {
       success: true,

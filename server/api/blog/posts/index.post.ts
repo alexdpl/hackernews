@@ -4,11 +4,14 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../../../utils/db'
 import { BlockchainService } from '../../../utils/blockchainService'
+import { extractDkpUserFromEvent } from '../../../utils/session'
 
 function slugify(text: string): string {
   return text
     .toString()
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .replace(/[\s\W_]+/g, '-')
     .replace(/[^a-z0-9-]+/g, '')
@@ -20,6 +23,14 @@ function extractRows(res: any): any[] {
 }
 
 export default defineEventHandler(async (event) => {
+  const sessionUser = extractDkpUserFromEvent(event)
+  if (!sessionUser?.id || Number(sessionUser.id) <= 0) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Devi effettuare il login per pubblicare un articolo.'
+    })
+  }
+
   let body: any = {}
   try {
     body = (await readBody(event)) || {}
@@ -47,6 +58,9 @@ export default defineEventHandler(async (event) => {
   if (!cleanTitle) {
     throw createError({ statusCode: 400, statusMessage: 'Il titolo è obbligatorio.' })
   }
+  if (cleanTitle.length > 255) {
+    throw createError({ statusCode: 400, statusMessage: 'Il titolo non può superare i 255 caratteri.' })
+  }
 
   let cleanTags: string[] = []
   if (Array.isArray(tags)) {
@@ -64,6 +78,18 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // Verifica autore reale dalla sessione
+    const userRows = extractRows(
+      await db.execute(sql`SELECT id, role FROM users WHERE id = ${Number(sessionUser.id)} LIMIT 1;`)
+    )
+    const dbUser = userRows[0]
+    if (!dbUser?.id) {
+      throw createError({ statusCode: 401, statusMessage: 'Sessione non valida o utente inesistente.' })
+    }
+
+    const authorId = Number(dbUser.id)
+    const isAdmin = String(dbUser.role || '').toUpperCase() === 'ADMIN'
+
     await BlockchainService.ensureSchema(db).catch(() => null)
 
     // Assicura colonne opzionali su blog_posts
@@ -160,11 +186,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 4. Autore reale
-    const usersList = extractRows(await db.execute(sql`SELECT id FROM users ORDER BY id ASC LIMIT 1;`))
-    const authorId = usersList[0]?.id ? Number(usersList[0].id) : 1
-
-    // 5. Slug univoco (evita errori 23505 se ripubblichi lo stesso titolo)
+    // 4. Slug univoco (evita errori 23505 se ripubblichi lo stesso titolo)
     let generatedSlug = slugify(cleanTitle) || `post-${Date.now()}`
     const existingSlug = extractRows(
       await db.execute(sql`SELECT id FROM blog_posts WHERE slug = ${generatedSlug} LIMIT 1;`)
@@ -173,15 +195,17 @@ export default defineEventHandler(async (event) => {
       generatedSlug = `${generatedSlug}-${Date.now().toString(36).slice(-4)}`
     }
 
-    // 6. Preparazione valori
+    // 5. Preparazione valori
     const certSuffix = (
       crypto.randomBytes(8).toString('base64url').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + 'AAAAAA'
     ).slice(0, 6)
     const vaultCertificateId = reqVaultHash
       ? `DKP-VAULT-CERT-VERIFIED-${certSuffix}`
-      : `DKP-VAULT-CERT-ADMIN-${certSuffix}`
+      : isAdmin
+        ? `DKP-VAULT-CERT-ADMIN-${certSuffix}`
+        : `DKP-VAULT-CERT-USER-${certSuffix}`
 
-    const finalStatus = status || 'published'
+    const finalStatus = isAdmin ? (status || 'published') : 'pending_vault'
     const finalExcerpt = excerpt || summary || null
     const finalContent = content || finalExcerpt || 'Contenuto non disponibile.'
     const finalSubtitle = subtitle ? String(subtitle).trim() : null
@@ -202,7 +226,7 @@ export default defineEventHandler(async (event) => {
         ) VALUES (
           ${cleanTitle}, ${finalSubtitle}, ${generatedSlug}, ${finalContent}, ${finalExcerpt}, ${finalStack},
           ${finalCategoryId}, ${finalSubcategoryId}, ${authorId},
-          ${tagsSqlExpr}, ${finalStatus}, true, ${vaultCertificateId}, 0, 0
+          ${tagsSqlExpr}, ${finalStatus}, ${isAdmin}, ${vaultCertificateId}, 0, 0
         )
         RETURNING *;
       `)
@@ -211,7 +235,7 @@ export default defineEventHandler(async (event) => {
     const newPost = inserted[0]
     const postId = Number(newPost.id)
 
-    // 7. Notarizzazione On-Chain (protetta: non blocca mai la pubblicazione)
+    // 6. Notarizzazione On-Chain (protetta: non blocca mai la pubblicazione)
     let proof: any = null
     try {
       proof = await BlockchainService.notarizeEntity(db, {
@@ -228,13 +252,13 @@ export default defineEventHandler(async (event) => {
         .digest('hex')
       await db.execute(sql`
         UPDATE blog_posts
-        SET vault_hash = ${fallbackHash}, is_verified = true
+        SET vault_hash = ${fallbackHash}, is_verified = ${isAdmin}
         WHERE id = ${postId};
       `).catch(() => null)
       proof = { vaultHash: fallbackHash, blockNumber: null }
     }
 
-    // 8. Assegnazione +150 XP protetta
+    // 7. Assegnazione +150 XP all'autore autenticato
     try {
       await db.execute(sql`
         UPDATE users SET xp = COALESCE(xp, 0) + 150 WHERE id = ${authorId};
@@ -247,7 +271,9 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      message: 'Articolo pubblicato e notarizzato SHA-256 con successo!',
+      message: isAdmin
+        ? 'Articolo pubblicato e notarizzato SHA-256 con successo!'
+        : 'Articolo inviato e notarizzato! In attesa di verifica DKP Vault.',
       data: {
         ...newPost,
         vault_hash: proof?.vaultHash || newPost.vault_hash,

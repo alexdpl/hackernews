@@ -1,7 +1,7 @@
 // server/utils/dkpComments.ts
 import type { H3Event } from 'h3'
-import { getCookie } from 'h3'
 import { sql } from 'drizzle-orm'
+import { extractDkpUserFromEvent } from './session'
 
 let schemaSynchronized = false
 
@@ -16,25 +16,24 @@ export function extractSqlRows(res: any): any[] {
   return Array.isArray(res) ? res : (res?.rows || [])
 }
 
+/**
+ * Delega esclusivamente alla verifica HMAC-SHA256 di session.ts.
+ * Nessun cookie JSON in chiaro o non firmato viene più accettato.
+ */
 export function parseSessionUser(event: H3Event): DkpSessionUser | null {
-  const rawCookie = getCookie(event, 'dkp_session')
-  if (!rawCookie) return null
-
-  try {
-    const parsed = JSON.parse(decodeURIComponent(rawCookie))
-    const username = String(parsed?.username || '').trim()
-    const id = Number(parsed?.id || 0)
-    const role = String(parsed?.role || 'user').trim().toLowerCase()
-    if (!username && !id) return null
-
-    return {
-      id: Number.isNaN(id) ? 0 : id,
-      username: username || 'community',
-      role,
-      isAdmin: role === 'admin' || username.toLowerCase() === 'alexdpl'
-    }
-  } catch {
+  const verified = extractDkpUserFromEvent(event)
+  if (!verified || !Number.isSafeInteger(Number(verified.id)) || Number(verified.id) <= 0) {
     return null
+  }
+
+  const username = String(verified.username || '').trim()
+  const role = String(verified.role || 'user').trim().toLowerCase()
+
+  return {
+    id: Number(verified.id),
+    username: username || 'community',
+    role,
+    isAdmin: role === 'admin'
   }
 }
 

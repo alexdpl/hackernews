@@ -1,7 +1,7 @@
 // server/api/blog/posts/index.get.ts
 import { eq, desc } from 'drizzle-orm'
 import { getDb } from '../../../utils/db'
-import { blogPosts, blogCategories, blogSubcategories, users } from '../../../../drizzle/schema'
+import { blogPosts, blogCategories, blogSubcategories, users } from '../../../db/schema'
 
 function getSafeQuery(event: any): Record<string, any> {
   try {

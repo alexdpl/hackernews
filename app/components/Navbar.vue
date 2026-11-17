@@ -194,7 +194,7 @@ async function handleLogout() {
           <span>DevKernel<span class="text-emerald-400">Pulse</span></span>
         </NuxtLink>
         <span class="hidden sm:inline-block text-[10px] font-mono font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-          v2.6-PURE-SQL
+          v2.6
         </span>
       </div>
 

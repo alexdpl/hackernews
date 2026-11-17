@@ -1,107 +1,206 @@
 // server/api/auth/login.post.ts
-import { defineEventHandler, readBody, setCookie } from 'h3'
-import { eq, or } from 'drizzle-orm'
+import crypto from 'node:crypto'
+import { defineEventHandler, readBody, createError } from 'h3'
+import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { users } from '~~/drizzle/schema'
+import {
+  syncCrossSubdomainSessionCookie,
+  signDkpSessionToken
+} from '~~/server/utils/session'
+
+function extractRows(res: any): any[] {
+  return Array.isArray(res) ? res : (res?.rows || [])
+}
+
+function safeStringEqual(a: string, b: string): boolean {
+  if (!a || !b) return false
+  const bufA = Buffer.from(a, 'utf8')
+  const bufB = Buffer.from(b, 'utf8')
+  if (bufA.length !== bufB.length) return false
+  return crypto.timingSafeEqual(bufA, bufB)
+}
+
+function hashPasswordScrypt(plainPassword: string): string {
+  const salt = crypto.randomBytes(16).toString('hex')
+  const derived = crypto.scryptSync(plainPassword, salt, 64).toString('hex')
+  return `${salt}:${derived}`
+}
+
+async function verifyPasswordAndUpgrade(
+  db: any,
+  userId: number,
+  plainPassword: string,
+  storedHash: string
+): Promise<boolean> {
+  if (!plainPassword || !storedHash) return false
+
+  // 1. Formato standard DKP v2.6: salt:scryptHex
+  if (storedHash.includes(':')) {
+    const [salt, expectedHex] = storedHash.split(':')
+    if (!salt || !expectedHex || !/^[a-f0-9]+$/i.test(expectedHex)) return false
+    try {
+      const derivedBuf = crypto.scryptSync(plainPassword, salt, 64)
+      const expectedBuf = Buffer.from(expectedHex, 'hex')
+      if (derivedBuf.length !== expectedBuf.length) return false
+      return crypto.timingSafeEqual(derivedBuf, expectedBuf)
+    } catch {
+      return false
+    }
+  }
+
+  // 2. Formato legacy SHA-256 esadecimale (64 char)
+  if (/^[a-f0-9]{64}$/i.test(storedHash)) {
+    const sha256Hex = crypto.createHash('sha256').update(plainPassword).digest('hex')
+    if (safeStringEqual(sha256Hex, storedHash.toLowerCase())) {
+      const upgraded = hashPasswordScrypt(plainPassword)
+      await db.execute(sql`
+        UPDATE users SET password_hash = ${upgraded} WHERE id = ${userId};
+      `).catch(() => {})
+      return true
+    }
+    return false
+  }
+
+  // 3. Formato legacy v2.5 plaintext -> verifica constant-time + migrazione automatica a scrypt
+  if (safeStringEqual(plainPassword, storedHash)) {
+    const upgraded = hashPasswordScrypt(plainPassword)
+    await db.execute(sql`
+      UPDATE users SET password_hash = ${upgraded} WHERE id = ${userId};
+    `).catch(() => {})
+    return true
+  }
+
+  return false
+}
 
 export default defineEventHandler(async (event) => {
-  let body: Record<string, any> = {}
+  const body = (await readBody(event).catch(() => ({}))) || {}
+  const identifier = String(body.email || body.username || '').trim()
+  const password = String(body.password || '')
 
-  try {
-    const parsedBody = await readBody(event)
-    if (parsedBody && typeof parsedBody === 'object') {
-      body = parsedBody
-    }
-  } catch (_) {}
-
-  const identifier = (body.email || body.username || '').trim()
-  const password = body.password || ''
-
-  if (!identifier) {
-    return {
-      success: false,
-      user: null,
-      message: 'Nessun identificativo inviato.'
-    }
+  if (!identifier || !password) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Inserisci email/username e password.'
+    })
   }
 
-  // 👑 1. MASTER KEY OVERRIDE (Alexdpl Sicuro)
-  // Se l'utente è alexdpl, forziamo l'accesso admin (se la password combacia o se siamo in fase di sviluppo/emergenza)
-  const masterPassword = process.env.NUXT_ADMIN_SECRET || 'alexdpl'
-  
-  if (identifier.toLowerCase() === 'alexdpl' || identifier.toLowerCase() === 'alex@devkernelpulse.org') {
-    // Se la password è corretta O se vuoi un accesso rapido di sicurezza in dev
-    if (password === masterPassword || password.length > 0) {
-      const adminUser = {
-        id: 1,
-        username: 'alexdpl',
-        email: 'alex@devkernelpulse.org',
-        role: 'admin',
-        avatar: 'https://github.com/alexdpl.png',
-        xp: 9999,
-        level: 99
-      }
+  if (identifier.length > 255 || password.length > 512) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Lunghezza credenziali non valida.'
+    })
+  }
 
-      setCookie(event, 'dkp_session', encodeURIComponent(JSON.stringify(adminUser)), {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-        httpOnly: false
+  const db = await getDb()
+  if (!db) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Database Neon non disponibile.'
+    })
+  }
+
+  try {
+    // Assicura colonna avatar_url se non ancora migrata
+    await db.execute(sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500);
+    `).catch(() => null)
+
+    const userRes = await db.execute(sql`
+      SELECT
+        id,
+        username,
+        email,
+        password_hash AS "passwordHash",
+        role,
+        COALESCE(xp, 0)::int AS xp,
+        avatar_url AS "avatarUrl"
+      FROM users
+      WHERE LOWER(email) = LOWER(${identifier})
+         OR LOWER(username) = LOWER(${identifier})
+      LIMIT 1;
+    `)
+
+    const dbUser = extractRows(userRes)[0]
+
+    // Verifica opzionale Admin Secret d'emergenza (solo se esplicitamente configurato in env/runtimeConfig)
+    const config = useRuntimeConfig(event)
+    const configuredAdminSecret = String(
+      config?.adminSecret || process.env.NUXT_ADMIN_SECRET || ''
+    ).trim()
+
+    const isFounderIdentifier =
+      identifier.toLowerCase() === 'alexdpl' ||
+      identifier.toLowerCase() === 'alex@devkernelpulse.org'
+
+    const matchedAdminSecret =
+      isFounderIdentifier &&
+      configuredAdminSecret.length >= 12 &&
+      safeStringEqual(password, configuredAdminSecret)
+
+    if (!dbUser && !matchedAdminSecret) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Credenziali non valide.'
       })
+    }
 
-      return {
-        success: true,
-        message: 'Accesso MASTER KEY eseguito con successo.',
-        user: adminUser,
-        token: 'dkp_master_token_v2.5_gold'
+    if (dbUser && !matchedAdminSecret) {
+      const passwordOk = await verifyPasswordAndUpgrade(
+        db,
+        Number(dbUser.id),
+        password,
+        String(dbUser.passwordHash || '')
+      )
+      if (!passwordOk) {
+        throw createError({
+          statusCode: 401,
+          statusMessage: 'Credenziali non valide.'
+        })
       }
     }
-  }
 
-  // 👥 2. LOGIN NORMALE SU NEON DB
-  try {
-    const db = await getDb()
-    if (!db) {
-      return { success: false, message: 'Database Neon non disponibile.' }
-    }
-    
-    const result = await db.select().from(users).where(
-      or(
-        eq(users.email, identifier),
-        eq(users.username, identifier)
-      )
-    ).limit(1)
-
-    const dbUser = result[0]
-
-    if (!dbUser || dbUser.passwordHash !== password) {
-      return { success: false, message: 'Credenziali non valide.' }
-    }
+    const userId = dbUser ? Number(dbUser.id) : 1
+    const username = dbUser?.username || 'alexdpl'
+    const email = dbUser?.email || 'alex@devkernelpulse.org'
+    const normalizedRole = String(
+      matchedAdminSecret ? 'admin' : (dbUser?.role || 'user')
+    ).toLowerCase()
+    const xp = Number(dbUser?.xp ?? (matchedAdminSecret ? 10860 : 100))
+    const avatar =
+      dbUser?.avatarUrl ||
+      (username.toLowerCase() === 'alexdpl'
+        ? 'https://github.com/alexdpl.png'
+        : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`)
 
     const sessionUser = {
-      id: dbUser.id,
-      username: dbUser.username,
-      email: dbUser.email,
-      role: dbUser.role,
-      avatar: (dbUser as any).avatar || (dbUser.username === 'alexdpl' ? 'https://github.com/alexdpl.png' : undefined),
-      xp: dbUser.xp || 150,
-      level: dbUser.level || 1
+      id: userId,
+      username,
+      email,
+      role: normalizedRole,
+      isAdmin: normalizedRole === 'admin',
+      avatar,
+      avatarUrl: avatar,
+      xp,
+      level: Math.max(1, Math.floor(xp / 250) + 1)
     }
 
-    setCookie(event, 'dkp_session', encodeURIComponent(JSON.stringify(sessionUser)), {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      httpOnly: false
-    })
+    // Imposta cookie HttpOnly firmato HMAC-SHA256 cross-subdomain
+    syncCrossSubdomainSessionCookie(event, sessionUser)
+    const signedToken = signDkpSessionToken(sessionUser)
 
     return {
       success: true,
-      message: 'Accesso eseguito con successo.',
+      message: 'Accesso eseguito con successo (DKP v2.6-PURE-SQL).',
       user: sessionUser,
-      token: 'dkp_db_token_v2.5'
+      token: signedToken
     }
-
-  } catch (error) {
-    console.error('Errore Login DB:', error)
-    return { success: false, message: 'Errore di connessione al database.' }
+  } catch (err: any) {
+    if (err?.statusCode) throw err
+    console.error('❌ [AUTH LOGIN ERROR]:', err?.message)
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Errore interno durante l\'autenticazione.'
+    })
   }
 })

@@ -40,11 +40,33 @@ function cleanNodeLabel(raw: string): string {
   return String(raw || '').replace(/^(n\/)+/i, '').trim()
 }
 
+function stripMarkdownForSeo(raw: string, maxLen = 160): string {
+  const clean = String(raw || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/<\/?[^>]+(>|$)/g, ' ')
+    .replace(/[#>*_~=+|-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (clean.length <= maxLen) return clean
+  return `${clean.slice(0, maxLen - 1).trimEnd()}…`
+}
+
 const { data: threadRes, pending, error, refresh } = await useFetch<any>(() => `/api/nodes/posts/${threadId.value}`)
+
+const optimisticKarma = ref<number | null>(null)
+const optimisticVaultHash = ref<string | null>(null)
 
 const post = computed(() => {
   const raw = threadRes.value?.post || threadRes.value?.data || (threadRes.value?.id ? threadRes.value : null)
   if (!raw) return null
+
+  const baseKarma = Number(raw.karmaScore ?? raw.karma_score ?? 1)
+  const resolvedVaultHash = optimisticVaultHash.value || raw.vaultHash || raw.vault_hash || null
+
   return {
     ...raw,
     id: Number(raw.id),
@@ -54,11 +76,14 @@ const post = computed(() => {
     nodeIcon: raw.nodeIcon || raw.node_icon || '#',
     authorUsername: raw.authorUsername || raw.author_username || 'community',
     authorXp: Number(raw.authorXp ?? raw.author_xp ?? 0),
-    karmaScore: Number(raw.karmaScore ?? raw.karma_score ?? 1),
+    karmaScore: optimisticKarma.value !== null ? optimisticKarma.value : baseKarma,
     isPinned: Boolean(raw.isPinned || raw.is_pinned),
-    vaultHash: raw.vaultHash || raw.vault_hash || null,
+    vaultHash: resolvedVaultHash,
     vaultBlockNumber: raw.vaultBlockNumber ?? raw.vault_block_number ?? null,
-    vaultCertificateId: raw.vaultCertificateId || raw.vault_certificate_id || (raw.vaultHash || raw.vault_hash ? `DKP-NODE-${raw.id}` : null),
+    vaultCertificateId:
+      raw.vaultCertificateId ||
+      raw.vault_certificate_id ||
+      (resolvedVaultHash ? `DKP-NODE-${raw.id}` : null),
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     createdAt: raw.createdAt || raw.created_at || new Date().toISOString(),
     updatedAt: raw.updatedAt || raw.updated_at || null
@@ -73,8 +98,9 @@ async function voteThread(direction: 'up' | 'down' = 'up') {
   if (!post.value || isVoting.value) return
   isVoting.value = true
 
+  const previousKarma = Number(post.value.karmaScore || 0)
   const delta = direction === 'up' ? 1 : -1
-  post.value.karmaScore = Number(post.value.karmaScore || 0) + delta
+  optimisticKarma.value = previousKarma + delta
   hasVotedDirection.value = direction
 
   try {
@@ -87,14 +113,14 @@ async function voteThread(direction: 'up' | 'down' = 'up') {
     })
 
     if (typeof res?.karmaScore === 'number') {
-      post.value.karmaScore = res.karmaScore
+      optimisticKarma.value = res.karmaScore
     } else if (typeof res?.data?.karmaScore === 'number') {
-      post.value.karmaScore = res.data.karmaScore
+      optimisticKarma.value = res.data.karmaScore
     }
 
     showNotification(direction === 'up' ? '▲ Upvote registrato! +Karma' : '▼ Voto registrato.')
   } catch (err: any) {
-    post.value.karmaScore = Number(post.value.karmaScore || 0) - delta
+    optimisticKarma.value = previousKarma
     hasVotedDirection.value = null
     showNotification(`⚠️ ${err?.data?.statusMessage || 'Impossibile registrare il voto.'}`)
   } finally {
@@ -128,8 +154,8 @@ async function loadOnChainProof(autoNotarizeIfMissing = true) {
 
     if (verifyRes?.proof) {
       vaultProof.value = verifyRes.proof
-      if (post.value && !post.value.vaultHash) {
-        post.value.vaultHash = verifyRes.proof.vaultHash
+      if (verifyRes.proof.vaultHash) {
+        optimisticVaultHash.value = verifyRes.proof.vaultHash
       }
     }
   } finally {
@@ -143,7 +169,9 @@ async function copyFullVaultHash() {
   await navigator.clipboard.writeText(hash).catch(() => {})
   hashCopied.value = true
   showNotification('📋 Hash SHA-256 copiato negli appunti!')
-  setTimeout(() => { hashCopied.value = false }, 2000)
+  setTimeout(() => {
+    hashCopied.value = false
+  }, 2000)
 }
 
 const canEditPost = computed(() => {
@@ -210,6 +238,7 @@ async function togglePinPost() {
 }
 
 async function deleteCurrentPost() {
+  if (!post.value) return
   if (!confirm('Sei sicuro di voler eliminare definitivamente questo thread?')) return
   try {
     await $fetch(`/api/nodes/posts/${post.value.id}`, { method: 'DELETE' })
@@ -277,6 +306,14 @@ const readTime = computed(() => {
   return Math.max(1, Math.ceil(words / 200))
 })
 
+function safeUrl(raw: string): string {
+  const trimmed = String(raw || '').trim()
+  if (/^(https?:\/\/|\/)/i.test(trimmed)) {
+    return trimmed.replace(/"/g, '&quot;')
+  }
+  return '#'
+}
+
 function parseDkpMarkdown(contentVal: string): string {
   try {
     if (!contentVal) return ''
@@ -310,14 +347,14 @@ function parseDkpMarkdown(contentVal: string): string {
       .replace(/>/g, '&gt;')
 
     html = html
-      .replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) => `<img src="${safeUrl(src)}" alt="${alt.replace(/"/g, '&quot;')}" class="dkp-img" loading="lazy" />`)
       .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1</mark>')
       .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1</u>')
       .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/~~(.*?)~~/g, '<del>$1</del>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) => `<a href="${safeUrl(href)}" class="dkp-link" target="_blank" rel="noopener noreferrer">${label}</a>`)
 
     html = html
       .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
@@ -372,15 +409,133 @@ const authorRank = computed<AuthorRank>(() => {
   }
 })
 
-const currentUrl = computed(() => import.meta.client ? window.location.href : `https://devkernelpulse.org/nodes/thread/${threadId.value}`)
+// --- DKP SEO DINAMICO PER INDICIZZAZIONE THREAD & RICH RESULTS ---
+const canonicalUrl = computed(() => `https://devkernelpulse.org/nodes/thread/${encodeURIComponent(threadId.value)}`)
+const currentUrl = computed(() => (import.meta.client ? window.location.href : canonicalUrl.value))
+
+const seoTitle = computed(() =>
+  post.value?.title
+    ? `${post.value.title} — n/${post.value.nodeName} | DevKernelPulse`
+    : 'Discussione — DKP Talks Hub | DevKernelPulse'
+)
+
+const seoDescription = computed(() =>
+  post.value?.content
+    ? stripMarkdownForSeo(post.value.content, 160)
+    : 'Partecipa alle discussioni tecniche della community DevKernelPulse su Linux, kernel, sviluppo software e sicurezza.'
+)
+
+const seoRobots = computed(() =>
+  error.value || (!pending.value && !post.value) ? 'noindex, nofollow' : 'index, follow'
+)
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  robots: seoRobots,
+  ogType: 'article',
+  ogSiteName: 'DevKernelPulse',
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: canonicalUrl,
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  articleAuthor: computed(() => (post.value?.authorUsername ? `@${post.value.authorUsername}` : 'DevKernelPulse Community')),
+  articleSection: computed(() => post.value?.nodeName || 'Talks Hub'),
+  articlePublishedTime: computed(() => post.value?.createdAt || undefined),
+  articleModifiedTime: computed(() => post.value?.updatedAt || post.value?.createdAt || undefined),
+  articleTag: computed(() => post.value?.tags || [])
+})
 
 useHead({
-  title: computed(() => `${post.value?.title || 'Discussione'} — DKP Talks Hub v2.6`),
-  meta: [{ name: 'description', content: computed(() => String(post.value?.content || '').slice(0, 160)) }]
+  link: [
+    { rel: 'canonical', href: canonicalUrl }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: computed(() => {
+        if (!post.value) return ''
+        const nodeUrl = post.value.nodeSlug
+          ? `https://devkernelpulse.org/nodes/n/${encodeURIComponent(post.value.nodeSlug)}`
+          : 'https://devkernelpulse.org/nodes'
+
+        return JSON.stringify({
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                {
+                  '@type': 'ListItem',
+                  position: 1,
+                  name: 'Home',
+                  item: 'https://devkernelpulse.org/'
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 2,
+                  name: 'DKP Talks Hub',
+                  item: 'https://devkernelpulse.org/nodes'
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 3,
+                  name: `n/${post.value.nodeName}`,
+                  item: nodeUrl
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 4,
+                  name: post.value.title,
+                  item: canonicalUrl.value
+                }
+              ]
+            },
+            {
+              '@type': 'DiscussionForumPosting',
+              '@id': canonicalUrl.value,
+              mainEntityOfPage: canonicalUrl.value,
+              headline: post.value.title,
+              text: stripMarkdownForSeo(post.value.content, 500),
+              datePublished: post.value.createdAt,
+              dateModified: post.value.updatedAt || post.value.createdAt,
+              author: {
+                '@type': 'Person',
+                name: post.value.authorUsername
+              },
+              interactionStatistic: [
+                {
+                  '@type': 'InteractionCounter',
+                  interactionType: 'https://schema.org/LikeAction',
+                  userInteractionCount: Number(post.value.karmaScore || 0)
+                },
+                {
+                  '@type': 'InteractionCounter',
+                  interactionType: 'https://schema.org/CommentAction',
+                  userInteractionCount: comments.value.length
+                }
+              ],
+              comment: comments.value.slice(0, 20).map((c: any) => ({
+                '@type': 'Comment',
+                text: stripMarkdownForSeo(String(c.content || ''), 300),
+                datePublished: c.createdAt || c.created_at,
+                author: {
+                  '@type': 'Person',
+                  name: c.authorUsername || c.author_username || 'member'
+                }
+              }))
+            }
+          ]
+        })
+      })
+    }
+  ]
 })
 
 let prismTimer: ReturnType<typeof setTimeout> | undefined
-const windowPrism = (typeof window !== 'undefined' ? (window as any).Prism : null)
+const windowPrism = typeof window !== 'undefined' ? (window as any).Prism : null
 
 const applyPrism = () => {
   if (import.meta.client) {
@@ -398,6 +553,13 @@ const applyPrism = () => {
     }, 150)
   }
 }
+
+watch(threadId, () => {
+  optimisticKarma.value = null
+  optimisticVaultHash.value = null
+  hasVotedDirection.value = null
+  vaultProof.value = null
+})
 
 watch(parsedContent, async () => {
   await nextTick()
@@ -457,9 +619,33 @@ onUnmounted(() => {
           <div class="flex flex-col gap-4 mb-8 relative z-10 border-b border-slate-800 pb-4">
             <nav aria-label="Breadcrumb" class="w-full text-sm text-slate-400">
               <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
-                <li><NuxtLink to="/nodes" class="text-slate-400 hover:text-purple-400 no-underline">Talks Hub</NuxtLink></li>
-                <li class="flex items-center gap-2"><span class="text-slate-600 font-bold">/</span><NuxtLink :to="`/nodes/n/${post.nodeSlug}`" class="text-purple-400 font-mono font-bold no-underline">{{ post.nodeIcon }} n/{{ post.nodeName }}</NuxtLink></li>
-                <li class="flex items-center gap-2"><span class="text-slate-600 font-bold">/</span><span class="text-slate-200 truncate max-w-[200px]">{{ post.title }}</span></li>
+                <li>
+                  <NuxtLink
+                    to="/"
+                    class="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 transition-colors no-underline"
+                    title="Torna alla Home"
+                  >
+                    <span aria-hidden="true">🏠</span>
+                    <span>Home</span>
+                  </NuxtLink>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                  <NuxtLink to="/nodes" class="text-slate-400 hover:text-purple-400 transition-colors no-underline">Talks Hub</NuxtLink>
+                </li>
+                <li class="flex items-center gap-2">
+                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                  <NuxtLink
+                    :to="post.nodeSlug ? `/nodes/n/${post.nodeSlug}` : '/nodes'"
+                    class="text-purple-400 hover:text-purple-300 font-mono font-bold transition-colors no-underline"
+                  >
+                    {{ post.nodeIcon }} n/{{ post.nodeName }}
+                  </NuxtLink>
+                </li>
+                <li class="flex items-center gap-2 min-w-0" aria-current="page">
+                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                  <span class="text-slate-200 truncate max-w-[200px] sm:max-w-[320px]">{{ post.title }}</span>
+                </li>
               </ol>
             </nav>
 
@@ -472,7 +658,7 @@ onUnmounted(() => {
                 :post-id="post.id"
                 :vault-hash="vaultProof?.vaultHash || post.vaultHash"
                 :block-number="vaultProof?.blockNumber || post.vaultBlockNumber"
-                @notarized="(h) => (post.vaultHash = h)"
+                @notarized="(h) => (optimisticVaultHash = h)"
               />
             </div>
           </div>
@@ -648,10 +834,11 @@ onUnmounted(() => {
               <div class="text-xs sm:text-sm text-slate-200 dkp-preview-content" v-html="parseDkpMarkdown(String(c.content || ''))"></div>
             </div>
           </section>
+
           <DkpAdsWidget placement="feedInline" :compact="true" />
           <DKPRelatedThreads :currentNodeSlug="post.nodeSlug || undefined" />
           <DkpNodesHomeWidget />
-          <DkpAdStrip :topic="thread?.nodeName" :tags="thread?.tags" />
+          <DkpAdStrip :topic="post.nodeName" :tags="post.tags" />
         </article>
       </div>
     </div>
@@ -663,36 +850,36 @@ onUnmounted(() => {
 .prose h1, .post-content h1 { @apply text-2xl font-extrabold text-white mt-8 mb-4 border-b border-slate-800 pb-2; }
 .prose p, .post-content p { @apply text-slate-300 text-base leading-relaxed mb-6; }
 
-:deep(.dkp-code-wrapper) { 
-  background: #0d1117; 
-  border: 1px solid #1e293b; 
-  border-radius: 8px; 
-  margin: 1.2rem 0; 
+:deep(.dkp-code-wrapper) {
+  background: #0d1117;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  margin: 1.2rem 0;
   overflow: hidden;
 }
-:deep(.dkp-code-header) { 
-  background: #161b22; 
-  padding: 0.5rem 1rem; 
-  display: flex; 
-  justify-content: space-between; 
-  color: #8b949e; 
-  font-size: 0.8rem; 
-  font-weight: bold; 
+:deep(.dkp-code-header) {
+  background: #161b22;
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  color: #8b949e;
+  font-size: 0.8rem;
+  font-weight: bold;
   border-bottom: 1px solid #1e293b;
 }
-:deep(.dkp-copy-btn) { 
-  background: none; 
-  border: none; 
-  color: #8b949e; 
-  cursor: pointer; 
+:deep(.dkp-copy-btn) {
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
 }
-:deep(.dkp-copy-btn:hover) { 
-  color: #10b981; 
+:deep(.dkp-copy-btn:hover) {
+  color: #10b981;
 }
-:deep(.dkp-code-block) { 
-  padding: 1rem; 
-  margin: 0; 
-  overflow-x: auto; 
+:deep(.dkp-code-block) {
+  padding: 1rem;
+  margin: 0;
+  overflow-x: auto;
   background-color: #0d1117 !important;
 }
 :deep(.dkp-code-block code) {

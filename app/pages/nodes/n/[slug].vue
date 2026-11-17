@@ -1,6 +1,6 @@
 <!-- app/pages/nodes/n/[slug].vue -->
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
 import DKPnodesRichEditor from '~/components/DKPnodesRichEditor.vue'
@@ -22,10 +22,11 @@ function cleanExcerpt(raw: string): string {
     .replace(/```/g, '')
     .replace(/\*\*/g, '')
     .replace(/#{1,6}\s+/g, '')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
-const { data: nodesRes, refresh: refreshNodes } = await useFetch<any>('/api/nodes')
+const { data: nodesRes, pending: loadingNodes, refresh: refreshNodes } = await useFetch<any>('/api/nodes')
 
 const nodeTreeState = computed(() => {
   const rawList = Array.isArray(nodesRes.value?.data)
@@ -42,6 +43,11 @@ const currentNode = computed(() => {
   return allNodes.value.find((n: any) => n.slug === nodeSlug.value) || null
 })
 
+const parentNode = computed(() => {
+  if (!currentNode.value?.parentId) return null
+  return allNodes.value.find((n: any) => Number(n.id) === Number(currentNode.value.parentId)) || null
+})
+
 const currentNodeCategory = computed(() => {
   return currentNode.value ? resolveMainCategory(currentNode.value, allNodes.value) : (categoryNames.value[0] || '')
 })
@@ -54,13 +60,9 @@ const childNodes = computed(() => {
 
 const isVaultNode = computed(() => nodeSlug.value === 'blockchain-vault')
 
-useHead({
-  title: computed(() =>
-    currentNode.value
-      ? `n/${currentNode.value.name} — DKP Talks & Blockchain Vault v2.6`
-      : `n/${nodeSlug.value} — DKP Talks Hub`
-  )
-})
+const nodeDisplayName = computed(() =>
+  cleanNodeLabel(currentNode.value?.name || nodeSlug.value || 'Nodo')
+)
 
 const activeSort = ref<'hot' | 'new' | 'top'>('hot')
 const currentPage = ref(1)
@@ -73,25 +75,166 @@ const { data: postsRes, pending: loadingPosts, refresh: refreshPosts } = await u
   }))
 })
 
+const optimisticKarmaMap = ref<Record<number, number>>({})
+const optimisticPinMap = ref<Record<number, boolean>>({})
+const optimisticVaultMap = ref<Record<number, string>>({})
+
 const posts = computed<any[]>(() => {
   const list = Array.isArray(postsRes.value?.posts)
     ? postsRes.value.posts
     : (Array.isArray(postsRes.value?.data) ? postsRes.value.data : [])
 
-  return list.map((p: any) => ({
-    ...p,
-    nodeName: cleanNodeLabel(p.nodeName || p.nodeSlug || nodeSlug.value),
-    vaultHash: p.vaultHash || p.vault_hash || null,
-    vaultBlockNumber: p.vaultBlockNumber ?? p.vault_block_number ?? null,
-    isPinned: Boolean(p.isPinned || p.is_pinned)
-  }))
+  return list.map((p: any) => {
+    const id = Number(p.id)
+    const baseKarma = Number(p.karmaScore ?? p.karma_score ?? 1)
+    const basePinned = Boolean(p.isPinned || p.is_pinned)
+    const baseVaultHash = p.vaultHash || p.vault_hash || null
+
+    return {
+      ...p,
+      id,
+      nodeName: cleanNodeLabel(p.nodeName || p.nodeSlug || nodeSlug.value),
+      karmaScore: id in optimisticKarmaMap.value ? optimisticKarmaMap.value[id] : baseKarma,
+      vaultHash: optimisticVaultMap.value[id] || baseVaultHash,
+      vaultBlockNumber: p.vaultBlockNumber ?? p.vault_block_number ?? null,
+      isPinned: id in optimisticPinMap.value ? optimisticPinMap.value[id] : basePinned
+    }
+  })
+})
+
+const hasNextPage = computed(() => {
+  if (typeof postsRes.value?.pagination?.hasMore === 'boolean') {
+    return postsRes.value.pagination.hasMore
+  }
+  return posts.value.length >= 10
+})
+
+// --- DKP SEO DINAMICO PER INDICIZZAZIONE NODO & RICH RESULTS ---
+const baseNodeUrl = computed(
+  () => `https://devkernelpulse.org/nodes/n/${encodeURIComponent(nodeSlug.value)}`
+)
+
+const canonicalUrl = computed(() =>
+  currentPage.value > 1 ? `${baseNodeUrl.value}?page=${currentPage.value}` : baseNodeUrl.value
+)
+
+const seoTitle = computed(() => {
+  const pageSuffix = currentPage.value > 1 ? ` (Pagina ${currentPage.value})` : ''
+  return currentNode.value
+    ? `n/${nodeDisplayName.value}${pageSuffix} — DKP Talks Hub | DevKernelPulse`
+    : `n/${nodeDisplayName.value}${pageSuffix} — Community Node | DevKernelPulse`
+})
+
+const seoDescription = computed(() => {
+  const desc = cleanExcerpt(currentNode.value?.description || '')
+  if (desc) return desc.slice(0, 160)
+  return `Esplora i thread, le guide tecniche e le discussioni notarizzate SHA-256 nel nodo n/${nodeDisplayName.value} su DevKernelPulse.`
+})
+
+const seoRobots = computed(() =>
+  !loadingNodes.value && allNodes.value.length > 0 && !currentNode.value && posts.value.length === 0
+    ? 'noindex, follow'
+    : 'index, follow'
+)
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  robots: seoRobots,
+  ogType: 'website',
+  ogSiteName: 'DevKernelPulse',
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogUrl: canonicalUrl,
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: canonicalUrl }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: computed(() => {
+        const breadcrumbItems: any[] = [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://devkernelpulse.org/'
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'DKP Talks Hub',
+            item: 'https://devkernelpulse.org/nodes'
+          }
+        ]
+
+        if (parentNode.value) {
+          breadcrumbItems.push({
+            '@type': 'ListItem',
+            position: 3,
+            name: `n/${cleanNodeLabel(parentNode.value.name)}`,
+            item: `https://devkernelpulse.org/nodes/n/${encodeURIComponent(parentNode.value.slug)}`
+          })
+        }
+
+        breadcrumbItems.push({
+          '@type': 'ListItem',
+          position: breadcrumbItems.length + 1,
+          name: `n/${nodeDisplayName.value}`,
+          item: baseNodeUrl.value
+        })
+
+        return JSON.stringify({
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'BreadcrumbList',
+              itemListElement: breadcrumbItems
+            },
+            {
+              '@type': 'CollectionPage',
+              '@id': canonicalUrl.value,
+              url: canonicalUrl.value,
+              name: seoTitle.value,
+              description: seoDescription.value,
+              isPartOf: {
+                '@type': 'WebSite',
+                name: 'DevKernelPulse',
+                url: 'https://devkernelpulse.org/'
+              },
+              mainEntity: {
+                '@type': 'ItemList',
+                numberOfItems: posts.value.length,
+                itemListElement: posts.value.slice(0, 20).map((p: any, idx: number) => ({
+                  '@type': 'ListItem',
+                  position: idx + 1,
+                  url: `https://devkernelpulse.org/nodes/thread/${p.id}`,
+                  name: p.title
+                }))
+              }
+            }
+          ]
+        })
+      })
+    }
+  ]
 })
 
 watch([nodeSlug, activeSort], () => {
   currentPage.value = 1
+  optimisticKarmaMap.value = {}
+  optimisticPinMap.value = {}
+  optimisticVaultMap.value = {}
 })
 
 function nextPage() {
+  if (!hasNextPage.value) return
   currentPage.value++
   if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -136,10 +279,12 @@ async function runOnChainAudit() {
 
 const isComposerOpen = ref(false)
 const toastMsg = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | undefined
 
 function showNotification(msg: string) {
   toastMsg.value = msg
-  setTimeout(() => {
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
     toastMsg.value = ''
   }, 4000)
 }
@@ -158,25 +303,60 @@ async function onThreadPublished() {
 }
 
 async function handleVote(post: any, direction: 'up' | 'down') {
+  const previousKarma = Number(post.karmaScore ?? 1)
   const delta = direction === 'up' ? 1 : -1
-  post.karmaScore = (post.karmaScore || 0) + delta
-  await $fetch(`/api/nodes/posts/${post.id}/vote`, {
-    method: 'POST',
-    body: { direction, userId: currentUser.value?.id }
-  }).catch(() => null)
+  optimisticKarmaMap.value = {
+    ...optimisticKarmaMap.value,
+    [post.id]: previousKarma + delta
+  }
+
+  try {
+    const res: any = await $fetch(`/api/nodes/posts/${post.id}/vote`, {
+      method: 'POST',
+      body: { direction, userId: currentUser.value?.id }
+    })
+
+    const serverKarma =
+      typeof res?.karmaScore === 'number'
+        ? res.karmaScore
+        : typeof res?.data?.karmaScore === 'number'
+          ? res.data.karmaScore
+          : null
+
+    if (serverKarma !== null) {
+      optimisticKarmaMap.value = {
+        ...optimisticKarmaMap.value,
+        [post.id]: serverKarma
+      }
+    }
+  } catch {
+    optimisticKarmaMap.value = {
+      ...optimisticKarmaMap.value,
+      [post.id]: previousKarma
+    }
+  }
 }
 
 async function togglePinPostCard(post: any) {
-  const nextPin = !post.isPinned
+  const prevPin = Boolean(post.isPinned)
+  const nextPin = !prevPin
+  optimisticPinMap.value = {
+    ...optimisticPinMap.value,
+    [post.id]: nextPin
+  }
+
   try {
     await $fetch(`/api/nodes/posts/${post.id}`, {
       method: 'PATCH',
       body: { is_pinned: nextPin, userId: currentUser.value?.id }
     })
-    post.isPinned = nextPin
     showNotification(nextPin ? '📌 Thread fissato in alto!' : '📍 Thread rimosso dai pinned.')
     await refreshPosts()
   } catch {
+    optimisticPinMap.value = {
+      ...optimisticPinMap.value,
+      [post.id]: prevPin
+    }
     showNotification('❌ Errore durante l\'aggiornamento del pin.')
   }
 }
@@ -186,6 +366,10 @@ function copyPostLink(postId: number) {
   navigator.clipboard.writeText(`${window.location.origin}/nodes/thread/${postId}`)
   showNotification('🔗 Link del thread copiato negli appunti!')
 }
+
+onUnmounted(() => {
+  clearTimeout(toastTimer)
+})
 </script>
 
 <template>
@@ -211,16 +395,48 @@ function copyPostLink(postId: number) {
         class="bg-[#090d16] rounded-2xl p-6 sm:p-8 shadow-2xl border relative overflow-hidden flex flex-col gap-4"
         :class="isVaultNode ? 'border-emerald-500/45' : 'border-slate-800'"
       >
-        <div class="flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
-          <div class="flex items-center gap-2 text-slate-400 flex-wrap">
-            <NuxtLink to="/nodes" class="text-purple-400 hover:underline no-underline font-bold">← Tutti i Nodi</NuxtLink>
-            <span>/</span>
-            <span class="text-sky-400">{{ currentNodeCategory }}</span>
-            <span>/</span>
-            <span class="text-slate-200 font-bold">n/{{ nodeSlug }}</span>
-          </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3.5">
+          <nav aria-label="Breadcrumb" class="text-xs sm:text-sm text-slate-400">
+            <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
+              <li>
+                <NuxtLink
+                  to="/"
+                  class="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 transition-colors no-underline"
+                  title="Torna alla Home"
+                >
+                  <span aria-hidden="true">🏠</span>
+                  <span>Home</span>
+                </NuxtLink>
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                <NuxtLink to="/nodes" class="text-slate-400 hover:text-purple-400 transition-colors no-underline">
+                  Talks Hub
+                </NuxtLink>
+              </li>
+              <li v-if="parentNode" class="flex items-center gap-2">
+                <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                <NuxtLink
+                  :to="`/nodes/n/${parentNode.slug}`"
+                  class="text-sky-400 hover:text-sky-300 font-mono font-bold transition-colors no-underline"
+                >
+                  {{ parentNode.icon || '#' }} n/{{ cleanNodeLabel(parentNode.name) }}
+                </NuxtLink>
+              </li>
+              <li v-else-if="currentNodeCategory" class="flex items-center gap-2">
+                <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                <span class="text-sky-400 font-mono text-xs">{{ currentNodeCategory }}</span>
+              </li>
+              <li class="flex items-center gap-2" aria-current="page">
+                <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                <span class="text-purple-400 font-mono font-bold">
+                  {{ currentNode?.icon || '#' }} n/{{ nodeDisplayName }}
+                </span>
+              </li>
+            </ol>
+          </nav>
 
-          <span class="px-3 py-1 rounded-full text-[11px] font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/35">
+          <span class="px-3 py-1 rounded-full font-mono text-[11px] font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/35">
             ⛓️ {{ isVaultNode ? 'PUBLIC BLOCKCHAIN NOTARY NODE' : 'SHA-256 VAULT CONNECTED' }}
           </span>
         </div>
@@ -235,10 +451,10 @@ function copyPostLink(postId: number) {
             </div>
             <div>
               <h1 class="text-2xl sm:text-3xl font-black text-white m-0 tracking-tight">
-                n/{{ currentNode?.name || nodeSlug }}
+                n/{{ nodeDisplayName }}
               </h1>
               <p class="text-slate-400 text-xs sm:text-sm mt-1.5 mb-0 max-w-2xl leading-relaxed">
-                {{ currentNode?.description || `Discussioni tecniche e notarizzazione crittografica per n/${nodeSlug}.` }}
+                {{ currentNode?.description || `Discussioni tecniche e notarizzazione crittografica per n/${nodeDisplayName}.` }}
               </p>
             </div>
           </div>
@@ -261,7 +477,7 @@ function copyPostLink(postId: number) {
             :to="`/nodes/n/${sub.slug}`"
             class="px-2.5 py-1 rounded-lg bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-300 no-underline transition-colors"
           >
-            {{ sub.icon || '#' }} n/{{ sub.name }}
+            {{ sub.icon || '#' }} n/{{ cleanNodeLabel(sub.name) }}
           </NuxtLink>
         </div>
 
@@ -335,7 +551,7 @@ function copyPostLink(postId: number) {
         </div>
 
         <span class="text-slate-400">
-          {{ posts.length }} thread notarizzati in <strong class="text-emerald-400">n/{{ nodeSlug }}</strong>
+          {{ posts.length }} thread notarizzati in <strong class="text-emerald-400">n/{{ nodeDisplayName }}</strong>
         </span>
       </div>
 
@@ -345,7 +561,7 @@ function copyPostLink(postId: number) {
       </div>
 
       <div v-else-if="posts.length === 0" class="p-12 text-center text-slate-400 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800 flex flex-col items-center gap-3">
-        <span>Nessun thread ancora pubblicato in <strong>n/{{ nodeSlug }}</strong>.</span>
+        <span>Nessun thread ancora pubblicato in <strong>n/{{ nodeDisplayName }}</strong>.</span>
         <button
           type="button"
           @click="openNodeComposer"
@@ -380,7 +596,7 @@ function copyPostLink(postId: number) {
                   :vault-hash="post.vaultHash"
                   :block-number="post.vaultBlockNumber"
                   :compact="true"
-                  @notarized="(h) => { post.vaultHash = h }"
+                  @notarized="(h) => { optimisticVaultMap = { ...optimisticVaultMap, [post.id]: h } }"
                 />
               </div>
             </div>
@@ -422,14 +638,15 @@ function copyPostLink(postId: number) {
           ← Pagina Precedente
         </button>
         <span class="text-purple-400 font-bold">Pagina {{ currentPage }}</span>
-        <button type="button" @click="nextPage" :disabled="posts.length < 10" class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer">
+        <button type="button" @click="nextPage" :disabled="!hasNextPage" class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer">
           Pagina Successiva →
         </button>
       </div>
-	 <DkpAdsWidget placement="nodeTalks" />
+
+      <DkpAdsWidget placement="nodeTalks" />
       <DKPRelatedThreads :currentNodeSlug="nodeSlug" />
       <DkpNodesHomeWidget />
-	   <DkpAdStrip :topic="String(route.params.slug || '')" />
+      <DkpAdStrip :topic="nodeDisplayName" />
     </div>
 
     <DKPnodesRichEditor

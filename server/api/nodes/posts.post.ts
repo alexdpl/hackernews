@@ -2,29 +2,56 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
-import { xpTransactions } from '~~/drizzle/schema'
+import { xpTransactions } from '~~/server/db/schema'
 import { extractDkpUserFromEvent } from '~~/server/utils/session'
 import { VaultService } from '~~/server/services/vault.service'
 
+function extractRows(res: any): any[] {
+  return Array.isArray(res) ? res : (res?.rows || [])
+}
+
 export default defineEventHandler(async (event) => {
-  const body = (await readBody(event)) || {}
-  const { nodeId, title, content, vaultHash, isPinned, userId } = body
-
-  const numericNodeId = Number(nodeId)
-  let targetUserId = userId ? Number(userId) : 1
-
-  // Recupero sessione utente unificata (.devkernelpulse.org)
+  // Autenticazione obbligatoria dalla sessione server (nessun fallback su body.userId o userId = 1)
   const sessionUser = extractDkpUserFromEvent(event)
-  if (sessionUser?.id) {
-    targetUserId = Number(sessionUser.id)
+  if (!sessionUser?.id || Number(sessionUser.id) <= 0) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Devi effettuare il login per pubblicare una discussione.'
+    })
   }
 
-  if (!nodeId || isNaN(numericNodeId) || !title || title.trim().length < 3 || !content || content.trim().length < 5) {
+  const body = (await readBody(event).catch(() => ({}))) || {}
+  const { nodeId, title, content, vaultHash, isPinned } = body
+
+  const numericNodeId = Number(nodeId)
+  const cleanTitle = String(title || '').trim()
+  const cleanContent = String(content || '').trim()
+
+  if (!nodeId || Number.isNaN(numericNodeId) || numericNodeId <= 0 || cleanTitle.length < 3 || cleanContent.length < 5) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Nodo, titolo (min 3 caratteri) e contenuto (min 5 caratteri) sono obbligatori.'
     })
   }
+
+  if (cleanTitle.length > 255) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Il titolo del thread non può superare i 255 caratteri.'
+    })
+  }
+
+  if (cleanContent.length > 50000) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Il contenuto supera il limite massimo di 50.000 caratteri.'
+    })
+  }
+
+  const normalizedVaultHash =
+    typeof vaultHash === 'string' && /^[a-f0-9]{64}$/i.test(vaultHash.trim())
+      ? vaultHash.trim().toLowerCase()
+      : null
 
   try {
     const db = await getDb()
@@ -32,13 +59,39 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
     }
 
+    // Verifica utente reale e ruolo su DB
+    const userRes = await db.execute(sql`
+      SELECT id, role FROM users WHERE id = ${Number(sessionUser.id)} LIMIT 1;
+    `)
+    const dbUser = extractRows(userRes)[0]
+    if (!dbUser?.id) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Sessione non valida o utente inesistente.'
+      })
+    }
+
+    const targetUserId = Number(dbUser.id)
+    const canPin = String(dbUser.role || '').toUpperCase() === 'ADMIN' && Boolean(isPinned)
+
     // Assicura collegamento Forum <-> Blockchain Vault e nodo pubblico 'blockchain-vault'
     await VaultService.ensureForumVaultConnection()
+
+    // Verifica esistenza del nodo destinazione
+    const nodeRes = await db.execute(sql`
+      SELECT id FROM nodes WHERE id = ${numericNodeId} LIMIT 1;
+    `)
+    if (!extractRows(nodeRes)[0]) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'Il nodo selezionato non esiste.'
+      })
+    }
 
     // 1. Inserimento del nuovo Thread nel nodo
     const postResult: any = await db.execute(sql`
       INSERT INTO node_posts (node_id, author_id, title, content, vault_hash, is_pinned, karma_score)
-      VALUES (${numericNodeId}, ${targetUserId}, ${title.trim()}, ${content.trim()}, ${vaultHash || null}, ${Boolean(isPinned)}, 1)
+      VALUES (${numericNodeId}, ${targetUserId}, ${cleanTitle}, ${cleanContent}, ${normalizedVaultHash}, ${canPin}, 1)
       RETURNING
         id,
         node_id AS "nodeId",
@@ -52,7 +105,7 @@ export default defineEventHandler(async (event) => {
         created_at AS "createdAt";
     `)
 
-    const newPost = Array.isArray(postResult) ? postResult[0] : (postResult?.rows?.[0] || null)
+    const newPost = extractRows(postResult)[0] || null
 
     // 2. Notarizzazione crittografica SHA-256 On-Chain sul Proof-of-Code Vault
     let vaultProof = null
@@ -82,7 +135,7 @@ export default defineEventHandler(async (event) => {
 
     await db.insert(xpTransactions).values({
       userId: targetUserId,
-      action: `Published Thread in DKP Node #${numericNodeId}: ${title.trim().substring(0, 30)}...`,
+      action: `Published Thread in DKP Node #${numericNodeId}: ${cleanTitle.substring(0, 30)}...`,
       points: rewardXp
     }).catch(() => {})
 

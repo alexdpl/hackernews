@@ -19,3 +19,10 @@ public/workbox-sw*.js*
 .env*
 # DKP Proprietary & Commercial Plugins (Hidden from public repo)
 dkp-proprietary-plugins/
+
+# Variabili d'ambiente e segreti (mai su Git)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
