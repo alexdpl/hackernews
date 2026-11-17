@@ -1,15 +1,27 @@
 // server/api/news/cron.get.ts
-import { defineEventHandler, createError } from 'h3'
+import { defineEventHandler, createError, getHeader } from 'h3'
 import { sql } from 'drizzle-orm'
 import { ingestHnFeed } from '~~/server/utils/hnFetcher'
 import { processUnprocessedStories } from '~~/server/utils/hnAiPipeline'
 import { getDb } from '~~/server/utils/db'
-import { verifyAdminOrCronAuth } from '~~/server/utils/cronAuth'
 
 export default defineEventHandler(async (event) => {
-  const db = await getDb()
-  await verifyAdminOrCronAuth(event, db)
+  const config = useRuntimeConfig(event)
+  const authHeader = getHeader(event, 'authorization') || ''
+  const xApiKey = getHeader(event, 'x-api-key') || ''
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim() || xApiKey.trim()
 
+  const expectedSecret = String(config.cronSecret || process.env.CRON_SECRET || '').trim()
+
+  // Controllo diretto immediato del CRON_SECRET
+  if (!expectedSecret || token !== expectedSecret) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized: Invalid CRON_SECRET'
+    })
+  }
+
+  const db = await getDb()
   console.log('[HN Auto-Sync] Avvio ciclo automatico di sincronizzazione...')
 
   try {

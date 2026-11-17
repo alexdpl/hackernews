@@ -14,19 +14,6 @@ export default defineNuxtConfig({
     host: 'localhost',
     port: 3000
   },
-  
-  '/api/mail/**': {
-      cache: false,
-      cors: true
-    },
-    '/api/newsletter/**': {
-      cache: false,
-      cors: true
-    },
-    '/api/autoresponder/**': {
-      cache: false,
-      cors: true
-    },
 
   // 🟢 ROUTE RULES: Gestione Caching ed Isolamento API Nitro Engine
   routeRules: {
@@ -44,7 +31,20 @@ export default defineNuxtConfig({
       cache: false,
       cors: true
     },
-    // API Notizie: Cache Edge di 5 min con Stale-While-Revalidate su CDN
+    '/api/newsletter/**': {
+      cache: false,
+      cors: true
+    },
+    '/api/autoresponder/**': {
+      cache: false,
+      cors: true
+    },
+    // API Notizie / Cron: Zero cache, CORS abilitato
+    '/api/news/**': {
+      cache: false,
+      cors: true
+    },
+    // API Notizie pubblico: Cache Edge di 5 min con Stale-While-Revalidate su CDN
     '/api/news': {
       headers: {
         'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400',
@@ -71,6 +71,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     databaseUrl: process.env.DATABASE_URL || '',
+    cronSecret: process.env.CRON_SECRET || process.env.NUXT_CRON_SECRET || '',
 
     smtpHost: process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com',
     smtpPort: Number(process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587),
@@ -118,12 +119,12 @@ export default defineNuxtConfig({
     optimizeDeps: {
       include: [
         'prismjs',
-		'sanitize-html'
+        'sanitize-html'
       ]
     }
   },
 
-  // 🟢 STYLES & TAILWIND (Unificati senza sovrascrittura)
+  // 🟢 STYLES & TAILWIND
   modules: [
     '@nuxtjs/tailwindcss'
   ],
