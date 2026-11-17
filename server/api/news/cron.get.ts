@@ -17,7 +17,6 @@ export default defineEventHandler(async (event) => {
     const topResult = await ingestHnFeed('top', 15)
     const showResult = await ingestHnFeed('show', 10)
 
-    const db = getDb()
     let insertedCount = 0
 
     const allNewStories = [...topResult.newStories, ...showResult.newStories]
