@@ -13,7 +13,7 @@ const DKP_ADMIN_MASTER_KEY = 'dkp_live_admin_master_v26_core_777'
 const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error' | 'warning'>('success')
-const activeTab = ref<'users' | 'nodes' | 'whitelist' | 'infrastructure' | 'sentinel' | 'moderation'>('users')
+const activeTab = ref<'users' | 'nodes' | 'whitelist' | 'infrastructure' | 'sentinel' | 'moderation'>('sentinel')
 const searchQuery = ref('')
 const isManualTriggering = ref(false)
 const isPurging = ref(false)
@@ -56,16 +56,37 @@ interface ThreadModerationSummary {
   createdAt: string
 }
 
+interface SentinelAgentProfile {
+  id?: number
+  username: string
+  botSpecialty?: string
+  karmaScore?: number
+}
+
+interface SentinelDecisionLog {
+  id?: number
+  sentinel: string
+  actionType: string
+  targetType?: string
+  targetId?: number
+  cdmTier?: string
+  modelUsed?: string
+  verdict?: string
+  smtpDispatched: boolean
+  summary?: string
+  createdAt: string
+}
+
 const adminModules = [
   { to: '/admin', label: '⚙️ API Gateway', tabTarget: 'users' as const },
+  { to: '/admin', label: '🛡️ Sentinels', tabTarget: 'sentinel' as const, highlight: true },
   { to: '/admin/mail', label: '📧 Mail' },
   { to: '/admin/newsletter', label: '📣 Newsletter' },
   { to: '/admin/autoresponder', label: '📡 Autoresponder' },
   { to: '/admin/crawler', label: '🤖 Crawler' },
   { to: '/admin/blog', label: '📝 Blog' },
-  { to: '/admin/nodes', label: '💬 Nodi', highlight: true },
-  { to: '/admin/shop', label: '🛍️ Shop' },
-  { to: '/admin/jobs', label: '💼 Jobs' }
+  { to: '/admin/nodes', label: '💬 Nodi' },
+  { to: '/admin/shop', label: '🛍️ Shop' }
 ]
 
 // === STATI DATI ===
@@ -75,11 +96,80 @@ const nodeThreads = ref<ThreadModerationSummary[]>([])
 const isLoadingUsers = ref(false)
 const isLoadingNodes = ref(false)
 
+// === SENTINEL NETWORK + BEMYAGENT TTEV STATE ===
+const isLoadingSentinels = ref(false)
+const isTestingEmail = ref(false)
+const testEmailRecipient = ref('alex@devkernelpulse.org')
+const sentinelAgents = ref<SentinelAgentProfile[]>([])
+const sentinelLogs = ref<SentinelDecisionLog[]>([])
+const shadowbannedUsers = ref<Array<{ id: number; username: string; email?: string; banReason?: string }>>([])
+const bemyDocs = ref<Array<{ name: string; content: string }>>([])
+const bemyMilestones = ref<string[]>([])
+const selectedBemyDoc = ref('')
+
+const SENTINEL_CATALOG = [
+  {
+    username: 'sentinel_ai',
+    roleTitle: 'Orchestrator & TTEV Coordinator',
+    tierBadge: 'TIER-1 // ORCHESTRATOR',
+    accentClass: 'text-violet-400 border-violet-500/40 bg-violet-500/10',
+    dotClass: 'text-violet-400 bg-violet-400',
+    description: 'Coordina il ciclo Think-Task-Execute-Verify, il Lazy Loading (0 token) e la telemetria OpenUI.'
+  },
+  {
+    username: 'guardian_bot',
+    roleTitle: 'Autonomous Kernel Firewall',
+    tierBadge: 'TIER-3 // HEAVY FIREWALL',
+    accentClass: 'text-orange-400 border-orange-500/40 bg-orange-500/10',
+    dotClass: 'text-emerald-400 bg-emerald-400',
+    description: 'Intercetta XSS, SQLi e spam in tempo reale applicando quarantena shadowban e alert email.'
+  },
+  {
+    username: 'snippet_master',
+    roleTitle: 'AST & AI Code Reviewer',
+    tierBadge: 'TIER-2 // STANDARD AUDIT',
+    accentClass: 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10',
+    dotClass: 'text-cyan-400 bg-cyan-400',
+    description: 'Analizza blocchi di codice nei post/commenti segnalando vulnerabilità DOM e query non parametrizzate.'
+  },
+  {
+    username: 'security_watch',
+    roleTitle: 'CVE & Release Integrity Monitor',
+    tierBadge: 'TIER-2 // ADVISORY WATCH',
+    accentClass: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10',
+    dotClass: 'text-emerald-400 bg-emerald-400',
+    description: 'Presidia i nodi Core Releases & Patch e i bollettini CVE con checklist SHA-256 e migrazioni SQL.'
+  }
+]
+
+const enrichedSentinels = computed(() => {
+  return SENTINEL_CATALOG.map((meta) => {
+    const dbProfile = sentinelAgents.value.find(a => a.username?.toLowerCase() === meta.username)
+    const lastLog = sentinelLogs.value.find(l => l.sentinel?.toLowerCase() === meta.username)
+    const actionsCount = sentinelLogs.value.filter(l => l.sentinel?.toLowerCase() === meta.username).length
+    return {
+      ...meta,
+      online: Boolean(dbProfile),
+      karmaScore: dbProfile?.karmaScore ?? 0,
+      actionsCount,
+      lastCdmTier: lastLog?.cdmTier || (meta.username === 'guardian_bot' ? 'HEAVY' : 'STANDARD'),
+      lastVerdict: lastLog?.verdict || 'PASS',
+      lastMailSent: Boolean(lastLog?.smtpDispatched),
+      lastActionText: lastLog ? `${lastLog.actionType} (${lastLog.modelUsed || 'auto'})` : 'Standby // Lazy Monitoring',
+      lastActivityAt: lastLog?.createdAt ? new Date(lastLog.createdAt).toLocaleString('it-IT') : 'Operativo'
+    }
+  })
+})
+
+const selectedBemyDocContent = computed(() => {
+  return bemyDocs.value.find(d => d.name === selectedBemyDoc.value)?.content || ''
+})
+
 // Telemetria Trinity AI v2.6
 const sentinelData = ref({
   status: 'ACTIVE_PROTECTION',
   version: 'v2.6-PURE-SQL',
-  region: 'europe-west1',
+  region: 'europe-west4',
   autoDefendEnabled: true,
   globalThreatIndex: 4,
   blockedRequests24h: 2410,
@@ -101,11 +191,84 @@ function triggerToast(msg: string, type: 'success' | 'error' | 'warning' = 'succ
   setTimeout(() => { showToast.value = false }, 4000)
 }
 
+async function fetchSentinelNetworkControl() {
+  isLoadingSentinels.value = true
+  try {
+    const [sentinelsRes, bemyRes]: any = await Promise.all([
+      $fetch('/api/admin/sentinels', { credentials: 'include' }).catch(() => null),
+      $fetch('/api/admin/bemyagent', { credentials: 'include' }).catch(() => null)
+    ])
+
+    if (sentinelsRes?.success) {
+      sentinelAgents.value = Array.isArray(sentinelsRes.sentinels) ? sentinelsRes.sentinels : []
+      shadowbannedUsers.value = Array.isArray(sentinelsRes.shadowbannedUsers) ? sentinelsRes.shadowbannedUsers : []
+    }
+
+    if (bemyRes?.success) {
+      bemyDocs.value = Array.isArray(bemyRes.docs) ? bemyRes.docs : []
+      bemyMilestones.value = Array.isArray(bemyRes.workMilestones) ? bemyRes.workMilestones : []
+      if (!selectedBemyDoc.value && bemyDocs.value.length > 0) {
+        selectedBemyDoc.value = bemyDocs.value[0].name
+      }
+      if (Array.isArray(bemyRes.ttevMetrics) && bemyRes.ttevMetrics.length > 0) {
+        sentinelLogs.value = bemyRes.ttevMetrics
+      } else if (Array.isArray(sentinelsRes?.logs)) {
+        sentinelLogs.value = sentinelsRes.logs
+      }
+    } else if (Array.isArray(sentinelsRes?.logs)) {
+      sentinelLogs.value = sentinelsRes.logs
+    }
+  } finally {
+    isLoadingSentinels.value = false
+  }
+}
+
+async function dispatchSentinelEmailTest() {
+  if (isTestingEmail.value) return
+  isTestingEmail.value = true
+  try {
+    const res: any = await $fetch('/api/admin/sentinels', {
+      method: 'POST',
+      credentials: 'include',
+      body: {
+        action: 'test_smtp',
+        to: testEmailRecipient.value.trim() || 'alex@devkernelpulse.org'
+      }
+    })
+    if (res?.success) {
+      triggerToast(`✉️ ${res.message || 'Email inviata via Resend HTTPS!'}`, 'success')
+      await fetchSentinelNetworkControl()
+    } else {
+      triggerToast(`⚠️ ${res?.message || 'Errore invio email'}`, 'warning')
+    }
+  } catch (err: any) {
+    triggerToast(`❌ Errore canale email: ${err?.data?.statusMessage || err?.message}`, 'error')
+  } finally {
+    isTestingEmail.value = false
+  }
+}
+
+async function revokeShadowban(userId: number, username: string) {
+  try {
+    const res: any = await $fetch('/api/admin/sentinels', {
+      method: 'POST',
+      credentials: 'include',
+      body: { action: 'unban', userId }
+    })
+    if (res?.success) {
+      shadowbannedUsers.value = shadowbannedUsers.value.filter(u => u.id !== userId)
+      triggerToast(`🔓 Shadowban revocato per @${username}`, 'success')
+    }
+  } catch (err: any) {
+    triggerToast(`❌ Errore revoca shadowban: ${err?.data?.statusMessage || err?.message}`, 'error')
+  }
+}
+
 function toggleAutoDefend() {
   sentinelData.value.autoDefendEnabled = !sentinelData.value.autoDefendEnabled
   triggerToast(
     sentinelData.value.autoDefendEnabled
-      ? '🤖 Sentinel Trinity AI (v2.6): Protezione euristica in europe-west1 ATTIVATA!'
+      ? '🤖 Sentinel Trinity AI (v2.6): Protezione euristica in europe-west4 ATTIVATA!'
       : '⚠️ Sentinel Trinity AI: Protezione euristica DISATTIVATA.',
     sentinelData.value.autoDefendEnabled ? 'success' : 'warning'
   )
@@ -142,7 +305,7 @@ async function runManualIngestion() {
 }
 
 async function purgeDatabase() {
-  if (!confirm("⚠️ Attenzione! Vuoi davvero eliminare tutti i log di ingestione vecchi? Operazione non reversibile.")) return
+  if (!confirm('⚠️ Attenzione! Vuoi davvero eliminare tutti i log di ingestione vecchi? Operazione non reversibile.')) return
 
   isPurging.value = true
   try {
@@ -157,7 +320,7 @@ async function purgeDatabase() {
     if (res?.success) {
       triggerToast(`🧹 ${res.message}`, 'success')
     } else {
-      triggerToast(`⚠️ Warning: Impossibile effettuare il purge.`, 'warning')
+      triggerToast('⚠️ Warning: Impossibile effettuare il purge.', 'warning')
     }
   } catch (err: any) {
     console.error('Errore chiamata cron purge:', err)
@@ -313,10 +476,12 @@ async function deleteThread(id: number) {
 
 onMounted(() => {
   fetchSentinel()
+  fetchSentinelNetworkControl()
   fetchUsers()
   fetchAdminNodesData(1)
 })
 </script>
+
 <template>
   <div class="max-w-7xl mx-auto flex flex-col gap-6 pb-20 px-4 sm:px-6 pt-6 font-sans text-slate-100">
     
@@ -346,7 +511,7 @@ onMounted(() => {
       </div>
     </Transition>
 
-    <!-- 1. HEADER CONTROL CENTER CON FIX PULSANTI TRIGGER & PURGE -->
+    <!-- 1. HEADER CONTROL CENTER -->
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-[#080d1a] via-[#091124] to-[#040711] border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl gap-6 relative overflow-hidden">
       <div class="absolute -right-20 -top-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -left-20 -bottom-20 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -359,12 +524,12 @@ onMounted(() => {
           <span class="bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/40 px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(0,220,130,0.25)]">
             v2.6 PURE-SQL
           </span>
-          <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase">
-            Sentinel Trinity AI
+          <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase font-mono">
+            BEMYAGENT TTEV-v1
           </span>
         </div>
         <p class="text-slate-400 text-xs sm:text-sm max-w-2xl m-0">
-          Orchestra la persistenza Pure SQL su NeonDB, l'invalidazione cache dinamica Cloudflare Edge e la sicurezza dei pod Cloud Run.
+          Orchestra le 4 Sentinelle Autonome, la persistenza Pure SQL su NeonDB, il canale email Resend HTTPS e i pod Cloud Run.
         </p>
       </div>
 
@@ -401,11 +566,10 @@ onMounted(() => {
           </span>
         </div>
         <NuxtLink
-          to="/admin"
-          @click="activeTab = 'users'"
-          class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 transition-all font-mono no-underline"
+          to="/tools/openui-studio"
+          class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg font-bold text-xs text-purple-300 bg-purple-500/10 border border-purple-500/40 hover:bg-purple-500/20 transition-all font-mono no-underline"
         >
-          🏠 Dashboard Main
+          🎨 OpenUI Studio + TTEV ↗
         </NuxtLink>
       </div>
 
@@ -417,7 +581,7 @@ onMounted(() => {
           @click="mod.tabTarget && (activeTab = mod.tabTarget)"
           class="inline-flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl font-bold text-xs transition-all no-underline truncate"
           :class="mod.highlight
-            ? 'text-sky-400 bg-sky-500/10 border border-sky-500/40 hover:bg-sky-500/20 shadow-[0_0_10px_rgba(56,189,248,0.15)]'
+            ? 'text-cyan-300 bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.18)]'
             : 'text-emerald-400 bg-emerald-500/5 border border-emerald-500/30 hover:bg-emerald-500/15 hover:border-emerald-400'"
         >
           {{ mod.label }}
@@ -426,19 +590,19 @@ onMounted(() => {
     </div>
 
     <!-- 3. SENTINEL TRINITY AI FIREWALL & TELEMETRY BANNER -->
-    <div class="bg-gradient-to-br from-[#080d1a] via-[#040814] to-[#02040a] border border-slate-800 border-l-4 border-l-purple-500 rounded-2xl p-6 sm:p-8 shadow-2xl">
+    <div class="bg-gradient-to-br from-[#080d1a] via-[#040814] to-[#02040a] border border-slate-800 border-l-4 border-l-cyan-400 rounded-2xl p-6 sm:p-8 shadow-2xl">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/60 pb-5 mb-5 gap-4">
         <div class="flex items-center gap-4">
-          <span class="text-3xl sm:text-4xl drop-shadow-[0_0_16px_rgba(168,85,247,0.7)]">🛡️</span>
+          <span class="text-3xl sm:text-4xl drop-shadow-[0_0_16px_rgba(34,211,238,0.6)]">🛡️</span>
           <div>
-            <h2 class="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-3 m-0">
-              Pulse Sentinel Trinity AI
-              <span class="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded-full text-xs font-extrabold uppercase shadow-[0_0_10px_rgba(168,85,247,0.2)] font-mono">
+            <h2 class="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-3 m-0 flex-wrap">
+              Pulse Sentinel Network
+              <span class="bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-2.5 py-0.5 rounded-full text-xs font-extrabold uppercase font-mono">
                 {{ sentinelData.version }}
               </span>
             </h2>
             <p class="text-slate-400 text-xs sm:text-sm mt-0.5 mb-0">
-              Protezione euristica attiva in Cloud Run (europe-west1) &amp; Cloudflare Edge WAF
+              4 Agenti AI Autonomi su Cloud Run (europe-west4) • Protocollo BEMYAGENT TTEV + Resend HTTPS
             </p>
           </div>
         </div>
@@ -460,31 +624,23 @@ onMounted(() => {
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-mono">
         <div class="flex flex-col gap-2">
-          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GLOBAL THREAT INDEX</span>
-          <div class="flex items-center gap-3">
-            <div class="flex-grow h-2.5 bg-slate-800 rounded-full overflow-hidden">
-              <div
-                class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-300"
-                :style="{ width: (sentinelData.globalThreatIndex || 4) + '%' }"
-              ></div>
-            </div>
-            <span class="text-sky-400 font-black text-sm">{{ sentinelData.globalThreatIndex || 4 }}%</span>
-          </div>
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">SENTINELLE ATTIVE</span>
+          <span class="text-2xl font-black text-cyan-400">{{ sentinelAgents.length || 4 }} / 4 ONLINE</span>
         </div>
 
         <div class="flex flex-col gap-1">
-          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">MALEVOLE BLOCCATE (24H)</span>
-          <span class="text-2xl font-black text-purple-400">{{ (sentinelData.blockedRequests24h || 2410).toLocaleString() }}</span>
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">DECISIONI TTEV REGISTRATE</span>
+          <span class="text-2xl font-black text-purple-400">{{ sentinelLogs.length }}</span>
         </div>
 
         <div class="flex flex-col gap-1">
-          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">GCP ARMOR / REGION</span>
-          <span class="text-lg font-black text-emerald-400">{{ sentinelData.gcpArmorStatus || 'OPTIMAL' }} (BE)</span>
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">BEMYAGENT WORKSPACE</span>
+          <span class="text-lg font-black text-emerald-400">{{ bemyDocs.length }} Docs • {{ bemyMilestones.length }} HTN</span>
         </div>
 
         <div class="flex flex-col gap-1">
-          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">REGOLE ATTIVE</span>
-          <span class="text-lg font-black text-sky-400">{{ sentinelData.activeFirewallRules || 32 }} Rules</span>
+          <span class="text-[11px] text-slate-400 uppercase font-extrabold tracking-wider">QUARANTENA SHADOWBAN</span>
+          <span class="text-lg font-black text-amber-400">{{ shadowbannedUsers.length }} Utenti</span>
         </div>
       </div>
     </div>
@@ -503,63 +659,16 @@ onMounted(() => {
       </div>
     </Transition>
 
-    <!-- 4. METRICHE TOP TELEMETRY DASHBOARD -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all group shadow-lg">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
-          NeonDB Pure SQL <span class="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black border border-emerald-500/30">PURE SQL MODE</span>
-        </div>
-        <div class="text-2xl sm:text-3xl font-black text-emerald-400 my-2 font-mono group-hover:scale-105 transition-transform">
-          {{ sentinelData.dbLatencyMs || 9 }} ms
-        </div>
-        <div class="text-xs text-slate-500 flex justify-between">
-          <span>Lazy Singleton Proxy</span>
-          <span class="text-emerald-400 font-mono">HTTP Pool</span>
-        </div>
-      </div>
-
-      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-sky-500/50 transition-all group shadow-lg">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
-          Cloudflare SWR Edge <span class="bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded text-[10px] font-black border border-sky-500/30">DYNAMIC PURGE</span>
-        </div>
-        <div class="text-2xl sm:text-3xl font-black text-sky-400 my-2 font-mono group-hover:scale-105 transition-transform">
-          {{ sentinelData.edgeCacheHitRatio || 99.8 }}%
-        </div>
-        <div class="text-xs text-slate-500 flex justify-between">
-          <span>Purge API v4 Active</span>
-          <span class="text-sky-400 font-mono">PoP MXP</span>
-        </div>
-      </div>
-
-      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-purple-500/50 transition-all group shadow-lg">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
-          HN Ingestion Cron <span class="bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded text-[10px] font-black border border-purple-500/30">SCHEDULER 15M</span>
-        </div>
-        <div class="text-2xl sm:text-3xl font-black text-purple-400 my-2 font-mono group-hover:scale-105 transition-transform">
-          AUTOMATED
-        </div>
-        <div class="text-xs text-slate-500 flex justify-between">
-          <span>Ultimo sync:</span>
-          <span class="text-purple-300 font-mono">{{ sentinelData.lastIngestionTime }}</span>
-        </div>
-      </div>
-
-      <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all group shadow-lg">
-        <div class="flex justify-between items-center text-xs font-bold text-slate-400 font-mono">
-          Licenze &amp; Keys <span class="bg-cyan-500/15 text-cyan-400 px-2 py-0.5 rounded text-[10px] font-black border border-cyan-500/30">LIVE DB</span>
-        </div>
-        <div class="text-2xl sm:text-3xl font-black text-white my-2 font-mono group-hover:scale-105 transition-transform">
-          {{ users.length }}
-        </div>
-        <div class="text-xs text-slate-500 flex justify-between">
-          <span>Chiavi attive su Neon</span>
-          <span class="text-cyan-400 font-mono">{{ nodes.length }} Nodi Forum</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5. TAB DI NAVIGAZIONE INTERNA -->
+    <!-- 4. TAB DI NAVIGAZIONE INTERNA -->
     <div class="flex gap-2 border-b border-slate-800/80 pb-3 overflow-x-auto font-mono">
+      <button
+        type="button"
+        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'sentinel' ? 'bg-[#080d1a] border border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(34,211,238,0.2)]' : 'text-slate-400 hover:text-white']"
+        @click="activeTab = 'sentinel'; fetchSentinelNetworkControl()"
+      >
+        🛡️ Sentinel Network &amp; TTEV ({{ sentinelLogs.length }})
+      </button>
+
       <button
         type="button"
         :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'users' ? 'bg-[#080d1a] border border-emerald-500 text-emerald-400 shadow-[0_0_12px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']"
@@ -578,26 +687,10 @@ onMounted(() => {
 
       <button
         type="button"
-        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'whitelist' ? 'bg-[#080d1a] border border-cyan-500 text-cyan-400 shadow-[0_0_12px_rgba(56,189,248,0.15)]' : 'text-slate-400 hover:text-white']"
-        @click="activeTab = 'whitelist'"
-      >
-        🛡️ Whitelist IP &amp; Esenzioni
-      </button>
-
-      <button
-        type="button"
         :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'infrastructure' ? 'bg-[#080d1a] border border-emerald-500 text-emerald-400 shadow-[0_0_12px_rgba(0,220,130,0.15)]' : 'text-slate-400 hover:text-white']"
         @click="activeTab = 'infrastructure'"
       >
-        📊 Telemetria CLI &amp; Cloud Run
-      </button>
-
-      <button
-        type="button"
-        :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'sentinel' ? 'bg-[#080d1a] border border-purple-500 text-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : 'text-slate-400 hover:text-white']"
-        @click="activeTab = 'sentinel'"
-      >
-        🤖 Log Minacce &amp; Terminale SSE ({{ sentinelData.recentThreats?.length || 0 }})
+        📊 Telemetria Cloud Run
       </button>
 
       <button
@@ -605,12 +698,212 @@ onMounted(() => {
         :class="['px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap', activeTab === 'moderation' ? 'bg-[#080d1a] border border-amber-500 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]' : 'text-slate-400 hover:text-white']"
         @click="activeTab = 'moderation'"
       >
-        ⚖️ Coda Moderazione
+        ⚖️ Quarantena &amp; Moderazione ({{ shadowbannedUsers.length }})
       </button>
     </div>
 
+    <!-- TAB SENTINEL NETWORK CONTROL PANEL (NUOVO DESIGN DKP PRO v2.6 PURE SQL) -->
+    <div v-if="activeTab === 'sentinel'" class="relative rounded-3xl bg-[#0f172a] border border-slate-700/80 p-6 sm:p-8 shadow-2xl overflow-hidden bg-grid-sentinel">
+      <!-- Ambient Glow -->
+      <div class="absolute -top-24 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 flex flex-col gap-6">
+        <!-- Control Panel Header + Quick Resend Email Tester -->
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-700/70 pb-5">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+              <span class="font-mono text-xs font-bold uppercase tracking-widest text-cyan-400">
+                AUTONOMOUS AGENT MATRIX // PURE SQL TELEMETRY
+              </span>
+            </div>
+            <h3 class="text-xl sm:text-2xl font-black text-slate-100 mt-1 mb-0">
+              Sentinel Network Control Panel
+            </h3>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 font-mono">
+            <input
+              v-model="testEmailRecipient"
+              type="email"
+              placeholder="alex@devkernelpulse.org"
+              class="bg-slate-950/90 border border-slate-700 text-slate-100 px-3 py-2 rounded-xl text-xs outline-none focus:border-cyan-400"
+            />
+            <button
+              type="button"
+              @click="dispatchSentinelEmailTest"
+              :disabled="isTestingEmail"
+              class="px-3.5 py-2 rounded-xl bg-cyan-500/15 border border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/25 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+            >
+              {{ isTestingEmail ? 'Invio...' : '✉️ Test Resend Email' }}
+            </button>
+            <button
+              type="button"
+              @click="fetchSentinelNetworkControl"
+              :disabled="isLoadingSentinels"
+              class="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:border-cyan-400 text-xs font-bold transition-all cursor-pointer"
+            >
+              {{ isLoadingSentinels ? 'Sync...' : '↻ Aggiorna' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 CARD AGENTI AUTONOMI (CDM TIER, VERDETTO PASS/FAIL, STATO EMAIL) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div
+            v-for="agent in enrichedSentinels"
+            :key="agent.username"
+            class="bg-slate-800/85 backdrop-blur-sm border border-slate-700 hover:border-cyan-400/60 rounded-2xl p-5 flex flex-col justify-between gap-4 transition-all shadow-lg"
+          >
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-3">
+                <span :class="['font-mono text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider', agent.accentClass]">
+                  {{ agent.tierBadge }}
+                </span>
+                <span class="flex items-center gap-1.5 font-mono text-[11px] font-bold text-emerald-400">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  LIVE
+                </span>
+              </div>
+
+              <h4 class="font-mono text-base font-bold text-white m-0">@{{ agent.username }}</h4>
+              <p class="text-xs font-semibold text-cyan-300/90 mt-0.5 mb-2">{{ agent.roleTitle }}</p>
+              <p class="text-xs text-slate-400 leading-relaxed m-0">{{ agent.description }}</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-700/80 flex flex-col gap-2 font-mono text-[11px]">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">CDM Tier:</span>
+                <span class="px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 font-bold">
+                  {{ agent.lastCdmTier }}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Symbiotic Verdict:</span>
+                <span
+                  :class="[
+                    'px-2 py-0.5 rounded font-bold border',
+                    agent.lastVerdict === 'FAIL'
+                      ? 'bg-red-500/15 text-red-400 border-red-500/40'
+                      : agent.lastVerdict === 'PASS_WITH_CAVEATS'
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                        : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                  ]"
+                >
+                  {{ agent.lastVerdict }}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">Canale Email:</span>
+                <span :class="agent.lastMailSent ? 'text-emerald-400 font-bold' : 'text-cyan-300'">
+                  {{ agent.lastMailSent ? '✉️ DISPATCHED' : '⚡ READY (HTTPS)' }}
+                </span>
+              </div>
+
+              <div class="text-[10px] text-slate-500 truncate pt-1 border-t border-slate-800">
+                Ultimo: {{ agent.lastActionText }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STREAM DECISIONI TTEV + MEMORIA PERMANENTE BEMYAGENT DOCS -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Colonna 1-2: Tabella Audit TTEV in tempo reale -->
+          <div class="lg:col-span-2 bg-slate-950/90 border border-slate-800 rounded-2xl p-5 flex flex-col gap-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span class="font-mono text-xs font-bold uppercase tracking-wider text-cyan-400">
+                ⚡ Symbiotic Validation &amp; TTEV Audit Stream
+              </span>
+              <span class="font-mono text-[11px] text-slate-400">
+                Neon Pure SQL • Ultimi {{ sentinelLogs.length }} eventi
+              </span>
+            </div>
+
+            <div v-if="sentinelLogs.length === 0" class="py-10 text-center font-mono text-xs text-slate-500">
+              Nessuna decisione registrata finora. Crea un post con codice o attiva il test email per generare una traccia TTEV.
+            </div>
+
+            <div v-else class="overflow-x-auto max-h-80 custom-scrollbar">
+              <table class="w-full text-left border-collapse font-mono text-xs">
+                <thead>
+                  <tr class="text-[10px] uppercase text-slate-400 border-b border-slate-800 bg-slate-900/60">
+                    <th class="p-2.5">Sentinella</th>
+                    <th class="p-2.5">Azione</th>
+                    <th class="p-2.5">CDM Tier</th>
+                    <th class="p-2.5">Verdetto</th>
+                    <th class="p-2.5">Email</th>
+                    <th class="p-2.5">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(log, idx) in sentinelLogs" :key="idx" class="border-b border-slate-900 hover:bg-slate-900/50">
+                    <td class="p-2.5 font-bold text-cyan-300">@{{ log.sentinel }}</td>
+                    <td class="p-2.5 text-slate-200">{{ log.actionType }}</td>
+                    <td class="p-2.5">
+                      <span class="px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 text-[10px]">
+                        {{ log.cdmTier || 'STANDARD' }}
+                      </span>
+                    </td>
+                    <td class="p-2.5">
+                      <span
+                        :class="[
+                          'px-2 py-0.5 rounded text-[10px] font-bold',
+                          log.verdict === 'FAIL'
+                            ? 'bg-red-500/20 text-red-400'
+                            : log.verdict === 'PASS_WITH_CAVEATS'
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-emerald-500/20 text-emerald-400'
+                        ]"
+                      >
+                        {{ log.verdict || 'PASS' }}
+                      </span>
+                    </td>
+                    <td class="p-2.5">
+                      <span :class="log.smtpDispatched ? 'text-emerald-400 font-bold' : 'text-slate-500'">
+                        {{ log.smtpDispatched ? '✉️ SENT' : '—' }}
+                      </span>
+                    </td>
+                    <td class="p-2.5 text-slate-400 text-[11px]">
+                      {{ log.createdAt ? new Date(log.createdAt).toLocaleString('it-IT') : '' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Colonna 3: Memoria Permanente BEMYAGENT (.bemyagent/docs) -->
+          <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-5 flex flex-col gap-3 font-mono">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                🧠 Memoria BEMYAGENT ({{ bemyDocs.length }})
+              </span>
+              <span class="text-[10px] text-purple-300 bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded">
+                {{ bemyMilestones.join(', ') || 'milestone-2' }}
+              </span>
+            </div>
+
+            <select
+              v-model="selectedBemyDoc"
+              class="bg-slate-900 border border-slate-700 text-cyan-300 text-xs rounded-xl px-3 py-2 outline-none"
+            >
+              <option v-for="doc in bemyDocs" :key="doc.name" :value="doc.name">
+                📄 {{ doc.name }}
+              </option>
+            </select>
+
+            <pre class="text-[11px] text-slate-300 whitespace-pre-wrap bg-slate-900/70 border border-slate-800 rounded-xl p-3 max-h-64 overflow-y-auto leading-relaxed">{{ selectedBemyDocContent || 'Nessun documento caricato.' }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 1: GESTIONE LICENZE E API KEYS -->
-    <div v-if="activeTab === 'users'" class="flex flex-col gap-4">
+    <div v-else-if="activeTab === 'users'" class="flex flex-col gap-4">
       <div class="flex justify-between items-center gap-4 flex-wrap">
         <input
           v-model="searchQuery"
@@ -777,7 +1070,6 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
-		  <!-- Barra Paginazione Thread -->
           <div v-if="threadsTotal > threadsLimit" class="flex items-center justify-between pt-4 mt-4 border-t border-slate-800/80 font-mono text-xs">
             <span class="text-slate-400">
               Pagina <strong class="text-white">{{ threadsPage }}</strong> di <strong class="text-white">{{ totalThreadPages }}</strong> ({{ threadsTotal }} thread)
@@ -805,13 +1097,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- TAB 3: WHITELIST IP -->
-    <div v-else-if="activeTab === 'whitelist'" class="flex flex-col gap-6">
-      <!-- Assicurati che <AdminWhitelistManager /> esista o mockalo se non lo usi in questo branch -->
-      <!-- <AdminWhitelistManager /> -->
-       <div class="bg-[#080d1a] border border-slate-800 p-8 text-center text-slate-400 rounded-2xl font-mono">🛡️ Modulo Whitelist IP in caricamento...</div>
-    </div>
-
     <!-- TAB 4: TELEMETRIA INFRASTRUTTURA CLOUD RUN -->
     <div v-else-if="activeTab === 'infrastructure'" class="flex flex-col gap-6">
       <div class="bg-sky-500/10 border border-sky-500/30 rounded-2xl p-6 flex items-start gap-4">
@@ -819,32 +1104,76 @@ onMounted(() => {
         <div>
           <h4 class="text-sky-400 font-bold text-lg mb-1 mt-0">Infrastruttura GCP &amp; Telemetria Cloud Run</h4>
           <p class="text-slate-300 text-sm m-0">
-            Stato dei pod attivi su <strong class="text-white">GCP Cloud Run (europe-west1)</strong>, connessione HTTP Neon PostgreSQL ed invalidazione SWR Edge Cloudflare.
+            Stato dei pod attivi su <strong class="text-white">GCP Cloud Run (europe-west4)</strong>, connessione HTTP Neon PostgreSQL ed invalidazione SWR Edge Cloudflare.
           </p>
         </div>
       </div>
-      <!-- <AdminCliAnalytics /> -->
-      <div class="bg-[#080d1a] border border-slate-800 p-8 text-center text-slate-400 rounded-2xl font-mono">📊 Modulo CLI Analytics in caricamento...</div>
-    </div>
-
-    <!-- TAB 5: SENTINEL LOGS & FIREWALL STREAM -->
-    <div v-else-if="activeTab === 'sentinel'" class="flex flex-col gap-6">
-      <!-- <AdminSentinelBlacklistTable /> -->
-      <!-- <AdminSentinelLiveStream /> -->
-      <div class="bg-[#080d1a] border border-slate-800 p-8 text-center text-slate-400 rounded-2xl font-mono">🤖 Stream Log Sentinel in caricamento...</div>
-    </div>
-
-    <!-- TAB 6: CODA MODERAZIONE -->
-    <div v-else-if="activeTab === 'moderation'" class="flex flex-col gap-4">
-      <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex items-start gap-4">
-        <span class="text-3xl">🛡️</span>
-        <div>
-          <h4 class="text-amber-400 font-bold text-lg mb-1 mt-0">Coda Moderazione Contenuti &amp; Post</h4>
-          <p class="text-slate-300 text-sm m-0">Articoli e discussioni segnalate in attesa di revisione da parte del team di sicurezza DKP.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono">
+        <div class="bg-[#080d1a] border border-slate-800 rounded-2xl p-5">
+          <span class="text-xs text-slate-400">NEON PURE SQL LATENCY</span>
+          <div class="text-2xl font-black text-emerald-400 mt-1">{{ sentinelData.dbLatencyMs || 9 }} ms</div>
+        </div>
+        <div class="bg-[#080d1a] border border-slate-800 rounded-2xl p-5">
+          <span class="text-xs text-slate-400">CLOUDFLARE SWR HIT RATIO</span>
+          <div class="text-2xl font-black text-sky-400 mt-1">{{ sentinelData.edgeCacheHitRatio || 99.8 }}%</div>
+        </div>
+        <div class="bg-[#080d1a] border border-slate-800 rounded-2xl p-5">
+          <span class="text-xs text-slate-400">MAIL RELAY TRANSPORT</span>
+          <div class="text-2xl font-black text-cyan-400 mt-1">RESEND HTTPS</div>
         </div>
       </div>
-      <div class="bg-[#080d1a] border border-slate-800 p-8 text-center text-slate-400 rounded-2xl font-mono">⚖️ Coda moderazione vuota (tutti gli elementi approvati o processati).</div>
+    </div>
+
+    <!-- TAB 6: QUARANTENA SHADOWBAN & MODERAZIONE -->
+    <div v-else-if="activeTab === 'moderation'" class="flex flex-col gap-4">
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex items-start gap-4">
+        <span class="text-3xl">⚖️</span>
+        <div>
+          <h4 class="text-amber-400 font-bold text-lg mb-1 mt-0">Utenti in Quarantena (Guardian Bot Firewall)</h4>
+          <p class="text-slate-300 text-sm m-0">Account posti in modalità shadowban preventivo dalle Sentinelle. Puoi revocare il blocco con un clic.</p>
+        </div>
+      </div>
+
+      <div v-if="shadowbannedUsers.length === 0" class="bg-[#080d1a] border border-slate-800 p-8 text-center text-slate-400 rounded-2xl font-mono text-sm">
+        ✅ Nessun utente in quarantena al momento.
+      </div>
+
+      <div v-else class="bg-[#080d1a] border border-slate-800 rounded-2xl overflow-hidden">
+        <table class="w-full text-left border-collapse font-mono text-xs">
+          <thead>
+            <tr class="bg-[#040814] text-slate-400 uppercase border-b border-slate-800">
+              <th class="p-4">Utente</th>
+              <th class="p-4">Motivo Intercettazione</th>
+              <th class="p-4 text-right">Azione</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="u in shadowbannedUsers" :key="u.id" class="border-b border-slate-800/70">
+              <td class="p-4 font-bold text-white">@{{ u.username }}</td>
+              <td class="p-4 text-amber-300">{{ u.banReason || 'Regola Firewall' }}</td>
+              <td class="p-4 text-right">
+                <button
+                  type="button"
+                  @click="revokeShadowban(u.id, u.username)"
+                  class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 font-bold cursor-pointer"
+                >
+                  🔓 Revoca Shadowban
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </div>
 </template>
+
+<style scoped>
+.bg-grid-sentinel {
+  background-image:
+    linear-gradient(to right, rgba(34, 211, 238, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.035) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+</style>

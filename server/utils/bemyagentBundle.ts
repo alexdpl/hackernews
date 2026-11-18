@@ -1,4 +1,4 @@
-// server/utils/bemyagentBundle.ts (Auto-generated from .bemyagent workspace)
+// server/utils/bemyagentBundle.ts
 export const BEMYAGENT_BUNDLE: {
   docs: Array<{ name: string; content: string }>
   workMilestones: string[]

@@ -14,7 +14,6 @@ export default defineEventHandler(async (event) => {
   let docs: Array<{ name: string; content: string }> = []
   const milestoneSet = new Set<string>()
 
-  // 1. Tenta lettura dinamica da Nitro assets:server
   try {
     const storage = useStorage('assets:server')
     const keys = await storage.getKeys('bemyagent')
@@ -38,17 +37,10 @@ export default defineEventHandler(async (event) => {
       }
     }
     docs.sort((a, b) => a.name.localeCompare(b.name))
-  } catch {
-    // Usa il bundle compilato come fallback garantito
-  }
+  } catch {}
 
-  // 2. Fallback garantito dal bundle compilato nel server Nitro
-  if (docs.length === 0) {
-    docs = [...BEMYAGENT_BUNDLE.docs]
-  }
-  if (milestoneSet.size === 0) {
-    BEMYAGENT_BUNDLE.workMilestones.forEach((m) => milestoneSet.add(m))
-  }
+  if (docs.length === 0) docs = [...BEMYAGENT_BUNDLE.docs]
+  if (milestoneSet.size === 0) BEMYAGENT_BUNDLE.workMilestones.forEach((m) => milestoneSet.add(m))
 
   const db = await getDb()
   let ttevMetrics: any[] = []
