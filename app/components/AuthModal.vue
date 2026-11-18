@@ -49,9 +49,6 @@ function handleClose() {
   closeAuthModal()
 }
 
-const authCore = useAuthCore() as any
-const { isAuthModalOpen, authTab, closeAuthModal, login } = authCore
-
 async function handleFormSubmit() {
   if (isLoading.value) return
   errorMessage.value = ''
