@@ -61,7 +61,7 @@ async function verifyPasswordAndUpgrade(
     return false
   }
 
-  // 3. Formato legacy v2.5 plaintext -> verifica constant-time + migrazione automatica a scrypt
+  // 3. Formato legacy plaintext -> verifica constant-time + migrazione a scrypt
   if (safeStringEqual(plainPassword, storedHash)) {
     const upgraded = hashPasswordScrypt(plainPassword)
     await db.execute(sql`
@@ -121,7 +121,7 @@ export default defineEventHandler(async (event) => {
       LIMIT 1;
     `)
 
-    const dbUser = extractRows(userRes)[0]
+    let dbUser = extractRows(userRes)[0]
 
     // Configurazione Admin Secret d'emergenza (da runtimeConfig o process.env)
     const config = useRuntimeConfig(event)
@@ -133,11 +133,26 @@ export default defineEventHandler(async (event) => {
       identifier.toLowerCase() === 'alexdpl' ||
       identifier.toLowerCase() === 'alex@devkernelpulse.org'
 
-    // Se la secret è configurata e coincide, autorizza immediatamente come admin!
     const matchedAdminSecret =
       isFounderIdentifier &&
       configuredAdminSecret.length > 0 &&
       password === configuredAdminSecret
+
+    // Se l'utente non esiste nel DB ma combacia la secret d'emergenza, creiamolo al volo!
+    if (!dbUser && matchedAdminSecret) {
+      const defaultHash = hashPasswordScrypt(password)
+      await db.execute(sql`
+        INSERT INTO users (username, email, role, xp, avatar_url, password_hash)
+        VALUES ('alexdpl', 'alex@devkernelpulse.org', 'admin', 15000, 'https://github.com/alexdpl.png', ${defaultHash})
+        ON CONFLICT (username) DO NOTHING;
+      `).catch(() => {})
+
+      const retryRes = await db.execute(sql`
+        SELECT id, username, email, password_hash AS "passwordHash", role, COALESCE(xp, 0)::int AS xp, avatar_url AS "avatarUrl"
+        FROM users WHERE LOWER(username) = 'alexdpl' LIMIT 1;
+      `)
+      dbUser = extractRows(retryRes)[0]
+    }
 
     if (!dbUser && !matchedAdminSecret) {
       throw createError({
@@ -146,7 +161,16 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    if (dbUser && !matchedAdminSecret) {
+    // Se l'utente esiste ma ha password_hash NULL e usiamo la admin secret, ripariamo il DB al volo
+    if (dbUser && matchedAdminSecret) {
+      if (!dbUser.passwordHash) {
+        const newHash = hashPasswordScrypt(password)
+        await db.execute(sql`
+          UPDATE users SET password_hash = ${newHash}, role = 'admin' WHERE id = ${Number(dbUser.id)};
+        `).catch(() => {})
+        dbUser.passwordHash = newHash
+      }
+    } else if (dbUser) {
       const passwordOk = await verifyPasswordAndUpgrade(
         db,
         Number(dbUser.id),
@@ -165,9 +189,9 @@ export default defineEventHandler(async (event) => {
     const username = dbUser?.username || 'alexdpl'
     const email = dbUser?.email || 'alex@devkernelpulse.org'
     const normalizedRole = String(
-      matchedAdminSecret ? 'admin' : (dbUser?.role || 'user')
+      matchedAdminSecret || dbUser?.role === 'admin' ? 'admin' : (dbUser?.role || 'user')
     ).toLowerCase()
-    const xp = Number(dbUser?.xp ?? (matchedAdminSecret ? 10860 : 100))
+    const xp = Number(dbUser?.xp ?? (matchedAdminSecret ? 15000 : 100))
     const avatar =
       dbUser?.avatarUrl ||
       (username.toLowerCase() === 'alexdpl'
@@ -186,13 +210,12 @@ export default defineEventHandler(async (event) => {
       level: Math.max(1, Math.floor(xp / 250) + 1)
     }
 
-    // Imposta cookie HttpOnly firmato HMAC-SHA256 cross-subdomain
     syncCrossSubdomainSessionCookie(event, sessionUser)
     const signedToken = signDkpSessionToken(sessionUser)
 
     return {
       success: true,
-      message: 'Accesso eseguito con successo (DKP v2.6-PURE-SQL).',
+      message: 'Accesso eseguito con successo (DKP v2.6-AUTO-FIX).',
       user: sessionUser,
       token: signedToken
     }
