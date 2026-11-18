@@ -663,27 +663,34 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 font-sans px-4 sm:px-6 py-8 sm:py-12">
+  <div class="min-h-screen bg-[#0f172a] text-[#f1f5f9] font-['Space_Grotesk',sans-serif] bg-grid-pattern relative px-4 sm:px-6 py-8 sm:py-12">
     
+    <!-- Background Glows -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl"></div>
+    </div>
+
     <!-- NOTIFICA TOAST -->
     <Transition
       enter-active-class="transition duration-300 ease-out"
-      enter-from-class="translate-y-2 opacity-0 scale-95"
+      enter-from-class="-translate-y-4 opacity-0 scale-95"
       enter-to-class="translate-y-0 opacity-100 scale-100"
       leave-active-class="transition duration-200 ease-in"
       leave-from-class="translate-y-0 opacity-100 scale-100"
-      leave-to-class="translate-y-2 opacity-0 scale-95"
+      leave-to-class="-translate-y-4 opacity-0 scale-95"
     >
-      <div v-if="showToast" class="fixed top-20 sm:top-5 right-1/2 translate-x-1/2 sm:translate-x-0 sm:right-5 bg-slate-950 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-[0_4px_20px_rgba(16,185,129,0.25)] font-bold text-sm z-50 whitespace-nowrap text-center">
-        {{ toastMessage }}
+      <div v-if="showToast" class="fixed top-6 right-6 z-50 p-4 rounded-xl backdrop-blur-md border shadow-2xl max-w-md flex items-center gap-3 font-mono text-xs font-semibold bg-[#1e293b]/95 border-emerald-500/50 text-emerald-300">
+        <span class="text-xl">⚡</span>
+        <span>{{ toastMessage }}</span>
       </div>
     </Transition>
 
-    <div class="max-w-7xl mx-auto flex flex-col gap-6">
+    <div class="relative z-10 max-w-7xl mx-auto flex flex-col gap-6">
       
       <!-- HEADER USER CARD -->
-      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative overflow-hidden">
-        <div class="absolute -top-10 right-0 w-80 h-40 bg-emerald-500/10 blur-[100px] pointer-events-none rounded-full"></div>
+      <div class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative overflow-hidden card-glow">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
         
         <div class="flex items-center gap-5 relative z-10">
           <div class="relative shrink-0">
@@ -692,26 +699,26 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
               :src="profileForm.avatar"
               alt="Avatar Utente"
               @error="avatarError = true"
-              class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-emerald-400 p-0.5 bg-slate-950 object-cover shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-[#22d3ee]/40 p-0.5 bg-[#0f172a] object-cover shadow-[0_0_25px_rgba(34,211,238,0.2)]"
             />
             <div
               v-else
-              class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-emerald-400 bg-gradient-to-br from-emerald-500/20 to-purple-600/30 flex items-center justify-center text-emerald-400 font-black text-xl sm:text-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+              class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-[#22d3ee]/40 bg-gradient-to-br from-cyan-500/20 to-violet-600/30 flex items-center justify-center text-[#22d3ee] font-black text-xl sm:text-2xl shadow-[0_0_25px_rgba(34,211,238,0.2)]"
             >
               {{ userInitials }}
             </div>
             
-            <span class="absolute bottom-0 right-0 bg-emerald-400 text-slate-950 font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#090d16] shadow-[0_0_10px_rgba(16,185,129,0.8)]" title="Utente Verificato DKP">
+            <span class="absolute -bottom-1 -right-1 bg-emerald-500 text-[#0f172a] font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#1e293b] shadow" title="Utente Verificato DKP">
               ✓
             </span>
           </div>
 
           <div class="flex flex-col gap-1.5 font-mono">
-            <h1 class="text-xl sm:text-3xl font-black text-white tracking-tight font-sans">
-              Pannello Riservato <span class="text-sky-400 drop-shadow-[0_0_10px_rgba(56,189,248,0.3)]">@{{ currentUser?.username || 'alexdpl' }}</span>
+            <h1 class="text-xl sm:text-3xl font-bold text-white tracking-tight font-display">
+              Pannello Riservato <span class="text-[#22d3ee]">@{{ currentUser?.username || 'alexdpl' }}</span>
             </h1>
             <div class="flex flex-wrap gap-2">
-              <span v-for="badge in userProfileData.badges" :key="badge" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 text-xs font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1">
+              <span v-for="badge in userProfileData.badges" :key="badge" class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1">
                 🛡️ {{ badge }}
               </span>
               <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-black px-2.5 py-0.5 rounded-lg flex items-center gap-1">
@@ -722,54 +729,54 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         </div>
 
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto shrink-0 relative z-10 font-mono">
-          <NuxtLink to="/user/ads" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-sky-500/20 transition-all text-center no-underline">
+          <NuxtLink to="/user/ads" class="bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-cyan-500/20 transition-all text-center no-underline">
             📢 I Miei Link &amp; Ads
           </NuxtLink>
-          <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="bg-slate-950 border border-emerald-500/40 text-emerald-400 font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500/10 transition-all hover:shadow-[0_0_15px_rgba(16,185,129,0.25)] text-center no-underline">
+          <NuxtLink :to="getMainUrl(`/user/${currentUser?.username || 'alexdpl'}`)" external class="bg-[#0f172a] border border-[#22d3ee]/40 text-[#22d3ee] font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:bg-[#22d3ee]/10 transition-all hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] text-center no-underline">
             🌐 Profilo Pubblico
           </NuxtLink>
         </div>
       </div>
 
-      <!-- TABS NAVIGATION BAR UNIFICATA (7 SEZIONI ALLINEATE CON /user/ads) -->
-      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 bg-[#090d16] p-2 border border-slate-800 rounded-2xl shadow-xl font-mono">
-        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'profile' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'profile'">
+      <!-- TABS NAVIGATION BAR UNIFICATA (7 SEZIONI ALLINEATE) -->
+      <nav class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 bg-[#1e293b]/80 p-2 border border-[#334155] rounded-2xl shadow-xl font-mono text-xs">
+        <button class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center truncate" :class="activeTab === 'profile' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'" @click="activeTab = 'profile'">
           ⚙️ Profilo
         </button>
-        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'content' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'content'">
+        <button class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center truncate" :class="activeTab === 'content' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'" @click="activeTab = 'content'">
           📰 Contenuti &amp; Commenti
         </button>
-        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'vault' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'vault'">
+        <button class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center truncate" :class="activeTab === 'vault' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'" @click="activeTab = 'vault'">
           🛡️ Vault ({{ vaultCertificates.length }})
         </button>
-        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'api' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'api'">
+        <button class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center truncate" :class="activeTab === 'api' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'" @click="activeTab = 'api'">
           🔑 API Console ({{ apiKeysList.length }})
         </button>
-        <button class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center truncate" :class="activeTab === 'gamification' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white border border-transparent'" @click="activeTab = 'gamification'">
+        <button class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center truncate" :class="activeTab === 'gamification' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'" @click="activeTab = 'gamification'">
           🏆 XP &amp; Livelli
         </button>
-        <NuxtLink to="/user/ads" class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-all text-center truncate no-underline">
+        <NuxtLink to="/user/ads" class="py-2.5 px-3 rounded-xl font-bold text-xs bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-all text-center truncate no-underline">
           📢 I Miei Link &amp; Ads
         </NuxtLink>
-        <NuxtLink to="/bounties" class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all text-center truncate no-underline">
+        <NuxtLink to="/bounties" class="py-2.5 px-3 rounded-xl font-bold text-xs bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all text-center truncate no-underline">
           🎯 Bounties
         </NuxtLink>
       </nav>
 
       <!-- PANNELLO 1: PROFILO & SOCIAL -->
-      <section v-if="activeTab === 'profile'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
-        <h2 class="text-xl font-black text-white mb-1">Informazioni Developer</h2>
-        <p class="text-slate-400 text-xs sm:text-sm mb-6">Personalizza l'aspetto del tuo profilo pubblico e collega i tuoi canali social su DKP v2.6-PURE-SQL.</p>
+      <section v-if="activeTab === 'profile'" class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <h2 class="text-xl font-bold text-white mb-1">Informazioni Developer</h2>
+        <p class="text-[#64748b] text-xs sm:text-sm mb-6 font-mono">Personalizza l'aspetto del tuo profilo pubblico e collega i tuoi canali social su DKP v2.6-PURE-SQL.</p>
 
         <form @submit.prevent="saveProfile" class="flex flex-col gap-5">
           <div class="flex flex-col gap-2">
-            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Avatar Developer</label>
+            <label class="text-xs font-bold text-[#64748b] uppercase tracking-wider font-mono">Avatar Developer</label>
             <div class="flex flex-col sm:flex-row items-center gap-3">
               <input
                 v-model="profileForm.avatar"
                 type="url"
                 placeholder="https://... o carica un file dal PC"
-                class="flex-1 w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all font-mono"
+                class="flex-1 w-full bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm focus:border-[#22d3ee] outline-none transition-all font-mono"
               />
               <input
                 ref="fileInputRef"
@@ -782,7 +789,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                 type="button"
                 @click="triggerFileSelect"
                 :disabled="isUploadingAvatar"
-                class="w-full sm:w-auto bg-sky-500/10 border border-sky-500/40 text-sky-400 font-extrabold text-xs px-4 py-3 rounded-xl hover:bg-sky-500/20 transition-all cursor-pointer whitespace-nowrap font-mono shrink-0"
+                class="w-full sm:w-auto bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 font-bold text-xs px-4 py-3 rounded-xl hover:bg-cyan-500/20 transition-all cursor-pointer whitespace-nowrap font-mono shrink-0"
               >
                 {{ isUploadingAvatar ? 'Caricamento...' : '💻 Carica da Desktop' }}
               </button>
@@ -790,31 +797,31 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
           </div>
 
           <div class="flex flex-col gap-2">
-            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Biografia Developer</label>
-            <textarea v-model="profileForm.bio" rows="3" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all resize-none leading-relaxed"></textarea>
+            <label class="text-xs font-bold text-[#64748b] uppercase tracking-wider font-mono">Biografia Developer</label>
+            <textarea v-model="profileForm.bio" rows="3" class="w-full bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm focus:border-[#22d3ee] outline-none transition-all resize-none leading-relaxed font-sans"></textarea>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
             <div class="flex flex-col gap-2">
-              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo GitHub</label>
-              <input v-model="profileForm.github" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+              <label class="text-xs font-bold text-[#64748b] uppercase tracking-wider">Profilo GitHub</label>
+              <input v-model="profileForm.github" type="url" class="w-full bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm focus:border-[#22d3ee] outline-none transition-all" />
             </div>
             <div class="flex flex-col gap-2">
-              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo X / Twitter</label>
-              <input v-model="profileForm.twitter" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+              <label class="text-xs font-bold text-[#64748b] uppercase tracking-wider">Profilo X / Twitter</label>
+              <input v-model="profileForm.twitter" type="url" class="w-full bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm focus:border-[#22d3ee] outline-none transition-all" />
             </div>
             <div class="flex flex-col gap-2">
-              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo LinkedIn</label>
-              <input v-model="profileForm.linkedin" type="url" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+              <label class="text-xs font-bold text-[#64748b] uppercase tracking-wider">Profilo LinkedIn</label>
+              <input v-model="profileForm.linkedin" type="url" class="w-full bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm focus:border-[#22d3ee] outline-none transition-all" />
             </div>
             <div class="flex flex-col gap-2">
-              <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Profilo Reddit</label>
-              <input v-model="profileForm.reddit" type="url" placeholder="https://reddit.com/user/username" class="w-full bg-[#020420] border border-slate-700/80 text-white p-3 rounded-xl text-sm focus:border-emerald-400 outline-none transition-all" />
+              <label class="text-xs font-bold text-[#64748b] uppercase tracking-wider">Profilo Reddit</label>
+              <input v-model="profileForm.reddit" type="url" placeholder="https://reddit.com/user/username" class="w-full bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm focus:border-[#22d3ee] outline-none transition-all" />
             </div>
           </div>
 
           <div class="flex items-center gap-4 mt-2">
-            <button type="submit" class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all text-xs sm:text-sm cursor-pointer font-mono">
+            <button type="submit" class="bg-[#22d3ee] text-[#0f172a] font-bold px-6 py-3 rounded-xl hover:brightness-110 transition-all text-xs sm:text-sm cursor-pointer font-mono">
               Salva Modifiche nel Kernel
             </button>
             <span v-if="profileSaved" class="text-emerald-400 font-bold text-xs font-mono">✓ Profilo Aggiornato con Successo!</span>
@@ -824,37 +831,37 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 
       <!-- PANNELLO 2: CONTENUTI & COMMENTI UNIFICATI -->
       <section v-if="activeTab === 'content'" class="flex flex-col gap-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-[#090d16] border border-slate-800 p-2 rounded-2xl shadow-xl font-mono">
-          <button @click="contentTab = 'blog'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'blog' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-[#1e293b]/80 border border-[#334155] p-2 rounded-2xl shadow-xl font-mono text-xs">
+          <button @click="contentTab = 'blog'" class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center" :class="contentTab === 'blog' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'">
             📝 Articoli Blog ({{ articles.length }})
           </button>
-          <button @click="contentTab = 'pulse'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'pulse' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
+          <button @click="contentTab = 'pulse'" class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center" :class="contentTab === 'pulse' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'">
             🚀 Condivisioni (HN)
           </button>
-          <button @click="contentTab = 'nodes'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'nodes' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
+          <button @click="contentTab = 'nodes'" class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center" :class="contentTab === 'nodes' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'">
             🌐 Forum (Nodes) ({{ myThreads.length }})
           </button>
-          <button @click="contentTab = 'comments'" class="py-2.5 px-3 rounded-xl font-extrabold text-xs transition-all cursor-pointer text-center" :class="contentTab === 'comments' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'">
+          <button @click="contentTab = 'comments'" class="py-2.5 px-3 rounded-xl font-bold transition-all cursor-pointer text-center" :class="contentTab === 'comments' ? 'bg-[#1e293b] border border-[#22d3ee] text-[#22d3ee]' : 'text-[#64748b] hover:text-[#f1f5f9]'">
             💬 Commenti Unificati
           </button>
         </div>
 
         <!-- TAB BLOG -->
         <div v-if="contentTab === 'blog'" class="flex flex-col gap-6">
-          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 font-mono">
               <div>
-                <h2 class="text-xl font-black text-white font-sans">Gestione Post &amp; Blog</h2>
-                <p class="text-slate-400 text-xs sm:text-sm mt-1">Crea e modifica i tuoi articoli pubblicati su DevKernelPulse.</p>
+                <h2 class="text-xl font-bold text-white font-display">Gestione Post &amp; Blog</h2>
+                <p class="text-[#64748b] text-xs sm:text-sm mt-1">Crea e modifica i tuoi articoli pubblicati su DevKernelPulse.</p>
               </div>
               <div class="flex items-center gap-3 w-full sm:w-auto">
                 <input
                   v-model="searchQuery"
                   type="text"
                   placeholder="Cerca per titolo..."
-                  class="bg-[#020420] border border-slate-700 text-white p-2.5 rounded-xl text-xs w-full sm:w-64 outline-none focus:border-emerald-400"
+                  class="bg-[#0f172a] border border-[#334155] text-white p-2.5 rounded-xl text-xs w-full sm:w-64 outline-none focus:border-[#22d3ee]"
                 />
-                <button @click="openNewArticleModal" class="bg-emerald-500 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all whitespace-nowrap cursor-pointer">
+                <button @click="openNewArticleModal" class="bg-[#22d3ee] text-[#0f172a] font-bold px-4 py-2.5 rounded-xl text-xs hover:brightness-110 transition-all whitespace-nowrap cursor-pointer">
                   + Nuovo Post
                 </button>
               </div>
@@ -863,7 +870,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse text-xs sm:text-sm font-mono">
                 <thead>
-                  <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                  <tr class="bg-[#0f172a] border-b border-[#334155] text-[#64748b] uppercase text-[10px]">
                     <th class="p-3">Titolo Articolo</th>
                     <th class="p-3">Categoria</th>
                     <th class="p-3">Stato</th>
@@ -871,24 +878,24 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                     <th class="p-3">Gestione</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800/60 text-slate-300">
+                <tbody class="divide-y divide-[#334155]/60 text-slate-300">
                   <tr v-if="filteredAndPaginatedPosts.items.length === 0">
-                    <td colspan="5" class="text-center py-8 text-slate-500 italic">
+                    <td colspan="5" class="text-center py-8 text-[#64748b] italic">
                       Nessun articolo trovato. Clicca su "+ Nuovo Post" per iniziare.
                     </td>
                   </tr>
-                  <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id" class="hover:bg-slate-900/40 transition-colors">
-                    <td class="p-3 font-bold text-white font-sans">{{ art.title }}</td>
-                    <td class="p-3 text-emerald-400">{{ art.category }}</td>
+                  <tr v-for="art in filteredAndPaginatedPosts.items" :key="art.id" class="hover:bg-[#0f172a]/40 transition-colors">
+                    <td class="p-3 font-bold text-white font-display">{{ art.title }}</td>
+                    <td class="p-3 text-[#22d3ee]">{{ art.category }}</td>
                     <td class="p-3">
-                      <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase" :class="art.status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" :class="art.status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'">
                         {{ art.status === 'published' ? 'Pubblicato' : 'Bozza' }}
                       </span>
                     </td>
-                    <td class="p-3 text-slate-400 text-xs">{{ art.date }}</td>
+                    <td class="p-3 text-[#64748b] text-xs">{{ art.date }}</td>
                     <td class="p-3">
                       <div class="flex gap-2">
-                        <button @click="editArticle(art)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer">✏️ Edit</button>
+                        <button @click="editArticle(art)" class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer">✏️ Edit</button>
                         <button @click="deleteArticle(art.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer">🗑️ Del</button>
                       </div>
                     </td>
@@ -901,11 +908,11 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 
         <!-- TAB NODES (FORUM) CON RICERCA, FILTRO NODO, VAULT BADGE E PAGINAZIONE -->
         <div v-if="contentTab === 'nodes'" class="flex flex-col gap-6 font-mono">
-          <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
+          <div class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
               <div>
-                <h2 class="text-xl font-black text-white font-sans m-0">I Miei Thread (DKP Nodes)</h2>
-                <p class="text-slate-400 text-xs sm:text-sm mt-1 font-sans">Gestisci, cerca, modifica ed elimina le discussioni notarizzate nella community.</p>
+                <h2 class="text-xl font-bold text-white font-display m-0">I Miei Thread (DKP Nodes)</h2>
+                <p class="text-[#64748b] text-xs sm:text-sm mt-1 font-sans">Gestisci, cerca, modifica ed elimina le discussioni notarizzate nella community.</p>
               </div>
 
               <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
@@ -914,14 +921,14 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                     v-model="threadSearchQuery"
                     type="text"
                     placeholder="🔍 Cerca thread, nodo o hash..."
-                    class="w-full bg-[#020420] border border-slate-700 text-white p-2.5 pr-8 rounded-xl text-xs outline-none focus:border-emerald-400 transition-colors"
+                    class="w-full bg-[#0f172a] border border-[#334155] text-white p-2.5 pr-8 rounded-xl text-xs outline-none focus:border-[#22d3ee] transition-colors"
                   />
                   <button
                     v-if="threadSearchQuery"
                     type="button"
                     @click="threadSearchQuery = ''"
                     title="Pulisci ricerca"
-                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer bg-transparent border-none"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#64748b] hover:text-white text-xs cursor-pointer bg-transparent border-none"
                   >
                     ✕
                   </button>
@@ -929,7 +936,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 
                 <select
                   v-model="threadNodeFilter"
-                  class="bg-[#020420] border border-slate-700 text-purple-300 font-bold p-2.5 rounded-xl text-xs outline-none focus:border-emerald-400 cursor-pointer"
+                  class="bg-[#0f172a] border border-[#334155] text-purple-300 font-bold p-2.5 rounded-xl text-xs outline-none focus:border-[#22d3ee] cursor-pointer"
                 >
                   <option value="all">Tutti i Nodi ({{ myThreads.length }})</option>
                   <option v-for="node in availableThreadNodes" :key="node.slug" :value="node.slug">
@@ -940,37 +947,37 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                 <button
                   type="button"
                   @click="fetchMyNodesThreads"
-                  class="bg-slate-900 hover:bg-emerald-500/15 text-sky-400 hover:text-emerald-400 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                  class="bg-[#0f172a] hover:bg-cyan-500/15 text-[#22d3ee] border border-[#334155] px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                 >
                   🔄 Aggiorna
                 </button>
               </div>
             </div>
 
-            <div v-if="isLoadingThreads" class="text-center py-8 text-emerald-400 text-xs animate-pulse">
+            <div v-if="isLoadingThreads" class="text-center py-8 text-[#22d3ee] text-xs animate-pulse">
               ⚡ Caricamento thread dal Vault...
             </div>
 
-            <div v-else-if="myThreads.length === 0" class="text-center py-10 text-slate-500 text-xs italic bg-[#020420] border border-slate-800 rounded-2xl">
+            <div v-else-if="myThreads.length === 0" class="text-center py-10 text-[#64748b] text-xs italic bg-[#0f172a] border border-[#334155] rounded-xl">
               Non hai ancora pubblicato alcuna discussione nei DKP Nodi.
             </div>
 
-            <div v-else-if="filteredAndPaginatedThreads.totalItems === 0" class="text-center py-10 text-slate-400 text-xs bg-[#020420] border border-slate-800 rounded-2xl flex flex-col items-center gap-3">
+            <div v-else-if="filteredAndPaginatedThreads.totalItems === 0" class="text-center py-10 text-[#64748b] text-xs bg-[#0f172a] border border-[#334155] rounded-xl flex flex-col items-center gap-3">
               <span>Nessun thread trovato per "<strong class="text-white">{{ threadSearchQuery }}</strong>".</span>
               <button
                 type="button"
                 @click="threadSearchQuery = ''; threadNodeFilter = 'all'"
-                class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                class="bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 px-3.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
               >
                 Reimposta filtri
               </button>
             </div>
 
             <div v-else class="flex flex-col gap-4">
-              <div class="overflow-x-auto bg-[#020420] border border-slate-800 rounded-2xl">
+              <div class="overflow-x-auto bg-[#0f172a] border border-[#334155] rounded-xl">
                 <table class="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
-                    <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                    <tr class="bg-[#1e293b] border-b border-[#334155] text-[#64748b] uppercase text-[10px]">
                       <th class="p-3.5">Titolo Discussione</th>
                       <th class="p-3.5">Nodo</th>
                       <th class="p-3.5">Vault On-Chain</th>
@@ -980,12 +987,12 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                       <th class="p-3.5 text-right">Gestione</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-800/60 text-slate-300">
-                    <tr v-for="t in filteredAndPaginatedThreads.items" :key="t.id" class="hover:bg-slate-900/40 transition-colors">
-                      <td class="p-3.5 font-bold text-white font-sans max-w-xs sm:max-w-md">
+                  <tbody class="divide-y divide-[#334155]/60 text-slate-300">
+                    <tr v-for="t in filteredAndPaginatedThreads.items" :key="t.id" class="hover:bg-[#1e293b]/40 transition-colors">
+                      <td class="p-3.5 font-bold text-white font-display max-w-xs sm:max-w-md">
                         <NuxtLink
                           :to="`/nodes/post/${t.id}`"
-                          class="text-white hover:text-emerald-400 transition-colors no-underline line-clamp-2"
+                          class="text-white hover:text-[#22d3ee] transition-colors no-underline line-clamp-2"
                         >
                           {{ t.title }}
                         </NuxtLink>
@@ -1001,14 +1008,14 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                         >
                           ⛓️ #{{ t.vaultBlockNumber || t.vault_block_number || 'VERIFIED' }}
                         </span>
-                        <span v-else class="text-[10px] text-slate-500">In attesa</span>
+                        <span v-else class="text-[10px] text-[#64748b]">In attesa</span>
                       </td>
-                      <td class="p-3.5 text-sky-400 whitespace-nowrap">▲ {{ t.karmaScore || t.karma || 0 }}</td>
-                      <td class="p-3.5 text-slate-400 whitespace-nowrap">💬 {{ t.commentsCount || 0 }}</td>
-                      <td class="p-3.5 text-slate-400 text-xs whitespace-nowrap">{{ t.createdAt ? t.createdAt.split('T')[0] : 'Oggi' }}</td>
+                      <td class="p-3.5 text-cyan-400 whitespace-nowrap">▲ {{ t.karmaScore || t.karma || 0 }}</td>
+                      <td class="p-3.5 text-[#64748b] whitespace-nowrap">💬 {{ t.commentsCount || 0 }}</td>
+                      <td class="p-3.5 text-[#64748b] text-xs whitespace-nowrap">{{ t.createdAt ? t.createdAt.split('T')[0] : 'Oggi' }}</td>
                       <td class="p-3.5 text-right whitespace-nowrap">
                         <div class="inline-flex gap-2">
-                          <button type="button" @click="openEditThread(t)" class="bg-sky-500/10 text-sky-400 border border-sky-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-sky-500/20">
+                          <button type="button" @click="openEditThread(t)" class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-cyan-500/20">
                             ✏️ Edit
                           </button>
                           <button type="button" @click="deleteNodeThread(t.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 py-1 px-2.5 rounded text-[10px] font-bold cursor-pointer hover:bg-red-500/20">
@@ -1022,10 +1029,10 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
               </div>
 
               <!-- BARRA PAGINAZIONE THREAD -->
-              <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-xs text-slate-400">
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 text-xs text-[#64748b]">
                 <div>
                   Mostrando <span class="text-white font-bold">{{ filteredAndPaginatedThreads.startIndex }}–{{ filteredAndPaginatedThreads.endIndex }}</span>
-                  di <span class="text-emerald-400 font-bold">{{ filteredAndPaginatedThreads.totalItems }}</span> thread
+                  di <span class="text-[#22d3ee] font-bold">{{ filteredAndPaginatedThreads.totalItems }}</span> thread
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -1033,12 +1040,12 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                     type="button"
                     :disabled="filteredAndPaginatedThreads.currentPage <= 1"
                     @click="threadCurrentPage--"
-                    class="px-3 py-1.5 rounded-xl bg-[#020420] border border-slate-700 text-slate-200 hover:border-emerald-400 disabled:opacity-40 disabled:pointer-events-none font-bold cursor-pointer transition-colors"
+                    class="px-3 py-1.5 rounded-xl bg-[#0f172a] border border-[#334155] text-slate-200 hover:border-[#22d3ee] disabled:opacity-40 disabled:pointer-events-none font-bold cursor-pointer transition-colors"
                   >
                     ← Precedente
                   </button>
 
-                  <span class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-black">
+                  <span class="px-3 py-1.5 rounded-xl bg-[#1e293b] border border-[#334155] text-[#22d3ee] font-bold">
                     Pagina {{ filteredAndPaginatedThreads.currentPage }} / {{ filteredAndPaginatedThreads.totalPages }}
                   </span>
 
@@ -1046,7 +1053,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                     type="button"
                     :disabled="filteredAndPaginatedThreads.currentPage >= filteredAndPaginatedThreads.totalPages"
                     @click="threadCurrentPage++"
-                    class="px-3 py-1.5 rounded-xl bg-[#020420] border border-slate-700 text-slate-200 hover:border-emerald-400 disabled:opacity-40 disabled:pointer-events-none font-bold cursor-pointer transition-colors"
+                    class="px-3 py-1.5 rounded-xl bg-[#0f172a] border border-[#334155] text-slate-200 hover:border-[#22d3ee] disabled:opacity-40 disabled:pointer-events-none font-bold cursor-pointer transition-colors"
                   >
                     Successiva →
                   </button>
@@ -1072,13 +1079,13 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
       </section>
 
       <!-- PANNELLO 3: API CONSOLE -->
-      <section v-if="activeTab === 'api'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
+      <section v-if="activeTab === 'api'" class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 class="text-xl font-black text-white font-sans m-0">🔑 DKP API Console &amp; Token</h2>
-            <p class="text-slate-400 text-xs mt-1 font-sans">Genera e gestisci le chiavi di autenticazione per DKP Gateway, OpenUI Studio e CLI Toolkit.</p>
+            <h2 class="text-xl font-bold text-white font-display m-0">🔑 DKP API Console &amp; Token</h2>
+            <p class="text-[#64748b] text-xs mt-1 font-sans">Genera e gestisci le chiavi di autenticazione per DKP Gateway, OpenUI Studio e CLI Toolkit.</p>
           </div>
-          <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-black self-start sm:self-auto">
+          <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto">
             {{ apiKeysList.length }} Chiavi Attive
           </span>
         </div>
@@ -1089,11 +1096,11 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             type="text"
             placeholder="Nome Token (es. App Produzione, OpenUI Studio...)"
             @keyup.enter="generateApiKey"
-            class="flex-1 bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400"
+            class="flex-1 bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm outline-none focus:border-[#22d3ee]"
           />
           <select
             v-model="newKeyRole"
-            class="bg-[#020420] border border-slate-700 text-sky-400 font-bold p-3 rounded-xl text-xs outline-none focus:border-emerald-400 cursor-pointer"
+            class="bg-[#0f172a] border border-[#334155] text-cyan-400 font-bold p-3 rounded-xl text-xs outline-none focus:border-[#22d3ee] cursor-pointer"
           >
             <option value="PRO">TIER: PRO</option>
             <option value="FREE">TIER: FREE</option>
@@ -1102,7 +1109,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             type="button"
             @click="generateApiKey"
             :disabled="isGeneratingKey"
-            class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl text-xs sm:text-sm cursor-pointer whitespace-nowrap hover:shadow-[0_0_15px_rgba(16,185,129,0.35)] transition-all disabled:opacity-50"
+            class="bg-[#22d3ee] text-[#0f172a] font-bold px-6 py-3 rounded-xl text-xs sm:text-sm cursor-pointer whitespace-nowrap hover:brightness-110 transition-all disabled:opacity-50"
           >
             {{ isGeneratingKey ? 'Generazione...' : 'Genera API Key' }}
           </button>
@@ -1111,31 +1118,31 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         <div v-if="generatedKeyModal" class="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <p class="text-amber-400 text-xs font-bold m-0">⚠️ Copia la tua API Key ora:</p>
-            <button type="button" @click="generatedKeyModal = null" class="text-slate-400 hover:text-white text-xs cursor-pointer">✕</button>
+            <button type="button" @click="generatedKeyModal = null" class="text-[#64748b] hover:text-white text-xs cursor-pointer">✕</button>
           </div>
-          <div class="flex items-center justify-between bg-[#020420] border border-slate-800 p-3 rounded-xl gap-4">
-            <code class="text-emerald-400 text-xs sm:text-sm truncate">{{ generatedKeyModal }}</code>
-            <button type="button" @click="copyToClipboard(generatedKeyModal)" class="bg-emerald-500 text-slate-950 font-black px-3.5 py-1.5 rounded-lg text-xs cursor-pointer shrink-0">
+          <div class="flex items-center justify-between bg-[#0f172a] border border-[#334155] p-3 rounded-xl gap-4">
+            <code class="text-cyan-400 text-xs sm:text-sm truncate">{{ generatedKeyModal }}</code>
+            <button type="button" @click="copyToClipboard(generatedKeyModal)" class="bg-[#22d3ee] text-[#0f172a] font-bold px-3.5 py-1.5 rounded-lg text-xs cursor-pointer shrink-0">
               📋 Copia
             </button>
           </div>
         </div>
 
-        <div class="border-t border-slate-800/80 pt-5 flex flex-col gap-3">
+        <div class="border-t border-[#334155] pt-5 flex flex-col gap-3">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 m-0">Chiavi Registrate su Neon Pure SQL</h3>
-            <button type="button" @click="fetchUserApiKeys" class="text-xs text-sky-400 hover:text-emerald-400 cursor-pointer">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#64748b] m-0">Chiavi Registrate su Neon Pure SQL</h3>
+            <button type="button" @click="fetchUserApiKeys" class="text-xs text-cyan-400 hover:text-white cursor-pointer">
               🔄 Aggiorna
             </button>
           </div>
 
-          <div v-if="isLoadingKeys" class="text-center py-6 text-slate-500 text-xs">Caricamento API Keys...</div>
-          <div v-else-if="apiKeysList.length === 0" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">Nessuna API Key attiva.</div>
+          <div v-if="isLoadingKeys" class="text-center py-6 text-[#64748b] text-xs">Caricamento API Keys...</div>
+          <div v-else-if="apiKeysList.length === 0" class="bg-[#0f172a] border border-[#334155] rounded-2xl p-6 text-center text-[#64748b] text-xs">Nessuna API Key attiva.</div>
 
-          <div v-else class="overflow-x-auto bg-[#020420] border border-slate-800 rounded-2xl">
+          <div v-else class="overflow-x-auto bg-[#0f172a] border border-[#334155] rounded-xl">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
-                <tr class="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                <tr class="bg-[#1e293b] border-b border-[#334155] text-[#64748b] uppercase text-[10px]">
                   <th class="p-3.5">Nome Token</th>
                   <th class="p-3.5">Chiave / Prefisso</th>
                   <th class="p-3.5">Tier</th>
@@ -1144,21 +1151,21 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                   <th class="p-3.5 text-right">Azioni</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800/70 text-slate-300">
-                <tr v-for="k in apiKeysList" :key="k.id" class="hover:bg-slate-900/40 transition-colors">
-                  <td class="p-3.5 font-bold text-white font-sans">{{ k.name || 'DKP Key' }}</td>
+              <tbody class="divide-y divide-[#334155]/60 text-slate-300">
+                <tr v-for="k in apiKeysList" :key="k.id" class="hover:bg-[#1e293b]/40 transition-colors">
+                  <td class="p-3.5 font-bold text-white font-display">{{ k.name || 'DKP Key' }}</td>
                   <td class="p-3.5">
-                    <code class="text-emerald-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                    <code class="text-cyan-400 bg-[#1e293b] px-2.5 py-1 rounded border border-[#334155]">
                       {{ k.keyPrefix || k.prefix || 'dkp_live_••••••••' }}
                     </code>
                   </td>
                   <td class="p-3.5">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
                       {{ k.role || 'PRO' }}
                     </span>
                   </td>
-                  <td class="p-3.5 text-slate-400">{{ k.requestsCount || 0 }} req</td>
-                  <td class="p-3.5 text-slate-400">{{ k.createdAt ? new Date(k.createdAt).toLocaleDateString('it-IT') : 'Attiva' }}</td>
+                  <td class="p-3.5 text-[#64748b]">{{ k.requestsCount || 0 }} req</td>
+                  <td class="p-3.5 text-[#64748b]">{{ k.createdAt ? new Date(k.createdAt).toLocaleDateString('it-IT') : 'Attiva' }}</td>
                   <td class="p-3.5 text-right">
                     <button type="button" @click="revokeApiKey(k.id)" class="bg-red-500/10 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg text-[10px] font-bold hover:bg-red-500/20 cursor-pointer">
                       🗑️ Revoca
@@ -1172,46 +1179,46 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
       </section>
 
       <!-- PANNELLO 4: VAULT -->
-      <section v-if="activeTab === 'vault'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
+      <section v-if="activeTab === 'vault'" class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 class="text-xl sm:text-2xl font-black text-white font-sans m-0">Proof of Code Vault</h2>
-            <p class="text-slate-400 text-xs mt-1 font-sans">Notarizza sorgenti con impronta SHA-256 immutabile.</p>
+            <h2 class="text-xl sm:text-2xl font-bold text-white font-display m-0">Proof of Code Vault</h2>
+            <p class="text-[#64748b] text-xs mt-1 font-sans">Notarizza sorgenti con impronta SHA-256 immutabile.</p>
           </div>
-          <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-full text-xs font-black self-start sm:self-auto">
+          <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto">
             🛡️ {{ vaultCertificates.length }} Certificati
           </span>
         </div>
 
-        <div class="bg-[#020420] border border-sky-500/30 rounded-2xl p-6 flex flex-col gap-4">
-          <input v-model="vaultNewTitle" type="text" placeholder="Titolo Script..." class="bg-[#090d16] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" />
-          <textarea v-model="vaultNewCode" rows="4" placeholder="Codice da firmare..." class="bg-[#090d16] border border-slate-700 text-sky-400 p-3 rounded-xl text-xs outline-none resize-none focus:border-emerald-400"></textarea>
-          <button type="button" @click="notarizeNewCode" :disabled="isNotarizingVault" class="bg-emerald-500 text-slate-950 font-black px-5 py-3 rounded-xl text-sm cursor-pointer hover:shadow-[0_0_15px_rgba(16,185,129,0.35)] transition-all disabled:opacity-50">
+        <div class="bg-[#0f172a] border border-cyan-500/30 rounded-2xl p-6 flex flex-col gap-4">
+          <input v-model="vaultNewTitle" type="text" placeholder="Titolo Script..." class="bg-[#1e293b] border border-[#334155] text-white p-3 rounded-xl text-sm outline-none focus:border-[#22d3ee]" />
+          <textarea v-model="vaultNewCode" rows="4" placeholder="Codice da firmare..." class="bg-[#1e293b] border border-[#334155] text-cyan-300 p-3 rounded-xl text-xs outline-none resize-none focus:border-[#22d3ee]"></textarea>
+          <button type="button" @click="notarizeNewCode" :disabled="isNotarizingVault" class="bg-[#22d3ee] text-[#0f172a] font-bold px-5 py-3 rounded-xl text-sm cursor-pointer hover:brightness-110 transition-all disabled:opacity-50">
             {{ isNotarizingVault ? '⏳ Firma SHA-256 in corso...' : '🛡️ Notarizza nel Vault' }}
           </button>
         </div>
 
-        <div class="border-t border-slate-800/80 pt-5 flex flex-col gap-4">
+        <div class="border-t border-[#334155] pt-5 flex flex-col gap-4">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-400 m-0">Certificati Crittografici Registrati</h3>
-            <button type="button" @click="fetchVaultCertificates" class="text-xs text-sky-400 hover:text-emerald-400 cursor-pointer">🔄 Aggiorna</button>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-[#64748b] m-0">Certificati Crittografici Registrati</h3>
+            <button type="button" @click="fetchVaultCertificates" class="text-xs text-cyan-400 hover:text-white cursor-pointer">🔄 Aggiorna</button>
           </div>
 
-          <div v-if="isLoadingVault" class="text-center py-6 text-slate-500 text-xs">Caricamento certificati...</div>
-          <div v-else-if="vaultCertificates.length === 0" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">Nessun certificato presente.</div>
+          <div v-if="isLoadingVault" class="text-center py-6 text-[#64748b] text-xs">Caricamento certificati...</div>
+          <div v-else-if="vaultCertificates.length === 0" class="bg-[#0f172a] border border-[#334155] rounded-2xl p-6 text-center text-[#64748b] text-xs">Nessun certificato presente.</div>
 
           <div v-else class="grid grid-cols-1 gap-4">
-            <div v-for="cert in vaultCertificates" :key="cert.id" class="bg-[#020420] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 flex flex-col gap-3 transition-colors">
+            <div v-for="cert in vaultCertificates" :key="cert.id" class="bg-[#0f172a] border border-[#334155] hover:border-cyan-500/40 rounded-xl p-5 flex flex-col gap-3 transition-colors">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5 flex-wrap">
-                  <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase">PASSED</span>
-                  <h4 class="text-white font-bold text-sm font-sans m-0">{{ cert.title }}</h4>
+                  <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase">PASSED</span>
+                  <h4 class="text-white font-bold text-sm font-display m-0">{{ cert.title }}</h4>
                 </div>
-                <span class="text-[11px] text-slate-500">ID #{{ cert.id }}</span>
+                <span class="text-[11px] text-[#64748b]">ID #{{ cert.id }}</span>
               </div>
-              <div class="flex items-center justify-between gap-2 bg-slate-950 border border-slate-800/90 p-3 rounded-xl">
-                <code class="text-sky-400 text-xs break-all">SHA-256: {{ cert.hash }}</code>
-                <button type="button" @click="copyToClipboard(cert.hash)" class="bg-slate-900 hover:bg-emerald-500/15 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer shrink-0">📋 Copia</button>
+              <div class="flex items-center justify-between gap-2 bg-[#1e293b] border border-[#334155] p-3 rounded-xl">
+                <code class="text-cyan-400 text-xs break-all">SHA-256: {{ cert.hash }}</code>
+                <button type="button" @click="copyToClipboard(cert.hash)" class="bg-[#0f172a] hover:bg-cyan-500/15 text-cyan-300 border border-[#334155] px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer shrink-0">📋 Copia</button>
               </div>
             </div>
           </div>
@@ -1219,12 +1226,12 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
       </section>
 
       <!-- PANNELLO 5: GAMIFICATION -->
-      <section v-if="activeTab === 'gamification'" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-6">
-          <h2 class="text-xl sm:text-2xl font-black text-white font-sans">Gamification Center</h2>
-          <span class="text-2xl font-black text-emerald-400">{{ userProfileData.xp }} XP</span>
+      <section v-if="activeTab === 'gamification'" class="bg-[#1e293b]/80 border border-[#334155] rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 font-mono">
+        <div class="flex justify-between items-center border-b border-[#334155] pb-6">
+          <h2 class="text-xl sm:text-2xl font-bold text-white font-display">Gamification Center</h2>
+          <span class="text-2xl font-bold text-cyan-400">{{ userProfileData.xp }} XP</span>
         </div>
-        <button @click="activateEarlyPioneerBeta" class="bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-xl text-sm cursor-pointer">⚡ Attiva Status "Early Pioneer"</button>
+        <button @click="activateEarlyPioneerBeta" class="bg-[#22d3ee] text-[#0f172a] font-bold px-6 py-3 rounded-xl text-sm cursor-pointer hover:brightness-110 transition-all self-start">⚡ Attiva Status "Early Pioneer"</button>
         <UserXpHistory :history="xpHistoryList" />
       </section>
 
@@ -1232,10 +1239,10 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 
     <!-- MODALE EDITOR ARTICOLO BLOG -->
     <div v-if="isEditingArticle" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 font-mono" @click.self="isEditingArticle = false">
-      <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-          <h3 class="text-xl font-black text-white">✏️ Editor Post Blog DKP</h3>
-          <button type="button" @click="useAdvancedEditor = !useAdvancedEditor" class="bg-sky-500/10 border border-sky-500/40 text-sky-400 font-bold text-xs px-3.5 py-1.5 rounded-xl cursor-pointer">
+      <div class="bg-[#1e293b] border border-[#334155] rounded-2xl p-6 sm:p-8 w-full max-w-3xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="flex justify-between items-center border-b border-[#334155] pb-4">
+          <h3 class="text-xl font-bold text-white font-display">✏️ Editor Post Blog DKP</h3>
+          <button type="button" @click="useAdvancedEditor = !useAdvancedEditor" class="bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 font-bold text-xs px-3.5 py-1.5 rounded-xl cursor-pointer">
             {{ useAdvancedEditor ? '⬅️ Standard' : '✨ Avanzato' }}
           </button>
         </div>
@@ -1245,18 +1252,18 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
         </div>
         
         <div v-else class="flex flex-col gap-4">
-          <input v-model="articleForm.title" type="text" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400" placeholder="Titolo post..." />
-          <select v-model="articleForm.category" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none focus:border-emerald-400">
+          <input v-model="articleForm.title" type="text" class="bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm outline-none focus:border-[#22d3ee]" placeholder="Titolo post..." />
+          <select v-model="articleForm.category" class="bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm outline-none focus:border-[#22d3ee]">
             <option v-for="cat in availableCategories" :key="cat.id" :value="cat.name">{{ cat.icon }} {{ cat.name }}</option>
           </select>
-          <textarea v-model="articleForm.summary" rows="3" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none resize-none" placeholder="Breve estratto (Summary)..."></textarea>
-          <textarea v-model="articleForm.content" rows="6" class="bg-[#020420] border border-slate-700 text-white p-3 rounded-xl text-sm outline-none font-mono" placeholder="Contenuto dell'articolo (supporta Markdown)..."></textarea>
+          <textarea v-model="articleForm.summary" rows="3" class="bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm outline-none resize-none font-sans" placeholder="Breve estratto (Summary)..."></textarea>
+          <textarea v-model="articleForm.content" rows="6" class="bg-[#0f172a] border border-[#334155] text-white p-3 rounded-xl text-sm outline-none font-mono" placeholder="Contenuto dell'articolo (supporta Markdown)..."></textarea>
         </div>
 
-        <div class="flex justify-end gap-3 border-t border-slate-800 pt-4">
+        <div class="flex justify-end gap-3 border-t border-[#334155] pt-4">
           <button type="button" @click="isEditingArticle = false" class="bg-slate-800 text-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Annulla</button>
           <button type="button" @click="submitWithStatus('draft')" class="bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer">Salva in Bozza</button>
-          <button type="button" @click="submitWithStatus('published')" class="bg-emerald-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer">Pubblica Ora</button>
+          <button type="button" @click="submitWithStatus('published')" class="bg-[#22d3ee] text-[#0f172a] font-bold text-xs px-5 py-2.5 rounded-xl cursor-pointer hover:brightness-110">Pubblica Ora</button>
         </div>
       </div>
     </div>
@@ -1274,3 +1281,18 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 
   </div>
 </template>
+
+<style scoped>
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(to right, rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.card-glow {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+</style>
