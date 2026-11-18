@@ -1,8 +1,9 @@
-// server/api/nodes/comments/index.post.ts
+﻿// server/api/nodes/comments/index.post.ts
 import { defineEventHandler, readBody, getCookie, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { awardNodeXpAndBadges, GamificationRules } from '~~/server/utils/gamification'
+import { runSentinelPipeline } from '~~/server/utils/sentinelNetwork'
 
 export default defineEventHandler(async (event) => {
   const db = await getDb()
@@ -11,8 +12,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = (await readBody(event)) || {}
-  
-  // Risoluzione ID utente (supporta body, context o cookie di sessione dkp_session)
+
   let authorId = body.userId ? Number(body.userId) : (event.context.user?.id || 1)
   const sessionCookie = getCookie(event, 'dkp_session')
   if (sessionCookie) {
@@ -31,7 +31,6 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 1. Inserimento del Commento
     const insertResult: any = await db.execute(sql`
       INSERT INTO node_comments (post_id, author_id, parent_id, content, karma_score)
       VALUES (${postId}, ${authorId}, ${parentId}, ${content}, 1)
@@ -45,14 +44,24 @@ export default defineEventHandler(async (event) => {
       throw new Error('Impossibile recuperare il commento appena inserito.')
     }
 
-    // 2. Incremento del contatore sul Thread principale
     await db.execute(sql`
-      UPDATE node_posts 
-      SET comments_count = COALESCE(comments_count, 0) + 1 
+      UPDATE node_posts
+      SET comments_count = COALESCE(comments_count, 0) + 1
       WHERE id = ${postId}
     `)
 
-    // 3. Erogazione XP per la risposta
+    const sentinelTask = runSentinelPipeline({
+      targetType: 'node_comment',
+      targetId: Number(newComment.id),
+      postId,
+      authorId,
+      content
+    }).catch((err) => console.error('[SENTINEL PIPELINE ERROR]:', err?.message))
+
+    if (typeof (event as any).waitUntil === 'function') {
+      ;(event as any).waitUntil(sentinelTask)
+    }
+
     try {
       await awardNodeXpAndBadges(authorId, `Risposta al Thread #${postId}`, GamificationRules.NEW_COMMENT)
     } catch (xpErr) {

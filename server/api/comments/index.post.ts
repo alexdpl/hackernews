@@ -1,7 +1,8 @@
-// server/api/comments/index.post.ts
+﻿// server/api/comments/index.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { runSentinelPipeline } from '~~/server/utils/sentinelNetwork'
 import {
   ensureUnifiedCommentsSchema,
   extractSqlRows,
@@ -16,7 +17,6 @@ export default defineEventHandler(async (event) => {
   const targetType = String(body.targetType || 'post').trim().toLowerCase().slice(0, 50)
   const cleanText = String(body.text || body.content || '').trim()
 
-  // Identità ricavata SOLO dalla sessione lato server (mai dal body)
   const session = parseSessionUser(event)
   if (!session?.id || Number(session.id) <= 0) {
     throw createError({
@@ -54,9 +54,9 @@ export default defineEventHandler(async (event) => {
 
     await ensureUnifiedCommentsSchema(db)
 
-    // Verifica che l'utente della sessione esista realmente nel DB
     const userRes = await db.execute(sql`
-      SELECT id, username FROM users WHERE id = ${Number(session.id)} LIMIT 1;
+      SELECT id, username, email, COALESCE(is_bot, FALSE) AS "isBot"
+      FROM users WHERE id = ${Number(session.id)} LIMIT 1;
     `)
     const dbUser = extractSqlRows(userRes)[0]
     if (!dbUser?.id) {
@@ -69,7 +69,6 @@ export default defineEventHandler(async (event) => {
     const resolvedUserId = Number(dbUser.id)
     const author = String(dbUser.username || session.username || 'member').slice(0, 255)
 
-    // Se il target è un thread dei nodi, verifica esistenza e stato is_locked
     if (targetType === 'node' || targetType === 'thread') {
       const threadRes = await db.execute(sql`
         SELECT id, is_locked AS "isLocked"
@@ -86,7 +85,6 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Inserimento sincronizzato su colonne unificate (text + content, author + user_id)
     const result: any = await db.execute(sql`
       INSERT INTO comments (
         post_id,
@@ -122,7 +120,24 @@ export default defineEventHandler(async (event) => {
 
     const newComment = extractSqlRows(result)[0] || null
 
-    // Incremento contatore commenti sulla tabella corretta dello schema
+    if (newComment?.id) {
+      const sentinelTask = runSentinelPipeline({
+        targetType: 'comment',
+        targetId: Number(newComment.id),
+        postId: numericPostId,
+        sectionSlug: targetType,
+        authorId: resolvedUserId,
+        authorUsername: author,
+        authorEmail: dbUser.email ? String(dbUser.email) : undefined,
+        authorIsBot: Boolean(dbUser.isBot),
+        content: cleanText
+      }).catch((err) => console.error('[SENTINEL PIPELINE ERROR]:', err?.message))
+
+      if (typeof (event as any).waitUntil === 'function') {
+        ;(event as any).waitUntil(sentinelTask)
+      }
+    }
+
     if (targetType === 'blog') {
       await db.execute(sql`
         UPDATE blog_posts SET comments_count = COALESCE(comments_count, 0) + 1 WHERE id = ${numericPostId};
@@ -140,7 +155,6 @@ export default defineEventHandler(async (event) => {
       `).catch(() => {})
     }
 
-    // Gamification Pure-SQL (+10 XP solo per utente autenticato verificato)
     const rewardXp = 10
     await db.execute(sql`
       UPDATE users SET xp = COALESCE(xp, 0) + ${rewardXp} WHERE id = ${resolvedUserId};

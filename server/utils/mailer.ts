@@ -1,92 +1,96 @@
-// server/utils/mailer.ts
-import nodemailer, { type Transporter } from 'nodemailer'
+﻿// server/utils/mailer.ts
+import nodemailer from 'nodemailer'
 
-export interface SendEmailOptions {
-  from?: string
-  replyTo?: string
+export interface SentinelMailOptions {
   to: string
   subject: string
-  html: string
-  headers?: Record<string, string>
+  category: 'snippet_suggestion' | 'moderation_notice' | 'security_alert'
+  recipientUsername: string
+  sentinelName: string
+  headline: string
+  bodyMarkdown: string
+  actionUrl?: string
 }
 
-let cachedTransporter: Transporter | null = null
-let cachedConfigSignature = ''
-
-function getSmtpConfig() {
-  const config = useRuntimeConfig()
-  const host = (config.smtpHost as string) || process.env.SMTP_HOST || process.env.NUXT_SMTP_HOST || 'smtp-relay.brevo.com'
-  const port = Number((config.smtpPort as string) || process.env.SMTP_PORT || process.env.NUXT_SMTP_PORT || 587)
-  const user = (config.smtpUser as string) || process.env.SMTP_USER || process.env.NUXT_SMTP_USER || ''
-  const pass = (config.smtpPass as string) || process.env.SMTP_PASS || process.env.NUXT_SMTP_PASS || ''
-  const defaultFrom =
-    (config.smtpFrom as string) ||
-    process.env.SMTP_FROM ||
-    process.env.NUXT_SMTP_FROM ||
-    'alex@devkernelpulse.org'
-
-  return { host, port, user, pass, defaultFrom }
+function escapeHtml(raw: string): string {
+  return String(raw || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
-function getTransporter(): { transporter: Transporter; defaultFrom: string } {
-  const { host, port, user, pass, defaultFrom } = getSmtpConfig()
+function getSmtpTransporter() {
+  const host = String(process.env.SMTP_HOST || '').trim()
+  const port = Number(process.env.SMTP_PORT || 587)
+  const user = String(process.env.SMTP_USER || '').trim()
+  const pass = String(process.env.SMTP_PASS || '').trim()
 
-  if (!user || !pass) {
-    throw new Error(`Credenziali SMTP mancanti (User: ${user ? 'OK' : 'MISSING'}, Pass: ${pass ? 'OK' : 'MISSING'})`)
+  if (!host || !user || !pass) {
+    return null
   }
 
-  const signature = `${host}:${port}:${user}`
-  if (!cachedTransporter || cachedConfigSignature !== signature) {
-    cachedTransporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      auth: { user, pass }
-    })
-    cachedConfigSignature = signature
-  }
-
-  return { transporter: cachedTransporter, defaultFrom }
-}
-
-function extractEmailAddress(raw: string): string {
-  const match = raw.match(/<([^>]+)>/)
-  return (match ? match[1] : raw).trim().toLowerCase()
-}
-
-export async function sendKernelEmail({ from, replyTo, to, subject, html, headers }: SendEmailOptions) {
-  const { transporter, defaultFrom } = getTransporter()
-
-  const verifiedSender = defaultFrom.includes('<')
-    ? defaultFrom
-    : `DevKernelPulse <${defaultFrom}>`
-
-  // Previene errore SMTP 550 se "from" usa un alias non autorizzato dal relay
-  const requestedEmail = from ? extractEmailAddress(from) : ''
-  const verifiedEmail = extractEmailAddress(verifiedSender)
-  const isVerifiedDomain = requestedEmail.endsWith('@devkernelpulse.org')
-
-  const effectiveFrom = requestedEmail && isVerifiedDomain
-    ? (from!.includes('<') ? from! : `DevKernelPulse <${requestedEmail}>`)
-    : verifiedSender
-
-  const effectiveReplyTo =
-    replyTo || (requestedEmail && requestedEmail !== verifiedEmail ? requestedEmail : undefined)
-
-  const info = await transporter.sendMail({
-    from: effectiveFrom,
-    replyTo: effectiveReplyTo,
-    to: to.trim(),
-    subject,
-    html,
-    headers: {
-      'X-DKP-Kernel-Version': 'v2.6-PURE-SQL',
-      ...(headers || {})
-    }
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass }
   })
+}
 
-  return info
+export async function sendSentinelEmail(opts: SentinelMailOptions): Promise<boolean> {
+  const transporter = getSmtpTransporter()
+  if (!transporter) {
+    console.warn('[DKP MAILER] Variabili SMTP mancanti (SMTP_HOST/USER/PASS): invio saltato per', opts.to)
+    return false
+  }
+
+  const fromAddress = String(
+    process.env.SMTP_FROM || `"DKP Sentinel Network" <${process.env.SMTP_USER}>`
+  ).trim()
+
+  const accentColor =
+    opts.category === 'moderation_notice'
+      ? '#ef4444'
+      : opts.category === 'security_alert'
+        ? '#f59e0b'
+        : '#10b981'
+
+  const safeHeadline = escapeHtml(opts.headline)
+  const safeBody = escapeHtml(opts.bodyMarkdown).replace(/\n/g, '<br/>')
+  const ctaHtml = opts.actionUrl
+    ? `<p style="margin-top:20px;"><a href="${escapeHtml(opts.actionUrl)}" style="background:${accentColor};color:#090d16;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:700;font-family:monospace;">Apri nel Kernel &rarr;</a></p>`
+    : ''
+
+  const html = `
+    <div style="background:#090d16;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;padding:28px;border:1px solid #1e293b;border-radius:10px;max-width:600px;margin:auto;">
+      <div style="font-family:monospace;font-size:12px;color:${accentColor};letter-spacing:1px;text-transform:uppercase;">
+        [DKP SENTINEL NETWORK // ${escapeHtml(opts.sentinelName.toUpperCase())}]
+      </div>
+      <h2 style="color:#f8fafc;margin:12px 0 16px;">${safeHeadline}</h2>
+      <p style="color:#94a3b8;font-size:14px;">Ciao <strong>@${escapeHtml(opts.recipientUsername)}</strong>,</p>
+      <div style="background:#0f172a;border-left:3px solid ${accentColor};padding:14px 16px;border-radius:4px;font-size:14px;line-height:1.6;color:#cbd5e1;">
+        ${safeBody}
+      </div>
+      ${ctaHtml}
+      <hr style="border:none;border-top:1px solid #1e293b;margin:24px 0 12px;" />
+      <p style="font-size:11px;color:#64748b;font-family:monospace;">
+        Messaggio automatico generato dal DevKernelPulse Autonomous Core.
+      </p>
+    </div>
+  `
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress,
+      to: opts.to,
+      subject: `[DKP Sentinel] ${opts.subject}`,
+      text: `${opts.headline}\n\n${opts.bodyMarkdown}\n\n${opts.actionUrl || ''}`,
+      html
+    })
+    return true
+  } catch (err: any) {
+    console.error('[DKP MAILER ERROR]:', err?.message)
+    return false
+  }
 }

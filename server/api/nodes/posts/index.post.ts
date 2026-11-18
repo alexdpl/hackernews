@@ -1,4 +1,4 @@
-// server/api/nodes/posts/index.post.ts
+﻿// server/api/nodes/posts/index.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../../../utils/db'
@@ -6,6 +6,7 @@ import { extractDkpUserFromEvent } from '../../../utils/session'
 import { scanWithSentinelAI } from '../../../utils/sentinelAi'
 import { BlockchainService } from '../../../utils/blockchainService'
 import { awardNodeXpAndBadges, GamificationRules } from '../../../utils/gamification'
+import { runSentinelPipeline } from '../../../utils/sentinelNetwork'
 
 export default defineEventHandler(async (event) => {
   const db = await getDb()
@@ -34,7 +35,6 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 1. Scansione di Sicurezza Sentinel AI
     const scan = await scanWithSentinelAI(title, content)
 
     if (!scan.isAllowed) {
@@ -44,7 +44,6 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 2. Inserimento del Thread nel Database
     const insertResult: any = await db.execute(sql`
       INSERT INTO node_posts (
         node_id, author_id, title, content, karma_score,
@@ -60,7 +59,6 @@ export default defineEventHandler(async (event) => {
     const newPost = insertResult?.rows?.[0] || insertResult?.[0]
     const postId = Number(newPost.id)
 
-    // 3. Notarizzazione On-Chain SHA-256 nel DKP Vault Ledger
     let proof = null
     if (requestVaultProof) {
       proof = await BlockchainService.notarizeEntity(db, {
@@ -71,15 +69,35 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 4. Se Sentinel AI ha flaggato il post, lascia un commento automatico di moderazione
     if (scan.botComment) {
+      const botRes: any = await db.execute(sql`
+        SELECT id FROM users WHERE username = 'sentinel_ai' AND is_bot = TRUE LIMIT 1;
+      `)
+      const sentinelBotId = Number((botRes?.rows?.[0] || botRes?.[0])?.id || 1)
       await db.execute(sql`
         INSERT INTO node_comments (post_id, author_id, content, karma_score)
-        VALUES (${postId}, 1, ${scan.botComment}, 0)
+        VALUES (${postId}, ${sentinelBotId}, ${scan.botComment}, 0)
       `)
+      await db.execute(sql`
+        UPDATE node_posts SET comments_count = COALESCE(comments_count, 0) + 1 WHERE id = ${postId};
+      `).catch(() => {})
     }
 
-    // 5. Assegnazione XP per la creazione del Thread (+25 XP)
+    const sentinelTask = runSentinelPipeline({
+      targetType: 'node_post',
+      targetId: postId,
+      postId,
+      nodeId,
+      authorId,
+      authorUsername: sessionUser?.username,
+      authorEmail: sessionUser?.email,
+      content: `${title}\n${content}`.trim()
+    }).catch((err) => console.error('[SENTINEL PIPELINE ERROR]:', err?.message))
+
+    if (typeof (event as any).waitUntil === 'function') {
+      ;(event as any).waitUntil(sentinelTask)
+    }
+
     try {
       await awardNodeXpAndBadges(authorId, `Creazione Thread #${postId}`, GamificationRules.NEW_THREAD)
     } catch (xpErr) {

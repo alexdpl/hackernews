@@ -1,30 +1,13 @@
-// server/api/auth/register.post.ts
+﻿// server/api/auth/register.post.ts
 import crypto from 'node:crypto'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { isValidHumanUsername } from '~~/server/utils/reservedUsernames'
 import {
   syncCrossSubdomainSessionCookie,
   signDkpSessionToken
 } from '~~/server/utils/session'
-
-const RESERVED_USERNAMES = new Set([
-  'admin',
-  'administrator',
-  'root',
-  'system',
-  'support',
-  'staff',
-  'moderator',
-  'mod',
-  'devkernelpulse',
-  'dkp',
-  'vault',
-  'security',
-  'api',
-  'null',
-  'undefined'
-])
 
 function extractRows(res: any): any[] {
   return Array.isArray(res) ? res : (res?.rows || [])
@@ -43,22 +26,13 @@ export default defineEventHandler(async (event) => {
   const email = String(body.email || '').trim().toLowerCase()
   const password = String(body.password || '')
 
-  // 1. Validazione Username
-  if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
+  if (!isValidHumanUsername(username)) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Lo username deve avere tra 3 e 30 caratteri (solo lettere, numeri, _ o -).'
+      statusMessage: 'Username non valido o riservato dal sistema (3-32 caratteri alfanumerici, _ o -).'
     })
   }
 
-  if (RESERVED_USERNAMES.has(username.toLowerCase())) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Questo username è riservato dal sistema.'
-    })
-  }
-
-  // 2. Validazione Email
   if (!email || email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
     throw createError({
       statusCode: 400,
@@ -66,7 +40,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 3. Validazione Password
   if (password.length < 8 || password.length > 128) {
     throw createError({
       statusCode: 400,
@@ -90,29 +63,6 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 4. Assicura schema tabella users aggiornato (Pure SQL)
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role VARCHAR(32) NOT NULL DEFAULT 'USER',
-        xp INTEGER NOT NULL DEFAULT 100,
-        avatar_url TEXT,
-        bio TEXT DEFAULT '',
-        github VARCHAR(255),
-        twitter VARCHAR(255),
-        linkedin VARCHAR(255),
-        reddit VARCHAR(255),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `).catch(() => null)
-
-    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`).catch(() => null)
-    await db.execute(sql`ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT;`).catch(() => null)
-
-    // 5. Controllo unicità username / email (case-insensitive)
     const existingRes = await db.execute(sql`
       SELECT username, email
       FROM users
@@ -132,14 +82,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 6. Hashing sicuro scrypt & inserimento utente (ruolo sempre forzato a USER)
     const passwordHash = hashPasswordScrypt(password)
-    const defaultAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`
+    const defaultAvatar = `[https://api.dicebear.com/7.x/bottts/svg?seed=$](https://api.dicebear.com/7.x/bottts/svg?seed=$){encodeURIComponent(username)}`
     const initialXp = 100
 
     const insertRes = await db.execute(sql`
-      INSERT INTO users (username, email, password_hash, role, xp, avatar_url, bio, created_at)
-      VALUES (${username}, ${email}, ${passwordHash}, 'USER', ${initialXp}, ${defaultAvatar}, '', NOW())
+      INSERT INTO users (username, email, password_hash, role, is_bot, xp, avatar_url, bio, created_at)
+      VALUES (${username}, ${email}, ${passwordHash}, 'USER', FALSE, ${initialXp}, ${defaultAvatar}, '', NOW())
       RETURNING id, username, email, role, xp, avatar_url AS "avatarUrl", created_at AS "createdAt";
     `)
 

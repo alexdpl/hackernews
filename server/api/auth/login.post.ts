@@ -116,8 +116,8 @@ export default defineEventHandler(async (event) => {
         COALESCE(xp, 0)::int AS xp,
         avatar_url AS "avatarUrl"
       FROM users
-      WHERE LOWER(email) = LOWER(${identifier})
-         OR LOWER(username) = LOWER(${identifier})
+      WHERE (LOWER(email) = LOWER(${identifier}) OR LOWER(username) = LOWER(${identifier}))
+        AND COALESCE(is_bot, FALSE) = FALSE
       LIMIT 1;
     `)
 

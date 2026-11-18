@@ -1,5 +1,6 @@
-// server/api/index.post.ts
+﻿// server/api/posts/index.post.ts
 import { neon } from '@neondatabase/serverless'
+import { runSentinelPipeline } from '~~/server/utils/sentinelNetwork'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
@@ -10,7 +11,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Il titolo è obbligatorio' })
   }
 
-  // 1. Validazione DKP Kernel Captcha
   if (
     body.captchaAnswer === undefined ||
     body.captchaAnswer === null ||
@@ -29,38 +29,54 @@ export default defineEventHandler(async (event) => {
 
   const sql = neon(dbUrl)
 
-  // 2. Identificazione Utente da DKP Auth Core Session
   let userId = 1
+  let sessionUser: any = null
   if (sessionCookie) {
     try {
       const raw = typeof sessionCookie === 'string' ? decodeURIComponent(sessionCookie) : sessionCookie
-      const user = typeof raw === 'string' && raw.startsWith('{') ? JSON.parse(raw) : raw
-      if (user && user.id) {
-        userId = user.id
+      sessionUser = typeof raw === 'string' && raw.startsWith('{') ? JSON.parse(raw) : raw
+      if (sessionUser && sessionUser.id) {
+        userId = Number(sessionUser.id)
       }
-    } catch {
-      // Fallback Admin
-    }
+    } catch {}
   }
 
   try {
     const title = body.title.trim()
     const url = body.url ? body.url.trim() : null
     const content = body.content ? body.content.trim() : ''
-    const type = body.type || 'news' // 'news', 'ask', 'show', 'jobs', 'blog'
+    const type = body.type || 'news'
     const createdAt = new Date().toISOString()
 
-    // 3. Inserimento SQL con campo 'type' (Sezione) e 'user_id'
     const inserted = await sql`
       INSERT INTO posts (title, url, content, type, user_id, points, created_at)
       VALUES (${title}, ${url}, ${content}, ${type}, ${userId}, 1, ${createdAt})
       RETURNING id, type;
     `
 
+    const newPostId = Number(inserted[0]?.id)
+    if (newPostId > 0) {
+      const sentinelTask = runSentinelPipeline({
+        targetType: 'post',
+        targetId: newPostId,
+        postId: newPostId,
+        sectionSlug: String(type),
+        authorId: userId,
+        authorUsername: sessionUser?.username,
+        authorEmail: sessionUser?.email,
+        authorIsBot: Boolean(sessionUser?.isBot),
+        content: `${title}\n${content}`.trim()
+      }).catch((err) => console.error('[SENTINEL PIPELINE ERROR]:', err?.message))
+
+      if (typeof (event as any).waitUntil === 'function') {
+        ;(event as any).waitUntil(sentinelTask)
+      }
+    }
+
     return {
       success: true,
       message: `✨ Contenuto pubblicato con successo nella sezione [${type.toUpperCase()}]!`,
-      id: inserted[0]?.id,
+      id: newPostId,
       type: inserted[0]?.type
     }
   } catch (error: any) {
