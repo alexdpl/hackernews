@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { defineEventHandler, getMethod, readBody, getQuery, createError, setResponseHeaders } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { extractDkpUserFromEvent } from '~~/server/utils/session'
 
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
@@ -11,14 +12,19 @@ export default defineEventHandler(async (event) => {
   })
 
   const method = getMethod(event)
-  const db = getDb()
+  const db = await getDb()
+  if (!db) {
+    throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+  }
+
+  const sessionUser = event.context.user || extractDkpUserFromEvent(event)
 
   // ----------------------------------------------------
   // 📥 GET: Recupera i certificati Vault dell'utente (Pure SQL)
   // ----------------------------------------------------
   if (method === 'GET') {
     const query = getQuery(event)
-    const userId = query.userId ? Number(query.userId) : 1
+    const userId = query.userId ? Number(query.userId) : Number(sessionUser?.id || 1)
 
     try {
       const result: any = await db.execute(sql`
@@ -61,7 +67,7 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, statusMessage: 'Titolo e codice sorgente obbligatori.' })
       }
 
-      const targetUserId = userId ? Number(userId) : 1
+      const targetUserId = userId ? Number(userId) : Number(sessionUser?.id || 1)
       const cleanTitle = String(title).trim()
       const cleanCode = String(code).trim()
 
@@ -98,21 +104,21 @@ export default defineEventHandler(async (event) => {
       const rows = Array.isArray(insertRes) ? insertRes : (insertRes?.rows || [])
       const newCert = rows[0]
 
-      // 2. Accredito +100 XP utente + log transazione (isolato: non blocca mai la notarizzazione)
+      // 2. Accredito +100 XP utente + log transazione allineato allo schema Pure SQL (user_id, action, points)
       try {
         await db.execute(sql`
           UPDATE users
-          SET xp = COALESCE(xp, 0) + 100
+          SET xp = COALESCE(xp, 0) + 100,
+              level = FLOOR((COALESCE(xp, 0) + 100) / 100) + 1
           WHERE id = ${targetUserId}
         `)
 
         await db.execute(sql`
-          INSERT INTO xp_transactions (user_id, amount, action_type, description)
+          INSERT INTO xp_transactions (user_id, action, points)
           VALUES (
             ${targetUserId},
-            100,
-            'VAULT_NOTARIZATION',
-            ${`Notarizzazione Vault: "${cleanTitle.substring(0, 30)}"`}
+            ${`Vault Notarization: ${cleanTitle.substring(0, 40)}`},
+            100
           )
         `)
       } catch (xpErr: any) {

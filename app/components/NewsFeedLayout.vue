@@ -82,7 +82,7 @@ async function handleUpvote(post: any) {
       <div class="title-group">
         <span class="feed-icon">{{ icon }}</span>
         <h1 class="feed-title">{{ title }}</h1>
-        <span class="gold-badge">v2.5-GOLD</span>
+        <span class="gold-badge">v2.6-PURE-SQL</span>
       </div>
       
       <NuxtLink :to="`/submit?type=${section}`" class="btn-submit-xp">

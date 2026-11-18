@@ -22,6 +22,15 @@ function extractRows(result: any): any[] {
   return []
 }
 
+function extractDomain(rawUrl: string | null | undefined): string {
+  if (!rawUrl) return 'news.ycombinator.com'
+  try {
+    return new URL(rawUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return 'news.ycombinator.com'
+  }
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const db = await getDb()
@@ -58,13 +67,11 @@ export default defineEventHandler(async (event) => {
 
     if (search.length > 0) {
       const pattern = `%${search}%`
-      conditions.push(sql`(title ILIKE ${pattern} OR COALESCE(domain, '') ILIKE ${pattern})`)
+      conditions.push(sql`(title ILIKE ${pattern} OR COALESCE(domain, '') ILIKE ${pattern} OR COALESCE(summary_it, '') ILIKE ${pattern})`)
     }
 
     if (minScore > 0) {
-      conditions.push(
-        sql`LEAST(98, GREATEST(45, COALESCE(points, 10) * 2 + 40)) >= ${minScore}`
-      )
+      conditions.push(sql`tech_score >= ${minScore}`)
     }
 
     if (category.length > 0 && !isExplicitJobRequest) {
@@ -81,10 +88,88 @@ export default defineEventHandler(async (event) => {
       ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
       : sql``
 
-    // 1. Conteggio totale
+    // CTE unificata tra hn_stories (nuovo crawler/cron) e pulse_stories (archivio)
+    const unifiedCte = sql`
+      WITH unified_stories AS (
+        SELECT DISTINCT ON (LOWER(TRIM(title)))
+          id,
+          hn_id,
+          title,
+          slug,
+          url,
+          domain,
+          points,
+          author,
+          type,
+          summary_it,
+          tech_score,
+          tags,
+          created_at
+        FROM (
+          SELECT
+            COALESCE(h.hn_id, h.id) AS id,
+            h.hn_id AS hn_id,
+            h.title AS title,
+            COALESCE(NULLIF(h.slug, ''), CONCAT('story-', COALESCE(h.hn_id, h.id))) AS slug,
+            h.original_url AS url,
+            COALESCE(NULLIF(to_jsonb(h)->>'domain', ''), substring(COALESCE(h.original_url, '') from 'https?://(?:www\.)?([^/]+)')) AS domain,
+            COALESCE(h.hn_points, 1) AS points,
+            COALESCE(NULLIF(h.hn_by, ''), 'hackernews') AS author,
+            CASE
+              WHEN h.title ILIKE 'Show HN%' OR LOWER(COALESCE(h.category, '')) LIKE '%show%' THEN 'show'
+              WHEN h.title ILIKE 'Ask HN%' OR LOWER(COALESCE(h.category, '')) LIKE '%ask%' THEN 'ask'
+              ELSE 'news'
+            END AS type,
+            COALESCE(
+              NULLIF(to_jsonb(h)->>'ai_summary_it', ''),
+              NULLIF(to_jsonb(h)->>'summary_it', ''),
+              NULLIF(to_jsonb(h)->>'summary', ''),
+              ''
+            ) AS summary_it,
+            COALESCE(
+              NULLIF(to_jsonb(h)->>'tech_score', '')::int,
+              NULLIF(to_jsonb(h)->>'ai_score', '')::int,
+              LEAST(98, GREATEST(55, COALESCE(h.hn_points, 10) * 2 + 45))
+            ) AS tech_score,
+            to_jsonb(h)->'tags' AS tags,
+            COALESCE((to_jsonb(h)->>'created_at')::timestamptz, NOW()) AS created_at,
+            1 AS priority
+          FROM hn_stories h
+
+          UNION ALL
+
+          SELECT
+            p.id AS id,
+            p.id AS hn_id,
+            p.title AS title,
+            COALESCE(NULLIF(p.slug, ''), CONCAT('story-', p.id)) AS slug,
+            p.url AS url,
+            COALESCE(NULLIF(to_jsonb(p)->>'domain', ''), substring(COALESCE(p.url, '') from 'https?://(?:www\.)?([^/]+)')) AS domain,
+            COALESCE(p.points, 1) AS points,
+            COALESCE(NULLIF(to_jsonb(p)->>'author', ''), 'hackernews') AS author,
+            COALESCE(NULLIF(LOWER(to_jsonb(p)->>'type'), ''), 'news') AS type,
+            COALESCE(
+              NULLIF(to_jsonb(p)->>'summary_it', ''),
+              NULLIF(to_jsonb(p)->>'summary', ''),
+              ''
+            ) AS summary_it,
+            COALESCE(
+              NULLIF(to_jsonb(p)->>'tech_score', '')::int,
+              LEAST(98, GREATEST(45, COALESCE(p.points, 10) * 2 + 40))
+            ) AS tech_score,
+            to_jsonb(p)->'tags' AS tags,
+            COALESCE((to_jsonb(p)->>'created_at')::timestamptz, NOW() - INTERVAL '1 day') AS created_at,
+            2 AS priority
+          FROM pulse_stories p
+        ) combined
+        ORDER BY LOWER(TRIM(title)), priority ASC, created_at DESC
+      )
+    `
+
     const countResult: any = await db.execute(sql`
+      ${unifiedCte}
       SELECT COUNT(*) AS total
-      FROM pulse_stories
+      FROM unified_stories
       ${whereClause}
     `)
 
@@ -92,18 +177,17 @@ export default defineEventHandler(async (event) => {
     const total = Number(totalRows[0]?.total || 0)
     const totalPages = Math.max(1, Math.ceil(total / limit))
 
-    // 2. Estrazione record con SELECT * per compatibilità totale con lo schema DB
     const result: any = await db.execute(sql`
+      ${unifiedCte}
       SELECT *
-      FROM pulse_stories
+      FROM unified_stories
       ${whereClause}
-      ORDER BY id DESC
+      ORDER BY created_at DESC, id DESC
       LIMIT ${limit} OFFSET ${offset}
     `)
 
     const rows = extractRows(result)
 
-    // 3. Formattazione allineata a news/index.vue e news/[slug].vue
     const formattedStories = rows.map((item: any) => {
       const titleLower = (item.title || '').toLowerCase()
       let detectedType = item.type ? String(item.type).toLowerCase() : 'news'
@@ -112,37 +196,39 @@ export default defineEventHandler(async (event) => {
       else if (titleLower.startsWith('ask hn')) detectedType = 'ask'
 
       const computedScore = Number(
-        item.techScore ?? item.tech_score ?? Math.min(98, Math.max(45, (Number(item.points) || 10) * 2 + 40))
+        item.tech_score ?? Math.min(98, Math.max(45, (Number(item.points) || 10) * 2 + 40))
       )
       const safeSlug = (item.slug && String(item.slug) !== String(item.id))
         ? String(item.slug)
         : slugifyTitleFallback(item.title, item.id)
 
+      const domainClean = item.domain || extractDomain(item.url)
       const summaryText =
         item.summary_it ||
-        item.summaryIt ||
-        item.summary ||
-        `Analisi Trinity AI: Notizia proveniente da ${item.domain || 'devkernelpulse.org'}. Impatto architetturale rilevante.`
+        `Analisi Trinity AI: Segnale tecnico indicizzato da ${domainClean}. Rilevanza architetturale verificata dal Sentinel Kernel.`
+
+      const parsedTags = Array.isArray(item.tags) && item.tags.length > 0
+        ? item.tags
+        : [
+            detectedType === 'show' ? 'ShowHN' : detectedType === 'ask' ? 'AskHN' : 'Tech',
+            domainClean.split('.')[0] || 'HackerNews',
+            'TrinityAI'
+          ]
 
       return {
         ...item,
         id: Number(item.id),
+        hnId: Number(item.hn_id || item.id),
         type: detectedType,
         slug: safeSlug,
-        points: Number(item.points ?? 0),
-        commentsCount: Number(item.commentsCount ?? item.comments_count ?? 0),
-        xpAwarded: Number(item.xpAwarded ?? item.xp_awarded ?? 0),
-        createdAt: item.createdAt ?? item.created_at ?? new Date().toISOString(),
+        domain: domainClean,
+        points: Number(item.points ?? 1),
+        createdAt: item.created_at ?? new Date().toISOString(),
         techScore: computedScore,
         tech_score: computedScore,
         summaryIt: summaryText,
         summary_it: summaryText,
-        tags: Array.isArray(item.tags) && item.tags.length > 0
-          ? item.tags
-          : [
-              detectedType === 'show' ? 'ShowHN' : detectedType === 'ask' ? 'AskHN' : 'Tech',
-              item.domain ? String(item.domain).split('.')[0] : 'DevKernelPulse'
-            ]
+        tags: parsedTags
       }
     })
 

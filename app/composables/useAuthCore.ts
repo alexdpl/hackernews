@@ -12,43 +12,63 @@ export interface DkpUser {
   provider?: 'local' | 'github' | 'google' | 'linkedin' | 'gitlab' | 'discord' | 'bitbucket'
 }
 
-// Stato globale condiviso per prevenire la perdita di sessione tra le pagine
 const currentUser = ref<DkpUser | null>(null)
 const isAuthModalOpen = ref(false)
+
+export function getDkpAuthToken(): string {
+  if (import.meta.client) {
+    const lsToken = localStorage.getItem('dkp_auth_token')
+    if (lsToken) return lsToken
+  }
+  const tokenCookie = useCookie<string | null>('dkp_token')
+  return tokenCookie.value || ''
+}
 
 export function useAuthCore() {
   const isAuthenticated = computed(() => !!currentUser.value)
   const authTab = useState<'login' | 'register'>('dkp_auth_tab', () => 'login')
 
-  // Inizializza la sessione (Server Cookie + LocalStorage Fallback)
   async function initAuth() {
-    if (import.meta.client) {
-      try {
-        const data = await $fetch<{ authenticated: boolean; user: DkpUser }>('/api/auth/me')
-        if (data?.authenticated && data?.user) {
-          if (data.user.username?.toLowerCase() === 'alexdpl' && !data.user.avatar) {
-            data.user.avatar = 'https://github.com/alexdpl.png'
-          }
-          currentUser.value = data.user
-          localStorage.setItem('dkp_session_user', JSON.stringify(data.user))
-          return
+    if (!import.meta.client) return
+
+    const token = getDkpAuthToken()
+    try {
+      const data = await $fetch<{ authenticated: boolean; user: DkpUser | null }>('/api/auth/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+
+      if (data?.authenticated && data?.user) {
+        if (data.user.username?.toLowerCase() === 'alexdpl' && !data.user.avatar) {
+          data.user.avatar = 'https://github.com/alexdpl.png'
         }
-      } catch {
-        // Ignora errori se offline o non loggato
+        currentUser.value = data.user
+        localStorage.setItem('dkp_session_user', JSON.stringify(data.user))
+        return
       }
 
-      if (!currentUser.value) {
-        const savedUser = localStorage.getItem('dkp_session_user')
-        if (savedUser) {
-          try {
-            const parsed = JSON.parse(savedUser)
-            if (parsed.username?.toLowerCase() === 'alexdpl' && !parsed.avatar) {
-              parsed.avatar = 'https://github.com/alexdpl.png'
-            }
-            currentUser.value = parsed
-          } catch {
-            localStorage.removeItem('dkp_session_user')
+      if (data && data.authenticated === false) {
+        currentUser.value = null
+        localStorage.removeItem('dkp_session_user')
+        localStorage.removeItem('dkp_auth_token')
+        const tokenCookie = useCookie<string | null>('dkp_token')
+        tokenCookie.value = null
+        return
+      }
+    } catch {
+      // Fallback offline su cache locale solo in caso di errore di rete
+    }
+
+    if (!currentUser.value) {
+      const savedUser = localStorage.getItem('dkp_session_user')
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser)
+          if (parsed.username?.toLowerCase() === 'alexdpl' && !parsed.avatar) {
+            parsed.avatar = 'https://github.com/alexdpl.png'
           }
+          currentUser.value = parsed
+        } catch {
+          localStorage.removeItem('dkp_session_user')
         }
       }
     }
@@ -64,46 +84,38 @@ export function useAuthCore() {
   }
 
   async function login(usernameOrEmail: string, password?: string) {
-    let userData: DkpUser
-
-    const isAlexAdmin = 
-      usernameOrEmail.toLowerCase() === 'alexdpl' || 
+    const isAlexAdmin =
+      usernameOrEmail.toLowerCase() === 'alexdpl' ||
       usernameOrEmail.toLowerCase() === 'admin' ||
       usernameOrEmail.toLowerCase().includes('alexdpl')
 
-    try {
-      const res = await $fetch<{ success: boolean; user: DkpUser }>('/api/auth/login', {
-        method: 'POST',
-        body: { username: usernameOrEmail, password }
-      })
+    const res = await $fetch<{ success: boolean; user: DkpUser; token?: string }>('/api/auth/login', {
+      method: 'POST',
+      body: { username: usernameOrEmail, password }
+    })
 
-      if (res?.success && res?.user) {
-        userData = {
-          ...res.user,
-          avatar: res.user.avatar || (isAlexAdmin ? 'https://github.com/alexdpl.png' : undefined)
-        }
-      } else {
-        throw new Error('Autenticazione fallita')
-      }
-    } catch {
-      userData = {
-        id: isAlexAdmin ? 1 : Date.now(),
-        username: isAlexAdmin ? 'alexdpl' : usernameOrEmail.split('@')[0],
-        email: isAlexAdmin ? 'alex@devkernelpulse.org' : (usernameOrEmail.includes('@') ? usernameOrEmail : `${usernameOrEmail}@devkernelpulse.org`),
-        role: isAlexAdmin ? 'admin' : 'user',
-        avatar: isAlexAdmin ? 'https://github.com/alexdpl.png' : undefined,
-        bio: isAlexAdmin ? 'Lead Architect & Core Creator of DevKernelPulse' : 'VIP Developer Member',
-        reputation: isAlexAdmin ? 9999 : 150,
-        provider: 'local'
-      }
+    if (!res?.success || !res?.user) {
+      throw new Error('Autenticazione fallita')
+    }
+
+    const userData: DkpUser = {
+      ...res.user,
+      avatar: res.user.avatar || (isAlexAdmin ? 'https://github.com/alexdpl.png' : undefined)
     }
 
     currentUser.value = userData
 
     if (import.meta.client) {
       localStorage.setItem('dkp_session_user', JSON.stringify(userData))
-      const cookie = useCookie('dkp_session')
-      cookie.value = encodeURIComponent(JSON.stringify(userData))
+      if (res.token) {
+        localStorage.setItem('dkp_auth_token', res.token)
+        const tokenCookie = useCookie<string | null>('dkp_token', {
+          path: '/',
+          maxAge: 60 * 60 * 24 * 7,
+          sameSite: 'lax'
+        })
+        tokenCookie.value = res.token
+      }
     }
 
     closeAuthModal()
@@ -126,9 +138,11 @@ export function useAuthCore() {
     currentUser.value = null
     if (import.meta.client) {
       localStorage.removeItem('dkp_session_user')
-      const cookie = useCookie('dkp_session')
-      cookie.value = null
+      localStorage.removeItem('dkp_auth_token')
+      const tokenCookie = useCookie<string | null>('dkp_token', { path: '/' })
+      tokenCookie.value = null
     }
+    await $fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
     const router = useRouter()
     await router.push('/')
   }

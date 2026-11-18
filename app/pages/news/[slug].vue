@@ -3,6 +3,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
+import { parseDkpMarkdown } from '~/composables/useDkpNodes'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
@@ -94,96 +95,6 @@ const readTime = computed(() => {
   return Math.max(1, Math.ceil(words / 200))
 })
 
-function parseDkpMarkdown(contentVal: string): string {
-  try {
-    if (!contentVal) return ''
-
-    let rawContent = contentVal.replace(/\\n/g, '\n').replace(/\\r/g, '\r')
-    const codeBlocks: string[] = []
-
-    rawContent = rawContent.replace(
-      /```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g,
-      (_match: string, lang: string, code: string) => {
-        const index = codeBlocks.length
-        const cleanLang = lang ? lang.trim().toLowerCase() : 'code'
-        const languageClass = cleanLang !== 'code' ? `language-${cleanLang}` : 'language-none'
-
-        const languageLabel = `<div class="dkp-code-header"><span>${cleanLang}</span><button type="button" class="dkp-copy-btn" data-code-id="code-block-${index}" title="Copia codice">📋</button></div>`
-        const escapedCode = code
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-
-        codeBlocks.push(
-          `<div class="dkp-code-wrapper not-prose">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code id="code-block-${index}" class="${languageClass}">${escapedCode}</code></pre></div>`
-        )
-        return `__DKP_CODE_BLOCK_${index}__`
-      }
-    )
-
-    let html = rawContent
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-
-    html = html
-      .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1</mark>')
-      .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1</u>')
-      .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/~~(.*?)~~/g, '<del>$1</del>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank" rel="noopener noreferrer">$1</a>')
-
-    html = html
-      .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
-      .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1</h2>')
-      .replace(/^### (.*?)\r?$/gm, '<h3 class="dkp-h3">$1</h3>')
-      .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
-      .replace(/^---$/gm, '<hr class="dkp-hr" />')
-
-    html = html.replace(/^-(?!\S) (.*?)\r?$/gm, '<ul><li class="dkp-li-main">$1</li></ul>')
-    html = html.replace(/^[0-9]+\. (.*?)\r?$/gm, '<ol><li class="dkp-li-main">$1</li></ol>')
-    html = html.replace(/<\/ul>\s*<ul>/g, '')
-    html = html.replace(/<\/ol>\s*<ol>/g, '')
-
-    const lines = html.split(/\r?\n/)
-    let parsedHtml = ''
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const trimmed = line.trim()
-
-      if (trimmed.includes('__DKP_CODE_BLOCK_')) {
-        parsedHtml += line + '\n'
-      } else if (
-        /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) ||
-        /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)
-      ) {
-        parsedHtml += line + '\n'
-      } else if (trimmed === '') {
-        parsedHtml += '<br />\n'
-      } else {
-        parsedHtml += line + (i < lines.length - 1 ? '<br />' : '')
-      }
-    }
-
-    codeBlocks.forEach((block, index) => {
-      parsedHtml = parsedHtml.replace(
-        new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'),
-        () => block
-      )
-    })
-
-    return parsedHtml
-      .replace(/(<\/h[1-6]>)<br \/>/g, '$1')
-      .replace(/(<\/pre>)<br \/>/g, '$1')
-      .replace(/(<\/div>)<br \/>/g, '$1')
-  } catch {
-    return ''
-  }
-}
-
 const parsedExtraContent = computed(() =>
   story.value?.content ? parseDkpMarkdown(String(story.value.content)) : ''
 )
@@ -210,6 +121,42 @@ const sourceDomain = computed(() => {
   } catch {
     return 'hackernews.org'
   }
+})
+
+// 4. MODULO DKP SEO DINAMICO CON RICH RESULTS JSON-LD
+const seoKeywords = computed(() => {
+  const tags = parseTags(story.value?.tags)
+  return [...tags, 'DevKernelPulse', 'Trinity AI', 'Hacker News', 'Tech News'].join(', ')
+})
+
+useDkpSeo({
+  title: computed(() =>
+    story.value?.title
+      ? `${story.value.title} — DKP Tech Feed | DevKernelPulse`
+      : 'Scheda Notizia AI — DevKernelPulse'
+  ),
+  description: computed(() =>
+    story.value?.summaryIt ||
+    'Analisi tecnica in tempo reale elaborata da Trinity AI su DevKernelPulse v2.6-PURE-SQL.'
+  ),
+  keywords: seoKeywords,
+  type: 'article',
+  noindex: computed(() => !pending.value && !story.value),
+  publishedTime: computed(() => story.value?.createdAt),
+  modifiedTime: computed(() => story.value?.createdAt),
+  authorName: computed(() =>
+    story.value?.author ? `@${story.value.author}` : 'Trinity AI Sentinel'
+  ),
+  section: computed(() =>
+    story.value?.type === 'show'
+      ? 'Show HN'
+      : story.value?.type === 'ask'
+        ? 'Ask HN'
+        : 'Tech Intelligence'
+  ),
+  commentCount: computed(() => comments.value.length),
+  notarizationHash: computed(() => story.value?.vaultHash || undefined),
+  canonicalPath: computed(() => `/news/${encodeURIComponent(slugParam.value)}`)
 })
 
 function boostStoryPoints() {
@@ -315,20 +262,13 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleCopyClick)
 })
-
-useHead({
-  title: computed(() => story.value ? `${story.value.title} — DKP Tech Feed v2.6` : 'Scheda Notizia AI — DevKernelPulse'),
-  meta: [
-    {
-      name: 'description',
-      content: computed(() => story.value?.summaryIt || 'Analisi tecnica in tempo reale elaborata da Trinity AI su DevKernelPulse v2.6-PURE-SQL.')
-    }
-  ]
-})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10">
+  <main class="min-h-screen bg-[var(--bg-kernel)] text-[var(--text-main)] px-4 sm:px-6 py-10 relative overflow-hidden transition-colors duration-500">
+    <!-- BACKGROUND GRID IDENTICA ALLA HOME -->
+    <div class="hero-grid-bg pointer-events-none" aria-hidden="true"></div>
+
     <!-- Toast XP / Feedback -->
     <div
       v-if="toastMsg"
@@ -338,9 +278,9 @@ useHead({
       {{ toastMsg }}
     </div>
 
-    <div class="max-w-5xl mx-auto flex flex-col gap-6">
+    <div class="max-w-5xl mx-auto flex flex-col gap-6 relative z-10">
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
-      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[#090d16] border border-slate-800 p-3 rounded-2xl shadow-lg">
+      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[var(--bg-surface)] border border-[var(--border-color)] p-3 rounded-2xl shadow-lg">
         <NuxtLink
           to="/news"
           class="px-4 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] no-underline"
@@ -350,28 +290,28 @@ useHead({
 
         <NuxtLink
           to="/nodes"
-          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all no-underline"
+          class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
           💬 DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
-          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all no-underline"
+          class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
           🛠️ Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
-          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all no-underline"
+          class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
           ✍️ DKP Editorial Hub
         </NuxtLink>
       </nav>
 
       <!-- STATE: LOADING PRINCIPALE -->
-      <div v-if="pending" class="text-center py-20 bg-[#090d16] border border-slate-800 rounded-2xl text-emerald-400 font-mono text-xs animate-pulse">
+      <div v-if="pending" class="text-center py-20 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--accent-emerald)] font-mono text-xs animate-pulse">
         <span class="text-3xl inline-block mb-3">⚡</span>
         <p class="m-0">Analisi della notizia da parte di Trinity AI v2.6-PURE-SQL in corso...</p>
       </div>
@@ -379,27 +319,27 @@ useHead({
       <!-- STATE: SCHEDA NOTIZIA -->
       <template v-else-if="story">
         <div class="flex flex-col gap-8">
-          <article class="glass-panel bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl flex flex-col gap-6 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-80 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <article class="glass-panel bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-10 shadow-2xl flex flex-col gap-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-80 h-32 bg-[var(--accent-emerald)]/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <!-- BREADCRUMB NAVBAR SEO-READY + BADGES -->
-            <div class="flex flex-col gap-4 relative z-10 border-b border-slate-800 pb-4">
-              <nav aria-label="Breadcrumb" class="w-full text-sm text-slate-400">
+            <div class="flex flex-col gap-4 relative z-10 border-b border-[var(--border-color)] pb-4">
+              <nav aria-label="Breadcrumb" class="w-full text-sm text-[var(--text-muted)]">
                 <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
                   <li class="flex items-center">
-                    <NuxtLink to="/news" class="text-slate-400 hover:text-emerald-400 transition-colors flex items-center gap-1 no-underline">
+                    <NuxtLink to="/news" class="text-[var(--text-muted)] hover:text-[var(--accent-emerald)] transition-colors flex items-center gap-1 no-underline">
                       <span class="text-xs">🌍</span> Tech Feed
                     </NuxtLink>
                   </li>
                   <li class="flex items-center gap-2">
                     <span class="text-slate-600 font-bold">/</span>
-                    <span class="text-sky-400 font-mono font-bold">
+                    <span class="text-[var(--accent-cyan)] font-mono font-bold">
                       {{ story.type === 'show' ? 'SHOW HN' : story.type === 'ask' ? 'ASK HN' : 'NEWS' }}
                     </span>
                   </li>
                   <li class="flex items-center gap-2">
                     <span class="text-slate-600 font-bold">/</span>
-                    <span class="text-slate-200 max-w-[170px] sm:max-w-[340px] truncate" :title="story.title" aria-current="page">
+                    <span class="text-[var(--text-main)] max-w-[170px] sm:max-w-[340px] truncate" :title="story.title" aria-current="page">
                       {{ story.title }}
                     </span>
                   </li>
@@ -422,13 +362,13 @@ useHead({
               </div>
             </div>
 
-            <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight relative z-10 m-0">
+            <h1 class="text-2xl sm:text-4xl font-black text-[var(--text-main)] tracking-tight leading-tight relative z-10 m-0">
               {{ story.title }}
             </h1>
 
             <!-- SOURCE & CURATOR CARD CON RANK & XP -->
             <div
-              class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#020420] border border-slate-800 relative z-10 transition-colors"
+              class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[var(--bg-kernel)] border border-[var(--border-color)] relative z-10 transition-colors"
               :style="{
                 borderColor: `${curatorRank.color}45`,
                 boxShadow: `0 4px 20px ${curatorRank.color}12`
@@ -446,7 +386,7 @@ useHead({
                 </div>
 
                 <div>
-                  <div class="text-slate-200 font-bold flex items-center gap-2 flex-wrap">
+                  <div class="text-[var(--text-main)] font-bold flex items-center gap-2 flex-wrap">
                     <span>@{{ story.author || 'hackernews' }}</span>
                     <span
                       class="text-[0.65rem] px-2 py-0.5 rounded uppercase tracking-wider border font-bold flex items-center gap-1"
@@ -460,7 +400,7 @@ useHead({
                     </span>
                   </div>
 
-                  <div class="text-xs text-slate-400 flex items-center gap-3 mt-1 flex-wrap font-mono">
+                  <div class="text-xs text-[var(--text-muted)] flex items-center gap-3 mt-1 flex-wrap font-mono">
                     <span>📅 {{ new Date(story.createdAt).toLocaleDateString('it-IT') }}</span>
                     <span>🔥 {{ story.points }} pts HN</span>
                     <span>💬 {{ comments.length }} commenti</span>
@@ -482,17 +422,17 @@ useHead({
             </div>
 
             <!-- SINTESI & ANALISI TRINITY AI -->
-            <div class="bg-[#020420] border border-emerald-500/35 rounded-xl p-5 sm:p-6 relative z-10 flex flex-col gap-3 shadow-inner">
+            <div class="bg-[var(--bg-kernel)] border border-emerald-500/35 rounded-xl p-5 sm:p-6 relative z-10 flex flex-col gap-3 shadow-inner">
               <div class="flex items-center justify-between flex-wrap gap-2">
-                <div class="flex items-center gap-2 text-emerald-400 font-mono text-xs font-bold uppercase tracking-wider">
+                <div class="flex items-center gap-2 text-[var(--accent-emerald)] font-mono text-xs font-bold uppercase tracking-wider">
                   <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                   Sintesi &amp; Analisi Trinity AI
                 </div>
-                <span class="text-[10px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded uppercase font-bold">
+                <span class="text-[10px] font-mono text-[var(--accent-cyan)] bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded uppercase font-bold">
                   Pure SQL Indexed
                 </span>
               </div>
-              <p class="text-sm sm:text-base text-slate-200 leading-relaxed font-sans m-0">
+              <p class="text-sm sm:text-base text-[var(--text-main)] leading-relaxed font-sans m-0">
                 {{ story.summaryIt || 'Notizia di tendenza analizzata dal motore Trinity AI, focalizzata sull\'impatto tecnologico e architetturale.' }}
               </p>
             </div>
@@ -500,45 +440,45 @@ useHead({
             <!-- EVENTUALE CONTENUTO ESTESO FORMATTATO -->
             <div
               v-if="parsedExtraContent"
-              class="post-content prose prose-invert max-w-none text-slate-200 dkp-preview-content relative z-10"
+              class="post-content prose prose-invert max-w-none text-[var(--text-main)] dkp-preview-content relative z-10"
               v-html="parsedExtraContent"
             ></div>
 
             <!-- TAGS -->
             <div class="flex flex-wrap gap-1.5 relative z-10">
-              <span v-for="tag in parseTags(story.tags)" :key="tag" class="text-xs font-mono bg-[#020420] text-sky-400 border border-slate-800 px-2.5 py-1 rounded-lg">
+              <span v-for="tag in parseTags(story.tags)" :key="tag" class="text-xs font-mono bg-[var(--bg-kernel)] text-[var(--accent-cyan)] border border-[var(--border-color)] px-2.5 py-1 rounded-lg">
                 #{{ tag }}
               </span>
             </div>
 
             <!-- CERTIFICATO SENTINEL AI & VAULT TELEMETRY v2.6 -->
-            <div class="bg-[#020420] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.06)] z-10">
+            <div class="bg-[var(--bg-kernel)] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.06)] z-10">
               <div class="flex items-center gap-3 mb-4">
                 <div class="bg-emerald-500/20 p-2 rounded-lg border border-emerald-500/30">
                   <span class="text-emerald-400 text-xl">🛡️</span>
                 </div>
                 <div>
-                  <h3 class="text-emerald-400 font-bold text-base sm:text-lg tracking-wide uppercase m-0">
+                  <h3 class="text-[var(--accent-emerald)] font-bold text-base sm:text-lg tracking-wide uppercase m-0">
                     Trinity Sentinel Verification Certificate v2.6
                   </h3>
-                  <p class="text-xs text-slate-400 mt-0.5 m-0">
+                  <p class="text-xs text-[var(--text-muted)] mt-0.5 m-0">
                     AI Relevance Audit &amp; Pure SQL Stream Checksum
                   </p>
                 </div>
               </div>
 
-              <div class="bg-[#090d16] border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-300 relative z-10">
-                <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-slate-800 pb-3 mb-3">
-                  <span class="text-slate-500 font-semibold">STREAM_NODE_ID:</span>
-                  <span class="text-emerald-400 font-bold select-all">DKP-HN-{{ story.hnId || story.hn_id || story.id }}</span>
+              <div class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg p-4 font-mono text-xs text-[var(--text-main)] relative z-10">
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-[var(--border-color)] pb-3 mb-3">
+                  <span class="text-[var(--text-muted)] font-semibold">STREAM_NODE_ID:</span>
+                  <span class="text-[var(--accent-emerald)] font-bold select-all">DKP-HN-{{ story.hnId || story.hn_id || story.id }}</span>
                 </div>
-                <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
-                  <span class="text-slate-500 font-semibold">SENTINEL_TECH_SCORE:</span>
-                  <span class="text-sky-400 font-bold">{{ story.techScore ? `${story.techScore}% VERIFIED` : '92% VERIFIED' }}</span>
+                <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-[var(--border-color)]">
+                  <span class="text-[var(--text-muted)] font-semibold">SENTINEL_TECH_SCORE:</span>
+                  <span class="text-[var(--accent-cyan)] font-bold">{{ story.techScore ? `${story.techScore}% VERIFIED` : '92% VERIFIED' }}</span>
                 </div>
                 <div class="flex flex-col gap-2">
-                  <span class="text-slate-500 font-semibold">INDEXED_ORIGIN_ENDPOINT:</span>
-                  <span class="text-slate-300 select-all break-all bg-[#020420] p-2 rounded border border-slate-800">
+                  <span class="text-[var(--text-muted)] font-semibold">INDEXED_ORIGIN_ENDPOINT:</span>
+                  <span class="text-[var(--text-main)] select-all break-all bg-[var(--bg-kernel)] p-2 rounded border border-[var(--border-color)]">
                     {{ story.vaultHash || story.url || `https://devkernelpulse.org/news/${slugParam}` }}
                   </span>
                 </div>
@@ -546,7 +486,7 @@ useHead({
             </div>
 
             <!-- FOOTER KARMA / ACCENDI KERNEL -->
-            <div class="bg-[#020420] border border-slate-800 rounded-xl p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+            <div class="bg-[var(--bg-kernel)] border border-[var(--border-color)] rounded-xl p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
               <div class="flex flex-col gap-1 items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
                 <button
                   type="button"
@@ -556,7 +496,7 @@ useHead({
                   🔥 Accendi Kernel
                   <span class="bg-[#020420] text-emerald-400 px-3 py-1 rounded text-sm shadow-inner">{{ story.points }}</span>
                 </button>
-                <span class="text-slate-400 text-xs mt-1">Premi per supportare questa notizia con Karma nel network!</span>
+                <span class="text-[var(--text-muted)] text-xs mt-1">Premi per supportare questa notizia con Karma nel network!</span>
               </div>
 
               <a
@@ -564,7 +504,7 @@ useHead({
                 :href="story.url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-5 py-3 bg-[#090d16] hover:bg-slate-900 text-sky-400 border border-slate-700 hover:border-sky-400 font-mono font-bold text-xs rounded-xl transition-all flex items-center gap-2 no-underline shrink-0"
+                class="px-5 py-3 bg-[var(--bg-surface)] hover:border-sky-400 text-[var(--accent-cyan)] border border-[var(--border-color)] font-mono font-bold text-xs rounded-xl transition-all flex items-center gap-2 no-underline shrink-0"
               >
                 <span>Apri articolo originale</span>
                 <span>↗</span>
@@ -572,15 +512,15 @@ useHead({
             </div>
 
             <!-- SEZIONE CONDIVISIONE NOTIZIA (SOCIAL SHARE) -->
-            <div class="bg-[#020420] border border-slate-800 rounded-xl p-6 relative z-10 shadow-lg">
+            <div class="bg-[var(--bg-kernel)] border border-[var(--border-color)] rounded-xl p-6 relative z-10 shadow-lg">
               <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-3 text-center md:text-left">
                   <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl font-bold shrink-0">
                     🚀
                   </div>
                   <div>
-                    <h4 class="text-white font-extrabold text-base m-0">Condividi notizia AI</h4>
-                    <p class="text-slate-400 text-xs m-0">Diffondi l'analisi Trinity AI nell'ecosistema Dev</p>
+                    <h4 class="text-[var(--text-main)] font-extrabold text-base m-0">Condividi notizia AI</h4>
+                    <p class="text-[var(--text-muted)] text-xs m-0">Diffondi l'analisi Trinity AI nell'ecosistema Dev</p>
                   </div>
                 </div>
 
@@ -595,9 +535,9 @@ useHead({
             </div>
 
             <!-- FORM & ELENCO COMMENTI COMMUNITY -->
-            <section class="bg-[#020420] border border-slate-800 rounded-2xl p-6 relative z-10 flex flex-col gap-5">
-              <div class="flex items-center justify-between border-b border-slate-800 pb-3 font-mono">
-                <h2 class="text-sm sm:text-base font-bold text-white m-0 flex items-center gap-2">
+            <section class="bg-[var(--bg-kernel)] border border-[var(--border-color)] rounded-2xl p-6 relative z-10 flex flex-col gap-5">
+              <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3 font-mono">
+                <h2 class="text-sm sm:text-base font-bold text-[var(--text-main)] m-0 flex items-center gap-2">
                   <span>💬</span> Discussione &amp; Opinion ({{ comments.length }})
                 </h2>
                 <span class="text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
@@ -610,7 +550,7 @@ useHead({
                   v-model="newCommentText"
                   rows="3"
                   placeholder="Esprimi la tua opinione o aggiungi contesto tecnico a questa notizia..."
-                  class="w-full bg-[#090d16] border border-slate-800 rounded-xl p-3.5 text-slate-200 focus:border-emerald-400 outline-none transition-all font-sans text-sm"
+                  class="w-full bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3.5 text-[var(--text-main)] focus:border-emerald-400 outline-none transition-all font-sans text-sm"
                 ></textarea>
 
                 <div v-if="commentError" class="text-xs font-mono text-rose-400">⚠️ {{ commentError }}</div>
@@ -626,7 +566,7 @@ useHead({
                 </div>
               </form>
 
-              <div v-if="comments.length === 0" class="p-8 text-center font-mono text-xs text-slate-500 bg-[#090d16] rounded-xl border border-slate-800/80 italic">
+              <div v-if="comments.length === 0" class="p-8 text-center font-mono text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] italic">
                 Nessun commento ancora. Condividi per primo la tua opinione!
               </div>
 
@@ -634,32 +574,34 @@ useHead({
                 <div
                   v-for="c in comments"
                   :key="c.id"
-                  class="bg-[#090d16] border border-slate-800 rounded-xl p-4 flex flex-col gap-2 font-mono text-xs hover:border-emerald-500/30 transition-colors"
+                  class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-4 flex flex-col gap-2 font-mono text-xs hover:border-emerald-500/30 transition-colors"
                 >
-                  <div class="flex items-center justify-between text-slate-400 text-[11px] border-b border-slate-800/70 pb-2">
+                  <div class="flex items-center justify-between text-[var(--text-muted)] text-[11px] border-b border-[var(--border-color)] pb-2">
                     <span class="font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
                       @{{ c.authorUsername || c.author || 'dev_kernel' }}
                     </span>
                     <span>{{ new Date(c.createdAt || Date.now()).toLocaleDateString('it-IT') }}</span>
                   </div>
                   <div
-                    class="text-slate-200 text-sm font-sans leading-relaxed dkp-preview-content"
+                    class="text-[var(--text-main)] text-sm font-sans leading-relaxed dkp-preview-content"
                     v-html="parseDkpMarkdown(String(c.content || ''))"
                   ></div>
                 </div>
               </div>
             </section>
-           <!-- BANNER ECOSISTEMA / ADS -->
-            <div class="pt-4 border-t border-slate-800 relative z-10">
+
+            <!-- BANNER ECOSISTEMA / ADS -->
+            <div class="pt-4 border-t border-[var(--border-color)] relative z-10">
               <DkpAdsWidget placement="global" />
             </div>
+
             <!-- APPROFONDIMENTI DAL VAULT EDITORIAL HUB (WIDGET 4 COLONNE) -->
-            <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800 flex flex-col gap-4 relative z-10">
+            <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-[var(--border-color)] flex flex-col gap-4 relative z-10">
               <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono m-0">
+                <h3 class="text-base font-bold text-[var(--text-main)] flex items-center gap-2 font-mono m-0">
                   <span>🔗</span> Approfondimenti dal Vault Editorial Hub
                 </h3>
-                <NuxtLink to="/blog" class="text-xs font-mono text-emerald-400 hover:underline font-bold no-underline">
+                <NuxtLink to="/blog" class="text-xs font-mono text-[var(--accent-emerald)] hover:underline font-bold no-underline">
                   Esplora Blog ➔
                 </NuxtLink>
               </div>
@@ -668,17 +610,17 @@ useHead({
                   v-for="art in featuredArticles"
                   :key="art.id"
                   :to="`/blog/${art.slug || art.id}`"
-                  class="bg-[#020420] border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-4 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group no-underline"
+                  class="bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-emerald-500/50 rounded-2xl p-4 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group no-underline"
                 >
                   <div>
-                    <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block truncate">
+                    <span class="text-[10px] font-mono font-bold text-[var(--accent-emerald)] uppercase tracking-wider block truncate">
                       {{ art.categoryName || art.category || 'Tech' }}
                     </span>
-                    <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1.5 leading-snug line-clamp-3 mb-0">
+                    <h4 class="text-xs sm:text-sm font-bold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors mt-1.5 leading-snug line-clamp-3 mb-0">
                       {{ art.title }}
                     </h4>
                   </div>
-                  <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-3 pt-2 border-t border-slate-800/60">
+                  <span class="text-[11px] font-mono font-bold text-[var(--accent-cyan)] group-hover:underline mt-3 pt-2 border-t border-[var(--border-color)]">
                     Leggi articolo ➔
                   </span>
                 </NuxtLink>
@@ -686,12 +628,12 @@ useHead({
             </div>
 
             <!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
-            <div class="pt-6 border-t border-slate-800 relative z-10">
+            <div class="pt-6 border-t border-[var(--border-color)] relative z-10">
               <DKPRelatedThreads />
             </div>
 
             <!-- WIDGET STREAM NODI & FORUM COMMUNITY -->
-            <div class="pt-6 border-t border-slate-800 relative z-10">
+            <div class="pt-6 border-t border-[var(--border-color)] relative z-10">
               <DkpNodesHomeWidget />
             </div>
           </article>
@@ -702,7 +644,7 @@ useHead({
 
       <!-- STATE: NOT FOUND -->
       <template v-else>
-        <div class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs flex flex-col gap-3 items-center">
+        <div class="text-center py-16 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--text-muted)] font-mono text-xs flex flex-col gap-3 items-center">
           <p class="text-3xl m-0">📭</p>
           <p class="m-0">Scheda notizia non trovata o rimossa.</p>
           <NuxtLink to="/news" class="text-emerald-400 hover:text-emerald-300 underline font-bold mt-2 bg-emerald-500/10 px-4 py-2 rounded-xl transition-colors no-underline">
@@ -711,10 +653,20 @@ useHead({
         </div>
       </template>
     </div>
-  </div>
+  </main>
 </template>
 
 <style scoped>
+.hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 10%, #000 40%, transparent 100%);
+}
+
 .glass-panel {
   backdrop-filter: blur(12px);
 }
@@ -767,4 +719,29 @@ useHead({
 :deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px; }
 :deep(.dkp-link:hover) { color: #00dc82; }
 :deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.5rem 0; }
+:deep(.dkp-preview-content ul),
+:deep(.dkp-preview-content ol) {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+  color: #cbd5e1;
+}
+:deep(.dkp-preview-content ul) { list-style-type: none; }
+:deep(.dkp-preview-content ol) { list-style-type: decimal; }
+:deep(.dkp-li-main) { margin-bottom: 0.45rem; position: relative; line-height: 1.65; }
+:deep(ul > .dkp-li-main::before) {
+  content: "○";
+  color: #38bdf8;
+  position: absolute;
+  left: -1.2rem;
+  top: 0;
+  font-weight: bold;
+}
+:deep(.dkp-li-nested) { margin-left: 1.5rem; margin-bottom: 0.3rem; color: #94a3b8; position: relative; }
+:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) {
+  content: "▪";
+  color: #00dc82;
+  position: absolute;
+  left: -1.2rem;
+  top: 0;
+}
 </style>

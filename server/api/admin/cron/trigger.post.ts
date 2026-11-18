@@ -3,6 +3,20 @@ import { defineEventHandler, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { verifyAdminOrCronAuth } from '~~/server/utils/cronAuth'
+import { processUnprocessedStories } from '~~/server/utils/hnAiPipeline'
+
+function buildStorySlug(title: string, hnId: number): string {
+  const cleanTitle = String(title || 'story')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 80)
+
+  return `${cleanTitle || 'story'}-${hnId}`
+}
 
 export const runHnTrigger = async (event: any) => {
   const db = await getDb()
@@ -16,10 +30,9 @@ export const runHnTrigger = async (event: any) => {
 
   try {
     const topIds: number[] = await $fetch<number[]>('https://hacker-news.firebaseio.com/v0/topstories.json')
-      .then(ids => (Array.isArray(ids) ? ids.slice(0, 15) : []))
+      .then(ids => (Array.isArray(ids) ? ids.slice(0, 18) : []))
       .catch(() => [])
 
-    // Fetch parallelo non bloccante (ottimizzato per Cloud Run)
     const settledItems = await Promise.allSettled(
       topIds.map(hnId => $fetch<any>(`https://hacker-news.firebaseio.com/v0/item/${hnId}.json`))
     )
@@ -29,19 +42,31 @@ export const runHnTrigger = async (event: any) => {
       const item = res.value
       if (!item.title || item.type !== 'story') continue
 
+      const storySlug = buildStorySlug(item.title, Number(item.id))
+      const originalUrl = item.url || `https://news.ycombinator.com/item?id=${item.id}`
+      const titleLower = String(item.title).toLowerCase()
+      const categoryName = titleLower.startsWith('show hn')
+        ? 'Show HN'
+        : titleLower.startsWith('ask hn')
+          ? 'Ask HN'
+          : 'Tech'
+
       const inserted: any = await db.execute(sql`
-        INSERT INTO hn_stories (hn_id, title, url, "by", score, type, created_at)
+        INSERT INTO hn_stories (
+          hn_id, title, original_url, slug, hn_points, hn_by, category, processed_by_ai
+        )
         VALUES (
-          ${item.id},
-          ${item.title},
-          ${item.url || `https://news.ycombinator.com/item?id=${item.id}`},
-          ${item.by || 'kernel_bot'},
-          ${item.score || 1},
-          'story',
-          TO_TIMESTAMP(${item.time || Math.floor(Date.now() / 1000)})
+          ${Number(item.id)},
+          ${String(item.title)},
+          ${originalUrl},
+          ${storySlug},
+          ${Number(item.score || 1)},
+          ${String(item.by || 'kernel_bot')},
+          ${categoryName},
+          FALSE
         )
         ON CONFLICT (hn_id) DO UPDATE SET
-          score = EXCLUDED.score
+          hn_points = EXCLUDED.hn_points
         RETURNING id
       `).catch((err: any) => {
         console.error(`Errore insert HN_ID ${item.id}:`, err.message)
@@ -53,6 +78,9 @@ export const runHnTrigger = async (event: any) => {
         imported++
       }
     }
+
+    // Arricchisce subito fino a 3 nuove storie con Trinity AI
+    const aiResult = await processUnprocessedStories(3).catch(() => ({ processedCount: 0 }))
 
     const cfZoneId = config.cloudflareZoneId || process.env.CLOUDFLARE_ZONE_ID
     const cfApiToken = config.cloudflareApiToken || process.env.CLOUDFLARE_API_TOKEN
@@ -68,7 +96,14 @@ export const runHnTrigger = async (event: any) => {
       cachePurged = true
     }
 
-    return { success: true, imported, cachePurged, timestamp: new Date().toISOString() }
+    return {
+      success: true,
+      imported,
+      aiProcessed: aiResult?.processedCount || 0,
+      cachePurged,
+      message: `Sync completata: ${imported} notizie sincronizzate su NeonDB (${aiResult?.processedCount || 0} arricchite da Trinity AI).`,
+      timestamp: new Date().toISOString()
+    }
   } catch (err: any) {
     if (err.statusCode) throw err
     throw createError({ statusCode: 500, statusMessage: err?.message || 'Errore interno trigger' })

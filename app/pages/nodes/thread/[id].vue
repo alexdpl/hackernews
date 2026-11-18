@@ -3,6 +3,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
+import { parseDkpMarkdown } from '~/composables/useDkpNodes'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
@@ -314,89 +315,6 @@ function safeUrl(raw: string): string {
   return '#'
 }
 
-function parseDkpMarkdown(contentVal: string): string {
-  try {
-    if (!contentVal) return ''
-
-    let rawContent = contentVal.replace(/\\n/g, '\n').replace(/\\r/g, '\r')
-    const codeBlocks: string[] = []
-
-    rawContent = rawContent.replace(
-      /```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g,
-      (_match: string, lang: string, code: string) => {
-        const index = codeBlocks.length
-        const cleanLang = lang ? lang.trim().toLowerCase() : 'code'
-        const languageClass = cleanLang !== 'code' ? `language-${cleanLang}` : 'language-none'
-
-        const languageLabel = `<div class="dkp-code-header"><span>${cleanLang}</span><button type="button" class="dkp-copy-btn" data-code-id="code-block-${index}" title="Copia codice">📋</button></div>`
-        const escapedCode = code
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-
-        codeBlocks.push(
-          `<div class="dkp-code-wrapper not-prose">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code id="code-block-${index}" class="${languageClass}">${escapedCode}</code></pre></div>`
-        )
-        return `__DKP_CODE_BLOCK_${index}__`
-      }
-    )
-
-    let html = rawContent
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-
-    html = html
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) => `<img src="${safeUrl(src)}" alt="${alt.replace(/"/g, '&quot;')}" class="dkp-img" loading="lazy" />`)
-      .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1</mark>')
-      .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1</u>')
-      .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1</code>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/~~(.*?)~~/g, '<del>$1</del>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) => `<a href="${safeUrl(href)}" class="dkp-link" target="_blank" rel="noopener noreferrer">${label}</a>`)
-
-    html = html
-      .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1</h1>')
-      .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1</h2>')
-      .replace(/^### (.*?)\r?$/gm, '<h3 class="dkp-h3">$1</h3>')
-      .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1</blockquote>')
-      .replace(/^---$/gm, '<hr class="dkp-hr" />')
-
-    const lines = html.split(/\r?\n/)
-    let parsedHtml = ''
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const trimmed = line.trim()
-
-      if (trimmed.includes('__DKP_CODE_BLOCK_')) {
-        parsedHtml += line + '\n'
-      } else if (
-        /^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) ||
-        /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)
-      ) {
-        parsedHtml += line + '\n'
-      } else if (trimmed === '') {
-        parsedHtml += '<br />\n'
-      } else {
-        parsedHtml += line + (i < lines.length - 1 ? '<br />' : '')
-      }
-    }
-
-    codeBlocks.forEach((block, index) => {
-      parsedHtml = parsedHtml.replace(
-        new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'),
-        () => block
-      )
-    })
-
-    return parsedHtml
-  } catch (err) {
-    console.error('Errore nel parsing thread:', err)
-    return '<p class="text-rose-400">Errore nella formattazione del contenuto.</p>'
-  }
-}
 
 const parsedContent = computed(() => parseDkpMarkdown(String(post.value?.content || '')))
 
@@ -866,6 +784,7 @@ onUnmounted(() => {
   font-size: 0.8rem;
   font-weight: bold;
   border-bottom: 1px solid #1e293b;
+  text-transform: uppercase;
 }
 :deep(.dkp-copy-btn) {
   background: none;
@@ -887,5 +806,49 @@ onUnmounted(() => {
   font-size: 0.875rem;
 }
 :deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
-:deep(.dkp-inline-code) { background-color: rgba(30, 41, 59, 0.8); color: #38bdf8; padding: 0.2rem 0.4rem; border-radius: 0.375rem; }
+:deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
+:deep(.dkp-inline-code) { background-color: rgba(30, 41, 59, 0.8); color: #38bdf8; padding: 0.2rem 0.4rem; border-radius: 0.375rem; font-size: 0.85rem; }
+:deep(.dkp-h1) { font-size: 1.5rem; font-weight: 900; color: #ffffff; margin: 1.2rem 0 0.6rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.3rem; }
+:deep(.dkp-h2) { font-size: 1.25rem; font-weight: 800; color: #ffffff; margin: 1.1rem 0 0.5rem; }
+:deep(.dkp-h3) { font-size: 1.05rem; font-weight: 700; color: #00dc82; margin: 0.9rem 0 0.4rem; }
+:deep(.dkp-quote) { border-left: 3px solid #00dc82; padding: 0.4rem 0.9rem; color: #94a3b8; font-style: italic; margin: 0.8rem 0; background: rgba(0, 220, 130, 0.05); border-radius: 0 8px 8px 0; }
+:deep(.dkp-link) { color: #38bdf8; text-decoration: underline; }
+:deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.25rem 0; }
+:deep(.dkp-table-wrapper) { overflow-x: auto; margin: 1rem 0; }
+:deep(.dkp-table) { width: 100%; border-collapse: collapse; border: 1px solid #1e293b; font-size: 0.85rem; }
+:deep(.dkp-table td) { padding: 0.5rem 0.75rem; border: 1px solid #1e293b; }
+:deep(.dkp-preview-content ul),
+:deep(.dkp-preview-content ol) {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+  color: #cbd5e1;
+}
+:deep(.dkp-preview-content ul) { list-style-type: none; }
+:deep(.dkp-preview-content ol) { list-style-type: decimal; }
+:deep(.dkp-li-main) {
+  margin-bottom: 0.45rem;
+  position: relative;
+  line-height: 1.65;
+}
+:deep(ul > .dkp-li-main::before) {
+  content: "○";
+  color: #38bdf8;
+  position: absolute;
+  left: -1.2rem;
+  top: 0;
+  font-weight: bold;
+}
+:deep(.dkp-li-nested) {
+  margin-left: 1.5rem;
+  margin-bottom: 0.3rem;
+  color: #94a3b8;
+  position: relative;
+}
+:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) {
+  content: "▪";
+  color: #00dc82;
+  position: absolute;
+  left: -1.2rem;
+  top: 0;
+}
 </style>

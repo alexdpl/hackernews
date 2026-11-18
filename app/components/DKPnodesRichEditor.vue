@@ -43,6 +43,8 @@ const isSubmitting = ref(false)
 const formError = ref('')
 
 const { currentUser } = useAuthCore()
+const authToken = getDkpAuthToken()
+const authHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {}
 const { $prism } = useNuxtApp()
 
 const isEditMode = computed(() => Boolean(props.editPost?.id))

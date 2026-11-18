@@ -8,7 +8,8 @@ import { getSmartAIProvider } from '~~/server/utils/aiRouter'
 const TIER_QUOTAS: Record<string, number> = {
   FREE: 1000,
   PRO: 50000,
-  ENTERPRISE: 1000000
+  ENTERPRISE: 1000000,
+  ADMIN: 10000000
 }
 
 export default defineEventHandler(async (event) => {
@@ -43,12 +44,12 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!apiKeyRecord) {
-    apiKeyRecord = { id: 1, user_id: 1, role: 'PRO', usageCount: 0 }
+    apiKeyRecord = { id: 1, user_id: 1, role: 'PRO', usage_count: 0 }
   }
 
   const roleTier = (apiKeyRecord.role || 'FREE').toUpperCase()
   const maxQuota = TIER_QUOTAS[roleTier] || TIER_QUOTAS.FREE
-  const currentUsage = apiKeyRecord.usageCount || 0
+  const currentUsage = Number(apiKeyRecord.usage_count ?? apiKeyRecord.usageCount ?? 0)
 
   if (currentUsage >= maxQuota && roleTier !== 'ADMIN') {
     throw createError({ 
@@ -76,7 +77,7 @@ export default defineEventHandler(async (event) => {
         messages,
         system: systemPrompt || "Sei un assistente esperto di programmazione e architettura software del DevKernelPulse ecosistema.",
         temperature: typeof temperature === 'number' ? temperature : 0.7,
-        maxTokens: typeof maxTokens === 'number' ? maxTokens : 2048,
+        maxOutputTokens: typeof maxTokens === 'number' ? maxTokens : 2048,
         onFinish: async () => {
           // Esecuzione asincrona (fire-and-forget), non blocca la risposta verso l'utente
           db.execute(sql`

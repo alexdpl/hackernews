@@ -2,15 +2,28 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../../../utils/db'
+import { extractDkpUserFromEvent } from '../../../utils/session'
 import { scanWithSentinelAI } from '../../../utils/sentinelAi'
 import { BlockchainService } from '../../../utils/blockchainService'
 import { awardNodeXpAndBadges, GamificationRules } from '../../../utils/gamification'
 
 export default defineEventHandler(async (event) => {
   const db = await getDb()
-  const body = await readBody(event)
+  if (!db) {
+    throw createError({ statusCode: 500, statusMessage: 'Database Neon non disponibile.' })
+  }
 
-  const authorId = event.context.user?.id || body.userId || 1
+  const sessionUser = event.context.user || extractDkpUserFromEvent(event)
+  const authorId = sessionUser?.id ? Number(sessionUser.id) : null
+
+  if (!authorId) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Devi essere loggato per pubblicare.'
+    })
+  }
+
+  const body = await readBody(event)
   const nodeId = Number(body.nodeId)
   const title = body.title?.trim()
   const content = body.content?.trim()

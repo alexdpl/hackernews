@@ -12,7 +12,7 @@ export interface StructuredSchemaConfig<T> {
 export async function callOpenRouterStructured<T>(
   config: StructuredSchemaConfig<T>
 ): Promise<{ data: T; providerModel: string; fallbackUsed: boolean }> {
-  const apiKey = process.env.OPENROUTER_API_KEY
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.PROVIDER_API_KEY || process.env.DKP_PROVIDER_API_KEY
   const model = config.model || process.env.OPENROUTER_SENTINEL_MODEL || 'google/gemini-2.0-flash-001'
 
   if (!apiKey) {

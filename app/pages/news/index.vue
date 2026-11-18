@@ -5,14 +5,60 @@ import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 
-useHead({
+interface EcosystemPillar {
+  to: string
+  icon: string
+  tag: string
+  title: string
+  subtitle: string
+  accentClass: string
+  active?: boolean
+}
+
+useDkpSeo({
   title: 'DKP Tech Feed — Hacker News AI Realtime Stream v2.6-PURE-SQL — DevKernelPulse',
-  meta: [
-    { name: 'description', content: 'Feed in tempo reale da Hacker News filtrato e tradotto da Trinity AI e validato dal punteggio di rilevanza Sentinel AI su architetture Pure SQL.' }
-  ]
+  description: 'Feed in tempo reale da Hacker News filtrato e tradotto da Trinity AI e validato dal punteggio di rilevanza Sentinel AI su architetture Pure SQL.',
+  type: 'collection',
+  canonicalPath: '/news'
 })
 
-// Caricamento SSR-ready degli articoli del Vault correlati
+const ecosystemPillars: EcosystemPillar[] = [
+  {
+    to: '/news',
+    icon: '🌍',
+    tag: 'ACTIVE STREAM',
+    title: 'DKP Tech Feed',
+    subtitle: 'Segnali tech e newsroom filtrati in tempo reale da Trinity AI',
+    accentClass: 'pillar-emerald',
+    active: true
+  },
+  {
+    to: '/nodes',
+    icon: '💬',
+    tag: 'COMMUNITY',
+    title: 'DKP Talks Hub',
+    subtitle: 'Nodi tematici, architetture, bounty e discussioni tecniche',
+    accentClass: 'pillar-purple'
+  },
+  {
+    to: '/tools',
+    icon: '🛠️',
+    tag: 'SECURITY & DEV',
+    title: 'Developer Tools',
+    subtitle: 'Utility crittografiche, audit SAST e diagnostica per ingegneri',
+    accentClass: 'pillar-cyan'
+  },
+  {
+    to: '/blog',
+    icon: '✍️',
+    tag: 'VAULT VERIFIED',
+    title: 'DKP Editorial Hub',
+    subtitle: 'Deep-dive tecnici con certificazione SHA-256 immutabile',
+    accentClass: 'pillar-amber'
+  }
+]
+
+// Caricamento SSR-ready degli articoli del Vault correlati (4 schede come in Home)
 const { data: vaultRes } = await useFetch('/api/blog/posts', {
   key: 'dkp-news-vault-featured-v26',
   lazy: true
@@ -21,7 +67,7 @@ const { data: vaultRes } = await useFetch('/api/blog/posts', {
 const featuredArticles = computed(() => {
   const res: any = vaultRes.value
   const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-  return raw.slice(0, 2)
+  return raw.slice(0, 4)
 })
 
 const copiedId = ref<string | number | null>(null)
@@ -82,94 +128,93 @@ function parseTags(tags: any): string[] {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 sm:py-14 font-sans">
-    <div class="max-w-6xl mx-auto flex flex-col gap-8">
-      
-      <!-- HERO HEADER v2.6-PURE-SQL -->
-      <header class="bg-[#090d16] border border-slate-800 rounded-3xl p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
-        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-36 bg-emerald-500/10 blur-[110px] rounded-full pointer-events-none"></div>
+  <main class="min-h-screen bg-[var(--bg-kernel)] text-[var(--text-main)] font-sans px-4 sm:px-6 py-10 sm:py-14 relative overflow-hidden transition-colors duration-500">
+    <!-- BACKGROUND GLOW & TECHNICAL GRID (IDENTICO ALLA HOME) -->
+    <div class="hero-grid-bg pointer-events-none" aria-hidden="true"></div>
+    <div
+      class="absolute -top-44 left-1/2 -translate-x-1/2 w-[860px] h-[340px] bg-[var(--accent-emerald)]/10 blur-[130px] rounded-full pointer-events-none"
+      aria-hidden="true"
+    ></div>
 
-        <!-- Badge Stato Crawler -->
-        <div class="flex justify-center mb-5 relative z-10">
-          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span class="text-[11px] font-mono font-extrabold text-emerald-400 uppercase tracking-widest">
-              🌍 DKP TECH FEED · REALTIME HN CRAWLER v2.6-PURE-SQL
-            </span>
-          </div>
+    <div class="max-w-6xl mx-auto flex flex-col gap-10 relative z-10">
+      <!-- 1. HERO HEADER ALLINEATO ALLA HOME -->
+      <header class="relative pt-2 sm:pt-6 text-center flex flex-col items-center gap-6">
+        <div class="inline-flex items-center gap-2.5 bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--accent-emerald)]/35 px-4 py-1.5 rounded-full shadow-[0_0_24px_rgba(16,185,129,0.14)]">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-emerald)] opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent-emerald)]"></span>
+          </span>
+          <span class="text-[11px] font-mono font-black text-[var(--accent-emerald)] uppercase tracking-widest">
+            🌍 DKP Tech Feed • Realtime HN Crawler v2.6-PURE-SQL
+          </span>
         </div>
 
-        <h1 class="text-4xl sm:text-5xl font-black text-white tracking-tight mb-4 relative z-10">
-          Hacker News <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">AI Stream</span>
+        <h1 class="text-4xl sm:text-6xl font-black text-[var(--text-main)] tracking-tight leading-[1.1] max-w-4xl mx-auto">
+          Hacker News
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-emerald)] via-[var(--accent-cyan)] to-purple-400">
+            AI Tech Stream
+          </span>
         </h1>
 
-        <p class="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed mb-7 relative z-10">
-          Notizie tecnologiche in tempo reale arricchite con riassunti in italiano di Trinity AI, validate da Sentinel Score e archiviate su Neon PostgreSQL.
+        <p class="text-[var(--text-muted)] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+          Notizie tecnologiche in tempo reale arricchite con sintesi in italiano di Trinity AI, validate da Sentinel Score e archiviate su Neon PostgreSQL.
         </p>
 
-        <!-- BARRA 4 PILASTRI DELL'ECOSISTEMA -->
-        <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-3 justify-center mb-8 relative z-10 font-mono">
+        <!-- BENTO GRID 4 PILASTRI DELL'ECOSISTEMA (IDENTICA ALLA HOME) -->
+        <nav aria-label="Moduli principali DevKernelPulse" class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-2 text-left">
           <NuxtLink
-            to="/news"
-            class="px-4 sm:px-5 py-2.5 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.35)]"
+            v-for="pillar in ecosystemPillars"
+            :key="pillar.to"
+            :to="pillar.to"
+            :class="[
+              'pillar-card group',
+              pillar.accentClass,
+              pillar.active ? 'border-[var(--accent-emerald)]/60 shadow-[0_0_25px_rgba(16,185,129,0.15)]' : ''
+            ]"
           >
-            🌍 DKP Tech Feed
-          </NuxtLink>
-
-          <NuxtLink
-            to="/nodes"
-            class="px-4 sm:px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-          >
-            💬 DKP Talks Hub
-          </NuxtLink>
-
-          <NuxtLink
-            to="/tools"
-            class="px-4 sm:px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-          >
-            🛠️ Developer Tools
-          </NuxtLink>
-
-          <NuxtLink
-            to="/blog"
-            class="px-4 sm:px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-          >
-            ✍️ DKP Editorial Hub
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-xl" aria-hidden="true">{{ pillar.icon }}</span>
+              <span class="pillar-tag font-mono text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                {{ pillar.tag }}
+              </span>
+            </div>
+            <h2 class="text-sm font-extrabold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors flex items-center justify-between">
+              <span>{{ pillar.title }}</span>
+              <span class="text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">➔</span>
+            </h2>
+            <p class="text-xs text-[var(--text-muted)] leading-relaxed mt-1">
+              {{ pillar.subtitle }}
+            </p>
           </NuxtLink>
         </nav>
 
-        <!-- CTA RAPIDE STREAM -->
-        <div class="flex flex-wrap justify-center items-center gap-3 relative z-10 font-mono">
+        <!-- TELEMETRIA RAPIDA STREAM -->
+        <div class="flex flex-wrap justify-center items-center gap-3 font-mono mt-1">
           <button
             type="button"
             @click="refreshStream"
             :disabled="isRefreshing || pending"
-            class="px-4 py-2.5 bg-[#020420] hover:bg-slate-900 text-slate-300 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            class="px-4 py-2.5 bg-[var(--bg-surface)] hover:border-[var(--accent-emerald)] text-[var(--text-main)] hover:text-[var(--accent-emerald)] border border-[var(--border-color)] font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-md"
           >
             <span :class="{ 'inline-block animate-spin': isRefreshing }">🔄</span>
             {{ isRefreshing ? ' Sincronizzazione Stream...' : ' Aggiorna Stream Live' }}
           </button>
 
-          <span class="text-xs text-slate-400 bg-[#020420] border border-slate-800 px-3.5 py-2.5 rounded-xl">
-            📡 <strong class="text-emerald-400">{{ meta.total || stories.length }}</strong> nodi indicizzati
+          <span class="text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-color)] px-4 py-2.5 rounded-xl shadow-md">
+            📡 <strong class="text-[var(--accent-emerald)]">{{ meta.total || stories.length }}</strong> nodi indicizzati
           </span>
         </div>
       </header>
 
-      <!-- BARRA DI RICERCA & FILTRI -->
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-xl">
-        
-        <!-- Search Input -->
-        <div class="relative w-full lg:w-1/2 flex items-center bg-[#020420] border border-slate-800 focus-within:border-emerald-500 rounded-xl px-3.5 py-2.5 transition-colors">
-          <span class="text-slate-500 mr-2.5">🔍</span>
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Cerca per tecnologia o parola chiave (es. Rust, Docker, AI, SQL)..." 
-            class="w-full bg-transparent text-sm text-white focus:outline-none placeholder-slate-500"
+      <!-- 2. BARRA DI RICERCA & FILTRI -->
+      <section aria-label="Filtri Feed Tech" class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-xl">
+        <div class="relative w-full lg:w-1/2 flex items-center bg-[var(--bg-kernel)] border border-[var(--border-color)] focus-within:border-[var(--accent-emerald)] rounded-xl px-3.5 py-2.5 transition-colors">
+          <span class="text-[var(--text-muted)] mr-2.5">🔍</span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Cerca per tecnologia o parola chiave (es. Rust, Docker, AI, SQL)..."
+            class="w-full bg-transparent text-sm text-[var(--text-main)] focus:outline-none placeholder-slate-500"
             @input="currentPage = 1"
           />
           <button
@@ -182,201 +227,268 @@ function parseTags(tags: any): string[] {
           </button>
         </div>
 
-        <!-- Filter Controls -->
         <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end font-mono">
-          <button 
+          <button
             type="button"
             @click="selectedCategory = ''; currentPage = 1"
-            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', !selectedCategory ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
+            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', !selectedCategory ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : 'bg-[var(--bg-kernel)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)]']"
           >
             🔥 Tutti
           </button>
-          <button 
+          <button
             type="button"
             @click="selectedCategory = 'show'; currentPage = 1"
-            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', selectedCategory === 'show' ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
+            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', selectedCategory === 'show' ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : 'bg-[var(--bg-kernel)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)]']"
           >
             🚀 Show HN
           </button>
-          <button 
+          <button
             type="button"
             @click="selectedCategory = 'ask'; currentPage = 1"
-            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', selectedCategory === 'ask' ? 'bg-sky-500/20 text-sky-400 border-sky-500/40 shadow-[0_0_12px_rgba(56,189,248,0.15)]' : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-white']"
+            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', selectedCategory === 'ask' ? 'bg-sky-500/20 text-sky-400 border-sky-500/40 shadow-[0_0_12px_rgba(56,189,248,0.15)]' : 'bg-[var(--bg-kernel)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)]']"
           >
             💡 Ask HN
           </button>
 
-          <!-- Min Tech Score -->
-          <div class="flex items-center gap-2 bg-[#020420] border border-slate-800 px-3.5 py-2 rounded-xl">
-            <span class="text-xs text-slate-400">Score &ge; <strong class="text-emerald-400">{{ minTechScore }}</strong></span>
-            <input 
-              v-model.number="minTechScore" 
-              type="range" 
-              min="0" 
-              max="90" 
-              step="10" 
+          <div class="flex items-center gap-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] px-3.5 py-2 rounded-xl">
+            <span class="text-xs text-[var(--text-muted)]">Score &ge; <strong class="text-[var(--accent-emerald)]">{{ minTechScore }}</strong></span>
+            <input
+              v-model.number="minTechScore"
+              type="range"
+              min="0"
+              max="90"
+              step="10"
               class="w-20 accent-emerald-400 cursor-pointer"
               @change="currentPage = 1"
             />
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- BANNER AD TOP -->
+      <!-- 3. BANNER AD TOP -->
       <DkpAdsWidget placement="global" />
 
-      <!-- FEED GRID -->
-      <div v-if="pending" class="text-center py-20 bg-[#090d16] border border-slate-800 rounded-2xl text-emerald-400 font-mono text-xs animate-pulse">
+      <!-- 4. FEED GRID -->
+      <div v-if="pending" class="text-center py-20 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--accent-emerald)] font-mono text-xs animate-pulse">
         ⚡ Ingestione notizie dal Vault DKP Nodes v2.6 in corso...
       </div>
 
-      <div v-else-if="stories.length === 0" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl flex flex-col items-center gap-3">
+      <div v-else-if="stories.length === 0" class="text-center py-16 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl flex flex-col items-center gap-3">
         <div class="text-4xl">📡</div>
-        <h3 class="text-lg font-bold text-white">Nessuna notizia trovata</h3>
-        <p class="text-slate-400 text-xs max-w-md">Prova a resettare i filtri di ricerca o sincronizza nuovamente lo stream live.</p>
+        <h3 class="text-lg font-bold text-[var(--text-main)]">Nessuna notizia trovata</h3>
+        <p class="text-[var(--text-muted)] text-xs max-w-md">Prova a resettare i filtri di ricerca o sincronizza nuovamente lo stream live.</p>
         <div class="flex gap-3 mt-2 font-mono">
           <button type="button" @click="searchQuery = ''; selectedCategory = ''; minTechScore = 0; currentPage = 1" class="px-4 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all cursor-pointer">
             Ripristina Filtri
           </button>
-          <button type="button" @click="refreshStream" class="px-4 py-2 bg-[#020420] border border-slate-700 text-sky-400 font-bold text-xs rounded-xl hover:border-sky-400 transition-all cursor-pointer">
+          <button type="button" @click="refreshStream" class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] text-[var(--accent-cyan)] font-bold text-xs rounded-xl hover:border-sky-400 transition-all cursor-pointer">
             🔄 Aggiorna
           </button>
         </div>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <article 
-          v-for="item in stories" 
+      <section v-else aria-label="Elenco Notizie Tech AI" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <article
+          v-for="item in stories"
           :key="item.id"
-          class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-6 flex flex-col justify-between transition-all hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(16,185,129,0.1)] shadow-lg group"
+          class="bg-[var(--bg-surface)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)]/50 rounded-2xl p-6 flex flex-col justify-between transition-all hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(16,185,129,0.12)] shadow-lg group"
         >
           <div>
-            <!-- Header Badges -->
-            <div class="flex items-center justify-between mb-3.5 pb-3 border-b border-slate-800/70">
+            <div class="flex items-center justify-between mb-3.5 pb-3 border-b border-[var(--border-color)]">
               <span :class="['px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border font-mono', getTypeBadgeColor(item.type)]">
                 {{ item.type === 'show' ? 'SHOW HN' : item.type === 'ask' ? 'ASK HN' : 'NEWS' }}
               </span>
               <div class="flex items-center gap-2 font-mono text-xs">
-                <span v-if="item.techScore" class="text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                <span v-if="item.techScore" class="text-[var(--accent-cyan)] bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
                   AI {{ item.techScore }}%
                 </span>
-                <span class="text-emerald-400 font-bold">
+                <span class="text-[var(--accent-emerald)] font-bold">
                   🔥 {{ item.points || 0 }} pts
                 </span>
               </div>
             </div>
 
-            <!-- Title -->
-            <h2 class="text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors leading-snug mb-2.5">
+            <h2 class="text-base font-extrabold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors leading-snug mb-2.5">
               <NuxtLink :to="`/news/${item.slug || item.id}`">
                 {{ item.title }}
               </NuxtLink>
             </h2>
 
-            <!-- AI Summary Preview -->
-            <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">
+            <p class="text-xs text-[var(--text-muted)] line-clamp-3 leading-relaxed mb-4">
               {{ item.summary_it || item.summary || 'Notizia analizzata ed elaborata dai flussi in tempo reale di Trinity AI.' }}
             </p>
           </div>
 
-          <!-- Footer Metadata -->
-          <div class="pt-3.5 border-t border-slate-800/70 flex flex-col gap-3 mt-auto">
+          <div class="pt-3.5 border-t border-[var(--border-color)] flex flex-col gap-3 mt-auto">
             <div class="flex flex-wrap gap-1.5">
-              <span v-for="tag in parseTags(item.tags)" :key="tag" class="text-[10px] font-mono bg-[#020420] text-sky-400 border border-slate-800 px-2 py-0.5 rounded">
+              <span v-for="tag in parseTags(item.tags)" :key="tag" class="text-[10px] font-mono bg-[var(--bg-kernel)] text-[var(--accent-cyan)] border border-[var(--border-color)] px-2 py-0.5 rounded">
                 #{{ tag }}
               </span>
             </div>
 
-            <div class="flex items-center justify-between text-[11px] text-slate-500 font-mono">
+            <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono">
               <span class="truncate pr-2">by @{{ item.author || 'hackernews' }}</span>
               <div class="flex items-center gap-2.5 shrink-0">
                 <button
                   type="button"
                   @click.prevent="shareStory(item.id, item.slug, item.url)"
-                  class="text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                  class="hover:text-[var(--accent-emerald)] transition-colors cursor-pointer"
                   title="Copia link scheda"
                 >
                   🔗 {{ copiedId === item.id ? 'Copiato!' : 'Condividi' }}
                 </button>
-                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 font-bold hover:underline">
+                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-[var(--accent-emerald)] font-bold hover:underline">
                   Leggi scheda ↗
                 </NuxtLink>
               </div>
             </div>
           </div>
         </article>
-      </div>
+      </section>
 
-      <!-- PAGINAZIONE -->
-      <div v-if="meta.totalPages > 1" class="flex justify-center items-center gap-3 pt-6 border-t border-slate-800 font-mono">
-        <button 
+      <!-- 5. PAGINAZIONE -->
+      <div v-if="meta.totalPages > 1" class="flex justify-center items-center gap-3 pt-6 border-t border-[var(--border-color)] font-mono">
+        <button
           type="button"
           :disabled="currentPage === 1"
           @click="currentPage--"
-          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-xl text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer"
+          class="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] rounded-xl text-xs font-bold disabled:opacity-40 hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] transition-all cursor-pointer"
         >
           ← Precedente
         </button>
-        <span class="text-xs text-slate-400">Pagina <strong class="text-white">{{ currentPage }}</strong> di {{ meta.totalPages }}</span>
-        <button 
+        <span class="text-xs text-[var(--text-muted)]">Pagina <strong class="text-[var(--text-main)]">{{ currentPage }}</strong> di {{ meta.totalPages }}</span>
+        <button
           type="button"
           :disabled="currentPage === meta.totalPages"
           @click="currentPage++"
-          class="px-4 py-2 bg-[#090d16] border border-slate-800 text-slate-300 rounded-xl text-xs font-bold disabled:opacity-40 hover:border-emerald-500 hover:text-emerald-400 transition-all cursor-pointer"
+          class="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] rounded-xl text-xs font-bold disabled:opacity-40 hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] transition-all cursor-pointer"
         >
           Successiva →
         </button>
       </div>
 
-      <!-- SEZIONE VAULT -->
-      <div v-if="featuredArticles.length > 0" class="pt-8 mt-2 border-t border-slate-800">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
-            <span>🔗</span> Approfondimenti dal Vault Editorial Hub
-          </h3>
-          <NuxtLink to="/blog" class="text-xs font-mono text-emerald-400 hover:underline font-bold">
-            Vedi tutti ➔
+      <!-- 6. SEZIONE VAULT DEL BLOG (4 SCHEDE COME IN HOME) -->
+      <section
+        v-if="featuredArticles.length > 0"
+        aria-labelledby="vault-news-featured-heading"
+        class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 shadow-2xl transition-colors duration-500"
+      >
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+          <div>
+            <span class="text-[10px] font-mono font-black uppercase tracking-widest text-[var(--accent-emerald)] block mb-1">
+              SHA-256 NOTARIZED KNOWLEDGE
+            </span>
+            <h2 id="vault-news-featured-heading" class="text-xl sm:text-2xl font-extrabold text-[var(--text-main)] flex items-center gap-2">
+              <span aria-hidden="true">🔗</span> Approfondimenti dal Vault Editorial Hub
+            </h2>
+          </div>
+
+          <NuxtLink
+            to="/blog"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)] text-xs font-mono font-bold text-[var(--accent-emerald)] transition-all"
+          >
+            Vedi tutti gli articoli ➔
           </NuxtLink>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <NuxtLink 
-            v-for="art in featuredArticles" 
-            :key="art.id" 
-            :to="`/blog/${art.slug || art.id}`"
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group"
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <article
+            v-for="art in featuredArticles"
+            :key="art.id"
+            class="bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)]/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group"
           >
             <div>
-              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+              <span class="text-[10px] font-mono font-bold text-[var(--accent-emerald)] uppercase tracking-wider truncate block mb-2">
                 {{ art.categoryName || art.category || 'Tech' }}
               </span>
-              <h4 class="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors mt-1 leading-snug">
-                {{ art.title }}
-              </h4>
+              <h3 class="text-sm font-bold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors leading-snug">
+                <NuxtLink :to="`/blog/${art.slug || art.id}`">
+                  {{ art.title }}
+                </NuxtLink>
+              </h3>
             </div>
-            <span class="text-xs font-mono font-bold text-sky-400 group-hover:underline mt-4">
+            <NuxtLink
+              :to="`/blog/${art.slug || art.id}`"
+              class="text-[11px] font-mono font-bold text-[var(--accent-cyan)] group-hover:underline mt-4 inline-flex items-center gap-1"
+            >
               Leggi articolo ➔
-            </span>
-          </NuxtLink>
+            </NuxtLink>
+          </article>
         </div>
-      </div>
+      </section>
 
-      <!-- WIDGET NODI COMMUNITY -->
-      <div class="pt-4 border-t border-slate-800">
+      <!-- 7. WIDGET NODI COMMUNITY -->
+      <section aria-label="DKP Nodes Live Stream" class="pt-4 border-t border-[var(--border-color)]">
         <DkpNodesHomeWidget />
-      </div>
+      </section>
 
-      <!-- BANNER AD SPONSORED STREAM -->
-      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-
-      <!-- FOOTER BADGE -->
-      <div class="flex justify-center mt-2">
-        <div class="inline-flex items-center gap-2 bg-[#090d16] border border-emerald-500/40 px-4 py-1.5 rounded-full text-xs font-mono font-extrabold text-white shadow-lg">
-          <span class="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#00dc82]"></span>
-          ⚡ Pulse Nexus
-          <span class="bg-emerald-500 text-slate-950 px-1.5 py-0.5 rounded text-[10px] font-black">v2.6-PURE-SQL</span>
-        </div>
-      </div>
-
+      <!-- 8. BANNER AD SPONSORED STREAM -->
+      <aside aria-label="Risorse e libri consigliati">
+        <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+      </aside>
     </div>
-  </div>
+  </main>
 </template>
+
+<style scoped>
+.hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 10%, #000 40%, transparent 100%);
+}
+
+.pillar-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  padding: 1.1rem 1.15rem;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pillar-card:hover {
+  transform: translateY(-3px);
+}
+
+.pillar-emerald:hover {
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 12px 28px -10px rgba(16, 185, 129, 0.25);
+}
+.pillar-emerald .pillar-tag {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.pillar-purple:hover {
+  border-color: rgba(168, 85, 247, 0.55);
+  box-shadow: 0 12px 28px -10px rgba(168, 85, 247, 0.25);
+}
+.pillar-purple .pillar-tag {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+}
+
+.pillar-cyan:hover {
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 12px 28px -10px rgba(56, 189, 248, 0.25);
+}
+.pillar-cyan .pillar-tag {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+}
+
+.pillar-amber:hover {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 12px 28px -10px rgba(245, 158, 11, 0.25);
+}
+.pillar-amber .pillar-tag {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+</style>
