@@ -343,7 +343,7 @@ async function handleLogout() {
       <div class="flex items-center gap-2.5">
         
         <!-- WIDGET GAMIFICATION ESPANDIBILE CON THEME TOGGLE -->
-        <div v-if="isAuthenticated || currentUser?.id" class="relative">
+        <div class="relative">
           <button
             @click="toggleXpMenu"
             type="button"
