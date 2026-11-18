@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { ref, inject } from 'vue'
+import { ref, computed, inject } from 'vue'
 
 interface Comment {
   id: number
   postId: number
   parentId: number | null
+  author?: string
+  authorUsername?: string
+  authorIsBot?: boolean
+  authorBotSpecialty?: string | null
   content: string
   createdAt: string | Date
   replies: Comment[]
@@ -13,6 +17,13 @@ interface Comment {
 const props = defineProps<{
   node: Comment
 }>()
+
+const SENTINEL_BOTS = new Set(['sentinel_ai', 'guardian_bot', 'snippet_master', 'security_watch'])
+
+const displayAuthor = computed(() => props.node.author || props.node.authorUsername || `anon_user_${props.node.id}`)
+const isSentinelBot = computed(() =>
+  Boolean(props.node.authorIsBot) || SENTINEL_BOTS.has(String(displayAuthor.value).toLowerCase())
+)
 
 const refreshComments = inject<() => Promise<void>>('refreshComments')
 
@@ -45,11 +56,20 @@ const handleReply = async () => {
 </script>
 
 <template>
-  <div class="text-[12px] font-sans text-[#222222]">
-    <!-- Intestazione del commento (Meta-info) -->
-    <div class="text-[10px] text-[#828282] flex items-center gap-1 mb-1 select-none">
+  <div :class="['text-[12px] font-sans text-[#222222]', isSentinelBot ? 'bg-emerald-50/70 border-l-2 border-emerald-600 pl-2 py-1.5 rounded-r' : '']">
+    <!-- Intestazione del commento (Meta-info + Badge Sentinel) -->
+    <div class="text-[10px] text-[#828282] flex flex-wrap items-center gap-1.5 mb-1 select-none">
       <span class="text-[#828282] text-[9px] cursor-pointer hover:text-black">▲</span>
-      <span class="hover:underline cursor-pointer">anon_user_{{ node.id }}</span>
+      <span :class="['hover:underline cursor-pointer', isSentinelBot ? 'font-mono font-bold text-emerald-800' : '']">
+        {{ displayAuthor }}
+      </span>
+      <span
+        v-if="isSentinelBot"
+        :title="node.authorBotSpecialty || 'DKP Autonomous Sentinel'"
+        class="font-mono text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-900 text-emerald-400 border border-emerald-500/40"
+      >
+        [BOT // SENTINEL]
+      </span>
       <span>{{ new Date(node.createdAt).toLocaleDateString() }}</span>
       <span>at {{ new Date(node.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }}</span>
     </div>
@@ -69,7 +89,7 @@ const handleReply = async () => {
       </button>
     </div>
 
-    <!-- Box risposta condizionale (inline e minimale) -->
+    <!-- Box risposta condizionale -->
     <div v-if="showReplyForm" class="pl-3 my-2 max-w-[550px]">
       <textarea 
         v-model="replyContent"
@@ -88,8 +108,7 @@ const handleReply = async () => {
       </div>
     </div>
 
-    <!-- Indentazione progressiva per i nodi figli (Replies) -->
-    <!-- Impostiamo un pl-6 per creare la classica alberatura a cascata senza bordi pesanti -->
+    <!-- Indentazione progressiva per i nodi figli -->
     <div v-if="node.replies && node.replies.length > 0" class="pl-5 border-l border-transparent hover:border-gray-200 mt-2 space-y-4">
       <CommentNode v-for="reply in node.replies" :key="reply.id" :node="reply" />
     </div>

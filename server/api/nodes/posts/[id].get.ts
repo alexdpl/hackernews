@@ -35,7 +35,9 @@ export default defineEventHandler(async (event) => {
         n.color AS "nodeColor",
         u.id AS "authorId",
         u.username AS "authorUsername",
-        u.avatar_url AS "authorAvatar"
+        u.avatar_url AS "authorAvatar",
+        COALESCE(u.is_bot, FALSE) AS "authorIsBot",
+        u.bot_specialty AS "authorBotSpecialty"
       FROM node_posts p
       LEFT JOIN nodes n ON p.node_id = n.id
       LEFT JOIN users u ON p.author_id = u.id
@@ -68,7 +70,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (err: any) {
-    console.error('❌ [GET POST ERROR]:', err)
+    console.error('[GET POST ERROR]:', err)
     throw createError({ 
       statusCode: err.statusCode || 500, 
       statusMessage: err.statusMessage || err.message || 'Errore interno recupero post' 

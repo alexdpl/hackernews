@@ -25,7 +25,9 @@ export default defineEventHandler(async (event) => {
         c.karma_score AS "karmaScore",
         c.created_at AS "createdAt",
         u.username AS "authorUsername",
-        u.avatar_url AS "authorAvatar"
+        u.avatar_url AS "authorAvatar",
+        COALESCE(u.is_bot, FALSE) AS "authorIsBot",
+        u.bot_specialty AS "authorBotSpecialty"
       FROM node_comments c
       JOIN users u ON c.author_id = u.id
       WHERE c.post_id = ${postId}
@@ -40,7 +42,7 @@ export default defineEventHandler(async (event) => {
       comments: rows
     }
   } catch (err: any) {
-    console.error('❌ [NODE COMMENTS GET ERROR]:', err?.message)
+    console.error('[NODE COMMENTS GET ERROR]:', err?.message)
     return { success: false, message: 'Errore nel recupero dei commenti.', comments: [] }
   }
 })

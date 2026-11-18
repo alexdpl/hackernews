@@ -1,6 +1,6 @@
 <!-- app/pages/tools/openui-studio.vue -->
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
 
@@ -10,7 +10,7 @@ const isAuthenticated = auth.isAuthenticated || ref(true)
 
 useDkpSeo({
   title: 'OpenUI Studio AI & Neural Playground v2.6-PURE-SQL — DKP Tools',
-  description: 'Genera interfacce Tailwind CSS in tempo reale con DKP Trinity AI, visualizza la live preview e notarizza il codice nel Vault Pure SQL.'
+  description: 'Genera interfacce Tailwind CSS in tempo reale con DKP Trinity AI, visualizza la live preview, ispeziona BEMYAGENT TTEV e notarizza il codice nel Vault Pure SQL.'
 })
 
 const dkpApiKey = ref('')
@@ -20,9 +20,64 @@ const systemPrompt = ref(
 )
 const temperature = ref(0.7)
 const maxTokens = ref(2048)
-const activeTab = ref<'preview' | 'code'>('preview')
+const activeTab = ref<'preview' | 'code' | 'ttev'>('preview')
 const chatScrollRef = ref<HTMLElement | null>(null)
 const isCodeCopied = ref(false)
+
+// --- BEMYAGENT TTEV & SENTINEL TELEMETRY STATE ---
+const bemyLoading = ref(false)
+const bemyError = ref('')
+const bemyProtocol = ref('BEMYAGENT-TTEV-v1')
+const bemyDocs = ref<Array<{ name: string; content: string }>>([])
+const bemyMilestones = ref<string[]>([])
+const ttevMetrics = ref<Array<{
+  sentinel: string
+  actionType: string
+  cdmTier: string | null
+  modelUsed: string | null
+  verdict: string | null
+  smtpDispatched: boolean
+  createdAt: string
+}>>([])
+const selectedDocName = ref('')
+
+const selectedDocContent = computed(() => {
+  const found = bemyDocs.value.find(d => d.name === selectedDocName.value)
+  return found?.content || ''
+})
+
+async function loadBemyAgentWorkspace() {
+  bemyLoading.value = true
+  bemyError.value = ''
+  try {
+    const res: any = await $fetch('/api/admin/bemyagent', { credentials: 'include' })
+    if (res?.success) {
+      bemyProtocol.value = res.protocol || 'BEMYAGENT-TTEV-v1'
+      bemyDocs.value = Array.isArray(res.docs) ? res.docs : []
+      bemyMilestones.value = Array.isArray(res.workMilestones) ? res.workMilestones : []
+      ttevMetrics.value = Array.isArray(res.ttevMetrics) ? res.ttevMetrics : []
+      if (!selectedDocName.value && bemyDocs.value.length > 0) {
+        selectedDocName.value = bemyDocs.value[0].name
+      }
+    }
+  } catch (err: any) {
+    bemyError.value = err?.statusCode === 403
+      ? 'Telemetria TTEV riservata al Kernel Admin (effettua login come admin).'
+      : 'Impossibile caricare il workspace BEMYAGENT.'
+  } finally {
+    bemyLoading.value = false
+  }
+}
+
+function injectDocIntoPrompt() {
+  if (!selectedDocContent.value) return
+  input.value = `Contesto architetturale (${selectedDocName.value}):\n${selectedDocContent.value.slice(0, 1400)}\n\nRichiesta UI: `
+  triggerToast(`Contesto ${selectedDocName.value} inserito nel prompt!`)
+}
+
+onMounted(() => {
+  loadBemyAgentWorkspace()
+})
 
 const showToast = ref(false)
 const toastMessage = ref('')
@@ -58,8 +113,8 @@ const promptPresets = [
     prompt: 'Genera una sezione Pricing a 3 colonne (Free, Developer Pro, Enterprise) stile DevKernelPulse con badge evidenziato.'
   },
   {
-    label: '🛡️ Profile Card',
-    prompt: 'Crea una Developer Profile Card futuristica con avatar, badge XP, stack tecnologico e pulsante GitHub.'
+    label: '🛡️ Sentinel Telemetry UI',
+    prompt: 'Crea un pannello di controllo dark mode per 4 agenti AI autonomi (Sentinel Network) con badge CDM tier, verdetto PASS/FAIL e stato invio email.'
   }
 ]
 
@@ -278,10 +333,17 @@ async function notarizeToVault() {
     <!-- HEADER -->
     <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 flex-shrink-0">
       <div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-3.5 py-1 rounded-full text-[11px] font-mono font-black tracking-widest uppercase">
             🎨 DKP NEURAL ENGINE v2.6-PURE-SQL + OPENUI
           </span>
+          <button
+            type="button"
+            @click="activeTab = 'ttev'; loadBemyAgentWorkspace()"
+            class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-mono font-bold hover:bg-emerald-500/20 transition-colors cursor-pointer"
+          >
+            🧠 {{ bemyProtocol }} ({{ bemyDocs.length }} docs)
+          </button>
         </div>
         <h1 class="text-2xl sm:text-3xl font-black text-white mt-1.5 tracking-tight">
           OpenUI Studio &amp; <span class="text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.3)]">Neural Playground</span>
@@ -424,14 +486,14 @@ async function notarizeToVault() {
         </form>
       </div>
 
-      <!-- COLONNA 3: OPENUI LIVE PREVIEW -->
+      <!-- COLONNA 3: OPENUI LIVE PREVIEW / CODICE / BEMYAGENT TTEV -->
       <div class="bg-[#090d16] border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden min-h-[420px]">
         
-        <!-- Tabs Anteprima vs Codice Puro + Export -->
+        <!-- Tabs Anteprima vs Codice Puro vs TTEV Telemetry -->
         <div class="bg-slate-950 border-b border-slate-800 px-4 py-3 flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
           <div class="flex items-center gap-1.5">
-            <span class="text-xs font-black text-purple-400 uppercase tracking-wider">⚡ OpenUI Studio</span>
-            <template v-if="extractedCode">
+            <span class="text-xs font-black text-purple-400 uppercase tracking-wider">⚡ OpenUI</span>
+            <template v-if="extractedCode && activeTab !== 'ttev'">
               <button
                 type="button"
                 @click="copyExtractedCode"
@@ -455,21 +517,28 @@ async function notarizeToVault() {
             <button
               type="button"
               @click="activeTab = 'preview'"
-              :class="['px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'preview' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'preview' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-white']"
             >
-              Preview Live
+              Preview
             </button>
             <button
               type="button"
               @click="activeTab = 'code'"
-              :class="['px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'code' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-white']"
+              :class="['px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'code' ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-white']"
             >
               Codice
+            </button>
+            <button
+              type="button"
+              @click="activeTab = 'ttev'; loadBemyAgentWorkspace()"
+              :class="['px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'ttev' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-emerald-400 hover:text-emerald-300']"
+            >
+              🧠 TTEV
             </button>
           </div>
         </div>
 
-        <!-- Contenuto Preview / Codice -->
+        <!-- Contenuto Preview / Codice / TTEV -->
         <div class="flex-1 overflow-hidden bg-slate-950 flex flex-col relative">
           
           <!-- TAB 1: IFRAME LIVE PREVIEW -->
@@ -487,17 +556,94 @@ async function notarizeToVault() {
             <pre class="text-emerald-400 font-mono text-xs whitespace-pre-wrap leading-relaxed">{{ extractedCode || '// Nessun blocco di codice rilevato nella risposta dell\'IA.\n// Chiedi a DKP-Coder di generare un componente HTML/Tailwind.' }}</pre>
           </div>
 
+          <!-- TAB 3: BEMYAGENT TTEV & SENTINEL TELEMETRY -->
+          <div v-show="activeTab === 'ttev'" class="w-full h-full p-4 overflow-y-auto custom-scrollbar flex flex-col gap-4 font-mono text-xs">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div>
+                <span class="text-emerald-400 font-black uppercase tracking-wider">{{ bemyProtocol }}</span>
+                <p class="text-[11px] text-slate-400 mt-0.5">
+                  Workspace HTN: {{ bemyMilestones.join(', ') || 'milestone-2' }} • {{ bemyDocs.length }} docs attivi
+                </p>
+              </div>
+              <button
+                type="button"
+                @click="loadBemyAgentWorkspace"
+                class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-emerald-400 text-[11px] cursor-pointer"
+              >
+                {{ bemyLoading ? '...' : '↻ Aggiorna' }}
+              </button>
+            </div>
+
+            <div v-if="bemyError" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px]">
+              {{ bemyError }}
+            </div>
+
+            <!-- Selettore Memoria Permanente .bemyagent/docs -->
+            <div v-if="bemyDocs.length > 0" class="flex flex-col gap-2 bg-[#090d16] border border-slate-800 rounded-2xl p-3">
+              <div class="flex items-center justify-between gap-2">
+                <select
+                  v-model="selectedDocName"
+                  class="bg-slate-950 border border-slate-700 text-emerald-300 text-[11px] rounded-lg px-2 py-1.5 outline-none flex-1"
+                >
+                  <option v-for="doc in bemyDocs" :key="doc.name" :value="doc.name">
+                    📄 {{ doc.name }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  @click="injectDocIntoPrompt"
+                  class="px-2.5 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                >
+                  + Usa nel Prompt
+                </button>
+              </div>
+              <pre class="text-[11px] text-slate-300 whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar leading-relaxed bg-slate-950 p-2.5 rounded-xl border border-slate-900">{{ selectedDocContent }}</pre>
+            </div>
+
+            <!-- Verdetti Live delle Sentinelle -->
+            <div class="flex flex-col gap-2">
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ultime Decisioni Autonome (CDM + Symbiotic Validation)</span>
+              <div v-if="ttevMetrics.length === 0" class="text-[11px] text-slate-500 p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                Nessuna traccia TTEV registrata finora.
+              </div>
+              <div
+                v-for="(item, idx) in ttevMetrics"
+                :key="idx"
+                class="p-2.5 rounded-xl bg-[#090d16] border border-slate-800 flex flex-col gap-1"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-emerald-400 font-bold">@{{ item.sentinel }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/30">
+                      {{ item.cdmTier || 'STANDARD' }}
+                    </span>
+                    <span :class="['text-[10px] px-1.5 py-0.5 rounded font-bold', item.verdict === 'FAIL' ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300']">
+                      {{ item.verdict || 'PASS' }}
+                    </span>
+                  </div>
+                </div>
+                <div class="text-[11px] text-slate-300">
+                  Azione: <span class="text-purple-300">{{ item.actionType }}</span> • Modello: <span class="text-slate-400">{{ item.modelUsed || 'auto' }}</span>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-500">
+                  <span>{{ item.smtpDispatched ? '✉️ Email Resend inviata' : '🗄️ Log interno' }}</span>
+                  <span>{{ item.createdAt ? new Date(item.createdAt).toLocaleString() : '' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </div>
     </div>
   </div>
   <div class="mt-2 mb-6">
-       <DkpAdsWidget placement="global" />
-      </div>
-	  <div class="mt-2 mb-6">
-      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-      </div>
+    <DkpAdsWidget placement="global" />
+  </div>
+  <div class="mt-2 mb-6">
+    <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+  </div>
 </template>
 
 <style scoped>

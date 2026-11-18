@@ -2,21 +2,43 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const logs = ref<string[]>([
-  '[18:15:01] [SENTINEL-CORE] Motore euristico SAST/AST avviato in europe-west4.',
-  '[18:15:02] [GCP-ARMOR] Perimetro protetto e sincronizzato con Neon PostgreSQL.',
-  '[18:15:04] [AUTO-DEFEND] Monitoraggio traffico HTTP in corso...'
+  '[BOOT] [BEMYAGENT-TTEV-v1] Inizializzazione telemetria Sentinelle su europe-west4...'
 ])
-
+const protocolName = ref('BEMYAGENT-TTEV-v1')
+const docsCount = ref(0)
 let timer: any = null
 
+async function fetchTelemetry() {
+  try {
+    const res: any = await $fetch('/api/admin/bemyagent', { credentials: 'include' })
+    if (res?.success) {
+      protocolName.value = res.protocol || 'BEMYAGENT-TTEV-v1'
+      docsCount.value = Array.isArray(res.docs) ? res.docs.length : 0
+
+      if (Array.isArray(res.ttevMetrics) && res.ttevMetrics.length > 0) {
+        logs.value = res.ttevMetrics.map((m: any) => {
+          const ts = m.createdAt ? new Date(m.createdAt).toLocaleTimeString() : '--:--:--'
+          const tier = m.cdmTier || 'STANDARD'
+          const verdict = m.verdict || 'PASS'
+          const mailFlag = m.smtpDispatched ? ' | Mail:SENT' : ''
+          return `[${ts}] [CDM:${tier}] [${verdict}] @${m.sentinel} -> ${m.actionType} (${m.modelUsed || 'auto'}${mailFlag})`
+        })
+      } else {
+        logs.value = [
+          `[${new Date().toLocaleTimeString()}] [TTEV-READY] 4 Sentinelle attive | ${docsCount.value} docs caricati | In attesa di eventi...`
+        ]
+      }
+    }
+  } catch {
+    logs.value = [
+      `[${new Date().toLocaleTimeString()}] [SENTINEL-CORE] Perimetro attivo su Neon Pure SQL (europe-west4).`
+    ]
+  }
+}
+
 onMounted(() => {
-  timer = setInterval(() => {
-    const time = new Date().toLocaleTimeString()
-    const sampleIps = ['185.220.101.5', '45.142.120.18', '194.26.29.112']
-    const randomIp = sampleIps[Math.floor(Math.random() * sampleIps.length)]
-    logs.value.unshift(`[${time}] [AUTO-BLOCK] Rilevata anomalia da IP ${randomIp} - Bloccato da Sentinel AI.`)
-    if (logs.value.length > 15) logs.value.pop()
-  }, 6000)
+  fetchTelemetry()
+  timer = setInterval(fetchTelemetry, 15000)
 })
 
 onUnmounted(() => {
@@ -26,17 +48,20 @@ onUnmounted(() => {
 
 <template>
   <div class="bg-[#030712] border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-3 font-mono text-xs">
-    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
       <div class="flex items-center gap-2">
         <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_#00dc82]"></span>
-        <span class="text-slate-200 font-bold uppercase tracking-wider">Pulse Sentinel Live Telemetry Stream (Auto-Defend)</span>
+        <span class="text-slate-200 font-bold uppercase tracking-wider">Sentinel TTEV Live Telemetry Stream</span>
       </div>
-      <span class="text-sky-400 text-[10px]">europe-west4-net01</span>
+      <div class="flex items-center gap-2 text-[10px]">
+        <span class="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/30">{{ protocolName }}</span>
+        <span class="text-sky-400">Docs: {{ docsCount }}</span>
+      </div>
     </div>
 
     <div class="h-44 overflow-y-auto flex flex-col gap-1.5 text-slate-300 pr-2">
       <div v-for="(log, idx) in logs" :key="idx" class="py-0.5 border-b border-slate-900/60 font-mono text-[11px] text-emerald-400/90">
-        <span class="text-slate-500">></span> {{ log }}
+        <span class="text-slate-500">&gt;</span> {{ log }}
       </div>
     </div>
   </div>
