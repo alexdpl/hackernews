@@ -153,6 +153,19 @@ export default defineEventHandler(async (event) => {
       `)
       dbUser = extractRows(retryRes)[0]
     }
+	
+	if (!dbUser && !matchedAdminSecret) {
+      console.warn('[AUTH 401 DEBUG - NO USER]', {
+        identifier,
+        isFounderIdentifier,
+        adminSecretLen: configuredAdminSecret.length,
+        inputPasswordLen: password.length
+      })
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Credenziali non valide.'
+      })
+    }
 
     if (!dbUser && !matchedAdminSecret) {
       throw createError({
