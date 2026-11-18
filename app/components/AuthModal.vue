@@ -49,6 +49,9 @@ function handleClose() {
   closeAuthModal()
 }
 
+const authCore = useAuthCore() as any
+const { isAuthModalOpen, authTab, closeAuthModal, login } = authCore
+
 async function handleFormSubmit() {
   if (isLoading.value) return
   errorMessage.value = ''
@@ -62,6 +65,7 @@ async function handleFormSubmit() {
 
     isLoading.value = true
     try {
+      // Chiama direttamente il metodo robusto del composable che gestisce token e redirect
       await login(cleanId, passwordInput.value)
       resetFields()
     } catch (e: any) {
