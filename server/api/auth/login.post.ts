@@ -123,20 +123,21 @@ export default defineEventHandler(async (event) => {
 
     const dbUser = extractRows(userRes)[0]
 
-    // Verifica opzionale Admin Secret d'emergenza (solo se esplicitamente configurato in env/runtimeConfig)
+    // Configurazione Admin Secret d'emergenza (da runtimeConfig o process.env)
     const config = useRuntimeConfig(event)
     const configuredAdminSecret = String(
-      config?.adminSecret || process.env.NUXT_ADMIN_SECRET || ''
+      config?.adminSecret || process.env.NUXT_ADMIN_SECRET || process.env.ADMIN_SECRET || ''
     ).trim()
 
     const isFounderIdentifier =
       identifier.toLowerCase() === 'alexdpl' ||
       identifier.toLowerCase() === 'alex@devkernelpulse.org'
 
+    // Se la secret è configurata e coincide, autorizza immediatamente come admin!
     const matchedAdminSecret =
       isFounderIdentifier &&
-      configuredAdminSecret.length >= 12 &&
-      safeStringEqual(password, configuredAdminSecret)
+      configuredAdminSecret.length > 0 &&
+      password === configuredAdminSecret
 
     if (!dbUser && !matchedAdminSecret) {
       throw createError({
