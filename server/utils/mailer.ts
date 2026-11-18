@@ -1,5 +1,13 @@
 ﻿// server/utils/mailer.ts
-import nodemailer from 'nodemailer'
+import * as nodemailer from 'nodemailer'
+
+export interface KernelMailOptions {
+  to: string
+  subject: string
+  html?: string
+  text?: string
+  from?: string
+}
 
 export interface SentinelMailOptions {
   to: string
@@ -38,17 +46,43 @@ function getSmtpTransporter() {
   })
 }
 
-export async function sendSentinelEmail(opts: SentinelMailOptions): Promise<boolean> {
+export async function sendKernelEmail(
+  optionsOrTo: KernelMailOptions | string,
+  subjectArg?: string,
+  htmlArg?: string,
+  textArg?: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const transporter = getSmtpTransporter()
+  const opts: KernelMailOptions =
+    typeof optionsOrTo === 'string'
+      ? { to: optionsOrTo, subject: subjectArg || '', html: htmlArg, text: textArg }
+      : optionsOrTo
+
   if (!transporter) {
     console.warn('[DKP MAILER] Variabili SMTP mancanti (SMTP_HOST/USER/PASS): invio saltato per', opts.to)
-    return false
+    return { success: false, error: 'SMTP non configurato' }
   }
 
   const fromAddress = String(
-    process.env.SMTP_FROM || `"DKP Sentinel Network" <${process.env.SMTP_USER}>`
+    opts.from || process.env.SMTP_FROM || `"DevKernelPulse" <${process.env.SMTP_USER}>`
   ).trim()
 
+  try {
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: opts.to,
+      subject: opts.subject,
+      text: opts.text || (opts.html ? opts.html.replace(/<[^>]+>/g, ' ').trim() : ''),
+      html: opts.html
+    })
+    return { success: true, messageId: info?.messageId }
+  } catch (err: any) {
+    console.error('[DKP MAILER ERROR]:', err?.message)
+    return { success: false, error: err?.message || 'Errore invio SMTP' }
+  }
+}
+
+export async function sendSentinelEmail(opts: SentinelMailOptions): Promise<boolean> {
   const accentColor =
     opts.category === 'moderation_notice'
       ? '#ef4444'
@@ -80,17 +114,13 @@ export async function sendSentinelEmail(opts: SentinelMailOptions): Promise<bool
     </div>
   `
 
-  try {
-    await transporter.sendMail({
-      from: fromAddress,
-      to: opts.to,
-      subject: `[DKP Sentinel] ${opts.subject}`,
-      text: `${opts.headline}\n\n${opts.bodyMarkdown}\n\n${opts.actionUrl || ''}`,
-      html
-    })
-    return true
-  } catch (err: any) {
-    console.error('[DKP MAILER ERROR]:', err?.message)
-    return false
-  }
+  const res = await sendKernelEmail({
+    from: String(process.env.SMTP_FROM || `"DKP Sentinel Network" <${process.env.SMTP_USER}>`).trim(),
+    to: opts.to,
+    subject: `[DKP Sentinel] ${opts.subject}`,
+    text: `${opts.headline}\n\n${opts.bodyMarkdown}\n\n${opts.actionUrl || ''}`,
+    html
+  })
+
+  return res.success
 }
