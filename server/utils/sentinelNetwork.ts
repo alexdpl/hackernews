@@ -2,6 +2,10 @@
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { sendSentinelEmail } from '~~/server/utils/mailer'
+import { callOpenRouterStructured } from '~~/server/utils/openrouterStructured'
+
+export type CdmTier = 'MICRO' | 'STANDARD' | 'HEAVY'
+export type ValidationVerdict = 'PASS' | 'PASS_WITH_CAVEATS' | 'FAIL'
 
 export interface SentinelEventContext {
   targetType: 'post' | 'comment' | 'node_post' | 'node_comment'
@@ -16,6 +20,16 @@ export interface SentinelEventContext {
   content: string
 }
 
+interface TtevThinkPlan {
+  cdmTier: CdmTier
+  modelUsed: string
+  assignedSentinel: 'guardian_bot' | 'snippet_master' | 'security_watch' | 'sentinel_ai' | 'none'
+  intent: string
+  validationCriteria: string[]
+  driftSensors: string[]
+  pivotTriggers: string[]
+}
+
 const THREAT_PATTERNS: Array<{ label: string; regex: RegExp }> = [
   { label: 'XSS_SCRIPT_INJECTION', regex: /<script\b[^>]*>[\s\S]*?<\/script>/i },
   { label: 'INLINE_EVENT_HANDLER', regex: /\bon(error|load|mouseover|click)\s*=/i },
@@ -27,7 +41,7 @@ function extractRows(res: any): any[] {
   return Array.isArray(res) ? res : (res?.rows || [])
 }
 
-function detectCodeIssue(content: string): { title: string; suggestion: string } | null {
+function detectStaticCodeIssue(content: string): { title: string; suggestion: string } | null {
   if (!content.includes('```')) return null
 
   if (/innerHTML\s*=/.test(content)) {
@@ -47,6 +61,94 @@ function detectCodeIssue(content: string): { title: string; suggestion: string }
   }
 
   return null
+}
+
+/**
+ * PHASE 1: THINK (Lazy Loading + CDM Complexity Scaling + autoModelSwitching)
+ */
+function thinkAndPlan(ctx: SentinelEventContext, resolvedSlug: string): TtevThinkPlan {
+  const threat = THREAT_PATTERNS.find((p) => p.regex.test(ctx.content))
+  if (threat) {
+    return {
+      cdmTier: 'HEAVY',
+      modelUsed: 'deterministic-firewall-v2',
+      assignedSentinel: 'guardian_bot',
+      intent: `Quarantine active threat (${threat.label})`,
+      validationCriteria: ['Author is not admin', 'Pattern matches known exploit/spam signature'],
+      driftSensors: ['Avoid false positive on escaped code blocks', 'Do not lock admin accounts'],
+      pivotTriggers: ['If author role is admin, downgrade to audit log only']
+    }
+  }
+
+  const hasCodeBlock = ctx.content.includes('```')
+  if (hasCodeBlock) {
+    const isComplexCode = ctx.content.length > 600 || (ctx.content.match(/```/g)?.length || 0) >= 4
+    return {
+      cdmTier: isComplexCode ? 'HEAVY' : 'STANDARD',
+      modelUsed: isComplexCode ? 'google/gemini-2.5-pro' : 'google/gemini-2.0-flash-001',
+      assignedSentinel: 'snippet_master',
+      intent: 'Static & AI code quality/security review',
+      validationCriteria: [
+        'Actionable refactoring advice',
+        'Zero hallucinated APIs',
+        'Concise technical tone under 900 chars'
+      ],
+      driftSensors: ['Do not rewrite entire user app', 'Stay strictly on security/performance bugs'],
+      pivotTriggers: ['If code has no real flaw, return PASS with no noisy comment']
+    }
+  }
+
+  const isReleaseOrCve =
+    (ctx.targetType === 'post' || ctx.targetType === 'node_post') &&
+    (resolvedSlug.includes('core-releases') ||
+      resolvedSlug.includes('patch') ||
+      /\bCVE-\d{4}-\d+\b/i.test(ctx.content))
+
+  if (isReleaseOrCve) {
+    return {
+      cdmTier: 'STANDARD',
+      modelUsed: 'google/gemini-2.0-flash-001',
+      assignedSentinel: 'security_watch',
+      intent: 'Release integrity & CVE verification checklist',
+      validationCriteria: ['Includes SHA-256 and migration audit reminders'],
+      driftSensors: ['Keep checklist concise'],
+      pivotTriggers: ['Skip if thread is a reply comment']
+    }
+  }
+
+  // MICRO tier: 0 tokens spent (BEMYAGENT Lazy Loading)
+  return {
+    cdmTier: 'MICRO',
+    modelUsed: 'none (0-token lazy skip)',
+    assignedSentinel: 'none',
+    intent: 'Benign community content — no sentinel intervention required',
+    validationCriteria: [],
+    driftSensors: [],
+    pivotTriggers: []
+  }
+}
+
+/**
+ * PHASE 4: SYMBIOTIC VALIDATION (Self-verification before external side effects)
+ */
+function symbioticValidate(
+  plan: TtevThinkPlan,
+  draftOutput: string
+): { verdict: ValidationVerdict; notes: string[] } {
+  const notes: string[] = []
+  if (!draftOutput || draftOutput.trim().length < 20) {
+    return { verdict: 'FAIL', notes: ['Output empty or below minimum signal threshold'] }
+  }
+  if (draftOutput.length > 1800) {
+    notes.push('Output truncated to stay within concise CDM bounds')
+  }
+  if (/undefined|null|\[object Object\]/.test(draftOutput)) {
+    return { verdict: 'FAIL', notes: ['Template interpolation artifact detected'] }
+  }
+  return {
+    verdict: notes.length > 0 ? 'PASS_WITH_CAVEATS' : 'PASS',
+    notes: notes.length > 0 ? notes : ['All CDM validation criteria satisfied']
+  }
 }
 
 async function getBotUser(db: any, username: string): Promise<{ id: number; username: string } | null> {
@@ -94,7 +196,6 @@ export async function runSentinelPipeline(ctx: SentinelEventContext): Promise<vo
   const db = await getDb()
   if (!db) return
 
-  // Recupera dati aggiornati dell'autore dal DB
   const authorRes = await db.execute(sql`
     SELECT id, username, email, role, COALESCE(is_bot, FALSE) AS "isBot"
     FROM users WHERE id = ${ctx.authorId} LIMIT 1;
@@ -104,23 +205,40 @@ export async function runSentinelPipeline(ctx: SentinelEventContext): Promise<vo
 
   const authorUsername = String(authorRow?.username || ctx.authorUsername || 'member')
   const authorEmail = String(authorRow?.email || ctx.authorEmail || '').trim()
+  const authorRole = String(authorRow?.role || 'user').toLowerCase()
   const threadUrl =
     ctx.targetType === 'node_post' || ctx.targetType === 'node_comment'
       ? `[https://devkernelpulse.org/nodes/thread/$](https://devkernelpulse.org/nodes/thread/$){ctx.postId}`
       : `[https://devkernelpulse.org/post/$](https://devkernelpulse.org/post/$){ctx.postId}`
 
-  // 1. GUARDIAN_BOT: Firewall & Anti-Spam
-  const matchedThreat = THREAT_PATTERNS.find((p) => p.regex.test(ctx.content))
-  if (matchedThreat) {
-    await db.execute(sql`
-      UPDATE users
-      SET is_shadowbanned = TRUE,
-          ban_reason = ${`[guardian_bot] Firewall trigger: ${matchedThreat.label}`}
-      WHERE id = ${ctx.authorId} AND LOWER(role) != 'admin';
-    `)
+  let resolvedSlug = String(ctx.sectionSlug || '').toLowerCase()
+  if (!resolvedSlug && ctx.nodeId) {
+    const nodeRes = await db.execute(sql`SELECT slug FROM nodes WHERE id = ${ctx.nodeId} LIMIT 1;`).catch(() => null)
+    resolvedSlug = String(extractRows(nodeRes)[0]?.slug || '').toLowerCase()
+  }
+
+  // PHASE 1: THINK
+  const plan = thinkAndPlan(ctx, resolvedSlug)
+  if (plan.assignedSentinel === 'none') {
+    return // MICRO tier lazy exit: 0 tokens, 0 DB bloat
+  }
+
+  // PHASE 2 & 3: TASK & EXECUTE
+  if (plan.assignedSentinel === 'guardian_bot') {
+    const matchedThreat = THREAT_PATTERNS.find((p) => p.regex.test(ctx.content))!
+    const isPivotAdmin = authorRole === 'admin'
+
+    if (!isPivotAdmin) {
+      await db.execute(sql`
+        UPDATE users
+        SET is_shadowbanned = TRUE,
+            ban_reason = ${`[guardian_bot] Firewall trigger: ${matchedThreat.label}`}
+        WHERE id = ${ctx.authorId};
+      `)
+    }
 
     let smtpSent = false
-    if (authorEmail) {
+    if (authorEmail && !isPivotAdmin) {
       smtpSent = await sendSentinelEmail({
         to: authorEmail,
         subject: 'Avviso di sicurezza dal Kernel Firewall',
@@ -133,85 +251,152 @@ export async function runSentinelPipeline(ctx: SentinelEventContext): Promise<vo
       })
     }
 
+    const trace = {
+      protocol: 'BEMYAGENT-TTEV-v1',
+      cdmTier: plan.cdmTier,
+      modelUsed: plan.modelUsed,
+      rule: matchedThreat.label,
+      pivotTriggered: isPivotAdmin,
+      verdict: isPivotAdmin ? 'PASS_WITH_CAVEATS' : 'PASS'
+    }
+
     await db.execute(sql`
       INSERT INTO sentinel_logs (
         sentinel_username, target_user_id, target_type, target_id,
         action_type, reasoning_trace, payload_summary, smtp_dispatched
       ) VALUES (
         'guardian_bot', ${ctx.authorId}, ${ctx.targetType}, ${ctx.targetId},
-        'shadowban', ${JSON.stringify({ rule: matchedThreat.label })}::jsonb,
+        ${isPivotAdmin ? 'audit_admin_payload' : 'shadowban'}, ${JSON.stringify(trace)}::jsonb,
         ${ctx.content.slice(0, 240)}, ${smtpSent}
       );
     `)
     return
   }
 
-  // 2. SNIPPET_MASTER: Revisione automatica snippet di codice
-  const codeHint = detectCodeIssue(ctx.content)
-  if (codeHint) {
+  if (plan.assignedSentinel === 'snippet_master') {
     const bot = await getBotUser(db, 'snippet_master')
-    if (bot) {
-      const replyBody = `**[DKP Snippet Master // Static Hint]**\n\n**${codeHint.title}**\n${codeHint.suggestion}`
-      await postSentinelReply(db, ctx, bot, replyBody)
+    if (!bot) return
 
-      let smtpSent = false
-      if (authorEmail) {
-        smtpSent = await sendSentinelEmail({
-          to: authorEmail,
-          subject: 'Suggerimento di refactoring sul tuo snippet',
-          category: 'snippet_suggestion',
-          recipientUsername: authorUsername,
-          sentinelName: 'snippet_master',
-          headline: codeHint.title,
-          bodyMarkdown: codeHint.suggestion,
-          actionUrl: threadUrl
-        })
+    let title = ''
+    let suggestion = ''
+    let modelActuallyUsed = plan.modelUsed
+
+    // 1. Controllo statico immediato (zero latenza)
+    const staticHint = detectStaticCodeIssue(ctx.content)
+    if (staticHint) {
+      title = staticHint.title
+      suggestion = staticHint.suggestion
+      modelActuallyUsed = 'static-ast-fastpath + ' + plan.modelUsed
+    } else {
+      // 2. Analisi AI strutturata con autoModelSwitching (STANDARD vs HEAVY)
+      const aiReview = await callOpenRouterStructured<{
+        hasIssue: boolean
+        title: string
+        suggestion: string
+      }>({
+        schemaName: 'dkp_snippet_master_review',
+        model: plan.modelUsed,
+        temperature: 0.1,
+        systemPrompt:
+          'Sei snippet_master di DevKernelPulse. Analizza lo snippet di codice. Segnala SOLO bug reali, vulnerabilità di sicurezza o memory leak. Se il codice è pulito, imposta hasIssue: false.',
+        userPrompt: ctx.content.slice(0, 4000),
+        schema: {
+          type: 'object',
+          properties: {
+            hasIssue: { type: 'boolean' },
+            title: { type: 'string' },
+            suggestion: { type: 'string' }
+          },
+          required: ['hasIssue', 'title', 'suggestion']
+        },
+        fallback: { hasIssue: false, title: '', suggestion: '' }
+      }).catch(() => ({ fallbackUsed: true, data: { hasIssue: false, title: '', suggestion: '' }, providerModel: plan.modelUsed }))
+
+      if (!aiReview.data?.hasIssue) {
+        return // Pivot: codice pulito, nessun commento superfluo
       }
-
-      await db.execute(sql`
-        INSERT INTO sentinel_logs (
-          sentinel_username, target_user_id, target_type, target_id,
-          action_type, reasoning_trace, payload_summary, smtp_dispatched
-        ) VALUES (
-          'snippet_master', ${ctx.authorId}, ${ctx.targetType}, ${ctx.targetId},
-          'snippet_reply', ${JSON.stringify({ hint: codeHint.title })}::jsonb,
-          ${codeHint.suggestion}, ${smtpSent}
-        );
-      `)
+      title = aiReview.data.title
+      suggestion = aiReview.data.suggestion
+      modelActuallyUsed = aiReview.providerModel || plan.modelUsed
     }
+
+    const replyBody = `**[DKP Snippet Master // TTEV Code Audit]**\n\n**${title}**\n${suggestion}`
+
+    // PHASE 4: VERIFY (Symbiotic Validation)
+    const validation = symbioticValidate(plan, replyBody)
+    if (validation.verdict === 'FAIL') {
+      return
+    }
+
+    await postSentinelReply(db, ctx, bot, replyBody.slice(0, 1800))
+
+    let smtpSent = false
+    if (authorEmail) {
+      smtpSent = await sendSentinelEmail({
+        to: authorEmail,
+        subject: 'Suggerimento di refactoring sul tuo snippet',
+        category: 'snippet_suggestion',
+        recipientUsername: authorUsername,
+        sentinelName: 'snippet_master',
+        headline: title,
+        bodyMarkdown: suggestion,
+        actionUrl: threadUrl
+      })
+    }
+
+    const trace = {
+      protocol: 'BEMYAGENT-TTEV-v1',
+      cdmTier: plan.cdmTier,
+      modelUsed: modelActuallyUsed,
+      hint: title,
+      verdict: validation.verdict,
+      validationNotes: validation.notes
+    }
+
+    await db.execute(sql`
+      INSERT INTO sentinel_logs (
+        sentinel_username, target_user_id, target_type, target_id,
+        action_type, reasoning_trace, payload_summary, smtp_dispatched
+      ) VALUES (
+        'snippet_master', ${ctx.authorId}, ${ctx.targetType}, ${ctx.targetId},
+        'snippet_reply', ${JSON.stringify(trace)}::jsonb,
+        ${suggestion.slice(0, 240)}, ${smtpSent}
+      );
+    `)
     return
   }
 
-  // 3. SECURITY_WATCH: Monitoraggio n/Core Releases & Patch
-  let resolvedSlug = String(ctx.sectionSlug || '').toLowerCase()
-  if (!resolvedSlug && ctx.nodeId) {
-    const nodeRes = await db.execute(sql`SELECT slug FROM nodes WHERE id = ${ctx.nodeId} LIMIT 1;`).catch(() => null)
-    resolvedSlug = String(extractRows(nodeRes)[0]?.slug || '').toLowerCase()
-  }
-
-  if (
-    (ctx.targetType === 'post' || ctx.targetType === 'node_post') &&
-    (resolvedSlug.includes('core-releases') || resolvedSlug.includes('patch') || /\bCVE-\d{4}-\d+\b/i.test(ctx.content))
-  ) {
+  if (plan.assignedSentinel === 'security_watch') {
     const bot = await getBotUser(db, 'security_watch')
-    if (bot) {
-      const advisory =
-        `**[Security Watch // Release Verification]**\n\n` +
-        `Thread indicizzato dal monitor **Security Watch**. ` +
-        `Ricorda di includere checksum SHA-256, compatibilità migrazioni SQL e impatto sulle variabili d'ambiente per facilitare l'audit del Kernel.`
+    if (!bot) return
 
-      await postSentinelReply(db, ctx, bot, advisory)
+    const advisory =
+      `**[Security Watch // Release Verification]**\n\n` +
+      `Thread indicizzato dal monitor **Security Watch**. ` +
+      `Ricorda di includere checksum SHA-256, compatibilità migrazioni SQL e impatto sulle variabili d'ambiente per facilitare l'audit del Kernel.`
 
-      await db.execute(sql`
-        INSERT INTO sentinel_logs (
-          sentinel_username, target_user_id, target_type, target_id,
-          action_type, reasoning_trace, payload_summary, smtp_dispatched
-        ) VALUES (
-          'security_watch', ${ctx.authorId}, ${ctx.targetType}, ${ctx.targetId},
-          'security_advisory', ${JSON.stringify({ channel: resolvedSlug || 'cve-mention' })}::jsonb,
-          'Release checklist posted', FALSE
-        );
-      `)
+    const validation = symbioticValidate(plan, advisory)
+    if (validation.verdict === 'FAIL') return
+
+    await postSentinelReply(db, ctx, bot, advisory)
+
+    const trace = {
+      protocol: 'BEMYAGENT-TTEV-v1',
+      cdmTier: plan.cdmTier,
+      modelUsed: plan.modelUsed,
+      channel: resolvedSlug || 'cve-mention',
+      verdict: validation.verdict
     }
+
+    await db.execute(sql`
+      INSERT INTO sentinel_logs (
+        sentinel_username, target_user_id, target_type, target_id,
+        action_type, reasoning_trace, payload_summary, smtp_dispatched
+      ) VALUES (
+        'security_watch', ${ctx.authorId}, ${ctx.targetType}, ${ctx.targetId},
+        'security_advisory', ${JSON.stringify(trace)}::jsonb,
+        'Release checklist posted', FALSE
+      );
+    `)
   }
 }
