@@ -1,63 +1,49 @@
-// server/routes/sitemap.xml.ts
-import { defineEventHandler, setResponseHeaders } from 'h3'
-import {
-  DKP_CANONICAL_ORIGIN,
-  DKP_STATIC_ROUTES,
-  escapeXml,
-  fetchIndexableDkpContent
-} from '~~/server/utils/dkpSeoEngine'
+import { defineEventHandler, setResponseHeader } from 'h3'
+import { sql } from 'drizzle-orm'
+import { getDb } from '~~/server/utils/db'
+
+function extractRows(res: any): any[] {
+  return Array.isArray(res) ? res : (res?.rows || [])
+}
 
 export default defineEventHandler(async (event) => {
-  setResponseHeaders(event, {
-    'Content-Type': 'application/xml; charset=utf-8',
-    'Cache-Control': 'public, max-age=300, s-maxage=600',
-    'X-Robots-Tag': 'noindex'
-  })
+  setResponseHeader(event, 'Content-Type', 'application/xml; charset=utf-8')
+  const baseUrl = 'https://devkernelpulse.org'
+  const staticRoutes = [
+    '/', '/feed', '/newest', '/ask', '/show', '/jobs',
+    '/nodes', '/nodes/blockchain-vault', '/blog', '/tools',
+    '/ecosystem', '/roadmap', '/faq'
+  ]
 
-  const nowIso = new Date().toISOString()
-  const { posts, nodes, threads } = await fetchIndexableDkpContent()
+  const urls: string[] = staticRoutes.map(
+    (path) => `<url><loc>${baseUrl}${path}</loc><changefreq>hourly</changefreq><priority>0.8</priority></url>`
+  )
 
-  const urls: string[] = []
+  try {
+    const db = await getDb()
+    if (db) {
+      const blogRes = await db.execute(sql`SELECT slug, updated_at FROM blog_posts WHERE status = 'published' ORDER BY created_at DESC LIMIT 200;`).catch(() => [])
+      for (const row of extractRows(blogRes)) {
+        if (row.slug) {
+          urls.push(`<url><loc>${baseUrl}/blog/${row.slug}</loc><changefreq>daily</changefreq><priority>0.9</priority></url>`)
+        }
+      }
 
-  // 1. Pagine Statiche Core, Docs, Tools e Legali
-  for (const entry of DKP_STATIC_ROUTES) {
-    urls.push(`  <url>
-    <loc>${escapeXml(`${DKP_CANONICAL_ORIGIN}${entry.path}`)}</loc>
-    <lastmod>${nowIso}</lastmod>
-    <changefreq>${entry.changefreq}</changefreq>
-    <priority>${entry.priority}</priority>
-  </url>`)
-  }
+      const nodesRes = await db.execute(sql`SELECT id, created_at FROM node_posts ORDER BY created_at DESC LIMIT 300;`).catch(() => [])
+      for (const row of extractRows(nodesRes)) {
+        if (row.id) {
+          urls.push(`<url><loc>${baseUrl}/nodes/post/${row.id}</loc><changefreq>daily</changefreq><priority>0.85</priority></url>`)
+        }
+      }
 
-  // 2. Nodi della Community
-  for (const node of nodes) {
-    urls.push(`  <url>
-    <loc>${escapeXml(node.url)}</loc>
-    <lastmod>${escapeXml(node.updatedAt)}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>`)
-  }
-
-  // 3. Articoli del Blog (v2.6 Pure SQL)
-  for (const post of posts) {
-    urls.push(`  <url>
-    <loc>${escapeXml(post.url)}</loc>
-    <lastmod>${escapeXml(post.updatedAt)}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>`)
-  }
-
-  // 4. Thread del Forum & Discussioni
-  for (const thread of threads) {
-    urls.push(`  <url>
-    <loc>${escapeXml(thread.url)}</loc>
-    <lastmod>${escapeXml(thread.updatedAt)}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.75</priority>
-  </url>`)
-  }
+      const hnRes = await db.execute(sql`SELECT id FROM hn_items ORDER BY created_at DESC LIMIT 300;`).catch(() => [])
+      for (const row of extractRows(hnRes)) {
+        if (row.id) {
+          urls.push(`<url><loc>${baseUrl}/item/${row.id}</loc><changefreq>daily</changefreq><priority>0.75</priority></url>`)
+        }
+      }
+    }
+  } catch {}
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

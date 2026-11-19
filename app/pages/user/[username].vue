@@ -1,15 +1,9 @@
-<!-- app/pages/user/[username].vue -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const rawUsername = computed(() => (route.params.username as string) || 'alexdpl')
-
-useHead({
-  title: `@${rawUsername.value} — DKP Developer Profile v2.6`,
-  meta: [{ name: 'description', content: `Profilo sviluppatore ufficiale di @${rawUsername.value} su DevKernelPulse.` }]
-})
 
 const profileData = ref<any>(null)
 const isLoading = ref(true)
@@ -44,23 +38,25 @@ const xp = computed(() => userData.value.xp ?? 12500)
 const level = computed(() => userData.value.level ?? Math.floor(xp.value / 250) + 1)
 const badges = computed(() => userData.value.badges || ['Kernel Admin', 'Top Debater'])
 
-// Social e link utente
-const github = computed(() => userData.value.github || userData.value.githubUrl || 'https://github.com/alexdpl')
-const twitter = computed(() => userData.value.twitter || userData.value.twitterUrl || 'https://x.com/alexdpl76')
-const linkedin = computed(() => userData.value.linkedin || 'https://linkedin.com/in/alexdpl')
-const reddit = computed(() => userData.value.reddit || 'https://reddit.com/user/alexdpl')
-const website = computed(() => userData.value.website || userData.value.websiteUrl || 'https://devkernelpulse.org')
-const repository = computed(() => userData.value.repository || userData.value.repoUrl || 'https://github.com/alexdpl/devkernel-pulse')
+const socialLinks = computed(() => [
+  { label: 'GitHub', icon: '🐙', url: userData.value.githubUrl || (isAdmin.value ? 'https://github.com/alexdpl' : null) },
+  { label: 'Twitter / X', icon: '🐦', url: userData.value.twitterUrl || (isAdmin.value ? 'https://x.com/alexdpl76' : null) },
+  { label: 'LinkedIn', icon: '💼', url: userData.value.linkedinUrl || (isAdmin.value ? 'https://linkedin.com/in/alexdpl' : null) },
+  { label: 'Reddit', icon: '👽', url: userData.value.redditUrl || (isAdmin.value ? 'https://reddit.com/user/alexdpl' : null) },
+  { label: 'Discord', icon: '🎮', url: userData.value.discordUrl },
+  { label: 'Telegram', icon: '✈️', url: userData.value.telegramUrl },
+  { label: 'YouTube', icon: '📺', url: userData.value.youtubeUrl },
+  { label: 'Sito Web', icon: '🌐', url: userData.value.websiteUrl || (isAdmin.value ? 'https://devkernelpulse.org' : null) },
+  { label: 'Repository', icon: '📦', url: userData.value.repositoryUrl || (isAdmin.value ? 'https://github.com/alexdpl/devkernel-pulse' : null), primary: true }
+].filter(item => Boolean(item.url)))
 
 async function loadUserProfile() {
   isLoading.value = true
   try {
     const res: any = await $fetch(`/api/user/profile?username=${rawUsername.value}&_t=${Date.now()}`)
-    if (res?.success) {
-      profileData.value = res.data
-    }
+    if (res?.success) profileData.value = res.data
   } catch (err) {
-    console.warn("Errore caricamento profilo", err)
+    console.warn('Errore caricamento profilo', err)
   } finally {
     isLoading.value = false
   }
@@ -73,177 +69,143 @@ function shareProfile() {
   }
 }
 
-onMounted(() => {
-  loadUserProfile()
-})
+onMounted(loadUserProfile)
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 font-sans px-4 sm:px-6 py-10 sm:py-16 relative">
-    
-    <div v-if="showToast" class="fixed top-5 right-5 bg-slate-950 border border-cyan-500 text-cyan-400 px-6 py-3 rounded-xl shadow-xl font-mono text-sm z-50">
+  <DkpLayout
+    :title="`@${username}`"
+    :subtitle="`Developer Profile | ${reputationTier} | v2.6 Pure SQL`"
+    :seo-title="`@${username} — DKP Developer Profile v2.6`"
+    :seo-description="`Profilo ufficiale di @${username} su DevKernelPulse.org: certificati Vault SHA-256, repository e contributi.`"
+  >
+    <div v-if="showToast" class="fixed top-5 right-5 bg-dkp-card border border-dkp-accent text-dkp-accent px-6 py-3 rounded-xl shadow-xl font-mono text-sm z-50">
       {{ toastMessage }}
     </div>
 
-    <div v-if="isLoading" class="max-w-4xl mx-auto py-20 text-center font-mono text-cyan-400">
+    <div v-if="isLoading" class="bg-dkp-card border border-dkp-border rounded-lg p-12 text-center font-mono text-dkp-accent">
       ⚡ Sincronizzazione profilo @{{ rawUsername }} con Neon Pure SQL...
     </div>
 
-    <div v-else class="max-w-4xl mx-auto flex flex-col gap-8">
-      
+    <div v-else class="flex flex-col gap-6">
       <!-- HEADER PROFILO -->
-      <div class="bg-[#080d1a] border border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden backdrop-blur-md">
-        <div class="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none"></div>
-
-        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-          
-          <div class="relative">
-            <img :src="avatar" alt="Avatar" class="w-28 h-28 rounded-2xl object-cover border-2 border-cyan-400/40 shadow-[0_0_25px_rgba(34,211,238,0.2)]" />
-            <span class="absolute -bottom-2 -right-2 bg-emerald-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase font-mono shadow">
+      <div class="bg-dkp-card border border-dkp-border rounded-lg p-6 sm:p-8 card-glow relative overflow-hidden">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="relative shrink-0">
+            <img :src="avatar" alt="Avatar" class="w-24 h-24 rounded-xl object-cover border-2 border-dkp-accent/50" />
+            <span class="absolute -bottom-2 -right-2 bg-dkp-pass text-dkp-bg text-[10px] font-black px-2 py-0.5 rounded-full uppercase font-mono">
               ONLINE
             </span>
           </div>
 
-          <div class="flex-1 flex flex-col gap-3 text-center md:text-left font-mono">
-            <div class="flex flex-wrap items-center justify-center md:justify-start gap-3">
-              <h1 class="text-3xl font-black text-white tracking-tight font-sans">@{{ username }}</h1>
-              
-              <!-- KERNEL ADMIN BADGE ORO -->
-              <span v-if="isAdmin" class="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-yellow-400 border border-yellow-500/50 px-3 py-0.5 rounded-full text-xs font-black tracking-wider uppercase shadow-[0_0_12px_rgba(234,179,8,0.25)]">
+          <div class="flex-1 flex flex-col gap-2.5 text-center md:text-left font-mono">
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+              <h2 class="text-2xl font-bold text-dkp-text m-0 font-display">@{{ username }}</h2>
+              <span v-if="isAdmin" class="bg-amber-500/15 text-amber-400 border border-amber-500/40 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase">
                 [Kernel Admin]
               </span>
-
-              <span class="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-3 py-0.5 rounded-full text-xs font-black tracking-wider uppercase">
+              <span class="bg-violet-500/15 text-violet-300 border border-violet-500/40 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase">
                 {{ reputationTier }}
               </span>
             </div>
 
-            <p class="text-slate-300 text-sm leading-relaxed font-sans max-w-xl">
+            <p class="text-dkp-muted text-sm leading-relaxed font-display m-0 max-w-2xl">
               {{ bio }}
             </p>
 
-            <div v-if="badges?.length" class="flex flex-wrap justify-center md:justify-start gap-2 mt-1">
-              <span 
-                v-for="badge in badges" 
-                :key="badge" 
-                :class="[
-                  'px-2.5 py-1 rounded-lg text-[11px] font-bold tracking-wide flex items-center gap-1.5',
-                  badge === 'Kernel Admin' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-extrabold' :
-                  badge === 'Top Debater' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' :
-                  'bg-sky-500/10 text-sky-400 border border-sky-500/30'
-                ]"
+            <div class="flex flex-wrap justify-center md:justify-start gap-2 mt-1">
+              <span
+                v-for="badge in badges"
+                :key="badge"
+                class="px-2.5 py-1 rounded text-[11px] font-bold bg-dkp-bg border border-dkp-border text-dkp-accent flex items-center gap-1"
               >
                 <span>🛡️</span> {{ badge }}
               </span>
             </div>
           </div>
 
-          <button 
+          <button
             type="button"
             @click="shareProfile"
-            class="bg-slate-950 hover:bg-cyan-500/10 text-cyan-300 border border-cyan-400/40 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-extrabold transition-all hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            class="bg-dkp-bg hover:bg-dkp-accent/10 text-dkp-accent border border-dkp-accent/50 px-4 py-2.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer shrink-0"
           >
-            <span>🔗 Condividi Profilo</span>
+            🔗 Condividi
           </button>
         </div>
 
-        <!-- 4 SOCIAL + SITO WEB + REPOSITORY -->
-        <div class="mt-8 pt-6 border-t border-slate-800/80 flex flex-wrap justify-center sm:justify-start gap-3 relative z-10 font-mono">
-          <a :href="github" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-cyan-400 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-            <span>🐙</span> GitHub
+        <!-- SOCIAL & REPOSITORY -->
+        <div v-if="socialLinks.length > 0" class="mt-6 pt-5 border-t border-dkp-border flex flex-wrap justify-center md:justify-start gap-2.5 font-mono">
+          <a
+            v-for="s in socialLinks"
+            :key="s.label"
+            :href="s.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            :class="[
+              'px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 no-underline border',
+              s.primary
+                ? 'bg-dkp-accent/15 border-dkp-accent/50 text-dkp-accent hover:bg-dkp-accent hover:text-dkp-bg'
+                : 'bg-dkp-bg border-dkp-border text-dkp-text hover:border-dkp-accent'
+            ]"
+          >
+            <span>{{ s.icon }}</span> {{ s.label }} ↗
           </a>
-          <a :href="twitter" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-sky-400 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-            <span>🐦</span> Twitter / X
-          </a>
-          <a :href="linkedin" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-            <span>💼</span> LinkedIn
-          </a>
-          <a :href="reddit" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-orange-500 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-            <span>👽</span> Reddit
-          </a>
-          <a :href="website" target="_blank" rel="noopener noreferrer" class="bg-[#040814] border border-slate-800 hover:border-emerald-400 text-slate-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-            <span>🌐 Sito Web</span>
-          </a>
-          <a :href="repository" target="_blank" rel="noopener noreferrer" class="bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 text-cyan-300 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
-            <span>📦 Repository</span>
-          </a>
-          <span v-if="userData.email && userData.publicEmailVisible" class="bg-[#040814] border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs flex items-center gap-1.5">
-            <span>📧</span> {{ userData.email }}
-          </span>
         </div>
       </div>
 
-      <!-- STATISTICHE & XP -->
+      <!-- KPI METRICS -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
-          <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">PUNTI XP &amp; LIVELLO</span>
+        <div class="bg-dkp-card border border-dkp-border rounded-lg p-5 card-glow">
+          <span class="text-[10px] text-dkp-muted uppercase font-bold block mb-1">PUNTI XP &amp; LIVELLO</span>
           <div class="flex items-baseline gap-2">
-            <span class="text-3xl font-black text-cyan-400">{{ xp }}</span>
-            <span class="text-xs text-slate-400 font-bold">LV.{{ level }}</span>
+            <span class="text-2xl font-bold text-dkp-accent">{{ xp }}</span>
+            <span class="text-xs text-dkp-muted">LV.{{ level }}</span>
           </div>
         </div>
-
-        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
-          <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">REPUTATION TIER</span>
+        <div class="bg-dkp-card border border-dkp-border rounded-lg p-5 card-glow">
+          <span class="text-[10px] text-dkp-muted uppercase font-bold block mb-1">REPUTATION TIER</span>
+          <span class="text-xl font-bold text-violet-400">{{ reputationTier }}</span>
+        </div>
+        <div class="bg-dkp-card border border-dkp-border rounded-lg p-5 card-glow">
+          <span class="text-[10px] text-dkp-muted uppercase font-bold block mb-1">VAULT NOTARIZZATI</span>
           <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-black text-purple-400">{{ reputationTier }}</span>
+            <span class="text-2xl font-bold text-dkp-pass">{{ stats.notarizedCodeCount }}</span>
+            <span class="text-xs text-dkp-muted">SHA-256</span>
           </div>
         </div>
-
-        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
-          <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">VAULT NOTARIZZATI</span>
-          <div class="flex items-baseline gap-2">
-            <span class="text-3xl font-black text-emerald-400">{{ stats.notarizedCodeCount }}</span>
-            <span class="text-xs text-slate-400 font-bold">SHA-256</span>
-          </div>
-        </div>
-
-        <div class="bg-[#080d1a] border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between shadow-xl">
-          <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-2">DATABASE PURE SQL</span>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-extrabold text-emerald-400">NeonDB Connected</span>
-            <span class="text-emerald-400">🟢</span>
-          </div>
+        <div class="bg-dkp-card border border-dkp-border rounded-lg p-5 card-glow">
+          <span class="text-[10px] text-dkp-muted uppercase font-bold block mb-1">ENGINE STATUS</span>
+          <span class="text-sm font-bold text-dkp-pass">Pure SQL Active 🟢</span>
         </div>
       </div>
 
-      <!-- NOTARIZZAZIONI BLOCKCHAIN VAULT -->
-      <div v-if="vaultCerts.length > 0" class="bg-[#080d1a] border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono">
-        <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2">
-          <span>🛡️</span> Notarizzazioni On-Chain (SHA-256 Vault)
-        </h3>
-        <div class="flex flex-col gap-3">
-          <div v-for="cert in vaultCerts" :key="cert.id" class="bg-[#040814] border border-slate-800/80 p-4 rounded-xl flex items-center justify-between gap-4">
+      <!-- VAULT CERTIFICATES -->
+      <div v-if="vaultCerts.length > 0" class="bg-dkp-card border border-dkp-border rounded-lg p-6 card-glow font-mono">
+        <h3 class="text-base font-bold text-dkp-text mb-4 m-0">🛡️ Notarizzazioni On-Chain (SHA-256 Vault)</h3>
+        <div class="space-y-3">
+          <div v-for="cert in vaultCerts" :key="cert.id" class="bg-dkp-bg border border-dkp-border p-4 rounded-lg flex items-center justify-between gap-4">
             <div>
-              <p class="text-xs sm:text-sm font-bold text-slate-200 m-0">{{ cert.title }}</p>
-              <span class="text-[10px] text-cyan-400 font-mono">Hash: {{ cert.hash.substring(0, 32) }}...</span>
+              <p class="text-sm font-bold text-dkp-text m-0 font-display">{{ cert.title }}</p>
+              <span class="text-[11px] text-dkp-accent">SHA-256: {{ cert.hash?.substring(0, 36) }}...</span>
             </div>
-            <span class="text-[10px] bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 px-2 py-1 rounded shrink-0">
-              Notarized
-            </span>
+            <span class="text-[10px] bg-dkp-pass/15 text-dkp-pass border border-dkp-pass/40 px-2.5 py-1 rounded uppercase font-bold">Verified</span>
           </div>
         </div>
       </div>
 
-      <!-- ATTIVITÀ RECENTI -->
-      <div class="bg-[#080d1a] border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono">
-        <h3 class="text-lg font-black text-white mb-6 flex items-center gap-2">
-          <span>⚡</span> Attività &amp; Contributi Recenti nei Nodi
-        </h3>
-        <div v-if="recentActivity.length === 0" class="text-slate-500 text-xs italic">
-          Nessuna attività registrata di recente.
-        </div>
-        <div v-else class="flex flex-col gap-3">
-          <div v-for="(act, idx) in recentActivity" :key="idx" class="bg-[#040814] border border-slate-800/80 p-4 rounded-xl flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <span class="text-lg">💬</span>
-              <p class="text-xs sm:text-sm text-slate-200 font-medium m-0 font-sans">{{ act.title }}</p>
-            </div>
-            <span class="text-[11px] font-mono text-slate-500 shrink-0">{{ act.time }}</span>
+      <!-- RECENT ACTIVITY -->
+      <div class="bg-dkp-card border border-dkp-border rounded-lg p-6 card-glow font-mono">
+        <h3 class="text-base font-bold text-dkp-text mb-4 m-0">⚡ Contributi Recenti nei Nodi</h3>
+        <div v-if="recentActivity.length === 0" class="text-dkp-muted text-xs">Nessuna attività pubblica recente.</div>
+        <div v-else class="space-y-3">
+          <div v-for="(act, idx) in recentActivity" :key="idx" class="bg-dkp-bg border border-dkp-border p-4 rounded-lg flex items-center justify-between gap-4">
+            <NuxtLink :to="act.id ? `/nodes/post/${act.id}` : '/nodes'" class="text-sm text-dkp-text hover:text-dkp-accent no-underline font-display">
+              💬 {{ act.title }}
+            </NuxtLink>
+            <span class="text-xs text-dkp-muted shrink-0">{{ act.time }}</span>
           </div>
         </div>
       </div>
-
     </div>
-  </div>
+  </DkpLayout>
 </template>
