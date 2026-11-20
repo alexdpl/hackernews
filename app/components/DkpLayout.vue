@@ -29,9 +29,21 @@ const props = withDefaults(defineProps<Props>(), {
 
 const route = useRoute()
 
+const resolvedSeoTitle = computed(() =>
+  props.seoTitle && props.seoTitle !== 'DevKernelPulse \u2014 Piattaforma per Sviluppatori & Sentinel AI'
+    ? props.seoTitle
+    : (props.title || 'DevKernelPulse')
+)
+
+const resolvedSeoDescription = computed(() =>
+  props.seoDescription && props.seoDescription !== 'Notarizzazione crittografica del codice, strumenti di sicurezza e aggregatore tech ad alto segnale arricchito in tempo reale da Trinity AI.'
+    ? props.seoDescription
+    : (props.subtitle || 'DevKernelPulse v2.6-PURE-SQL')
+)
+
 useDkpSeo({
-  title: props.seoTitle,
-  description: props.seoDescription,
+  title: resolvedSeoTitle.value,
+  description: resolvedSeoDescription.value,
   noindex: props.noindex
 })
 
