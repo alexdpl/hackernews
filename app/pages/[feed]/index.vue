@@ -36,7 +36,7 @@ useDkpSeo({
 </script>
 
 <template>
-  <DkpLayout :title="currentTitle" :subtitle="`Feed Dinamico DKP v2.6 | ${resolvedType.value.toUpperCase()}`" :show-sidebar-ads="true">
+  <DkpLayout :title="currentTitle" :subtitle="`Feed Dinamico DKP v2.6 | ${String(resolvedType.value || 'top').toUpperCase()}`" :show-sidebar-ads="true">
     <DkpHomeWidget :feed-type="resolvedType" />
   </DkpLayout>
 </template>
