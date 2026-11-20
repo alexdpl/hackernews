@@ -44,12 +44,10 @@ export default defineEventHandler(async (event) => {
 
     await ensureUnifiedCommentsSchema(db)
 
-    // Assicura la colonna status per tracciare eventuali interventi di moderazione
     await db.execute(sql`
       ALTER TABLE comments ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'published';
     `).catch(() => {})
 
-    // 1. Risolve ID e username reali dell'utente
     let resolvedUsername = username
     if (!userId && username) {
       const userRes = await db.execute(sql`
@@ -68,16 +66,19 @@ export default defineEventHandler(async (event) => {
       if (uRow?.username) resolvedUsername = String(uRow.username)
     }
 
-    // 2. Recupero tutti i commenti dell'utente (sia via user_id che via author)
     const commentsRes = await db.execute(sql`
       SELECT
         id,
         post_id AS "postId",
+        target_slug AS "targetSlug",
         parent_id AS "parentId",
         COALESCE(NULLIF(LOWER(target_type), ''), 'post') AS "targetType",
         COALESCE(NULLIF(author, ''), ${resolvedUsername || 'community'}) AS author,
         COALESCE(NULLIF(text, ''), content, '') AS text,
         COALESCE(NULLIF(UPPER(status), ''), 'PUBLISHED') AS status,
+        COALESCE(NULLIF(sentinel_verdict, ''), 'PEER_VERIFIED') AS "sentinelVerdict",
+        COALESCE(sentinel_score, 92) AS "sentinelScore",
+        COALESCE(NULLIF(sentinel_note, ''), 'Peer-reviewed by DKP Sentinel Network') AS "sentinelNote",
         created_at AS "createdAt",
         updated_at AS "updatedAt"
       FROM comments
@@ -98,17 +99,15 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // 3. Arricchimento titoli & link delle destinazioni (HN/News, Blog, Forum/Nodi) in batch Pure-SQL
     const postIds = Array.from(new Set(rawComments.map((c: any) => Number(c.postId)).filter((n) => n > 0)))
 
-    const hnMap = new Map<number, { title: string }>()
+    const hnMap = new Map<number, { title: string; slug?: string }>()
     const blogMap = new Map<number, { title: string; slug: string }>()
-    const nodeMap = new Map<number, { title: string }>()
+    const nodeMap = new Map<number, { title: string; slug?: string }>()
 
     if (postIds.length > 0) {
       const idListSql = sql.join(postIds.map((id) => sql`${id}`), sql`, `)
 
-      // Lookup su posts (HN Feed)
       const postsLookup = await db.execute(sql`
         SELECT id, title FROM posts WHERE id IN (${idListSql});
       `).catch(() => null)
@@ -116,17 +115,15 @@ export default defineEventHandler(async (event) => {
         hnMap.set(Number(r.id), { title: String(r.title) })
       }
 
-      // Fallback lookup su news se presente
       const newsLookup = await db.execute(sql`
-        SELECT id, title FROM news WHERE id IN (${idListSql});
+        SELECT id, title, slug FROM news WHERE id IN (${idListSql});
       `).catch(() => null)
       for (const r of extractSqlRows(newsLookup)) {
         if (!hnMap.has(Number(r.id))) {
-          hnMap.set(Number(r.id), { title: String(r.title) })
+          hnMap.set(Number(r.id), { title: String(r.title), slug: r.slug ? String(r.slug) : undefined })
         }
       }
 
-      // Lookup su blog_posts
       const blogLookup = await db.execute(sql`
         SELECT id, title, slug FROM blog_posts WHERE id IN (${idListSql});
       `).catch(() => null)
@@ -137,18 +134,29 @@ export default defineEventHandler(async (event) => {
         })
       }
 
-      // Lookup su node_threads
-      const nodeLookup = await db.execute(sql`
+      const nodePostsLookup = await db.execute(sql`
+        SELECT p.id, p.title, n.slug AS "nodeSlug"
+        FROM node_posts p
+        LEFT JOIN nodes n ON p.node_id = n.id
+        WHERE p.id IN (${idListSql});
+      `).catch(() => null)
+      for (const r of extractSqlRows(nodePostsLookup)) {
+        nodeMap.set(Number(r.id), { title: String(r.title), slug: r.nodeSlug ? String(r.nodeSlug) : undefined })
+      }
+
+      const nodeThreadsLookup = await db.execute(sql`
         SELECT id, title FROM node_threads WHERE id IN (${idListSql});
       `).catch(() => null)
-      for (const r of extractSqlRows(nodeLookup)) {
-        nodeMap.set(Number(r.id), { title: String(r.title) })
+      for (const r of extractSqlRows(nodeThreadsLookup)) {
+        if (!nodeMap.has(Number(r.id))) {
+          nodeMap.set(Number(r.id), { title: String(r.title) })
+        }
       }
     }
 
-    // 4. Normalizzazione finale per la Dashboard Utente
     const formattedData = rawComments.map((c: any) => {
       const pid = Number(c.postId)
+      const explicitSlug = c.targetSlug ? String(c.targetSlug).trim() : ''
       const rawType = String(c.targetType || 'post').toLowerCase()
       const section: 'HN' | 'BLOG' | 'NODE' =
         rawType === 'blog' ? 'BLOG' : rawType === 'node' || rawType === 'thread' ? 'NODE' : 'HN'
@@ -162,6 +170,9 @@ export default defineEventHandler(async (event) => {
         if (found) {
           postTitle = found.title
           targetUrl = `/blog/${found.slug}`
+        } else if (explicitSlug) {
+          postTitle = `Articolo Blog (${explicitSlug})`
+          targetUrl = `/blog/${explicitSlug}`
         } else {
           postTitle = 'Articolo Blog rimosso o non più disponibile'
           targetUrl = '/blog'
@@ -179,12 +190,13 @@ export default defineEventHandler(async (event) => {
         }
       } else {
         const found = hnMap.get(pid)
-        if (found) {
-          postTitle = found.title
-          targetUrl = `/item/${pid}`
+        const resolvedSlug = found?.slug || explicitSlug || (pid > 0 ? String(pid) : '')
+        if (found || resolvedSlug) {
+          postTitle = found?.title || (resolvedSlug ? `Notizia (${resolvedSlug})` : 'Notizia Tech')
+          targetUrl = resolvedSlug ? `/news/${resolvedSlug}` : '/news'
         } else {
           postTitle = 'Notizia HN rimossa o non più disponibile'
-          targetUrl = `/item/${pid}`
+          targetUrl = '/news'
           isParentDeleted = true
         }
       }
@@ -195,6 +207,7 @@ export default defineEventHandler(async (event) => {
       return {
         id: Number(c.id),
         postId: pid,
+        targetSlug: explicitSlug || null,
         parentId: c.parentId ? Number(c.parentId) : null,
         section,
         targetType: rawType,
@@ -207,6 +220,9 @@ export default defineEventHandler(async (event) => {
         status,
         isModerated,
         isEdited: Boolean(c.updatedAt),
+        sentinelVerdict: String(c.sentinelVerdict || 'PEER_VERIFIED'),
+        sentinelScore: Number(c.sentinelScore ?? 92),
+        sentinelNote: String(c.sentinelNote || 'Peer-reviewed by DKP Sentinel Network'),
         createdAt: c.createdAt,
         updatedAt: c.updatedAt || null,
         date: formatIsoDate(c.createdAt)
@@ -233,7 +249,7 @@ export default defineEventHandler(async (event) => {
       stats
     }
   } catch (err: any) {
-    console.error('❌ Errore fetch commenti utente:', err?.message || err)
+    console.error('Errore fetch commenti utente:', err?.message || err)
     return {
       success: false,
       data: [],

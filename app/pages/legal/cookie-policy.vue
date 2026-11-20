@@ -1,13 +1,19 @@
-<!-- app/pages/cookie-policy.vue -->
 <script setup lang="ts">
 useDkpSeo({
-  title: 'Cookie Policy & Gestione Dati — DevKernelPulse v2.6-PURE-SQL',
-  description: 'Informativa sui cookie tecnici di prima parte (dkp_session), LocalStorage e architettura Zero-Profilazione di DevKernelPulse v2.6-PURE-SQL.'
+  title: 'Cookie Policy - DevKernelPulse',
+  description: 'Cookie Policy di DevKernelPulse: utilizzo di cookie tecnici, storage locale e preferenze di navigazione.',
+  type: 'website',
+  canonicalPath: '/legal/cookie-policy'
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+  <DkpLayout
+    title="Cookie Policy"
+    subtitle="Gestione cookie tecnici, sessione e preferenze"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
     <div class="max-w-5xl mx-auto flex flex-col gap-8">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -16,28 +22,28 @@ useDkpSeo({
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -48,8 +54,8 @@ useDkpSeo({
         <!-- HEADER -->
         <header class="border-b border-slate-800 pb-6 mb-8">
           <div class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-xs font-mono font-extrabold tracking-wider px-3.5 py-1.5 rounded-full mb-4 uppercase">
-            <span>🍪 COOKIE &amp; STORAGE POLICY</span>
-            <span class="text-slate-500">•</span>
+            <span>COOKIE &amp; STORAGE POLICY</span>
+            <span class="text-slate-500">ÔÇó</span>
             <span>v2.6-PURE-SQL</span>
           </div>
 
@@ -128,15 +134,15 @@ useDkpSeo({
             </p>
             <ul class="flex flex-col gap-2.5 p-0 list-none">
               <li class="relative pl-6">
-                <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+                <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
                 Stato della cache XP, livello Gamification e bozze temporanee dell'editor Markdown.
               </li>
               <li class="relative pl-6">
-                <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+                <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
                 Preferenze di interfaccia di <strong class="text-white">OpenUI Studio</strong>, <strong class="text-white">Pulse Nexus</strong> e del <strong class="text-white">Neural Playground</strong>.
               </li>
               <li class="relative pl-6">
-                <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+                <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
                 Filtri selezionati nel DKP Tech Feed e nel DKP Editorial Hub.
               </li>
             </ul>
@@ -150,7 +156,7 @@ useDkpSeo({
             </h2>
             <div class="bg-[#020420] border border-slate-800 border-l-4 border-l-emerald-400 rounded-2xl p-5">
               <p class="m-0 text-slate-200">
-                <strong class="text-emerald-400">DevKernelPulse non utilizza cookie di profilazione commerciale, pixel di retargeting né tracciatori pubblicitari di terze parti.</strong> Non vendiamo, cediamo o condividiamo i tuoi dati di navigazione con broker pubblicitari o network esterni.
+                <strong class="text-emerald-400">DevKernelPulse non utilizza cookie di profilazione commerciale, pixel di retargeting n tracciatori pubblicitari di terze parti.</strong> Non vendiamo, cediamo o condividiamo i tuoi dati di navigazione con broker pubblicitari o network esterni.
               </p>
             </div>
           </section>
@@ -172,13 +178,14 @@ useDkpSeo({
       <!-- FOOTER NAVIGATION -->
       <div class="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-800 font-mono text-xs">
         <NuxtLink to="/legal/privacy" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
-          ← Torna alla Privacy Policy completa (GDPR)
+          ÔåÉ Torna alla Privacy Policy completa (GDPR)
         </NuxtLink>
         <NuxtLink to="/legal/terms" class="text-emerald-400 hover:text-sky-400 font-bold transition-colors">
-          Termini di Servizio &amp; Copyright →
+          Termini di Servizio &amp; Copyright ÔåÆ
         </NuxtLink>
       </div>
 
     </div>
   </div>
+  </DkpLayout>
 </template>

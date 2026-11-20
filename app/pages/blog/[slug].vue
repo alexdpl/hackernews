@@ -3,13 +3,14 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
+import { useDynamicPrism } from '~/composables/useDynamicPrism'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DkpRelatedPosts from '~/components/blog/DkpRelatedPosts.vue'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
+import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 interface BlogPost {
   id?: string | number
@@ -48,17 +49,49 @@ interface AuthorRank {
   title: string
 }
 
-interface PrismHighlighter {
-  highlightAll: () => void
-}
+const heroCards = [
+  {
+    to: '/news',
+    icon: '🌍',
+    badge: 'LIVE STREAM',
+    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
+    title: 'DKP Tech Feed',
+    desc: 'Segnali tech e newsroom filtrati in tempo reale da Trinity AI'
+  },
+  {
+    to: '/nodes',
+    icon: '💬',
+    badge: 'COMMUNITY',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
+    title: 'DKP Talks Hub',
+    desc: 'Nodi tematici, architetture, bounty e discussioni tecniche'
+  },
+  {
+    to: '/tools',
+    icon: '🛠️',
+    badge: 'SECURITY & DEV',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
+    title: 'Developer Tools',
+    desc: 'Utility crittografiche, audit SAST e diagnostica per ingegneri'
+  },
+  {
+    to: '/blog',
+    icon: '📝',
+    badge: 'VAULT VERIFIED',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
+    title: 'DKP Editorial Hub',
+    desc: 'Deep-dive tecnici con certificazione SHA-256 immutabile'
+  }
+]
 
 useCodeCopy()
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug || '').trim())
-const { $prism } = useNuxtApp()
+const articleBodyRef = ref<HTMLElement | null>(null)
 
 const { likePost, incrementView, getAuthorRank } = useBlog()
+const { highlightDomElement, ensurePrismLanguages, extractLanguagesFromMarkdown } = useDynamicPrism()
 
 const {
   data: apiResponse,
@@ -211,12 +244,13 @@ const authorRank = computed<AuthorRank>(() => {
   }
 })
 
-// --- DKP SEO DINAMICO PER INDICIZZAZIONE ARTICOLI & RICH RESULTS ---
+// --- DKP SEO v2.6 UNIFICATO + RICH RESULTS SCHEMA.ORG ---
 const resolvedSlug = computed(() => post.value?.slug || slug.value)
-const canonicalUrl = computed(() => `https://devkernelpulse.org/blog/${encodeURIComponent(resolvedSlug.value)}`)
+const canonicalPath = computed(() => `/blog/${encodeURIComponent(resolvedSlug.value)}`)
+const canonicalUrl = computed(() => `https://devkernelpulse.org${canonicalPath.value}`)
 const currentUrl = computed(() => (import.meta.client ? window.location.href : canonicalUrl.value))
 
-const categoryLabel = computed(() => post.value?.categoryName || post.value?.category || 'Generale')
+const categoryLabel = computed(() => post.value?.categoryName || post.value?.category || 'DKP Ecosystem & Releases')
 const subcategoryLabel = computed(() => post.value?.subcategoryName || post.value?.subCategory || '')
 
 const seoTitle = computed(() =>
@@ -236,33 +270,23 @@ const seoDescription = computed(() => {
   return cleaned || "Approfondimento tecnico verificato dall'ecosistema DevKernelPulse."
 })
 
-const seoRobots = computed(() =>
-  error.value || (!pending.value && !post.value) ? 'noindex, nofollow' : 'index, follow'
-)
+const isNotFound = computed(() => Boolean(error.value || (!pending.value && !post.value)))
 
-useSeoMeta({
+useDkpSeo({
   title: seoTitle,
   description: seoDescription,
-  robots: seoRobots,
-  ogType: 'article',
-  ogSiteName: 'DevKernelPulse',
-  ogTitle: seoTitle,
-  ogDescription: seoDescription,
-  ogUrl: canonicalUrl,
-  twitterCard: 'summary_large_image',
-  twitterTitle: seoTitle,
-  twitterDescription: seoDescription,
-  articleAuthor: computed(() => post.value?.authorName || 'DevKernelPulse Team'),
-  articleSection: categoryLabel,
-  articlePublishedTime: computed(() => post.value?.createdAt || undefined),
-  articleModifiedTime: computed(() => post.value?.updatedAt || post.value?.createdAt || undefined),
-  articleTag: computed(() => post.value?.tags || [])
+  keywords: computed(() => (post.value?.tags || []).join(', ')),
+  type: 'article',
+  noindex: isNotFound,
+  publishedTime: computed(() => post.value?.createdAt || undefined),
+  modifiedTime: computed(() => post.value?.updatedAt || post.value?.createdAt || undefined),
+  authorName: computed(() => post.value?.authorName || 'DevKernelPulse Team'),
+  section: categoryLabel,
+  notarizationHash: computed(() => vaultProof.value?.vaultHash || post.value?.vaultHash || undefined),
+  canonicalPath
 })
 
 useHead({
-  link: [
-    { rel: 'canonical', href: canonicalUrl }
-  ],
   script: [
     {
       type: 'application/ld+json',
@@ -383,34 +407,31 @@ watch(
   }
 )
 
-let prismTimer: ReturnType<typeof setTimeout> | undefined
-const applyPrism = () => {
-  if (import.meta.client && $prism) {
-    clearTimeout(prismTimer)
-    prismTimer = setTimeout(() => {
-      try {
-        ;($prism as PrismHighlighter).highlightAll()
-      } catch (e) {
-        console.warn('Prism highlight notice:', e)
-      }
-    }, 100)
+// --- HIGHLIGHTING ASINCRONO CON useDynamicPrism ---
+async function applyDynamicPrism() {
+  if (!import.meta.client) return
+  await nextTick()
+  const mdLangs = extractLanguagesFromMarkdown(post.value?.content || post.value?.description || '')
+  if (mdLangs.length > 0) {
+    await ensurePrismLanguages(mdLangs)
   }
+  await highlightDomElement(articleBodyRef.value || document)
 }
 
-watch(parsedContent, async () => {
-  await nextTick()
-  applyPrism()
+watch(parsedContent, () => {
+  void applyDynamicPrism()
 })
 
 onMounted(() => {
-  setTimeout(applyPrism, 200)
+  setTimeout(() => {
+    void applyDynamicPrism()
+  }, 120)
   if (post.value?.id || slug.value) {
     loadOnChainBlogProof(true)
   }
 })
 
 onUnmounted(() => {
-  clearTimeout(prismTimer)
   clearTimeout(toastTimer)
 })
 
@@ -426,7 +447,7 @@ function handleLike() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-10">
+  <div class="min-h-screen bg-dkp-bg bg-grid-pattern text-slate-100 px-4 py-10">
     <div
       v-if="toastMsg"
       role="status"
@@ -435,44 +456,42 @@ function handleLike() {
       {{ toastMsg }}
     </div>
 
-    <div class="max-w-4xl mx-auto flex flex-col gap-6">
-      <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
-      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[#090d16] border border-slate-800 p-3 rounded-2xl shadow-lg">
+    <div class="max-w-5xl mx-auto flex flex-col gap-6">
+      <!-- 4 CARD PRINCIPALI IDENTICHE ALLA HOME & SEZIONI -->
+      <nav aria-label="Navigazione Ecosistema DKP" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <NuxtLink
-          to="/news"
-          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all no-underline"
+          v-for="card in heroCards"
+          :key="card.to"
+          :to="card.to"
+          :class="[
+            'bg-dkp-card/95 border rounded-2xl p-4 no-underline transition-all card-glow group flex flex-col justify-between gap-3',
+            card.to === '/blog'
+              ? 'border-amber-400/60 shadow-[0_0_20px_rgba(251,191,36,0.14)]'
+              : 'border-dkp-border hover:border-cyan-400/60'
+          ]"
         >
-          🌍 DKP Tech Feed
-        </NuxtLink>
-
-        <NuxtLink
-          to="/nodes"
-          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all no-underline"
-        >
-          💬 DKP Talks Hub
-        </NuxtLink>
-
-        <NuxtLink
-          to="/tools"
-          class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all no-underline"
-        >
-          🛠️ Developer Tools
-        </NuxtLink>
-
-        <NuxtLink
-          to="/blog"
-          class="px-4 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] no-underline"
-        >
-          ✍️ DKP Editorial Hub
+          <div class="flex items-center justify-between">
+            <span class="text-xl">{{ card.icon }}</span>
+            <span :class="['font-mono text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase', card.badgeClass]">
+              {{ card.badge }}
+            </span>
+          </div>
+          <div>
+            <div class="text-sm font-bold text-white group-hover:text-dkp-accent transition-colors flex items-center justify-between mb-1">
+              <span>{{ card.title }}</span>
+              <span class="text-slate-400 group-hover:text-dkp-accent transition-transform group-hover:translate-x-1">&rarr;</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed m-0">{{ card.desc }}</p>
+          </div>
         </NuxtLink>
       </nav>
 
-      <div v-if="pending" class="text-center py-20 text-emerald-400 font-mono bg-[#090d16] border border-slate-800 rounded-2xl">
+      <div v-if="pending" class="text-center py-20 text-emerald-400 font-mono bg-dkp-card border border-dkp-border rounded-2xl">
         <span class="text-3xl animate-pulse inline-block mb-4">⚡</span>
         <p class="m-0">Caricamento articolo dal Vault v2.6-PURE-SQL...</p>
       </div>
 
-      <div v-else-if="error || !post" class="text-center py-20 text-rose-400 bg-[#090d16] border border-slate-800 rounded-2xl">
+      <div v-else-if="error || !post" class="text-center py-20 text-rose-400 bg-dkp-card border border-dkp-border rounded-2xl">
         <h2 class="text-2xl font-bold mb-4 mt-0">⚠️ Articolo non trovato</h2>
         <p class="text-slate-400 text-sm">L'articolo richiesto non esiste o è stato rimosso dal Vault.</p>
         <NuxtLink
@@ -613,6 +632,7 @@ function handleLike() {
 
           <ClientOnly>
             <div
+              ref="articleBodyRef"
               class="post-content prose prose-invert max-w-none text-slate-200 mb-12 dkp-preview-content relative z-10"
               v-html="parsedContent"
             ></div>
@@ -634,7 +654,7 @@ function handleLike() {
             </span>
           </div>
 
-          <!-- CERTIFICATO ON-CHAIN BLOCKCHAIN VAULT (UNIFICATO FORUM + BLOG) -->
+          <!-- CERTIFICATO ON-CHAIN BLOCKCHAIN VAULT -->
           <div
             class="mt-8 bg-[#020420] border border-emerald-500/35 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.06)] z-10 mb-8 font-mono"
           >
@@ -749,24 +769,32 @@ function handleLike() {
               </div>
             </div>
           </div>
+          <!-- CIRCUITO DKP ADS + ACQUISTA SPAZIO (ORIZZONTALE) -->
+           <DkpAdsWidget
+             placement="feedInline"
+             layout="horizontal"
+             :limit="3"
+             :show-advertise-link="true"
+            />
+          <!-- WIDGET UNICI SENZA DUPLICATI -->
+          <div class="space-y-6 pt-6 border-t border-slate-800 relative z-10">
+            <DkpRelatedPosts
+              v-if="post && post.id"
+              :current-post-id="String(post.id)"
+              :category="categoryLabel"
+              :tags="post.tags || []"
+            />
 
-          <!-- WIDGET INTEGRATI NELLA PAGINA ARTICOLO -->
-          <div class="mb-10 pt-4 border-t border-slate-800">
-            <DkpAdsWidget placement="blogSidebar" :compact="true" />
-            <DkpNodesHomeWidget />
+            <DkpRelatedNodesWidget />
+            <DkpHomeWidget />
+
+            <DkpAdStrip
+              layout="horizontal"
+              category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"
+              :topic="categoryLabel"
+              :tags="post.tags || []"
+            />
           </div>
-
-          <DKPRelatedThreads />
-
-          <!-- ARTICOLI CORRELATI -->
-          <DkpRelatedPosts
-            v-if="post && post.id"
-            :current-post-id="String(post.id)"
-            :category="categoryLabel"
-            :tags="post.tags || []"
-          />
-
-          <DkpAdStrip :topic="categoryLabel" :tags="post.tags || []" />
         </article>
       </div>
     </div>
@@ -867,4 +895,20 @@ function handleLike() {
 :deep(.dkp-preview-content ol) { list-style-type: decimal; }
 :deep(.dkp-li) { margin-bottom: 0.4rem; position: relative; }
 :deep(ul > .dkp-li::before) { content: "○"; color: #38bdf8; position: absolute; left: -1.2rem; top: 0; font-weight: bold; }
+mark,
+.dkp-highlight {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.08rem 0.38rem !important;
+  font-weight: 700 !important;
+}
+
+.dkp-inline-code,
+:not(pre) > code {
+  background-color: rgba(30, 41, 59, 0.85) !important;
+  color: #38bdf8 !important;
+  border-radius: 0.3rem !important;
+}
 </style>

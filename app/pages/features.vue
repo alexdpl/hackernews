@@ -1,6 +1,19 @@
-<!-- app/pages/features.vue -->
+<script setup lang="ts">
+useDkpSeo({
+  title: 'Funzionalita DevKernelPulse - Tools, Sicurezza & XP',
+  description: 'Scopri tutte le funzionalita di DevKernelPulse: scanner AI, notarizzazione SHA-256, profili dinamici, nodi e sistema XP.',
+  type: 'website',
+  canonicalPath: '/features'
+})
+</script>
+
 <template>
-  <div class="features-page">
+  <DkpLayout
+    title="Funzionalita della Piattaforma"
+    subtitle="Strumenti, sicurezza, gamification e integrazioni AI"
+    :show-sidebar-ads="true"
+  >
+<div class="features-page">
     <div class="features-container">
       <div class="header-section">
         <span class="badge-tag">DKP Ecosystem</span>
@@ -10,53 +23,54 @@
 
       <div class="features-grid">
         <div class="feature-card">
-          <div class="card-icon">🛡️</div>
+          <div class="card-icon"></div>
           <h3>Proof of Code</h3>
           <p>Il sistema di certificazione integrato che collega direttamente l'identità dello sviluppatore ai repository GitHub reali, tracciando commit, pull request e issue per calcolare il Karma ufficiale.</p>
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">⚡</div>
+          <div class="card-icon">ÔÜí</div>
           <h3>AI Scanner</h3>
           <p>Un analizzatore intelligente capace di esaminare URL, sorgenti e notizie tecnologiche in tempo reale, estraendo insight avanzati e valutandone l'impatto sul panorama tech.</p>
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">💻</div>
+          <div class="card-icon"></div>
           <h3>DKP Terminal</h3>
           <p>Interfaccia di comando immersiva in stile cyberpunk integrata nativamente nell'applicazione per l'interazione rapida con le funzioni di sistema e navigazione accelerata.</p>
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">🧠</div>
+          <div class="card-icon"></div>
           <h3>Neural Code Playground</h3>
           <p>L'ambiente di esecuzione e testing interattivo dove gli sviluppatori possono testare snippet di codice (Rust, TypeScript, Python, Go) ricevendo istantaneamente audit e ottimizzazioni neurali.</p>
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">🌐</div>
+          <div class="card-icon"></div>
           <h3>DKP Global Engine (Translator)</h3>
           <p>Motore e selettore di traduzione nativo ad alte prestazioni (supporto per Italiano, Inglese, Spagnolo, Francese, Tedesco e Cinese) progettato per azzerare i tempi di caricamento e unire la community tech globale.</p>
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">📰</div>
+          <div class="card-icon"></div>
           <h3>DKP Native Blog & Admin</h3>
           <p>Un newsroom nativo integrato con un pannello amministrativo protetto per la pubblicazione in tempo reale di rilasci, annunci e articoli strategici per la community globale.</p>
         </div>
 
         <div class="feature-card">
-          <div class="card-icon">🔐</div>
+          <div class="card-icon"></div>
           <h3>DKP Captcha</h3>
           <p>Sistema di verifica anti-bot proprietario e ad alta sicurezza, progettato per proteggere le interazioni critiche, i form di invio link e le autenticazioni dell'ecosistema DevKernelPulse.</p>
         </div>
       </div>
 
       <div class="copyright-box">
-        <p>© 2026 <strong>DevKernelPulse</strong>. Tutti i diritti riservati. Progettato e sviluppato da Alessandro De Paola & Gemini AI. Qualsiasi riproduzione o utilizzo non autorizzato delle tecnologie proprietarie è severamente vietato.</p>
+        <p> 2026 <strong>DevKernelPulse</strong>. Tutti i diritti riservati. Progettato e sviluppato da Alessandro De Paola & Gemini AI. Qualsiasi riproduzione o utilizzo non autorizzato delle tecnologie proprietarie è severamente vietato.</p>
       </div>
     </div>
   </div>
+  </DkpLayout>
 </template>
 
 <style scoped>

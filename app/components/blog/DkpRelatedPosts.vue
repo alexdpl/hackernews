@@ -89,7 +89,5 @@ onMounted(() => {
         </span>
       </NuxtLink>
     </div>
-	<!-- Banner orizzontale a 3 slot del DKP Ads Network -->
-      <DkpAdStrip />
   </div>
 </template>

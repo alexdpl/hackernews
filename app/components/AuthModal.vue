@@ -264,7 +264,7 @@ onUnmounted(() => {
                 :autocomplete="authTab === 'login' ? 'current-password' : 'new-password'"
                 v-model="passwordInput"
                 :type="showPassword ? 'text' : 'password'"
-                placeholder="••••••••••••••••"
+                placeholder=""
                 :disabled="isLoading"
                 required
               />

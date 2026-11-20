@@ -1,339 +1,245 @@
-<!-- app/pages/tools/index.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
+import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
+import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 useDkpSeo({
-  title: 'Toolkit & Developer Tools v2.6-PURE-SQL — DevKernelPulse',
-  description: 'Suite ufficiale di strumenti professionali DKP: Neural Playground, AI Repo Scanner, Code Vault, CLI Toolkit e API Management.'
+  title: 'Developer Tools & Utility - DevKernelPulse Kernel v2.6-PURE-SQL',
+  description: 'Suite completa di strumenti per sviluppatori e ingegneri AI: Proof of Code Vault SHA-256, OpenUI Studio, AI Repo Scanner, Terminal Web Shell, AI Scanner e CLI Toolkit.',
+  type: 'website',
+  canonicalPath: '/tools'
 })
 
-interface DkpTool {
-  id: string
-  title: string
-  category: string
-  version: string
-  status: 'active' | 'beta' | 'enterprise'
-  icon: string
-  description: string
-  features: string[]
-  badgeText: string
-  linkText: string
-  route: string
-  isExternal?: boolean
-}
-
-const toolsList = ref<DkpTool[]>([
+const heroCards = [
   {
-    id: 'ai-repo-scanner',
-    title: 'AI Repository Scanner',
-    category: 'Code Quality & AI',
-    version: 'v2.6-PURE-SQL',
-    status: 'active',
-    icon: '🤖',
-    description: 'Analizza repository GitHub con intelligenza artificiale. Estrae lo stack tecnologico reale, calcola il Reputation Score e assegna XP sul DB.',
-    features: [
-      'Audit automatico dello stack tecnologico',
-      'Calcolo Reputation Score dinamico',
-      'Sistema di reward XP integrato in Neon DB'
-    ],
-    badgeText: 'S-TIER RANK',
-    linkText: 'Analizza Repository',
-    route: '/tools/ai-repo-scanner'
+    to: '/news',
+    tag: 'NEWS',
+    badge: 'LIVE STREAM',
+    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
+    title: 'DKP News & Crawler AI',
+    desc: 'Segnali tech HN + Reddit filtrati in tempo reale da Sentinel AI'
   },
   {
-    id: 'openui-studio',
-    title: 'OpenUI Studio AI',
-    category: 'Code Quality & AI',
-    version: 'v2.6-PURE-SQL',
-    status: 'active',
-    icon: '🎨',
-    description: 'Ambiente di testing avanzato per Prompt Engineering e interazione diretta con i Modelli IA (LLM) configurati nel sistema.',
-    features: [
-      'Interfaccia chat multi-modello',
-      'Tuning dei parametri (Temperature, Max Tokens)',
-      'Notarizzazione istantanea degli output nel Vault'
-    ],
-    badgeText: 'AI TESTING',
-    linkText: 'OpenUI Studio',
-    route: '/tools/openui-studio'
+    to: '/nodes',
+    tag: 'NODES',
+    badge: 'COMMUNITY',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
+    title: 'DKP Talks Hub',
+    desc: 'Nodi tematici, architetture, bounty e discussioni tecniche'
   },
   {
-    id: 'terminal-web-shell',
-    title: 'Terminal Web Shell',
-    category: 'DevOps & CLI',
-    version: 'v2.6-PURE-SQL',
-    status: 'active',
-    icon: '💻',
-    description: 'Shell CLI direttamente in-browser per gestire i servizi, avviare comandi di sistema e testare l\'SDK DKP con gamification.',
-    features: [
-      'Esecuzione comandi DKP OS nativi',
-      'Integrazione con Neon DB e PING reale',
-      'Output colorato e sblocco di comandi segreti'
-    ],
-    badgeText: 'IN-BROWSER',
-    linkText: 'Avvia Terminale',
-    route: '/tools/terminal'
+    to: '/tools',
+    tag: 'TOOLS',
+    badge: 'SECURITY & DEV',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
+    title: 'Developer Tools',
+    desc: 'Utility crittografiche, audit SAST e diagnostica per ingegneri'
   },
   {
-    id: 'ai-code-scanner',
-    title: 'AI Code Scanner Pro',
-    category: 'Security & Monitoring',
-    version: 'v2.6-PURE-SQL',
-    status: 'enterprise',
-    icon: '🔍',
-    description: 'Audit statico e analisi delle vulnerabilità assistita da IA. Trova bug, leak di token e pattern insicuri negli snippet di codice.',
-    features: [
-      'Analisi statica SAST server-side',
-      'Identificazione API Key esposte e SQL Injection',
-      'Integrazione diretta con il Proof-of-Code Vault'
-    ],
-    badgeText: 'PRO SECURITY',
-    linkText: 'Scansiona Codice',
-    route: '/tools/ai-scanner'
-  },
-  {
-    id: 'proof-of-code',
-    title: 'Proof of Code (Vault)',
-    category: 'Security & Monitoring',
-    version: 'v2.6-PURE-SQL',
-    status: 'active',
-    icon: '🛡️',
-    description: 'Sistema di notarizzazione per snippet di codice. Genera un hash crittografico SHA-256 e salva l\'impronta su Neon DB.',
-    features: [
-      'Hashing SHA-256 degli snippet sorgente',
-      'Timestamp inalterabile di registrazione in Cloud',
-      'Certificato di validità condivisibile nella dashboard'
-    ],
-    badgeText: 'CRYPTO VAULT',
-    linkText: 'Apri Vault',
-    route: '/tools/proof-of-code'
-  },
-  {
-    id: 'code-vault-editor',
-    title: 'Code Vault Blog Editor',
-    category: 'Content Creation',
-    version: 'v2.6-PURE-SQL',
-    status: 'active',
-    icon: '✍️',
-    description: 'Editor Markdown professionale con supporto per tabelle HTML, toolbar stile Docs e Zen Mode Fullscreen collegato al DB.',
-    features: [
-      'Zen Mode a tutto schermo per la scrittura',
-      'Mini-parser avanzato tabelle e tag',
-      'Salvataggio bozze e pubblicazione diretta'
-    ],
-    badgeText: 'NEW EDITOR',
-    linkText: 'Scrivi Articolo',
-    route: '/user/dashboard?tab=content'
-  },
-  {
-    id: 'api-management',
-    title: 'API Key Management',
-    category: 'Developer Services',
-    version: 'v2.6-PURE-SQL',
-    status: 'enterprise',
-    icon: '🔑',
-    description: 'Gestione granulare delle chiavi API personali con Rate Limiting Nitro integrato. Crea e revoca token in modo sicuro.',
-    features: [
-      'Generazione token crittografati',
-      'Rate Limiting configurabile',
-      'Statistiche e metriche d\'uso in tempo reale'
-    ],
-    badgeText: 'NITRO ENGINE',
-    linkText: 'Gestisci API Keys',
-    route: '/user/dashboard?tab=api'
-  },
-  {
-    id: 'dkp-cli-toolkit',
-    title: 'DKP CLI Toolkit',
-    category: 'DevOps & CLI',
-    version: 'v2.6-PURE-SQL',
-    status: 'active',
-    icon: '⚡',
-    description: 'Strumento a riga di comando per gestire il deploy rapido, la migrazione dei DB Neon e l\'interazione remota con le API DKP.',
-    features: [
-      'Emulazione CLI interattiva avanzata',
-      'Comandi diretti per audit remoti di repo',
-      'Semplifica la notarizzazione via Cloud'
-    ],
-    badgeText: 'CLI TOOLKIT',
-    linkText: 'Apri CLI Toolkit',
-    route: '/tools/cli-toolkit'
+    to: '/blog',
+    tag: 'BLOG',
+    badge: 'VAULT VERIFIED',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
+    title: 'DKP Editorial Hub',
+    desc: 'Deep-dive tecnici con certificazione SHA-256 immutabile'
   }
-])
+]
 
-const searchQuery = ref('')
-const selectedCategory = ref('all')
-
-const filteredTools = computed(() => {
-  return toolsList.value.filter(tool => {
-    const matchesSearch = tool.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                          tool.description.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesCategory = selectedCategory.value === 'all' || tool.category === selectedCategory.value
-    return matchesSearch && matchesCategory
-  })
-})
+const developerToolsCatalog = [
+  {
+    to: '/tools/proof-of-code',
+    tag: 'VAULT',
+    badge: 'SHA-256 VAULT',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
+    title: 'Proof of Code Vault',
+    desc: 'Genera impronte crittografiche SHA-256, verifica l integrita dei sorgenti e certifica snippet su Pure SQL.'
+  },
+  {
+    to: '/tools/openui-studio',
+    tag: 'STUDIO',
+    badge: 'AI STUDIO',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/40',
+    title: 'OpenUI Studio',
+    desc: 'Workspace interattivo per prototipazione UI, prompt engineering e ispezione componenti guidata da AI.'
+  },
+  {
+    to: '/tools/ai-repo-scanner',
+    tag: 'REPO',
+    badge: 'REPO AUDIT',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40',
+    title: 'AI Repo Scanner',
+    desc: 'Analisi strutturale di repository, dipendenze e pattern architetturali con diagnostica Sentinel AI.'
+  },
+  {
+    to: '/tools/terminal',
+    tag: 'SHELL',
+    badge: 'WEB SHELL',
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/40',
+    title: 'Terminal Web Shell',
+    desc: 'Console diagnostica per ispezionare comandi, payload, token e flussi del Kernel v2.6 in tempo reale.'
+  },
+  {
+    to: '/tools/ai-scanner',
+    tag: 'SAST',
+    badge: 'SENTINEL SAST',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
+    title: 'AI Code Scanner',
+    desc: 'Scansione statica e analisi di sicurezza su frammenti di codice, vulnerabilita comuni e secret leak.'
+  },
+  {
+    to: '/tools/cli-toolkit',
+    tag: 'CLI',
+    badge: 'CLI & API',
+    badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40',
+    title: 'CLI & Gateway Toolkit',
+    desc: 'Generatori di comandi CLI, configurazioni API Bearer Token e automazioni per pipeline CI/CD.'
+  }
+]
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-50 px-4 sm:px-6 py-10 sm:py-16 font-sans">
-    <div class="max-w-6xl mx-auto flex flex-col gap-10">
-      
-      <!-- HERO HEADER CON 3 BOTTONI ECOSYSTEM E BADGE V2.6 -->
-      <header class="bg-[#090d16] border border-slate-800 rounded-3xl p-8 sm:p-12 text-center shadow-2xl relative overflow-hidden">
-        <!-- Glow background effect -->
-        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+  <div class="bg-dkp-bg text-dkp-text font-display min-h-screen bg-grid-pattern relative">
+    <DkpHomeTelemetry />
 
-        <div class="mb-5 relative z-10">
-          <span class="inline-flex bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-4 py-1.5 rounded-full text-xs font-extrabold tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            🛠️ DKP DEVELOPER ECOSYSTEM SUITE v2.6-PURE-SQL
+    <!-- HERO SECTION VETRINA + 4 CARD + 3 METRICHE KPI -->
+    <section class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dkp-card border border-dkp-border font-mono text-xs text-dkp-accent font-bold mb-6 card-glow">
+        <span>DEVKERNELPULSE PRO V2.6 | BEMYAGENT.md | PURE SQL &amp; SHA-256 VAULT</span>
+      </div>
+
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight m-0 mb-5">
+        <span class="text-white">Strumenti Operativi per </span>
+        <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
+          Sviluppatori &amp; Sentinel AI
+        </span>
+      </h1>
+
+      <p class="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed mb-10">
+        Tutti gli strumenti nativi di DevKernelPulse a pagina intera: notarizzazione SHA-256, scanner AI, console diagnostica e utility per il workflow quotidiano.
+      </p>
+
+      <!-- 4 CARD PRINCIPALI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left mb-6">
+        <NuxtLink
+          v-for="card in heroCards"
+          :key="card.to"
+          :to="card.to"
+          class="bg-dkp-card/95 border border-dkp-border hover:border-cyan-400/60 rounded-2xl p-5 no-underline transition-all card-glow group flex flex-col justify-between gap-4"
+        >
+          <div class="flex items-center justify-between">
+            <span class="font-mono text-xs font-extrabold text-cyan-300">{{ card.tag }}</span>
+            <span :class="['font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-md border uppercase', card.badgeClass]">
+              {{ card.badge }}
+            </span>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white group-hover:text-dkp-accent transition-colors flex items-center justify-between m-0 mb-1.5">
+              <span>{{ card.title }}</span>
+              <span class="text-slate-400 group-hover:text-dkp-accent transition-transform group-hover:translate-x-1">-&gt;</span>
+            </h2>
+            <p class="text-xs text-slate-300 leading-relaxed m-0">{{ card.desc }}</p>
+          </div>
+        </NuxtLink>
+      </div>
+
+      <!-- 3 METRICHE KPI -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+        <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center font-mono text-xs font-extrabold text-cyan-300 shrink-0">
+            SHA
+          </div>
+          <div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">1.2M+</div>
+            <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">LINEE CODICE NOTARIZZATE</div>
+          </div>
+        </div>
+
+        <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
+          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-400/35 flex items-center justify-center font-mono text-xs font-extrabold text-violet-300 shrink-0">
+            XP
+          </div>
+          <div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">48K+</div>
+            <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">BOUNTIES RISOLTE ($PULSE)</div>
+          </div>
+        </div>
+
+        <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center font-mono text-xs font-extrabold text-emerald-300 shrink-0">
+            AI
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl sm:text-3xl font-extrabold text-white font-mono">Live</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-dkp-pass border border-emerald-500/35">
+                ONLINE
+              </span>
+            </div>
+            <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">SENTINEL THREAT GUARD</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LAYOUT CON SIDEBAR + CATALOGO TOOLS + WIDGET SPAZIO -->
+    <DkpLayout :hide-section-header="true" :show-sidebar-ads="true">
+      <!-- CATALOGO DEDICATO DEVELOPER TOOLS -->
+      <section class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-6 sm:p-8 card-glow space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white m-0">
+              Suite Developer Tools
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1 mb-0 font-mono">
+              Apri qualsiasi strumento a pagina intera con SEO dinamico e navigazione unificata.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/40 font-mono text-xs font-bold self-start sm:self-auto">
+            {{ developerToolsCatalog.length }} Tool Disponibili
           </span>
         </div>
-        
-        <h1 class="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10 font-sans">
-          Strumenti Professionali & <span class="text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]">Utility v2.6</span>
-        </h1>
-        
-        <p class="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed mb-6 relative z-10 font-sans">
-          Una suite integrata di strumenti avanzati per l'audit del codice, AI testing, gestione API e creazione contenuti.
-        </p>
 
-        <!-- PULSANTI PRINCIPALI DELL'ECOSISTEMA (4 PILASTRI v2.6-PURE-SQL) -->
-<div class="flex flex-wrap gap-3 justify-center mb-8 relative z-10 font-mono">
-  <NuxtLink
-    to="/news"
-    active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    🌍 DKP Tech Feed
-  </NuxtLink>
-
-  <NuxtLink
-    to="/nodes"
-    active-class="!bg-purple-500 !text-slate-950 !border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    💬 DKP Talks Hub
-  </NuxtLink>
-
-  <NuxtLink
-    to="/tools"
-    active-class="!bg-sky-400 !text-slate-950 !border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    🛠️ Developer Tools
-  </NuxtLink>
-
-  <NuxtLink
-    to="/blog"
-    active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-    class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all shadow-lg"
-  >
-    ✍️ DKP Editorial Hub
-  </NuxtLink>
-</div>
-
-        <!-- SEARCH & FILTER BAR -->
-        <div class="flex flex-col sm:flex-row gap-4 max-w-3xl mx-auto justify-center relative z-10">
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Cerca uno strumento (es. Scanner, Playground, CLI...)" 
-            class="flex-1 w-full sm:min-w-[300px] bg-[#020420] border border-slate-800 text-white px-5 py-3.5 rounded-xl text-sm outline-none focus:border-emerald-400 transition-colors shadow-inner placeholder-slate-500"
-          />
-          <select 
-            v-model="selectedCategory" 
-            class="w-full sm:w-auto bg-[#020420] border border-slate-800 text-slate-300 px-5 py-3.5 rounded-xl text-sm outline-none focus:border-emerald-400 cursor-pointer appearance-none shadow-inner"
-            style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto; padding-right: 2.5rem;"
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <NuxtLink
+            v-for="tool in developerToolsCatalog"
+            :key="tool.to"
+            :to="tool.to"
+            class="bg-[#050914] border border-slate-800 hover:border-cyan-400/60 rounded-2xl p-5 no-underline transition-all group flex flex-col justify-between gap-4"
           >
-            <option value="all">Tutte le Categorie</option>
-            <option value="Security & Monitoring">🔒 Security & Monitoring</option>
-            <option value="Developer Services">🔑 Developer Services</option>
-            <option value="Code Quality & AI">🧠 Code Quality & AI</option>
-            <option value="Content Creation">✍️ Content Creation</option>
-            <option value="DevOps & CLI">⚡ DevOps & CLI</option>
-          </select>
-        </div>
-      </header>
-
-      <!-- GRID DEI TOOLS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div 
-          v-for="tool in filteredTools" 
-          :key="tool.id" 
-          class="bg-[#090d16] border border-slate-800 rounded-2xl p-7 flex flex-col justify-between shadow-xl transition-all duration-300 hover:border-emerald-500/50 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(16,185,129,0.1)] group relative overflow-hidden"
-        >
-          
-          <div class="flex items-center gap-4 mb-5">
-            <div class="w-12 h-12 shrink-0 bg-[#020420] border border-slate-800 rounded-xl flex items-center justify-center text-2xl group-hover:border-emerald-500/40 transition-colors shadow-inner">
-              <span>{{ tool.icon }}</span>
-            </div>
-            
-            <div class="flex-1 flex flex-col gap-1 overflow-hidden">
-              <span class="text-[10px] sm:text-[11px] font-extrabold text-sky-400 uppercase tracking-widest truncate">
-                {{ tool.category }}
-              </span>
-              <span class="text-[10px] text-slate-500 font-mono truncate">
-                {{ tool.version }}
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono text-xs font-extrabold text-emerald-300">{{ tool.tag }}</span>
+              <span :class="['font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-md border uppercase', tool.badgeClass]">
+                {{ tool.badge }}
               </span>
             </div>
-
-            <div 
-              :class="[
-                'text-[9px] sm:text-[10px] font-black px-2.5 py-1 rounded-md tracking-wider border shrink-0',
-                tool.status === 'enterprise' 
-                  ? 'bg-sky-500/10 text-sky-400 border-sky-500/30' 
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-              ]"
-            >
-              {{ tool.badgeText }}
+            <div>
+              <h3 class="text-base font-extrabold text-white group-hover:text-cyan-300 transition-colors flex items-center justify-between m-0 mb-1.5">
+                <span>{{ tool.title }}</span>
+                <span class="text-slate-400 group-hover:text-cyan-300 transition-transform group-hover:translate-x-1">-&gt;</span>
+              </h3>
+              <p class="text-xs text-slate-300 leading-relaxed m-0">{{ tool.desc }}</p>
             </div>
-          </div>
-
-          <h2 class="text-xl font-extrabold text-white mb-2 group-hover:text-emerald-400 transition-colors font-sans">
-            {{ tool.title }}
-          </h2>
-          
-          <p class="text-slate-400 text-sm leading-relaxed mb-6 flex-1 font-sans">
-            {{ tool.description }}
-          </p>
-
-          <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 mb-6 shadow-inner">
-            <h4 class="m-0 mb-3 text-slate-300 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 font-mono">
-              <span>🔥</span> Funzionalità Chiave:
-            </h4>
-            <ul class="flex flex-col gap-2 m-0 p-0 list-none">
-              <li v-for="(feat, idx) in tool.features" :key="idx" class="text-[11px] sm:text-xs text-slate-400 flex items-start gap-2 leading-snug font-sans">
-                <span class="text-emerald-400 font-bold shrink-0 mt-0.5">▸</span> 
-                <span>{{ feat }}</span>
-              </li>
-            </ul>
-          </div>
-
-          <div class="flex justify-end mt-auto font-mono">
-            <NuxtLink 
-              :to="tool.route" 
-              class="w-full sm:w-auto text-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-5 py-2.5 rounded-lg text-xs sm:text-sm font-extrabold transition-all hover:bg-emerald-400 hover:text-slate-950 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
-            >
-              <span>{{ tool.linkText }}</span>
-              <span>➔</span>
-            </NuxtLink>
-          </div>
+          </NuxtLink>
         </div>
-      </div>
-<div class="mt-2 mb-6">
-       <DkpAdsWidget placement="global" />
-      </div>
-	  <div class="mt-2 mb-6">
-      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-      </div>
-      <!-- EMPTY STATE -->
-      <div v-if="filteredTools.length === 0" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl">
-        <span class="text-4xl block mb-4">🔍</span>
-        <p class="text-slate-400 font-mono text-sm">Nessuno strumento trovato corrispondente alla ricerca.</p>
-      </div>
+      </section>
 
-    </div>
+      <!-- SOLO WIDGET SPAZIO -->
+      <DkpAdsWidget
+        placement="feedInline"
+        layout="horizontal"
+        :limit="3"
+        :show-advertise-link="true"
+      />
+
+      <!-- 1. Ultime News dal Crawler AI -->
+      <DkpHomeWidget />
+
+      <!-- 2. Ultimi Articoli Blog & Ultime Discussioni Nodi affiancati -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <DkpRelatedBlogWidget />
+        <DkpRelatedNodesWidget />
+      </div>
+    </DkpLayout>
   </div>
 </template>

@@ -320,7 +320,7 @@ function handleSocialLogin(providerId: string) {
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               :autocomplete="authMode === 'login' ? 'current-password' : 'new-password'"
-              placeholder="••••••••••••••••"
+              placeholder=""
               :disabled="isLoading"
               required
             />

@@ -1,12 +1,6 @@
-<!-- app/pages/docs/sdk.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-
-useDkpSeo({
-  title: 'SDK Ufficiale @devkernelpulse/sdk v2.6-PURE-SQL — Integrazione TS/JS & CLI',
-  description: 'Documentazione e guida rapida v2.6-PURE-SQL per integrare il motore AI Trinity, il Vault, l\'Editorial Hub e la moderazione Sentinel tramite SDK e CLI Toolkit.'
-})
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 const activeLang = ref<'node' | 'python' | 'go' | 'cli'>('node')
 const activeCliCmd = ref<'auth' | 'scan' | 'vault' | 'blog' | 'db' | 'status'>('auth')
@@ -70,10 +64,22 @@ function copySnippet(key: string, text: string) {
     setTimeout(() => { copiedKey.value = null }, 2000)
   }
 }
+
+useDkpSeo({
+  title: 'SDK Docs - DevKernelPulse',
+  description: 'Documentazione SDK e integrazione client per applicazioni basate su DevKernelPulse.',
+  type: 'website',
+  canonicalPath: '/docs/sdk'
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-200 px-4 sm:px-6 py-10 pb-20 font-sans">
+  <DkpLayout
+    title="Docs - SDK & Client"
+    subtitle="Integrazione applicativa e buone pratiche client"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-200 px-4 sm:px-6 py-10 pb-20 font-sans">
     <div class="max-w-6xl mx-auto flex flex-col gap-10">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -82,28 +88,28 @@ function copySnippet(key: string, text: string) {
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
       
@@ -116,7 +122,7 @@ function copySnippet(key: string, text: string) {
             v2.6-PURE-SQL Specification
           </span>
           <span class="bg-purple-500/15 text-purple-300 border border-purple-500/40 text-xs font-extrabold px-3.5 py-1 rounded-full">
-            🛡️ Sentinel AI v2.6 Active
+            Sentinel AI v2.6 Active
           </span>
         </div>
 
@@ -135,7 +141,7 @@ function copySnippet(key: string, text: string) {
             class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold cursor-pointer transition-colors whitespace-nowrap"
             @click="copySnippet('install', npmInstall)"
           >
-            {{ copiedKey === 'install' ? '✅ Copiato' : '📋 Copia' }}
+            {{ copiedKey === 'install' ? 'Ô£à Copiato' : 'Copia' }}
           </button>
         </div>
       </header>
@@ -143,7 +149,7 @@ function copySnippet(key: string, text: string) {
       <!-- CARATTERISTICHE (Integrazione SDK) -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-[#090d16] border border-slate-800 p-6 rounded-2xl shadow-lg">
-          <span class="text-3xl mb-3 block">🔒</span>
+          <span class="text-3xl mb-3 block"></span>
           <h3 class="text-white text-lg font-extrabold mb-2">Zero-Trust Pure SQL</h3>
           <p class="text-slate-400 text-xs sm:text-sm leading-relaxed m-0">
             Le chiavi API (<code class="text-sky-400 font-mono">dkp_live_...</code>) non vengono mai esposte; validazione hash SHA-256 diretta su Neon PostgreSQL senza latenza ORM.
@@ -151,7 +157,7 @@ function copySnippet(key: string, text: string) {
         </div>
 
         <div class="bg-[#090d16] border border-slate-800 p-6 rounded-2xl shadow-lg">
-          <span class="text-3xl mb-3 block">⚡</span>
+          <span class="text-3xl mb-3 block">ÔÜí</span>
           <h3 class="text-white text-lg font-extrabold mb-2">Edge &amp; Serverless Ready</h3>
           <p class="text-slate-400 text-xs sm:text-sm leading-relaxed m-0">
             Zero dipendenze native pesanti: compatibile con Vercel Edge, Cloudflare Workers, Nuxt Nitro e qualsiasi runtime moderno TS/JS.
@@ -159,7 +165,7 @@ function copySnippet(key: string, text: string) {
         </div>
 
         <div class="bg-[#090d16] border border-slate-800 p-6 rounded-2xl shadow-lg">
-          <span class="text-3xl mb-3 block">🤖</span>
+          <span class="text-3xl mb-3 block"></span>
           <h3 class="text-white text-lg font-extrabold mb-2">AI Streaming &amp; Vault Nativo</h3>
           <p class="text-slate-400 text-xs sm:text-sm leading-relaxed m-0">
             Accesso diretto ai modelli Trinity (Flash, Coder, Pro), notarizzazione SHA-256 nel Vault e pubblicazione editoriale in 3 righe di codice.
@@ -169,10 +175,10 @@ function copySnippet(key: string, text: string) {
 
       <!-- BANNER DI AVVISO SICUREZZA SENTINEL AI -->
       <section class="bg-gradient-to-br from-purple-500/10 to-[#090d16] border border-purple-500/60 rounded-2xl p-6 flex flex-col sm:flex-row gap-4 items-start shadow-[0_4px_25px_rgba(168,85,247,0.12)]">
-        <div class="text-3xl shrink-0">🛡️</div>
+        <div class="text-3xl shrink-0"></div>
         <div>
           <h3 class="text-purple-300 text-base sm:text-lg font-extrabold mb-1.5">
-            ⚡ Protezione Ecosistema: Pulse Sentinel AI v2.6-PURE-SQL
+            ÔÜí Protezione Ecosistema: Pulse Sentinel AI v2.6-PURE-SQL
           </h3>
           <p class="text-slate-300 text-xs sm:text-sm leading-relaxed m-0">
             Ogni chiamata API, comando CLI e richiesta SDK è monitorata in tempo reale dal nostro <strong class="text-white">Firewall Euristico con analisi SAST/AST</strong> e query Pure SQL parametrizzate. Tentativi di <strong class="text-white">Prompt Injection</strong>, <strong class="text-white">Rate Limit Abuse</strong> o <strong class="text-white">Payload Maliziosi</strong> comportano il <strong class="text-rose-400">BAN PERMANENTE dell'IP</strong> e la revoca immediata delle chiavi API dall'Hub.
@@ -191,28 +197,28 @@ function copySnippet(key: string, text: string) {
             @click="activeLang = 'node'"
             :class="['px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all', activeLang === 'node' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
           >
-            🟢 Node.js / TS
+            Node.js / TS
           </button>
           <button
             type="button"
             @click="activeLang = 'python'"
             :class="['px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all', activeLang === 'python' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
           >
-            🐍 Python 3
+            Python 3
           </button>
           <button
             type="button"
             @click="activeLang = 'go'"
             :class="['px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all', activeLang === 'go' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
           >
-            🔵 Go Modules
+            Go Modules
           </button>
           <button
             type="button"
             @click="activeLang = 'cli'"
             :class="['px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all', activeLang === 'cli' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
           >
-            ⚡ CLI Toolkit
+            ÔÜí CLI Toolkit
           </button>
         </div>
 
@@ -235,7 +241,7 @@ function copySnippet(key: string, text: string) {
             @click="copySnippet('sdk-example', sdkMainExample)"
             class="px-3 py-1.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-xs font-mono font-bold text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer transition-colors"
           >
-            {{ copiedKey === 'sdk-example' ? '✅ Codice Copiato!' : '📋 Copia Esempio' }}
+            {{ copiedKey === 'sdk-example' ? 'Ô£à Codice Copiato!' : 'Copia Esempio' }}
           </button>
         </div>
 
@@ -260,42 +266,42 @@ function copySnippet(key: string, text: string) {
               @click="activeCliCmd = 'auth'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'auth' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              🔑 dkp auth login
+              dkp auth login
             </button>
             <button
               type="button"
               @click="activeCliCmd = 'db'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'db' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              🗄️ dkp db:health
+              dkp db:health
             </button>
             <button
               type="button"
               @click="activeCliCmd = 'blog'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'blog' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              ✍️ dkp blog:publish
+              Ô£ì´©Å dkp blog:publish
             </button>
             <button
               type="button"
               @click="activeCliCmd = 'scan'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'scan' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              🔍 dkp ai scan
+              dkp ai scan
             </button>
             <button
               type="button"
               @click="activeCliCmd = 'vault'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'vault' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              🛡️ dkp vault notarize
+              dkp vault notarize
             </button>
             <button
               type="button"
               @click="activeCliCmd = 'status'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'status' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              ⚡ dkp status
+              ÔÜí dkp status
             </button>
           </div>
 
@@ -347,13 +353,13 @@ function copySnippet(key: string, text: string) {
         </p>
         <div class="flex flex-wrap justify-center gap-3 font-mono text-xs">
           <NuxtLink to="/user/dashboard?tab=api" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-            🧬 Genera una API Key DKP
+            Genera una API Key DKP
           </NuxtLink>
           <NuxtLink to="/docs/api" class="px-6 py-3 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold rounded-xl transition-all">
-            🔌 API Reference v2.6
+            API Reference v2.6
           </NuxtLink>
           <NuxtLink to="/docs/cli-automation" class="px-6 py-3 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold rounded-xl transition-all">
-            ⚙️ Guida CLI Completa
+            ÔÜÖ´©Å Guida CLI Completa
           </NuxtLink>
         </div>
       </div>
@@ -361,4 +367,5 @@ function copySnippet(key: string, text: string) {
       
     </div>
   </div>
+  </DkpLayout>
 </template>

@@ -1,494 +1,323 @@
-<!-- app/pages/news/index.vue -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
+import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
+import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
-interface EcosystemPillar {
-  to: string
-  icon: string
-  tag: string
-  title: string
-  subtitle: string
-  accentClass: string
-  active?: boolean
-}
+const route = useRoute()
 
 useDkpSeo({
-  title: 'DKP Tech Feed — Hacker News AI Realtime Stream v2.6-PURE-SQL — DevKernelPulse',
-  description: 'Feed in tempo reale da Hacker News filtrato e tradotto da Trinity AI e validato dal punteggio di rilevanza Sentinel AI su architetture Pure SQL.',
+  title: 'DKP News & Crawler AI \u2014 Stream Tecnologico Sentinel | DevKernelPulse',
+  description: 'Notizie tecnologiche in tempo reale filtrate e tradotte da Trinity AI, validate da Sentinel Score e archiviate su Neon Pure SQL.',
   type: 'collection',
   canonicalPath: '/news'
 })
 
-const ecosystemPillars: EcosystemPillar[] = [
+const heroCards = [
   {
     to: '/news',
-    icon: '🌍',
-    tag: 'ACTIVE STREAM',
-    title: 'DKP Tech Feed',
-    subtitle: 'Segnali tech e newsroom filtrati in tempo reale da Trinity AI',
-    accentClass: 'pillar-emerald',
-    active: true
+    icon: '\uD83E\uDD16',
+    badge: 'ACTIVE STREAM',
+    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
+    title: 'DKP News & Crawler AI',
+    desc: 'Segnali tech HN + Reddit + Jobs IT filtrati e tradotti da Trinity AI'
   },
   {
     to: '/nodes',
-    icon: '💬',
-    tag: 'COMMUNITY',
+    icon: '\uD83D\uDCAC',
+    badge: 'COMMUNITY',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
     title: 'DKP Talks Hub',
-    subtitle: 'Nodi tematici, architetture, bounty e discussioni tecniche',
-    accentClass: 'pillar-purple'
+    desc: 'Nodi tematici, architetture, bounty e discussioni tecniche'
   },
   {
     to: '/tools',
-    icon: '🛠️',
-    tag: 'SECURITY & DEV',
+    icon: '\uD83D\uDEE0\uFE0F',
+    badge: 'SECURITY & DEV',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
     title: 'Developer Tools',
-    subtitle: 'Utility crittografiche, audit SAST e diagnostica per ingegneri',
-    accentClass: 'pillar-cyan'
+    desc: 'Utility crittografiche, audit SAST e diagnostica per ingegneri'
   },
   {
     to: '/blog',
-    icon: '✍️',
-    tag: 'VAULT VERIFIED',
+    icon: '\uD83D\uDCDD',
+    badge: 'VAULT VERIFIED',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
     title: 'DKP Editorial Hub',
-    subtitle: 'Deep-dive tecnici con certificazione SHA-256 immutabile',
-    accentClass: 'pillar-amber'
+    desc: 'Deep-dive tecnici con certificazione SHA-256 immutabile'
   }
 ]
 
-// Caricamento SSR-ready degli articoli del Vault correlati (4 schede come in Home)
-const { data: vaultRes } = await useFetch('/api/blog/posts', {
-  key: 'dkp-news-vault-featured-v26',
-  lazy: true
+const activeTab = ref<'top' | 'show' | 'ask' | 'jobs'>('top')
+const searchQuery = ref(String(route.query.q || ''))
+const copiedId = ref<string | null>(null)
+
+const { data: newsRes, pending, refresh } = await useFetch<any>('/api/news', {
+  key: () => `dkp-news-crawler-cards-${activeTab.value}`,
+  query: () => ({ type: activeTab.value, page: 1, limit: 18 })
 })
 
-const featuredArticles = computed(() => {
-  const res: any = vaultRes.value
-  const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-  return raw.slice(0, 4)
+const rawItems = computed<any[]>(() => {
+  const raw = newsRes.value
+  return raw?.data || raw?.items || (Array.isArray(raw) ? raw : [])
 })
 
-const copiedId = ref<string | number | null>(null)
-function shareStory(id: string | number, slug?: string, url?: string) {
-  const shareUrl = typeof window !== 'undefined'
-    ? (slug ? `${window.location.origin}/news/${slug}` : (url || window.location.href))
-    : ''
-  if (typeof navigator !== 'undefined' && navigator.clipboard && shareUrl) {
-    navigator.clipboard.writeText(shareUrl)
-    copiedId.value = id
-    setTimeout(() => { copiedId.value = null }, 2000)
-  }
-}
-
-const searchQuery = ref('')
-const selectedCategory = ref('')
-const minTechScore = ref(0)
-const currentPage = ref(1)
-const isRefreshing = ref(false)
-
-const { data: response, pending, refresh } = await useFetch('/api/news', {
-  key: 'dkp-news-stream-v26',
-  query: computed(() => ({
-    page: currentPage.value,
-    limit: 12,
-    q: searchQuery.value,
-    minScore: minTechScore.value,
-    category: selectedCategory.value
-  })),
-  watch: [currentPage, searchQuery, minTechScore, selectedCategory]
+const filteredItems = computed<any[]>(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  if (!q) return rawItems.value
+  return rawItems.value.filter(
+    (item: any) =>
+      String(item.title || '').toLowerCase().includes(q) ||
+      String(item.summary_it || '').toLowerCase().includes(q) ||
+      String(item.author || '').toLowerCase().includes(q) ||
+      String(item.domain || '').toLowerCase().includes(q)
+  )
 })
 
-const stories = computed(() => (response.value as any)?.data || [])
-const meta = computed(() => (response.value as any)?.meta || { totalPages: 1, total: 0 })
+function canonicalStoryLink(item: any): string {
+  return item?.slug ? `/news/${item.slug}` : `/item/${item.id}`
+}
 
-async function refreshStream() {
-  isRefreshing.value = true
-  try {
-    await refresh()
-  } finally {
-    setTimeout(() => { isRefreshing.value = false }, 350)
+function getCardTags(item: any): string[] {
+  if (Array.isArray(item?.tags) && item.tags.length > 0) {
+    return item.tags.slice(0, 2).map((t: any) => String(t).replace(/^#/, ''))
   }
+  const dom = String(item?.domain || '')
+  if (dom && dom !== 'news.ycombinator.com') return ['Tech', dom.split('.')[0]]
+  return ['HackerNews', 'Tech']
 }
 
-function getTypeBadgeColor(type: string) {
-  if (type === 'show') return 'border-purple-500/40 bg-purple-500/15 text-purple-400'
-  if (type === 'ask') return 'border-sky-500/40 bg-sky-500/15 text-sky-400'
-  return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400'
+async function copyShareLink(item: any) {
+  if (!import.meta.client) return
+  const url = `${window.location.origin}${canonicalStoryLink(item)}`
+  await navigator.clipboard?.writeText(url).catch(() => null)
+  copiedId.value = String(item.id)
+  setTimeout(() => {
+    if (copiedId.value === String(item.id)) copiedId.value = null
+  }, 1800)
 }
 
-function parseTags(tags: any): string[] {
-  if (Array.isArray(tags)) return tags
-  if (typeof tags === 'string') {
-    return tags.replace(/[{}]/g, '').split(',').map(t => t.trim().replace(/^"/, '').replace(/"$/, '')).filter(Boolean)
-  }
-  return ['Tech', 'HackerNews']
-}
+watch(activeTab, () => refresh())
 </script>
 
 <template>
-  <main class="min-h-screen bg-[var(--bg-kernel)] text-[var(--text-main)] font-sans px-4 sm:px-6 py-10 sm:py-14 relative overflow-hidden transition-colors duration-500">
-    <!-- BACKGROUND GLOW & TECHNICAL GRID (IDENTICO ALLA HOME) -->
-    <div class="hero-grid-bg pointer-events-none" aria-hidden="true"></div>
-    <div
-      class="absolute -top-44 left-1/2 -translate-x-1/2 w-[860px] h-[340px] bg-[var(--accent-emerald)]/10 blur-[130px] rounded-full pointer-events-none"
-      aria-hidden="true"
-    ></div>
+  <div class="bg-dkp-bg text-dkp-text font-display min-h-screen bg-grid-pattern relative">
+    <DkpHomeTelemetry />
 
-    <div class="max-w-6xl mx-auto flex flex-col gap-10 relative z-10">
-      <!-- 1. HERO HEADER ALLINEATO ALLA HOME -->
-      <header class="relative pt-2 sm:pt-6 text-center flex flex-col items-center gap-6">
-        <div class="inline-flex items-center gap-2.5 bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--accent-emerald)]/35 px-4 py-1.5 rounded-full shadow-[0_0_24px_rgba(16,185,129,0.14)]">
-          <span class="relative flex h-2.5 w-2.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-emerald)] opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent-emerald)]"></span>
-          </span>
-          <span class="text-[11px] font-mono font-black text-[var(--accent-emerald)] uppercase tracking-widest">
-            🌍 DKP Tech Feed • Realtime HN Crawler v2.6-PURE-SQL
-          </span>
+    <!-- HERO SECTION SPECULARE ALLA HOME -->
+    <section class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dkp-card border border-dkp-border font-mono text-xs text-dkp-accent font-bold mb-6 card-glow">
+        <span class="text-amber-400 text-xs leading-none"></span>
+        <span>DKP TECH FEED &bull; REALTIME AI CRAWLER V2.6-PURE-SQL</span>
+      </div>
+
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight m-0 mb-5">
+        <span class="text-white">Segnali Tech &amp; </span>
+        <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
+          Trinity AI Newsroom
+        </span>
+      </h1>
+
+      <p class="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed mb-10">
+        Notizie tecnologiche, repository e opportunita&apos; ingegneristiche in tempo reale arricchite con sintesi in italiano di Trinity AI, validate da Sentinel Score e archiviate su Neon PostgreSQL.
+      </p>
+
+      <!-- 4 CARD PRINCIPALI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left mb-6">
+        <NuxtLink
+          v-for="card in heroCards"
+          :key="card.to"
+          :to="card.to"
+          :class="[
+            'bg-dkp-card/95 border rounded-2xl p-5 no-underline transition-all card-glow group flex flex-col justify-between gap-4',
+            card.to === '/news' ? 'border-emerald-400/60 shadow-[0_0_20px_rgba(16,185,129,0.14)]' : 'border-dkp-border hover:border-cyan-400/60'
+          ]"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">{{ card.icon }}</span>
+            <span :class="['font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-md border uppercase', card.badgeClass]">
+              {{ card.badge }}
+            </span>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white group-hover:text-dkp-accent transition-colors flex items-center justify-between m-0 mb-1.5">
+              <span>{{ card.title }}</span>
+              <span class="text-slate-400 group-hover:text-dkp-accent transition-transform group-hover:translate-x-1">&rarr;</span>
+            </h2>
+            <p class="text-xs text-slate-300 leading-relaxed m-0">{{ card.desc }}</p>
+          </div>
+        </NuxtLink>
+      </div>
+
+      <!-- 3 METRICHE KPI -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+        <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-2xl shrink-0">
+            
+          </div>
+          <div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">Trinity AI</div>
+            <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">SINTESI &amp; TRADUZIONE REALTIME</div>
+          </div>
         </div>
 
-        <h1 class="text-4xl sm:text-6xl font-black text-[var(--text-main)] tracking-tight leading-[1.1] max-w-4xl mx-auto">
-          Hacker News
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-emerald)] via-[var(--accent-cyan)] to-purple-400">
-            AI Tech Stream
-          </span>
-        </h1>
+        <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
+          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-400/35 flex items-center justify-center text-2xl shrink-0">
+            
+          </div>
+          <div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">SAST 100%</div>
+            <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">FILTRO ANTI-PHISHING SENTINEL</div>
+          </div>
+        </div>
 
-        <p class="text-[var(--text-muted)] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          Notizie tecnologiche in tempo reale arricchite con sintesi in italiano di Trinity AI, validate da Sentinel Score e archiviate su Neon PostgreSQL.
-        </p>
-
-        <!-- BENTO GRID 4 PILASTRI DELL'ECOSISTEMA (IDENTICA ALLA HOME) -->
-        <nav aria-label="Moduli principali DevKernelPulse" class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-2 text-left">
-          <NuxtLink
-            v-for="pillar in ecosystemPillars"
-            :key="pillar.to"
-            :to="pillar.to"
-            :class="[
-              'pillar-card group',
-              pillar.accentClass,
-              pillar.active ? 'border-[var(--accent-emerald)]/60 shadow-[0_0_25px_rgba(16,185,129,0.15)]' : ''
-            ]"
-          >
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="text-xl" aria-hidden="true">{{ pillar.icon }}</span>
-              <span class="pillar-tag font-mono text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
-                {{ pillar.tag }}
+        <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center text-2xl shrink-0">
+            
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl sm:text-3xl font-extrabold text-white font-mono">Pure SQL</span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-dkp-pass border border-emerald-500/35">
+                INDEXED
               </span>
             </div>
-            <h2 class="text-sm font-extrabold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors flex items-center justify-between">
-              <span>{{ pillar.title }}</span>
-              <span class="text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">➔</span>
-            </h2>
-            <p class="text-xs text-[var(--text-muted)] leading-relaxed mt-1">
-              {{ pillar.subtitle }}
-            </p>
-          </NuxtLink>
-        </nav>
-
-        <!-- TELEMETRIA RAPIDA STREAM -->
-        <div class="flex flex-wrap justify-center items-center gap-3 font-mono mt-1">
-          <button
-            type="button"
-            @click="refreshStream"
-            :disabled="isRefreshing || pending"
-            class="px-4 py-2.5 bg-[var(--bg-surface)] hover:border-[var(--accent-emerald)] text-[var(--text-main)] hover:text-[var(--accent-emerald)] border border-[var(--border-color)] font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-md"
-          >
-            <span :class="{ 'inline-block animate-spin': isRefreshing }">🔄</span>
-            {{ isRefreshing ? ' Sincronizzazione Stream...' : ' Aggiorna Stream Live' }}
-          </button>
-
-          <span class="text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-color)] px-4 py-2.5 rounded-xl shadow-md">
-            📡 <strong class="text-[var(--accent-emerald)]">{{ meta.total || stories.length }}</strong> nodi indicizzati
-          </span>
+            <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">NEON POSTGRESQL STREAM</div>
+          </div>
         </div>
-      </header>
+      </div>
+    </section>
 
-      <!-- 2. BARRA DI RICERCA & FILTRI -->
-      <section aria-label="Filtri Feed Tech" class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-xl">
-        <div class="relative w-full lg:w-1/2 flex items-center bg-[var(--bg-kernel)] border border-[var(--border-color)] focus-within:border-[var(--accent-emerald)] rounded-xl px-3.5 py-2.5 transition-colors">
-          <span class="text-[var(--text-muted)] mr-2.5">🔍</span>
+    <!-- LAYOUT CON SIDEBAR + GRIGLIA CARD CRAWLER + BLOG & NODES -->
+    <DkpLayout :hide-section-header="true" :show-sidebar-ads="true">
+      <!-- 1. Barra Filtri + Griglia 3 Colonne Card Crawler AI -->
+      <section class="space-y-4">
+        <div class="bg-dkp-card/95 border border-emerald-500/30 rounded-2xl p-4 card-glow space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+              <button type="button" @click="activeTab = 'top'" :class="['px-3 py-1.5 rounded-xl font-extrabold border cursor-pointer', activeTab === 'top' ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-dkp-bg text-slate-300 border-dkp-border']">
+                 Tutti
+              </button>
+              <button type="button" @click="activeTab = 'show'" :class="['px-3 py-1.5 rounded-xl font-extrabold border cursor-pointer', activeTab === 'show' ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-dkp-bg text-slate-300 border-dkp-border']">
+                 Show DKP
+              </button>
+              <button type="button" @click="activeTab = 'ask'" :class="['px-3 py-1.5 rounded-xl font-extrabold border cursor-pointer', activeTab === 'ask' ? 'bg-violet-500 text-white border-violet-400' : 'bg-dkp-bg text-slate-300 border-dkp-border']">
+                 Ask DKP
+              </button>
+              <button type="button" @click="activeTab = 'jobs'" :class="['px-3 py-1.5 rounded-xl font-extrabold border cursor-pointer', activeTab === 'jobs' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-dkp-bg text-slate-300 border-dkp-border']">
+                 Jobs IT
+              </button>
+            </div>
+
+            <button type="button" @click="() => refresh()" class="px-3 py-1.5 rounded-xl bg-dkp-bg border border-emerald-500/40 text-emerald-400 font-mono text-xs font-extrabold cursor-pointer">
+               Aggiorna Stream Live
+            </button>
+          </div>
+
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Cerca per tecnologia o parola chiave (es. Rust, Docker, AI, SQL)..."
-            class="w-full bg-transparent text-sm text-[var(--text-main)] focus:outline-none placeholder-slate-500"
-            @input="currentPage = 1"
+            class="w-full bg-dkp-bg border border-dkp-border focus:border-cyan-400 text-white px-3.5 py-2 rounded-xl font-mono text-xs outline-none box-border"
           />
-          <button
-            v-if="searchQuery"
-            type="button"
-            @click="searchQuery = ''; currentPage = 1"
-            class="text-rose-400 hover:text-rose-300 font-black text-base px-1 cursor-pointer"
-          >
-            ×
-          </button>
+        </div>
+          <DkpAdsWidget
+             placement="feedInline"
+              layout="horizontal"
+              :limit="3"
+              :show-advertise-link="true"
+           />
+        <div v-if="pending && filteredItems.length === 0" class="bg-dkp-card border border-dkp-border rounded-2xl p-10 text-center font-mono text-xs text-emerald-400 animate-pulse">
+           Caricamento card del Crawler AI dal database Pure SQL...
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end font-mono">
-          <button
-            type="button"
-            @click="selectedCategory = ''; currentPage = 1"
-            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', !selectedCategory ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : 'bg-[var(--bg-kernel)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)]']"
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <article
+            v-for="item in filteredItems"
+            :key="item.id"
+            class="bg-[#050a18]/95 border border-slate-800 hover:border-cyan-400/60 rounded-2xl p-5 card-glow transition-all flex flex-col justify-between gap-4"
           >
-            🔥 Tutti
-          </button>
-          <button
-            type="button"
-            @click="selectedCategory = 'show'; currentPage = 1"
-            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', selectedCategory === 'show' ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.15)]' : 'bg-[var(--bg-kernel)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)]']"
-          >
-            🚀 Show HN
-          </button>
-          <button
-            type="button"
-            @click="selectedCategory = 'ask'; currentPage = 1"
-            :class="['px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer', selectedCategory === 'ask' ? 'bg-sky-500/20 text-sky-400 border-sky-500/40 shadow-[0_0_12px_rgba(56,189,248,0.15)]' : 'bg-[var(--bg-kernel)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-main)]']"
-          >
-            💡 Ask HN
-          </button>
-
-          <div class="flex items-center gap-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] px-3.5 py-2 rounded-xl">
-            <span class="text-xs text-[var(--text-muted)]">Score &ge; <strong class="text-[var(--accent-emerald)]">{{ minTechScore }}</strong></span>
-            <input
-              v-model.number="minTechScore"
-              type="range"
-              min="0"
-              max="90"
-              step="10"
-              class="w-20 accent-emerald-400 cursor-pointer"
-              @change="currentPage = 1"
-            />
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. BANNER AD TOP -->
-      <DkpAdsWidget placement="global" />
-
-      <!-- 4. FEED GRID -->
-      <div v-if="pending" class="text-center py-20 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--accent-emerald)] font-mono text-xs animate-pulse">
-        ⚡ Ingestione notizie dal Vault DKP Nodes v2.6 in corso...
-      </div>
-
-      <div v-else-if="stories.length === 0" class="text-center py-16 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl flex flex-col items-center gap-3">
-        <div class="text-4xl">📡</div>
-        <h3 class="text-lg font-bold text-[var(--text-main)]">Nessuna notizia trovata</h3>
-        <p class="text-[var(--text-muted)] text-xs max-w-md">Prova a resettare i filtri di ricerca o sincronizza nuovamente lo stream live.</p>
-        <div class="flex gap-3 mt-2 font-mono">
-          <button type="button" @click="searchQuery = ''; selectedCategory = ''; minTechScore = 0; currentPage = 1" class="px-4 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl hover:bg-emerald-400 transition-all cursor-pointer">
-            Ripristina Filtri
-          </button>
-          <button type="button" @click="refreshStream" class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] text-[var(--accent-cyan)] font-bold text-xs rounded-xl hover:border-sky-400 transition-all cursor-pointer">
-            🔄 Aggiorna
-          </button>
-        </div>
-      </div>
-
-      <section v-else aria-label="Elenco Notizie Tech AI" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <article
-          v-for="item in stories"
-          :key="item.id"
-          class="bg-[var(--bg-surface)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)]/50 rounded-2xl p-6 flex flex-col justify-between transition-all hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(16,185,129,0.12)] shadow-lg group"
-        >
-          <div>
-            <div class="flex items-center justify-between mb-3.5 pb-3 border-b border-[var(--border-color)]">
-              <span :class="['px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border font-mono', getTypeBadgeColor(item.type)]">
-                {{ item.type === 'show' ? 'SHOW HN' : item.type === 'ask' ? 'ASK HN' : 'NEWS' }}
-              </span>
-              <div class="flex items-center gap-2 font-mono text-xs">
-                <span v-if="item.techScore" class="text-[var(--accent-cyan)] bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
-                  AI {{ item.techScore }}%
+            <div class="space-y-3">
+              <!-- Header Card: NEWS + AI 60% + pts -->
+              <div class="flex items-center justify-between gap-2 font-mono text-[11px]">
+                <span class="px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 font-extrabold uppercase">
+                  {{ item.type || 'NEWS' }}
                 </span>
-                <span class="text-[var(--accent-emerald)] font-bold">
-                  🔥 {{ item.points || 0 }} pts
-                </span>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/35 font-bold">
+                    AI {{ item.tech_score || 60 }}%
+                  </span>
+                  <span class="text-amber-300 font-bold"> {{ item.points || item.score || 0 }} pts</span>
+                </div>
               </div>
-            </div>
 
-            <h2 class="text-base font-extrabold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors leading-snug mb-2.5">
-              <NuxtLink :to="`/news/${item.slug || item.id}`">
+              <!-- Titolo Card -->
+              <NuxtLink
+                :to="canonicalStoryLink(item)"
+                class="text-base font-extrabold text-sky-400 hover:text-cyan-300 no-underline block leading-snug line-clamp-3"
+              >
                 {{ item.title }}
               </NuxtLink>
-            </h2>
 
-            <p class="text-xs text-[var(--text-muted)] line-clamp-3 leading-relaxed mb-4">
-              {{ item.summary_it || item.summary || 'Notizia analizzata ed elaborata dai flussi in tempo reale di Trinity AI.' }}
-            </p>
-          </div>
-
-          <div class="pt-3.5 border-t border-[var(--border-color)] flex flex-col gap-3 mt-auto">
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="tag in parseTags(item.tags)" :key="tag" class="text-[10px] font-mono bg-[var(--bg-kernel)] text-[var(--accent-cyan)] border border-[var(--border-color)] px-2 py-0.5 rounded">
-                #{{ tag }}
-              </span>
+              <!-- Sintesi AI -->
+              <p class="text-slate-300 text-xs leading-relaxed m-0 line-clamp-3">
+                {{ item.summary_it || `Notizia di tendenza su Hacker News: ${item.title}` }}
+              </p>
             </div>
 
-            <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono">
-              <span class="truncate pr-2">by @{{ item.author || 'hackernews' }}</span>
-              <div class="flex items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  @click.prevent="shareStory(item.id, item.slug, item.url)"
-                  class="hover:text-[var(--accent-emerald)] transition-colors cursor-pointer"
-                  title="Copia link scheda"
+            <div class="space-y-3 pt-1">
+              <!-- Tag -->
+              <div class="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                <span
+                  v-for="tag in getCardTags(item)"
+                  :key="tag"
+                  class="px-2 py-0.5 rounded bg-[#081226] border border-slate-700/80 text-sky-400 font-bold"
                 >
-                  🔗 {{ copiedId === item.id ? 'Copiato!' : 'Condividi' }}
-                </button>
-                <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-[var(--accent-emerald)] font-bold hover:underline">
-                  Leggi scheda ↗
-                </NuxtLink>
+                  #{{ tag }}
+                </span>
+              </div>
+
+              <!-- Footer Card -->
+              <div class="pt-2.5 border-t border-slate-800/90 flex items-center justify-between gap-2 font-mono text-[11px]">
+                <span class="text-slate-400 truncate max-w-[115px]">by @{{ item.author || 'hackernews' }}</span>
+
+                <div class="flex items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    @click="copyShareLink(item)"
+                    class="text-slate-300 hover:text-white bg-transparent border-none cursor-pointer p-0 font-mono text-[11px]"
+                  >
+                     {{ copiedId === String(item.id) ? 'Copiato!' : 'Condividi' }}
+                  </button>
+                  <NuxtLink
+                    :to="canonicalStoryLink(item)"
+                    class="text-emerald-400 hover:text-emerald-300 font-extrabold no-underline"
+                  >
+                    Leggi scheda &nearr;
+                  </NuxtLink>
+                </div>
               </div>
             </div>
-          </div>
-        </article>
-      </section>
-
-      <!-- 5. PAGINAZIONE -->
-      <div v-if="meta.totalPages > 1" class="flex justify-center items-center gap-3 pt-6 border-t border-[var(--border-color)] font-mono">
-        <button
-          type="button"
-          :disabled="currentPage === 1"
-          @click="currentPage--"
-          class="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] rounded-xl text-xs font-bold disabled:opacity-40 hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] transition-all cursor-pointer"
-        >
-          ← Precedente
-        </button>
-        <span class="text-xs text-[var(--text-muted)]">Pagina <strong class="text-[var(--text-main)]">{{ currentPage }}</strong> di {{ meta.totalPages }}</span>
-        <button
-          type="button"
-          :disabled="currentPage === meta.totalPages"
-          @click="currentPage++"
-          class="px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] rounded-xl text-xs font-bold disabled:opacity-40 hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] transition-all cursor-pointer"
-        >
-          Successiva →
-        </button>
-      </div>
-
-      <!-- 6. SEZIONE VAULT DEL BLOG (4 SCHEDE COME IN HOME) -->
-      <section
-        v-if="featuredArticles.length > 0"
-        aria-labelledby="vault-news-featured-heading"
-        class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-8 shadow-2xl transition-colors duration-500"
-      >
-        <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
-          <div>
-            <span class="text-[10px] font-mono font-black uppercase tracking-widest text-[var(--accent-emerald)] block mb-1">
-              SHA-256 NOTARIZED KNOWLEDGE
-            </span>
-            <h2 id="vault-news-featured-heading" class="text-xl sm:text-2xl font-extrabold text-[var(--text-main)] flex items-center gap-2">
-              <span aria-hidden="true">🔗</span> Approfondimenti dal Vault Editorial Hub
-            </h2>
-          </div>
-
-          <NuxtLink
-            to="/blog"
-            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)] text-xs font-mono font-bold text-[var(--accent-emerald)] transition-all"
-          >
-            Vedi tutti gli articoli ➔
-          </NuxtLink>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article
-            v-for="art in featuredArticles"
-            :key="art.id"
-            class="bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-[var(--accent-emerald)]/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group"
-          >
-            <div>
-              <span class="text-[10px] font-mono font-bold text-[var(--accent-emerald)] uppercase tracking-wider truncate block mb-2">
-                {{ art.categoryName || art.category || 'Tech' }}
-              </span>
-              <h3 class="text-sm font-bold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors leading-snug">
-                <NuxtLink :to="`/blog/${art.slug || art.id}`">
-                  {{ art.title }}
-                </NuxtLink>
-              </h3>
-            </div>
-            <NuxtLink
-              :to="`/blog/${art.slug || art.id}`"
-              class="text-[11px] font-mono font-bold text-[var(--accent-cyan)] group-hover:underline mt-4 inline-flex items-center gap-1"
-            >
-              Leggi articolo ➔
-            </NuxtLink>
           </article>
         </div>
       </section>
 
-      <!-- 7. WIDGET NODI COMMUNITY -->
-      <section aria-label="DKP Nodes Live Stream" class="pt-4 border-t border-[var(--border-color)]">
-        <DkpNodesHomeWidget />
-      </section>
+      <!-- 2. IDENTICO ALLA HOME: Ultimi Articoli Blog & Ultime Discussioni Nodi affiancati -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <DkpRelatedBlogWidget />
+        <DkpRelatedNodesWidget />
+      </div>
 
-      <!-- 8. BANNER AD SPONSORED STREAM -->
-      <aside aria-label="Risorse e libri consigliati">
-        <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-      </aside>
-    </div>
-  </main>
+      <!-- 3. IDENTICO ALLA HOME: Circuito Approfondimenti dal Vault -->
+      <DkpAdStrip
+        layout="horizontal"
+        category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"
+        topic="pure sql ai security architecture"
+        :tags="['sql', 'ai', 'security', 'architecture']"
+      />
+    </DkpLayout>
+  </div>
 </template>
-
-<style scoped>
-.hero-grid-bg {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 80% 55% at 50% 10%, #000 40%, transparent 100%);
-}
-
-.pillar-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 1rem;
-  padding: 1.1rem 1.15rem;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.pillar-card:hover {
-  transform: translateY(-3px);
-}
-
-.pillar-emerald:hover {
-  border-color: rgba(16, 185, 129, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(16, 185, 129, 0.25);
-}
-.pillar-emerald .pillar-tag {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-}
-
-.pillar-purple:hover {
-  border-color: rgba(168, 85, 247, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(168, 85, 247, 0.25);
-}
-.pillar-purple .pillar-tag {
-  background: rgba(168, 85, 247, 0.12);
-  color: #c084fc;
-}
-
-.pillar-cyan:hover {
-  border-color: rgba(56, 189, 248, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(56, 189, 248, 0.25);
-}
-.pillar-cyan .pillar-tag {
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
-}
-
-.pillar-amber:hover {
-  border-color: rgba(245, 158, 11, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(245, 158, 11, 0.25);
-}
-.pillar-amber .pillar-tag {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-}
-</style>

@@ -1,10 +1,10 @@
 <!-- app/pages/shop/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 useHead({
-  title: 'DKP Marketplace v2.6-PURE-SQL • API Gateway, DKP ADS & Dev Library',
+  title: 'DKP Marketplace v2.6-PURE-SQL  API Gateway, DKP ADS & Dev Library',
   meta: [
     {
       name: 'description',
@@ -45,7 +45,7 @@ const coreProducts: ShopProduct[] = [
     price: 99.0,
     billingCycle: 'MONTHLY',
     rateLimit: '500.000 req/mo',
-    endpoint: '/api/ai/sentinel • /api/ai/chat',
+    endpoint: '/api/ai/sentinel  /api/ai/chat',
     description:
       'Accesso diretto a Pulse Sentinel SAST con OpenRouter Structured Outputs (strict: true) e streaming multi-modello DKP-Coder / DKP-Pro.',
     isFeatured: true,
@@ -53,13 +53,13 @@ const coreProducts: ShopProduct[] = [
   },
   {
     id: 'dkp-api-vault-notary',
-    title: 'DKP Blockchain Vault© Enterprise API',
+    title: 'DKP Blockchain VaultAc Enterprise API',
     type: 'API_LICENSE',
     category: 'ON-CHAIN LEDGER API',
     price: 79.0,
     billingCycle: 'MONTHLY',
     rateLimit: '250.000 req/mo',
-    endpoint: '/api/vault/notarize • /api/vault/verify',
+    endpoint: '/api/vault/notarize  /api/vault/verify',
     description:
       'Notarizzazione SHA-256 concatenata su ledger Pure-SQL con generazione automatica di Merkle Root e certificati verificabili via SDK.',
     isFeatured: false,
@@ -73,7 +73,7 @@ const coreProducts: ShopProduct[] = [
     price: 129.0,
     billingCycle: 'MONTHLY',
     rateLimit: '1.000.000 req/mo',
-    endpoint: '/api/v2.6/crawler • /api/v2.6/jobs',
+    endpoint: '/api/v2.6/crawler  /api/v2.6/jobs',
     description:
       'Ingestione automatizzata di feed tech, AI summarization e sincronizzazione in real-time delle offerte di lavoro developer verificate.',
     isFeatured: false,
@@ -81,7 +81,7 @@ const coreProducts: ShopProduct[] = [
   },
   {
     id: 'dkp-ads-starter',
-    title: 'DKP ADS • Starter Node Spot',
+    title: 'DKP ADS  Starter Node Spot',
     type: 'ADS_SPONSOR',
     category: 'DKP ADS STARTER',
     price: 49.0,
@@ -97,7 +97,7 @@ const coreProducts: ShopProduct[] = [
   },
   {
     id: 'dkp-ads-pro-node',
-    title: 'DKP ADS • Pro Node & Blog Campaign',
+    title: 'DKP ADS  Pro Node & Blog Campaign',
     type: 'ADS_SPONSOR',
     category: 'DKP ADS PRO NODE',
     price: 149.0,
@@ -113,7 +113,7 @@ const coreProducts: ShopProduct[] = [
   },
   {
     id: 'dkp-ads-takeover',
-    title: 'DKP ADS • Ecosystem Takeover',
+    title: 'DKP ADS  Ecosystem Takeover',
     type: 'ADS_SPONSOR',
     category: 'ECOSYSTEM TAKEOVER',
     price: 399.0,
@@ -137,7 +137,7 @@ const fallbackAffiliateBooks: ShopProduct[] = [
     type: 'AFFILIATE_BOOK',
     category: 'AMAZON DEV LIBRARY',
     rateLimit: 'Sistemi Distribuiti & DB',
-    endpoint: 'Amazon Partner • Verified Pick',
+    endpoint: 'Amazon Partner  Verified Pick',
     description:
       'Il riferimento assoluto per progettare database scalabili, replicazione, partizionamento e architetture resilienti.',
     affiliateUrl: 'https://www.amazon.it/s?k=Designing+Data-Intensive+Applications',
@@ -149,7 +149,7 @@ const fallbackAffiliateBooks: ShopProduct[] = [
     type: 'AFFILIATE_BOOK',
     category: 'AMAZON DEV LIBRARY',
     rateLimit: 'Software Architecture',
-    endpoint: 'Amazon Partner • Verified Pick',
+    endpoint: 'Amazon Partner  Verified Pick',
     description:
       'Pattern strategici e tattici per dominare la complessità del software enterprise e mantenere il dominio disaccoppiato.',
     affiliateUrl: 'https://www.amazon.it/s?k=Domain-Driven+Design+Eric+Evans',
@@ -161,7 +161,7 @@ const fallbackAffiliateBooks: ShopProduct[] = [
     type: 'AFFILIATE_BOOK',
     category: 'AMAZON DEV LIBRARY',
     rateLimit: 'AI, LLM & Production',
-    endpoint: 'Amazon Partner • Verified Pick',
+    endpoint: 'Amazon Partner  Verified Pick',
     description:
       'Dalla progettazione di prompt e Structured Outputs fino alla valutazione, sicurezza e deploy di agenti AI in produzione.',
     affiliateUrl: 'https://www.amazon.it/s?k=AI+Engineering+Chip+Huyen',
@@ -192,7 +192,7 @@ const affiliateProducts = computed<ShopProduct[]>(() => {
       type: 'AFFILIATE_BOOK',
       category: isAmazon ? 'AMAZON DEV LIBRARY' : String(ad.tag || 'PARTNER PICK'),
       rateLimit: isAmazon ? 'Libro Consigliato' : 'Risorsa Selezionata',
-      endpoint: isAmazon ? 'Amazon Partner • Affiliate' : 'DKP Verified Partner',
+      endpoint: isAmazon ? 'Amazon Partner  Affiliate' : 'DKP Verified Partner',
       description: String(ad.snippet || 'Testo tecnico selezionato dal team DevKernelPulse.'),
       affiliateUrl: rawUrl.startsWith('http') ? rawUrl : 'https://www.amazon.it',
       provider: isAmazon ? 'Amazon Partner' : String(ad.provider || 'DKP Partner')
@@ -369,14 +369,14 @@ const executeCheckout = async () => {
         </h1>
 
         <p class="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed font-sans m-0">
-          Sblocca gli endpoint API ad alte prestazioni per Sentinel SAST e Blockchain Vault©, attiva campagne self-serve sul circuito DKP ADS oppure esplora la nostra selezione di libri tecnici.
+          Sblocca gli endpoint API ad alte prestazioni per Sentinel SAST e Blockchain VaultAc, attiva campagne self-serve sul circuito DKP ADS oppure esplora la nostra selezione di libri tecnici.
         </p>
       </header>
 
       <!-- BARRA FILTRI E RICERCA -->
       <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
         <div class="relative flex-1">
-          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></span>
           <input
             v-model="searchQuery"
             type="text"
@@ -407,7 +407,7 @@ const executeCheckout = async () => {
                 : 'bg-[#020420] text-slate-400 border-slate-800 hover:border-slate-700'
             ]"
           >
-            🔑 Licenze API ({{ counts.API_LICENSE }})
+             Licenze API ({{ counts.API_LICENSE }})
           </button>
 
           <button
@@ -419,7 +419,7 @@ const executeCheckout = async () => {
                 : 'bg-[#020420] text-slate-400 border-slate-800 hover:border-slate-700'
             ]"
           >
-            📢 Circuito DKP ADS ({{ counts.ADS_SPONSOR }})
+             Circuito DKP ADS ({{ counts.ADS_SPONSOR }})
           </button>
 
           <button
@@ -431,7 +431,7 @@ const executeCheckout = async () => {
                 : 'bg-[#020420] text-slate-400 border-slate-800 hover:border-slate-700'
             ]"
           >
-            📚 Dev Library ({{ counts.AFFILIATE_BOOK }})
+             Dev Library ({{ counts.AFFILIATE_BOOK }})
           </button>
         </div>
       </section>
@@ -484,7 +484,7 @@ const executeCheckout = async () => {
 
               <!-- Prezzo per API/ADS oppure Badge Partner per Libri Amazon -->
               <div v-if="product.price !== undefined" class="flex flex-col items-end shrink-0">
-                <span class="text-2xl font-black text-white font-mono">€{{ product.price.toFixed(2) }}</span>
+                <span class="text-2xl font-black text-white font-mono">â‚¬{{ product.price.toFixed(2) }}</span>
                 <span class="text-[10px] text-slate-500 uppercase font-bold font-mono">
                   {{
                     product.billingCycle === 'MONTHLY'
@@ -498,7 +498,7 @@ const executeCheckout = async () => {
 
               <div v-else class="flex flex-col items-end shrink-0">
                 <span class="text-xs font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
-                  AMAZON ↗
+                  AMAZON ←—
                 </span>
               </div>
             </div>
@@ -515,18 +515,18 @@ const executeCheckout = async () => {
             <div class="bg-[#020420] border border-slate-800 rounded-xl p-3 font-mono text-[11px] flex flex-col gap-1.5">
               <div class="flex justify-between border-b border-slate-800 pb-1.5 text-slate-400">
                 <span>
-                  ⚡ {{ product.type === 'AFFILIATE_BOOK' ? 'Topic' : 'Quota' }}:
+                   {{ product.type === 'AFFILIATE_BOOK' ? 'Topic' : 'Quota' }}:
                   <strong class="text-white font-bold">{{ product.rateLimit }}</strong>
                 </span>
                 <span>
-                  {{ product.type === 'AFFILIATE_BOOK' ? '📚 Store' : '🔑 Auth' }}:
+                  {{ product.type === 'AFFILIATE_BOOK' ? ' Store' : ' Auth' }}:
                   <strong class="text-white font-bold">
                     {{ product.type === 'AFFILIATE_BOOK' ? 'Affiliato' : 'Bearer' }}
                   </strong>
                 </span>
               </div>
               <div class="text-slate-400 truncate pt-0.5">
-                📁 {{ product.type === 'AFFILIATE_BOOK' ? 'Canale' : 'Endpoint' }}:
+                 {{ product.type === 'AFFILIATE_BOOK' ? 'Canale' : 'Endpoint' }}:
                 <span
                   :class="[
                     'font-bold',
@@ -552,9 +552,9 @@ const executeCheckout = async () => {
                     : 'bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
               ]"
             >
-              <span v-if="product.type === 'API_LICENSE'">🚀 Attiva API Pass</span>
-              <span v-else-if="product.type === 'ADS_SPONSOR'">📢 Configura &amp; Prenota Spot</span>
-              <span v-else>📚 Acquista su Amazon ↗</span>
+              <span v-if="product.type === 'API_LICENSE'"> Attiva API Pass</span>
+              <span v-else-if="product.type === 'ADS_SPONSOR'"> Configura &amp; Prenota Spot</span>
+              <span v-else> Acquista su Amazon ←—</span>
             </button>
           </div>
         </article>
@@ -563,7 +563,7 @@ const executeCheckout = async () => {
           v-if="filteredProducts.length === 0"
           class="col-span-full p-12 text-center text-slate-500 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800"
         >
-          📭 Nessuna risorsa trovata corrispondente ai criteri di ricerca.
+           Nessuna risorsa trovata corrispondente ai criteri di ricerca.
         </div>
       </section>
 
@@ -573,7 +573,7 @@ const executeCheckout = async () => {
       </section>
     </div>
 
-    <!-- 💳 MODAL DI CHECKOUT API & PROVISIONING DKP ADS -->
+    <!--  MODAL DI CHECKOUT API & PROVISIONING DKP ADS -->
     <Teleport to="body">
       <Transition name="fade">
         <div
@@ -586,18 +586,18 @@ const executeCheckout = async () => {
               @click="closeModal"
               class="absolute top-5 right-5 text-slate-500 hover:text-white font-bold text-xl cursor-pointer bg-transparent border-none"
             >
-              ✕
+              
             </button>
 
             <div class="flex flex-col gap-1.5 border-b border-slate-800 pb-4">
               <span class="bg-sky-500/15 text-sky-400 border border-sky-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase font-mono w-fit">
-                DKP SECURE GATEWAY • v2.6
+                DKP SECURE GATEWAY  v2.6
               </span>
               <h3 class="text-white font-black text-xl sm:text-2xl font-sans m-0">
                 {{ selectedProduct?.title }}
               </h3>
               <div class="text-2xl font-black text-emerald-400 font-mono flex items-baseline gap-2 mt-1">
-                €{{ selectedProduct?.price?.toFixed(2) }}
+                â‚¬{{ selectedProduct?.price?.toFixed(2) }}
                 <span class="text-xs text-slate-500 font-normal">
                   ({{
                     selectedProduct?.billingCycle === 'MONTHLY'
@@ -633,7 +633,7 @@ const executeCheckout = async () => {
                 class="bg-[#020420] border border-purple-500/30 rounded-xl p-4 flex flex-col gap-3"
               >
                 <span class="text-[10px] font-black text-purple-300 uppercase">
-                  📢 Configurazione Creatività DKP ADS
+                   Configurazione Creatività DKP ADS
                 </span>
 
                 <input
@@ -690,7 +690,7 @@ const executeCheckout = async () => {
                       class="w-4 h-4 accent-emerald-500 cursor-pointer"
                     />
                     <div class="flex flex-col">
-                      <span class="text-white font-bold text-xs font-sans">💳 Stripe / Card</span>
+                      <span class="text-white font-bold text-xs font-sans"> Stripe / Card</span>
                       <span class="text-[10px] text-slate-500">Checkout Istantaneo</span>
                     </div>
                   </label>
@@ -711,7 +711,7 @@ const executeCheckout = async () => {
                       class="w-4 h-4 accent-emerald-500 cursor-pointer"
                     />
                     <div class="flex flex-col">
-                      <span class="text-white font-bold text-xs font-sans">🅿️ PayPal</span>
+                      <span class="text-white font-bold text-xs font-sans"> PayPal</span>
                       <span class="text-[10px] text-slate-500">Account o Carta</span>
                     </div>
                   </label>
@@ -722,7 +722,7 @@ const executeCheckout = async () => {
                 v-if="errorMessage"
                 class="bg-rose-500/10 border border-rose-500/30 text-rose-300 p-3 rounded-xl text-xs"
               >
-                ⚠️ {{ errorMessage }}
+                  {{ errorMessage }}
               </div>
 
               <button
@@ -733,11 +733,11 @@ const executeCheckout = async () => {
                 <span v-if="!isLoading">
                   {{
                     selectedProduct?.type === 'ADS_SPONSOR'
-                      ? '📢 Procedi & Attiva Campagna ADS'
-                      : '⚡ Genera Sub & API Key'
+                      ? ' Procedi & Attiva Campagna ADS'
+                      : ' Genera Sub & API Key'
                   }}
                 </span>
-                <span v-else>⌛ Connessione al Gateway...</span>
+                <span v-else> Connessione al Gateway...</span>
               </button>
             </form>
           </div>

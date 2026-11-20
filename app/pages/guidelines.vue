@@ -1,13 +1,19 @@
-<!-- app/pages/guidelines.vue -->
 <script setup lang="ts">
 useDkpSeo({
-  title: 'Linee Guida della Community & Code of Conduct — DevKernelPulse v2.6-PURE-SQL',
-  description: 'Linee guida, codice di condotta, regole di pubblicazione editoriale e utilizzo responsabile degli strumenti AI per la community di DevKernelPulse v2.6-PURE-SQL.'
+  title: 'Linee Guida Community - DevKernelPulse',
+  description: 'Linee guida per pubblicare contenuti tecnici, commentare nei nodi e utilizzare gli strumenti di DevKernelPulse.',
+  type: 'website',
+  canonicalPath: '/guidelines'
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+  <DkpLayout
+    title="Linee Guida della Community"
+    subtitle="Regole di partecipazione, qualita tecnica e rispetto reciproco"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
     <div class="max-w-5xl mx-auto flex flex-col gap-8">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -16,28 +22,28 @@ useDkpSeo({
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -57,7 +63,7 @@ useDkpSeo({
           </div>
           <div class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-xs font-mono font-extrabold tracking-wider px-3.5 py-1.5 rounded-full uppercase">
             <span>COMMUNITY &amp; CODE OF CONDUCT</span>
-            <span class="text-slate-500">•</span>
+            <span class="text-slate-500">ÔÇó</span>
             <span>v2.6-PURE-SQL</span>
           </div>
         </div>
@@ -88,11 +94,11 @@ useDkpSeo({
           </p>
           <ul class="flex flex-col gap-2.5 my-3 p-0 list-none">
             <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
-              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
               <strong class="text-white">Contenuti ammessi:</strong> Architetture software, benchmark SQL/Cloud, analisi del codice, novità open source, post-mortem di incidenti tecnici e guide approfondite.
             </li>
             <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
-              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
               <strong class="text-white">Contenuti vietati:</strong> Marketing aggressivo, link affiliate, promozioni commerciali superficiali, contenuti generati automaticamente privi di revisione tecnica o clickbait.
             </li>
           </ul>
@@ -109,12 +115,12 @@ useDkpSeo({
           </p>
           <ul class="flex flex-col gap-2.5 my-3 p-0 list-none">
             <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
-              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
               <strong class="text-white">Discuti le idee, non le persone:</strong> Il dibattito acceso sulle scelte architetturali, sugli ORM vs Pure SQL o sui linguaggi è benvenuto; gli attacchi personali (<em class="text-slate-400">ad hominem</em>) non sono tollerati.
             </li>
             <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
-              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
-              <strong class="text-white">Apporta evidenze:</strong> Se esprimi un disaccordo tecnico, spiega il <em class="text-slate-200">perché</em> fornendo esempi di codice, benchmark, documentazione ufficiale o casi d'uso reali.
+              <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
+              <strong class="text-white">Apporta evidenze:</strong> Se esprimi un disaccordo tecnico, spiega il <em class="text-slate-200">perch</em> fornendo esempi di codice, benchmark, documentazione ufficiale o casi d'uso reali.
             </li>
           </ul>
         </section>
@@ -127,13 +133,13 @@ useDkpSeo({
           </h2>
           <div class="bg-[#020420] border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 mt-3">
             <div class="flex flex-col gap-1">
-              <strong class="text-sm text-emerald-400 font-extrabold">💼 Offerte di Lavoro (Job Board):</strong>
+              <strong class="text-sm text-emerald-400 font-extrabold">Offerte di Lavoro (Job Board):</strong>
               <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
                 Includi sempre lo stack tecnologico richiesto, il range salariale o di compensation trasparente e la modalità operativa (Full Remote, Hybrid, Onsite).
               </span>
             </div>
             <div class="flex flex-col gap-1 pt-3 border-t border-slate-800/80">
-              <strong class="text-sm text-emerald-400 font-extrabold">🚀 Show DKP &amp; Proof of Code Vault:</strong>
+              <strong class="text-sm text-emerald-400 font-extrabold">Show DKP &amp; Proof of Code Vault:</strong>
               <span class="text-xs sm:text-sm text-slate-400 leading-relaxed">
                 Quando presenti una libreria open source o un'architettura notarizzata nel Vault, condividi dettagli tecnici riproducibili e resta aperto al peer-review della community.
               </span>
@@ -152,11 +158,11 @@ useDkpSeo({
           </p>
           <ul class="flex flex-col gap-2.5 my-3 p-0 list-none">
             <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
-              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
               <strong class="text-white">No Spam, Scraping o Abuso XP:</strong> È vietato aggirare i rate-limit, automatizzare farm di XP o tentare Prompt Injection / SQL Injection sugli endpoint pubblici e privati.
             </li>
             <li class="relative pl-6 text-sm text-slate-300 leading-relaxed">
-              <span class="absolute left-0 text-emerald-400 font-bold">▹</span>
+              <span class="absolute left-0 text-emerald-400 font-bold">Ôû</span>
               <strong class="text-white">Igiene delle Credenziali:</strong> Non incollare mai chiavi API private (<code class="text-sky-400 font-mono text-xs">dkp_live_...</code>), token di produzione o codice proprietario coperto da NDA nei post pubblici o negli strumenti di scansione condivisi.
             </li>
           </ul>
@@ -167,13 +173,14 @@ useDkpSeo({
       <!-- FOOTER NAVIGATION -->
       <div class="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-800 font-mono text-xs">
         <NuxtLink to="/about" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
-          ← Torna a Chi Siamo (About DKP)
+          ÔåÉ Torna a Chi Siamo (About DKP)
         </NuxtLink>
         <NuxtLink to="/nodes" class="text-purple-400 hover:text-emerald-400 font-bold transition-colors">
-          Partecipa nel DKP Talks Hub →
+          Partecipa nel DKP Talks Hub ÔåÆ
         </NuxtLink>
       </div>
 
     </div>
   </div>
+  </DkpLayout>
 </template>

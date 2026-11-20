@@ -1,747 +1,391 @@
-<!-- app/pages/news/[slug].vue -->
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useBlog } from '~/composables/useBlog'
-import { parseDkpMarkdown } from '~/composables/useDkpNodes'
-import SocialShare from '~/components/blog/SocialShare.vue'
-import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue'
-
-interface AuthorRank {
-  color: string
-  badge: string
-  level: number
-  title: string
-}
-
-interface PrismHighlighter {
-  highlightAll: () => void
-}
-
-useCodeCopy()
+import DkpLayout from '~/components/DkpLayout.vue'
+import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
+import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 const route = useRoute()
-const slugParam = computed(() => String(route.params.slug || ''))
-const { $prism } = useNuxtApp()
-const { getAuthorRank } = useBlog()
+const slugParam = computed(() => String(route.params.slug || route.params.id || '').trim())
 
-// 1. Fetch dettaglio notizia
-const { data: newsRes, pending } = await useFetch(() => `/api/news/${slugParam.value}`, {
-  key: `news-detail-${slugParam.value}`
-})
+const { data: apiRes, pending } = await useAsyncData(
+  () => `dkp-canonical-story-${slugParam.value}`,
+  async () => {
+    const primary: any = await $fetch(`/api/news/${encodeURIComponent(slugParam.value)}`).catch(() => null)
+    const found = primary?.data || primary?.story || primary?.item || (primary?.title ? primary : null)
+    if (found) return found
 
-const story = computed(() => {
-  const res: any = newsRes.value
-  if (!res) return null
-  const payload = res.story || res.data || res.news || (Array.isArray(res) ? res[0] : res)
-  if (payload && payload.title) {
-    return {
-      ...payload,
-      points: Number(payload.points ?? payload.score ?? 1),
-      techScore: Number(payload.techScore ?? payload.tech_score ?? 0),
-      summaryIt: payload.summary_it || payload.summaryIt || payload.summary || '',
-      createdAt: payload.createdAt || payload.created_at || new Date().toISOString(),
-      vaultHash: payload.vaultHash || payload.vault_hash || payload.sha256 || null
-    }
+    const fallbackItem: any = await $fetch(`/api/item/${encodeURIComponent(slugParam.value)}`).catch(() => null)
+    return fallbackItem?.data || fallbackItem || null
   }
-  return null
-})
-
-// 2. Gestione Commenti Notizia (lazy SSR-safe)
-const newCommentText = ref('')
-const isSubmitting = ref(false)
-const commentError = ref('')
-const toastMsg = ref('')
-
-function showNotification(msg: string) {
-  toastMsg.value = msg
-  setTimeout(() => {
-    toastMsg.value = ''
-  }, 3500)
-}
-
-const { data: commentsRes, refresh: refreshComments } = await useFetch('/api/news/comments', {
-  key: `news-comments-${slugParam.value}`,
-  query: computed(() => ({ slug: slugParam.value })),
-  lazy: true
-})
-
-const comments = computed<any[]>(() => {
-  const res: any = commentsRes.value
-  if (!res) return []
-  return res.data || res.comments || []
-})
-
-// 3. Approfondimenti dal Vault Editorial Hub (4 colonne)
-const { data: vaultRes } = await useFetch('/api/blog/posts', {
-  key: `news-slug-vault-${slugParam.value}`,
-  lazy: true
-})
-
-const featuredArticles = computed(() => {
-  const res: any = vaultRes.value
-  const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-  return raw.slice(0, 4)
-})
-
-const readTime = computed(() => {
-  const text = `${story.value?.summaryIt || ''} ${story.value?.content || ''}`.trim()
-  if (!text) return 1
-  const plainText = text.replace(/<\/?[^>]+(>|$)/g, '')
-  const words = plainText.split(/\s+/).length
-  return Math.max(1, Math.ceil(words / 200))
-})
-
-const parsedExtraContent = computed(() =>
-  story.value?.content ? parseDkpMarkdown(String(story.value.content)) : ''
 )
 
-const curatorRank = computed<AuthorRank>(() => {
-  try {
-    const xp = (story.value?.points || 10) * 15
-    return getAuthorRank
-      ? getAuthorRank(xp)
-      : { color: '#10b981', badge: '🛡️', level: 3, title: 'Trinity AI Sentinel' }
-  } catch {
-    return { color: '#10b981', badge: '🛡️', level: 3, title: 'Trinity AI Sentinel' }
-  }
-})
+const story = computed<any>(() => apiRes.value)
+const effectiveSlug = computed(() => String(story.value?.slug || slugParam.value))
+const canonicalPath = computed(() => `/news/${effectiveSlug.value}`)
 
-const currentUrl = computed(() =>
-  import.meta.client ? window.location.href : `https://devkernelpulse.org/news/${slugParam.value}`
+const seoTitle = computed(() =>
+  story.value?.title
+    ? `${story.value.title} \u2014 DKP Tech Intelligence`
+    : 'Segnale Tecnico \u2014 DevKernelPulse'
 )
-
-const sourceDomain = computed(() => {
-  if (!story.value?.url) return 'news.ycombinator.com'
-  try {
-    return new URL(story.value.url).hostname.replace(/^www\./, '')
-  } catch {
-    return 'hackernews.org'
-  }
-})
-
-// 4. MODULO DKP SEO DINAMICO CON RICH RESULTS JSON-LD
-const seoKeywords = computed(() => {
-  const tags = parseTags(story.value?.tags)
-  return [...tags, 'DevKernelPulse', 'Trinity AI', 'Hacker News', 'Tech News'].join(', ')
-})
+const seoDescription = computed(() =>
+  story.value?.summary_it ||
+  story.value?.summary ||
+  story.value?.content?.slice(0, 160) ||
+  'Analisi tecnica e sintesi AI certificata da Trinity AI & Sentinel Crawler su DevKernelPulse.'
+)
 
 useDkpSeo({
-  title: computed(() =>
-    story.value?.title
-      ? `${story.value.title} — DKP Tech Feed | DevKernelPulse`
-      : 'Scheda Notizia AI — DevKernelPulse'
-  ),
-  description: computed(() =>
-    story.value?.summaryIt ||
-    'Analisi tecnica in tempo reale elaborata da Trinity AI su DevKernelPulse v2.6-PURE-SQL.'
-  ),
-  keywords: seoKeywords,
+  title: seoTitle,
+  description: seoDescription,
   type: 'article',
-  noindex: computed(() => !pending.value && !story.value),
-  publishedTime: computed(() => story.value?.createdAt),
-  modifiedTime: computed(() => story.value?.createdAt),
-  authorName: computed(() =>
-    story.value?.author ? `@${story.value.author}` : 'Trinity AI Sentinel'
-  ),
-  section: computed(() =>
-    story.value?.type === 'show'
-      ? 'Show HN'
-      : story.value?.type === 'ask'
-        ? 'Ask HN'
-        : 'Tech Intelligence'
-  ),
-  commentCount: computed(() => comments.value.length),
-  notarizationHash: computed(() => story.value?.vaultHash || undefined),
-  canonicalPath: computed(() => `/news/${encodeURIComponent(slugParam.value)}`)
+  publishedTime: computed(() => story.value?.createdAt || new Date().toISOString()),
+  authorName: computed(() => story.value?.author || 'Trinity AI Crawler'),
+  section: computed(() => String(story.value?.type || 'NEWS').toUpperCase()),
+  canonicalPath
 })
 
-function boostStoryPoints() {
-  if (!story.value) return
-  story.value.points = (story.value.points || 0) + 1
-  showNotification('🔥 Kernel acceso! +1 Karma assegnato alla notizia!')
+const domainLabel = computed(() => {
+  const rawUrl = String(story.value?.url || '')
+  if (!rawUrl) return 'devkernelpulse.org'
+  try {
+    return new URL(rawUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return 'fonte-esterna'
+  }
+})
+
+const authorName = computed(() => String(story.value?.author || story.value?.by || 'jdns'))
+const authorInitial = computed(() => authorName.value.charAt(0).toUpperCase() || 'D')
+const authorRank = computed(() => {
+  const pts = Number(story.value?.points || story.value?.score || 10)
+  if (pts >= 200) return { level: 7, title: 'CODE CRAFTSMAN' }
+  if (pts >= 100) return { level: 5, title: 'SYSTEM ARCHITECT' }
+  if (pts >= 40) return { level: 3, title: 'KERNEL BUILDER' }
+  return { level: 2, title: 'SENTINEL SCOUT' }
+})
+
+const formattedDate = computed(() => {
+  const raw = story.value?.createdAt
+  if (!raw) return new Date().toLocaleDateString('it-IT')
+  const d = new Date(raw)
+  return isNaN(d.getTime()) ? new Date().toLocaleDateString('it-IT') : d.toLocaleDateString('it-IT')
+})
+
+const readMinutes = computed(() => {
+  const txt = `${story.value?.summary_it || ''} ${story.value?.content || ''}`.trim()
+  const words = txt ? txt.split(/\s+/).length : 80
+  return Math.max(1, Math.ceil(words / 180))
+})
+
+const storyTags = computed<string[]>(() => {
+  if (Array.isArray(story.value?.tags) && story.value.tags.length > 0) {
+    return story.value.tags.map((t: any) => String(t).replace(/^#/, ''))
+  }
+  const ch = String(story.value?.type || 'News')
+  return ['HackerNews', 'Tech', ch.charAt(0).toUpperCase() + ch.slice(1)]
+})
+
+// Upvote (+5 XP)
+const optimisticBonus = ref(0)
+const hasUpvoted = ref(false)
+const xpBanner = ref('')
+
+const totalPoints = computed(() => Number(story.value?.points || story.value?.score || 1) + optimisticBonus.value)
+
+async function handleUpvote() {
+  if (!story.value || hasUpvoted.value) return
+  hasUpvoted.value = true
+  optimisticBonus.value += 1
+  const res: any = await $fetch('/api/news/vote', {
+    method: 'POST',
+    body: { itemId: story.value.id }
+  }).catch(() => null)
+  const gained = Number(res?.xpAwarded || 5)
+  xpBanner.value = `Upvote registrato! +${gained} XP accreditati al tuo profilo.`
+}
+
+// Commenti & Peer Review (+15 XP)
+const comments = ref<any[]>([])
+const commentText = ref('')
+const isLoadingComments = ref(false)
+const isSendingComment = ref(false)
+const commentError = ref('')
+
+async function loadComments() {
+  const slugKey = effectiveSlug.value
+  if (!slugKey) return
+  isLoadingComments.value = true
+  try {
+    const res: any = await $fetch(`/api/news/comments?slug=${encodeURIComponent(slugKey)}`).catch(() => null)
+    comments.value = res?.comments || res?.data || []
+  } finally {
+    isLoadingComments.value = false
+  }
 }
 
 async function submitComment() {
-  if (!newCommentText.value.trim()) return
+  const text = commentText.value.trim()
+  if (!text || !effectiveSlug.value) return
   commentError.value = ''
-  isSubmitting.value = true
-
+  isSendingComment.value = true
   try {
     const res: any = await $fetch('/api/news/comments', {
       method: 'POST',
       body: {
-        slug: slugParam.value,
-        content: newCommentText.value.trim()
+        slug: effectiveSlug.value,
+        content: text
       }
     })
-
-    if (res && (res.success || res.id)) {
-      newCommentText.value = ''
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('dkp:xp_updated'))
-      }
-      showNotification('💬 Commento pubblicato! +10 XP accreditati!')
-      await refreshComments()
-      await nextTick()
-      applyPrism()
+    if (res?.success) {
+      commentText.value = ''
+      xpBanner.value = 'Commento pubblicato nella discussione! +15 XP assegnati.'
+      await loadComments()
     }
   } catch (err: any) {
-    commentError.value = err?.data?.statusMessage || 'Errore durante l\'invio del commento.'
+    commentError.value = err?.data?.statusMessage || 'Errore durante la pubblicazione del commento.'
   } finally {
-    isSubmitting.value = false
+    isSendingComment.value = false
   }
 }
-
-function getTypeBadgeColor(type: string) {
-  if (type === 'show') return 'border-purple-500/40 bg-purple-500/15 text-purple-400'
-  if (type === 'ask') return 'border-sky-500/40 bg-sky-500/15 text-sky-400'
-  return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400'
-}
-
-function parseTags(tags: any): string[] {
-  if (Array.isArray(tags)) return tags
-  if (typeof tags === 'string') {
-    return tags.replace(/[{}]/g, '').split(',').map(t => t.trim().replace(/^"/, '').replace(/"$/, '')).filter(Boolean)
-  }
-  return ['HackerNews', 'Tech']
-}
-
-let prismTimer: ReturnType<typeof setTimeout> | undefined
-const applyPrism = () => {
-  if (import.meta.client && $prism) {
-    clearTimeout(prismTimer)
-    prismTimer = setTimeout(() => {
-      try {
-        ;($prism as PrismHighlighter).highlightAll()
-      } catch (e) {
-        console.warn('Prism highlight notice:', e)
-      }
-    }, 100)
-  }
-}
-
-const showCopyFeedback = (btn: HTMLButtonElement) => {
-  const originalText = btn.innerHTML
-  btn.innerHTML = '✅'
-  btn.style.color = '#00dc82'
-  setTimeout(() => {
-    btn.innerHTML = originalText
-    btn.style.color = ''
-  }, 2000)
-}
-
-const handleCopyClick = (event: MouseEvent) => {
-  const target = event.target
-  const copyBtn = target instanceof Element ? (target.closest('.dkp-copy-btn') as HTMLButtonElement | null) : null
-  if (copyBtn) {
-    const codeId = copyBtn.getAttribute('data-code-id')
-    if (codeId) {
-      const codeElement = document.getElementById(codeId)
-      if (codeElement && navigator.clipboard && window.isSecureContext) {
-        const textToCopy = codeElement.innerText || codeElement.textContent || ''
-        navigator.clipboard.writeText(textToCopy).then(() => showCopyFeedback(copyBtn))
-      }
-    }
-  }
-}
-
-watch(parsedExtraContent, async () => {
-  await nextTick()
-  applyPrism()
-})
 
 onMounted(() => {
-  setTimeout(applyPrism, 200)
-  document.addEventListener('click', handleCopyClick)
+  loadComments()
 })
 
-onUnmounted(() => {
-  document.removeEventListener('click', handleCopyClick)
+watch(slugParam, () => {
+  optimisticBonus.value = 0
+  hasUpvoted.value = false
+  xpBanner.value = ''
+  loadComments()
 })
 </script>
 
 <template>
-  <main class="min-h-screen bg-[var(--bg-kernel)] text-[var(--text-main)] px-4 sm:px-6 py-10 relative overflow-hidden transition-colors duration-500">
-    <!-- BACKGROUND GRID IDENTICA ALLA HOME -->
-    <div class="hero-grid-bg pointer-events-none" aria-hidden="true"></div>
-
-    <!-- Toast XP / Feedback -->
-    <div
-      v-if="toastMsg"
-      role="status"
-      class="fixed top-6 right-6 z-[10000] bg-[#041a13]/95 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl font-mono text-xs font-bold"
-    >
-      {{ toastMsg }}
+  <DkpLayout
+    :hide-section-header="true"
+    :show-sidebar-ads="true"
+    :seo-title="seoTitle"
+    :seo-description="seoDescription"
+  >
+    <div v-if="pending" class="bg-dkp-card border border-dkp-border rounded-2xl p-10 text-center font-mono text-xs text-cyan-400">
+      Caricamento scheda canonica...
     </div>
 
-    <div class="max-w-5xl mx-auto flex flex-col gap-6 relative z-10">
-      <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
-      <nav aria-label="Navigazione Ecosistema DKP" class="flex flex-wrap gap-2.5 justify-center font-mono bg-[var(--bg-surface)] border border-[var(--border-color)] p-3 rounded-2xl shadow-lg">
-        <NuxtLink
-          to="/news"
-          class="px-4 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] no-underline"
-        >
-          🌍 DKP Tech Feed
-        </NuxtLink>
+    <div v-else-if="!story" class="bg-dkp-card border border-dkp-border rounded-2xl p-10 text-center space-y-4">
+      <h1 class="text-xl font-bold text-white m-0">Segnale non trovato</h1>
+      <p class="text-slate-400 text-sm m-0">L&apos;articolo richiesto non &egrave; disponibile o lo slug &egrave; stato aggiornato.</p>
+      <NuxtLink to="/news" class="inline-block px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-mono text-xs font-extrabold no-underline">
+        Torna al Tech Feed &rarr;
+      </NuxtLink>
+    </div>
 
-        <NuxtLink
-          to="/nodes"
-          class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all no-underline"
-        >
-          💬 DKP Talks Hub
-        </NuxtLink>
-
-        <NuxtLink
-          to="/tools"
-          class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all no-underline"
-        >
-          🛠️ Developer Tools
-        </NuxtLink>
-
-        <NuxtLink
-          to="/blog"
-          class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all no-underline"
-        >
-          ✍️ DKP Editorial Hub
-        </NuxtLink>
-      </nav>
-
-      <!-- STATE: LOADING PRINCIPALE -->
-      <div v-if="pending" class="text-center py-20 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--accent-emerald)] font-mono text-xs animate-pulse">
-        <span class="text-3xl inline-block mb-3">⚡</span>
-        <p class="m-0">Analisi della notizia da parte di Trinity AI v2.6-PURE-SQL in corso...</p>
+    <article v-else class="space-y-6">
+      <!-- Notifica XP -->
+      <div
+        v-if="xpBanner"
+        class="bg-emerald-500/15 border border-emerald-400/60 text-emerald-300 font-mono text-xs font-bold px-4 py-3 rounded-xl flex items-center justify-between"
+      >
+        <span> {{ xpBanner }}</span>
+        <button type="button" @click="xpBanner = ''" class="text-emerald-200 bg-transparent border-none cursor-pointer font-bold">x</button>
       </div>
 
-      <!-- STATE: SCHEDA NOTIZIA -->
-      <template v-else-if="story">
-        <div class="flex flex-col gap-8">
-          <article class="glass-panel bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 sm:p-10 shadow-2xl flex flex-col gap-6 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-80 h-32 bg-[var(--accent-emerald)]/10 rounded-full blur-3xl pointer-events-none"></div>
+      <!-- Card Principale Canonica -->
+      <div class="bg-[#050914]/95 border border-slate-800 rounded-2xl p-6 sm:p-8 card-glow space-y-5">
+        <!-- Breadcrumb -->
+        <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-2 font-mono text-xs text-slate-400">
+          <NuxtLink to="/news" class="text-slate-300 hover:text-cyan-400 no-underline flex items-center gap-1.5">
+            <span></span> Tech Feed
+          </NuxtLink>
+          <span>/</span>
+          <span class="text-cyan-400 font-bold uppercase">{{ story.type || 'NEWS' }}</span>
+          <span>/</span>
+          <span class="text-slate-200 font-semibold truncate max-w-md">{{ story.title }}</span>
+        </nav>
 
-            <!-- BREADCRUMB NAVBAR SEO-READY + BADGES -->
-            <div class="flex flex-col gap-4 relative z-10 border-b border-[var(--border-color)] pb-4">
-              <nav aria-label="Breadcrumb" class="w-full text-sm text-[var(--text-muted)]">
-                <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
-                  <li class="flex items-center">
-                    <NuxtLink to="/news" class="text-[var(--text-muted)] hover:text-[var(--accent-emerald)] transition-colors flex items-center gap-1 no-underline">
-                      <span class="text-xs">🌍</span> Tech Feed
-                    </NuxtLink>
-                  </li>
-                  <li class="flex items-center gap-2">
-                    <span class="text-slate-600 font-bold">/</span>
-                    <span class="text-[var(--accent-cyan)] font-mono font-bold">
-                      {{ story.type === 'show' ? 'SHOW HN' : story.type === 'ask' ? 'ASK HN' : 'NEWS' }}
-                    </span>
-                  </li>
-                  <li class="flex items-center gap-2">
-                    <span class="text-slate-600 font-bold">/</span>
-                    <span class="text-[var(--text-main)] max-w-[170px] sm:max-w-[340px] truncate" :title="story.title" aria-current="page">
-                      {{ story.title }}
-                    </span>
-                  </li>
-                </ol>
-              </nav>
-
-              <!-- BADGES SENTINEL & PURE-SQL -->
-              <div class="flex items-center gap-2.5 flex-wrap justify-start font-mono">
-                <span :class="['px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider border', getTypeBadgeColor(story.type)]">
-                  {{ story.type === 'show' ? 'SHOW HN' : story.type === 'ask' ? 'ASK HN' : 'NEWS' }}
-                </span>
-
-                <span class="bg-sky-500/10 text-sky-400 border border-sky-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
-                  ⚡ PURE-SQL INDEXED
-                </span>
-
-                <span class="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.2)]">
-                  🛡️ TRINITY SENTINEL {{ story.techScore ? `${story.techScore}%` : 'v2.6' }}
-                </span>
-              </div>
-            </div>
-
-            <h1 class="text-2xl sm:text-4xl font-black text-[var(--text-main)] tracking-tight leading-tight relative z-10 m-0">
-              {{ story.title }}
-            </h1>
-
-            <!-- SOURCE & CURATOR CARD CON RANK & XP -->
-            <div
-              class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-[var(--bg-kernel)] border border-[var(--border-color)] relative z-10 transition-colors"
-              :style="{
-                borderColor: `${curatorRank.color}45`,
-                boxShadow: `0 4px 20px ${curatorRank.color}12`
-              }"
-            >
-              <div class="flex items-center gap-4">
-                <div
-                  class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg border-2 shrink-0"
-                  :style="{
-                    background: `linear-gradient(135deg, ${curatorRank.color}, #0f172a)`,
-                    borderColor: curatorRank.color
-                  }"
-                >
-                  {{ (story.author || 'H')[0].toUpperCase() }}
-                </div>
-
-                <div>
-                  <div class="text-[var(--text-main)] font-bold flex items-center gap-2 flex-wrap">
-                    <span>@{{ story.author || 'hackernews' }}</span>
-                    <span
-                      class="text-[0.65rem] px-2 py-0.5 rounded uppercase tracking-wider border font-bold flex items-center gap-1"
-                      :style="{
-                        backgroundColor: `${curatorRank.color}15`,
-                        color: curatorRank.color,
-                        borderColor: `${curatorRank.color}40`
-                      }"
-                    >
-                      <span>{{ curatorRank.badge }}</span> Lvl. {{ curatorRank.level }} - {{ curatorRank.title }}
-                    </span>
-                  </div>
-
-                  <div class="text-xs text-[var(--text-muted)] flex items-center gap-3 mt-1 flex-wrap font-mono">
-                    <span>📅 {{ new Date(story.createdAt).toLocaleDateString('it-IT') }}</span>
-                    <span>🔥 {{ story.points }} pts HN</span>
-                    <span>💬 {{ comments.length }} commenti</span>
-                    <span>⏱️ {{ readTime }} min lettura</span>
-                  </div>
-                </div>
-              </div>
-
-              <a
-                v-if="story.url"
-                :href="story.url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-extrabold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.25)] no-underline shrink-0"
-              >
-                <span>Fonte ({{ sourceDomain }})</span>
-                <span>↗</span>
-              </a>
-            </div>
-
-            <!-- SINTESI & ANALISI TRINITY AI -->
-            <div class="bg-[var(--bg-kernel)] border border-emerald-500/35 rounded-xl p-5 sm:p-6 relative z-10 flex flex-col gap-3 shadow-inner">
-              <div class="flex items-center justify-between flex-wrap gap-2">
-                <div class="flex items-center gap-2 text-[var(--accent-emerald)] font-mono text-xs font-bold uppercase tracking-wider">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                  Sintesi &amp; Analisi Trinity AI
-                </div>
-                <span class="text-[10px] font-mono text-[var(--accent-cyan)] bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded uppercase font-bold">
-                  Pure SQL Indexed
-                </span>
-              </div>
-              <p class="text-sm sm:text-base text-[var(--text-main)] leading-relaxed font-sans m-0">
-                {{ story.summaryIt || 'Notizia di tendenza analizzata dal motore Trinity AI, focalizzata sull\'impatto tecnologico e architetturale.' }}
-              </p>
-            </div>
-
-            <!-- EVENTUALE CONTENUTO ESTESO FORMATTATO -->
-            <div
-              v-if="parsedExtraContent"
-              class="post-content prose prose-invert max-w-none text-[var(--text-main)] dkp-preview-content relative z-10"
-              v-html="parsedExtraContent"
-            ></div>
-
-            <!-- TAGS -->
-            <div class="flex flex-wrap gap-1.5 relative z-10">
-              <span v-for="tag in parseTags(story.tags)" :key="tag" class="text-xs font-mono bg-[var(--bg-kernel)] text-[var(--accent-cyan)] border border-[var(--border-color)] px-2.5 py-1 rounded-lg">
-                #{{ tag }}
-              </span>
-            </div>
-
-            <!-- CERTIFICATO SENTINEL AI & VAULT TELEMETRY v2.6 -->
-            <div class="bg-[var(--bg-kernel)] border border-emerald-500/30 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(16,185,129,0.06)] z-10">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="bg-emerald-500/20 p-2 rounded-lg border border-emerald-500/30">
-                  <span class="text-emerald-400 text-xl">🛡️</span>
-                </div>
-                <div>
-                  <h3 class="text-[var(--accent-emerald)] font-bold text-base sm:text-lg tracking-wide uppercase m-0">
-                    Trinity Sentinel Verification Certificate v2.6
-                  </h3>
-                  <p class="text-xs text-[var(--text-muted)] mt-0.5 m-0">
-                    AI Relevance Audit &amp; Pure SQL Stream Checksum
-                  </p>
-                </div>
-              </div>
-
-              <div class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg p-4 font-mono text-xs text-[var(--text-main)] relative z-10">
-                <div class="flex flex-col sm:flex-row sm:justify-between gap-2 border-b border-[var(--border-color)] pb-3 mb-3">
-                  <span class="text-[var(--text-muted)] font-semibold">STREAM_NODE_ID:</span>
-                  <span class="text-[var(--accent-emerald)] font-bold select-all">DKP-HN-{{ story.hnId || story.hn_id || story.id }}</span>
-                </div>
-                <div class="flex flex-col sm:flex-row sm:justify-between gap-2 pb-3 mb-3 border-b border-[var(--border-color)]">
-                  <span class="text-[var(--text-muted)] font-semibold">SENTINEL_TECH_SCORE:</span>
-                  <span class="text-[var(--accent-cyan)] font-bold">{{ story.techScore ? `${story.techScore}% VERIFIED` : '92% VERIFIED' }}</span>
-                </div>
-                <div class="flex flex-col gap-2">
-                  <span class="text-[var(--text-muted)] font-semibold">INDEXED_ORIGIN_ENDPOINT:</span>
-                  <span class="text-[var(--text-main)] select-all break-all bg-[var(--bg-kernel)] p-2 rounded border border-[var(--border-color)]">
-                    {{ story.vaultHash || story.url || `https://devkernelpulse.org/news/${slugParam}` }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- FOOTER KARMA / ACCENDI KERNEL -->
-            <div class="bg-[var(--bg-kernel)] border border-[var(--border-color)] rounded-xl p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
-              <div class="flex flex-col gap-1 items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
-                <button
-                  type="button"
-                  @click="boostStoryPoints"
-                  class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none px-6 py-3 rounded-lg font-bold text-base sm:text-lg cursor-pointer flex items-center justify-center gap-3 transition-all transform hover:-translate-y-0.5 shadow-[0_0_15px_rgba(16,185,129,0.3)] w-full sm:w-auto"
-                >
-                  🔥 Accendi Kernel
-                  <span class="bg-[#020420] text-emerald-400 px-3 py-1 rounded text-sm shadow-inner">{{ story.points }}</span>
-                </button>
-                <span class="text-[var(--text-muted)] text-xs mt-1">Premi per supportare questa notizia con Karma nel network!</span>
-              </div>
-
-              <a
-                v-if="story.url"
-                :href="story.url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="px-5 py-3 bg-[var(--bg-surface)] hover:border-sky-400 text-[var(--accent-cyan)] border border-[var(--border-color)] font-mono font-bold text-xs rounded-xl transition-all flex items-center gap-2 no-underline shrink-0"
-              >
-                <span>Apri articolo originale</span>
-                <span>↗</span>
-              </a>
-            </div>
-
-            <!-- SEZIONE CONDIVISIONE NOTIZIA (SOCIAL SHARE) -->
-            <div class="bg-[var(--bg-kernel)] border border-[var(--border-color)] rounded-xl p-6 relative z-10 shadow-lg">
-              <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3 text-center md:text-left">
-                  <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl font-bold shrink-0">
-                    🚀
-                  </div>
-                  <div>
-                    <h4 class="text-[var(--text-main)] font-extrabold text-base m-0">Condividi notizia AI</h4>
-                    <p class="text-[var(--text-muted)] text-xs m-0">Diffondi l'analisi Trinity AI nell'ecosistema Dev</p>
-                  </div>
-                </div>
-
-                <div class="w-full md:w-auto flex justify-center">
-                  <SocialShare
-                    :title="story.title || 'DevKernelPulse Tech Feed'"
-                    :url="currentUrl"
-                    :horizontal="true"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- FORM & ELENCO COMMENTI COMMUNITY -->
-            <section class="bg-[var(--bg-kernel)] border border-[var(--border-color)] rounded-2xl p-6 relative z-10 flex flex-col gap-5">
-              <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-3 font-mono">
-                <h2 class="text-sm sm:text-base font-bold text-[var(--text-main)] m-0 flex items-center gap-2">
-                  <span>💬</span> Discussione &amp; Opinion ({{ comments.length }})
-                </h2>
-                <span class="text-emerald-400 font-bold text-[11px] bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
-                  ⚡ +10 XP per commento
-                </span>
-              </div>
-
-              <form @submit.prevent="submitComment" class="flex flex-col gap-3">
-                <textarea
-                  v-model="newCommentText"
-                  rows="3"
-                  placeholder="Esprimi la tua opinione o aggiungi contesto tecnico a questa notizia..."
-                  class="w-full bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-3.5 text-[var(--text-main)] focus:border-emerald-400 outline-none transition-all font-sans text-sm"
-                ></textarea>
-
-                <div v-if="commentError" class="text-xs font-mono text-rose-400">⚠️ {{ commentError }}</div>
-
-                <div class="flex justify-end font-mono">
-                  <button
-                    type="submit"
-                    :disabled="isSubmitting || !newCommentText.trim()"
-                    class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                  >
-                    {{ isSubmitting ? 'Invio in corso...' : '🚀 Invia Commento (+10 XP)' }}
-                  </button>
-                </div>
-              </form>
-
-              <div v-if="comments.length === 0" class="p-8 text-center font-mono text-xs text-[var(--text-muted)] bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] italic">
-                Nessun commento ancora. Condividi per primo la tua opinione!
-              </div>
-
-              <div v-else class="flex flex-col gap-3">
-                <div
-                  v-for="c in comments"
-                  :key="c.id"
-                  class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl p-4 flex flex-col gap-2 font-mono text-xs hover:border-emerald-500/30 transition-colors"
-                >
-                  <div class="flex items-center justify-between text-[var(--text-muted)] text-[11px] border-b border-[var(--border-color)] pb-2">
-                    <span class="font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                      @{{ c.authorUsername || c.author || 'dev_kernel' }}
-                    </span>
-                    <span>{{ new Date(c.createdAt || Date.now()).toLocaleDateString('it-IT') }}</span>
-                  </div>
-                  <div
-                    class="text-[var(--text-main)] text-sm font-sans leading-relaxed dkp-preview-content"
-                    v-html="parseDkpMarkdown(String(c.content || ''))"
-                  ></div>
-                </div>
-              </div>
-            </section>
-
-            <!-- BANNER ECOSISTEMA / ADS -->
-            <div class="pt-4 border-t border-[var(--border-color)] relative z-10">
-              <DkpAdsWidget placement="global" />
-            </div>
-
-            <!-- APPROFONDIMENTI DAL VAULT EDITORIAL HUB (WIDGET 4 COLONNE) -->
-            <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-[var(--border-color)] flex flex-col gap-4 relative z-10">
-              <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-[var(--text-main)] flex items-center gap-2 font-mono m-0">
-                  <span>🔗</span> Approfondimenti dal Vault Editorial Hub
-                </h3>
-                <NuxtLink to="/blog" class="text-xs font-mono text-[var(--accent-emerald)] hover:underline font-bold no-underline">
-                  Esplora Blog ➔
-                </NuxtLink>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                <NuxtLink
-                  v-for="art in featuredArticles"
-                  :key="art.id"
-                  :to="`/blog/${art.slug || art.id}`"
-                  class="bg-[var(--bg-kernel)] border border-[var(--border-color)] hover:border-emerald-500/50 rounded-2xl p-4 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-md group no-underline"
-                >
-                  <div>
-                    <span class="text-[10px] font-mono font-bold text-[var(--accent-emerald)] uppercase tracking-wider block truncate">
-                      {{ art.categoryName || art.category || 'Tech' }}
-                    </span>
-                    <h4 class="text-xs sm:text-sm font-bold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors mt-1.5 leading-snug line-clamp-3 mb-0">
-                      {{ art.title }}
-                    </h4>
-                  </div>
-                  <span class="text-[11px] font-mono font-bold text-[var(--accent-cyan)] group-hover:underline mt-3 pt-2 border-t border-[var(--border-color)]">
-                    Leggi articolo ➔
-                  </span>
-                </NuxtLink>
-              </div>
-            </div>
-
-            <!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
-            <div class="pt-6 border-t border-[var(--border-color)] relative z-10">
-              <DKPRelatedThreads />
-            </div>
-
-            <!-- WIDGET STREAM NODI & FORUM COMMUNITY -->
-            <div class="pt-6 border-t border-[var(--border-color)] relative z-10">
-              <DkpNodesHomeWidget />
-            </div>
-          </article>
-
-          <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
+        <!-- Badge Stato & Sentinel -->
+        <div class="flex flex-wrap items-center gap-2.5 font-mono text-[11px]">
+          <span class="px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-extrabold uppercase">
+            {{ story.type || 'NEWS' }}
+          </span>
+          <span class="px-2.5 py-1 rounded-md bg-sky-500/15 text-sky-300 border border-sky-500/40 font-bold">
+             PURE-SQL INDEXED
+          </span>
+          <span class="px-2.5 py-1 rounded-md bg-teal-500/15 text-teal-300 border border-teal-500/40 font-bold">
+             TRINITY SENTINEL {{ story.tech_score || 60 }}%
+          </span>
         </div>
-      </template>
 
-      <!-- STATE: NOT FOUND -->
-      <template v-else>
-        <div class="text-center py-16 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--text-muted)] font-mono text-xs flex flex-col gap-3 items-center">
-          <p class="text-3xl m-0">📭</p>
-          <p class="m-0">Scheda notizia non trovata o rimossa.</p>
-          <NuxtLink to="/news" class="text-emerald-400 hover:text-emerald-300 underline font-bold mt-2 bg-emerald-500/10 px-4 py-2 rounded-xl transition-colors no-underline">
-            Torna al DKP Tech Feed
+        <hr class="border-slate-800/90 my-2" />
+
+        <!-- Titolo Principale -->
+        <h1 class="text-2xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight m-0">
+          {{ story.title }}
+        </h1>
+
+        <!-- Box Autore + Bottone Fonte Esterna -->
+        <div class="bg-[#030712] border border-slate-800/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-full bg-sky-500/20 border-2 border-sky-400 flex items-center justify-center text-sky-300 font-extrabold text-base shrink-0">
+              {{ authorInitial }}
+            </div>
+            <div class="space-y-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-white font-bold text-sm">@{{ authorName }}</span>
+                <span class="px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/40 text-sky-300 font-mono text-[10px] font-extrabold">
+                   LVL. {{ authorRank.level }} - {{ authorRank.title }}
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 font-mono text-xs text-slate-400">
+                <span> {{ formattedDate }}</span>
+                <span class="text-amber-300 font-bold"> {{ totalPoints }} pts HN</span>
+                <span> {{ comments.length }} commenti</span>
+                <span> {{ readMinutes }} min lettura</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              :disabled="hasUpvoted"
+              @click="handleUpvote"
+              :class="[
+                'px-3.5 py-2.5 rounded-xl font-mono text-xs font-extrabold border transition-all cursor-pointer',
+                hasUpvoted
+                  ? 'bg-amber-500/20 border-amber-400/50 text-amber-300 cursor-default'
+                  : 'bg-[#081226] hover:bg-amber-500/15 border-amber-500/40 text-amber-300'
+              ]"
+            >
+               {{ hasUpvoted ? 'Votato' : 'Upvote (+5 XP)' }}
+            </button>
+
+            <a
+              v-if="story.url"
+              :href="story.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs font-extrabold no-underline transition-colors"
+            >
+              Fonte ({{ domainLabel }}) &nearr;
+            </a>
+          </div>
+        </div>
+
+        <!-- Box Sintesi & Analisi Trinity AI -->
+        <div class="bg-[#030a14] border border-emerald-500/35 rounded-2xl p-5 space-y-2.5">
+          <div class="flex items-center justify-between gap-2 font-mono text-[11px]">
+            <div class="flex items-center gap-2 text-emerald-400 font-extrabold uppercase tracking-wider">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>SINTESI &amp; ANALISI TRINITY AI</span>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/35 font-bold">
+              PURE SQL INDEXED
+            </span>
+          </div>
+
+          <p class="text-slate-100 text-sm sm:text-base leading-relaxed m-0">
+            {{ story.summary_it || story.summary || `Notizia di tendenza su Hacker News: ${story.title}` }}
+          </p>
+        </div>
+
+        <!-- Contenuto Esteso -->
+        <div v-if="story.content" class="text-slate-300 text-sm sm:text-base leading-relaxed whitespace-pre-line pt-1">
+          {{ story.content }}
+        </div>
+
+        <!-- Tag SEO -->
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <NuxtLink
+            v-for="tag in storyTags"
+            :key="tag"
+            :to="`/news?q=${encodeURIComponent(tag)}`"
+            class="px-3 py-1 rounded-lg bg-[#081226] border border-slate-700/80 hover:border-cyan-400/60 text-sky-400 font-mono text-xs font-bold no-underline transition-colors"
+          >
+            #{{ tag }}
           </NuxtLink>
         </div>
-      </template>
-    </div>
-  </main>
+      </div>
+
+      <!-- SEZIONE COMMENTI & PEER REVIEW (+15 XP) -->
+      <section id="comments" class="bg-[#050914]/95 border border-slate-800 rounded-2xl p-6 sm:p-8 card-glow space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg"></span>
+            <h2 class="text-base sm:text-lg font-extrabold text-white m-0 font-display">
+              Discussione Tecnica &amp; Peer Review ({{ comments.length }})
+            </h2>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-mono text-[11px] font-extrabold">
+            +15 XP PER CONTRIBUTO
+          </span>
+        </div>
+
+        <form @submit.prevent="submitComment" class="space-y-3">
+          <textarea
+            v-model="commentText"
+            rows="3"
+            placeholder="Condividi un'analisi tecnica, un benchmark o un commento su questo segnale..."
+            class="w-full bg-[#020617] border border-slate-700 focus:border-cyan-400 text-white p-3.5 rounded-xl font-sans text-sm outline-none box-border"
+          ></textarea>
+
+          <div v-if="commentError" class="text-rose-400 font-mono text-xs font-bold">
+            {{ commentError }}
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <span class="font-mono text-[11px] text-slate-400">
+              Slug indicizzato: <code class="text-cyan-300">/news/{{ effectiveSlug }}</code>
+            </span>
+            <button
+              type="submit"
+              :disabled="isSendingComment || !commentText.trim()"
+              class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-mono text-xs font-extrabold border-none cursor-pointer transition-colors"
+            >
+              {{ isSendingComment ? 'Pubblicazione...' : 'Pubblica Commento (+15 XP)' }}
+            </button>
+          </div>
+        </form>
+
+        <div v-if="isLoadingComments" class="py-4 text-center font-mono text-xs text-slate-400">
+          Caricamento commenti dalla community...
+        </div>
+
+        <div v-else-if="comments.length === 0" class="bg-[#020617] border border-slate-800/80 rounded-xl p-6 text-center font-mono text-xs text-slate-400">
+          Nessun commento ancora pubblicato. Avvia tu la discussione tecnica e guadagna <strong class="text-emerald-400">+15 XP</strong>!
+        </div>
+
+        <div v-else class="space-y-3 pt-2">
+          <div
+            v-for="c in comments"
+            :key="c.id"
+            class="bg-[#030712] border border-slate-800 rounded-xl p-4 space-y-1.5"
+          >
+            <div class="flex items-center justify-between gap-2 font-mono text-xs">
+              <div class="flex items-center gap-2">
+                <span class="text-cyan-300 font-bold">@{{ c.authorUsername || c.author || 'dev_kernel' }}</span>
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  PEER REVIEW
+                </span>
+              </div>
+              <span class="text-slate-500 text-[11px]">
+                {{ c.createdAt ? new Date(c.createdAt).toLocaleString('it-IT') : 'Adesso' }}
+              </span>
+            </div>
+            <p class="text-slate-200 text-sm leading-relaxed m-0 whitespace-pre-line">
+              {{ c.content }}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <DkpRelatedBlogWidget />
+        <DkpRelatedNodesWidget />
+      </div>
+      <DkpAdsWidget placement="feedInline" layout="horizontal" :limit="3" />
+    </article>
+  </DkpLayout>
 </template>
-
-<style scoped>
-.hero-grid-bg {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 80% 55% at 50% 10%, #000 40%, transparent 100%);
-}
-
-.glass-panel {
-  backdrop-filter: blur(12px);
-}
-
-:deep(.dkp-code-wrapper) {
-  background: #0d1117;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  overflow: hidden;
-  margin: 1.2rem 0;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-:deep(.dkp-code-header) {
-  background: #161b22;
-  padding: 0.5rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #1e293b;
-  font-family: sans-serif;
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: #8b949e;
-  text-transform: capitalize;
-}
-
-:deep(.dkp-copy-btn) {
-  background: none;
-  border: none;
-  color: #8b949e;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: color 0.2s;
-}
-:deep(.dkp-copy-btn:hover) { color: #00dc82; }
-
-:deep(.dkp-code-block) { padding: 1rem; margin: 0; overflow-x: auto; }
-:deep(.dkp-inline-code) {
-  background-color: rgba(30, 41, 59, 0.8) !important;
-  color: #38bdf8 !important;
-  padding: 0.2rem 0.4rem !important;
-  border-radius: 0.375rem !important;
-  border: 1px solid rgba(51, 65, 85, 0.6) !important;
-}
-:deep(.dkp-h1) { font-size: 1.6rem; font-weight: 900; color: #ffffff; margin-top: 1.2rem; margin-bottom: 0.6rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.3rem; }
-:deep(.dkp-h2) { font-size: 1.3rem; font-weight: 800; color: #ffffff; margin-top: 1rem; margin-bottom: 0.5rem; }
-:deep(.dkp-h3) { font-size: 1.05rem; font-weight: 700; color: #00dc82; margin-top: 0.8rem; margin-bottom: 0.4rem; }
-:deep(.dkp-quote) { border-left: 3px solid #00dc82; padding-left: 0.8rem; color: #94a3b8; font-style: italic; margin: 0.8rem 0; background: rgba(0, 220, 130, 0.05); padding-top: 0.2rem; padding-bottom: 0.2rem; }
-:deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px; }
-:deep(.dkp-link:hover) { color: #00dc82; }
-:deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.5rem 0; }
-:deep(.dkp-preview-content ul),
-:deep(.dkp-preview-content ol) {
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-  color: #cbd5e1;
-}
-:deep(.dkp-preview-content ul) { list-style-type: none; }
-:deep(.dkp-preview-content ol) { list-style-type: decimal; }
-:deep(.dkp-li-main) { margin-bottom: 0.45rem; position: relative; line-height: 1.65; }
-:deep(ul > .dkp-li-main::before) {
-  content: "○";
-  color: #38bdf8;
-  position: absolute;
-  left: -1.2rem;
-  top: 0;
-  font-weight: bold;
-}
-:deep(.dkp-li-nested) { margin-left: 1.5rem; margin-bottom: 0.3rem; color: #94a3b8; position: relative; }
-:deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) {
-  content: "▪";
-  color: #00dc82;
-  position: absolute;
-  left: -1.2rem;
-  top: 0;
-}
-</style>

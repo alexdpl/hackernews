@@ -34,6 +34,7 @@ const { data: allNodesRes } = useFetch<any>('/api/nodes', {
 
 const nodeTree = computed(() => buildCategoryNodeTree(allNodesRes.value?.data || []))
 const editingThreadModal = ref<any>(null)
+const isCreatingThreadModal = ref(false)
 
 function openEditThread(thread: any) {
   editingThreadModal.value = {
@@ -63,7 +64,12 @@ const activeTab = computed({
 const contentTab = computed<'blog' | 'pulse' | 'nodes' | 'comments'>({
   get: () => {
     const sub = String(route.query.subtab || '').toLowerCase()
-    if (sub === 'pulse' || sub === 'nodes' || sub === 'comments') return sub
+    if (sub === 'pulse' || sub === 'nodes' || sub === 'comments') {
+      if (sub === 'nodes' && route.query.new === '1') {
+        isCreatingThreadModal.value = true
+      }
+      return sub
+    }
     return 'blog'
   },
   set: (val) => {
@@ -351,8 +357,54 @@ const profileForm = ref({
   github: 'https://github.com/alexdpl',
   twitter: 'https://x.com/alexdpl76',
   linkedin: 'https://linkedin.com/in/alexdpl',
-  reddit: 'https://reddit.com/user/alexdpl'
+  reddit: 'https://reddit.com/user/alexdpl',
+  discord: '',
+  telegram: '',
+  youtube: '',
+  repository: '',
+  website: '',
+  customSocials: [] as Array<{ platform: string; label: string; url: string }>
 })
+
+const availableSocialOptions = [
+  { id: 'google', label: 'Google', placeholder: 'https://g.dev/tuo-profilo', iconSlug: 'google', color: '#4285F4' },
+  { id: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@tuocanale', iconSlug: 'youtube', color: '#FF0000' },
+  { id: 'discord', label: 'Discord', placeholder: 'https://discord.gg/tuoinvito', iconSlug: 'discord', color: '#5865F2' },
+  { id: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/tuoprofilo', iconSlug: 'facebook', color: '#1877F2' },
+  { id: 'gitlab', label: 'GitLab', placeholder: 'https://gitlab.com/tuoprofilo', iconSlug: 'gitlab', color: '#FC6D26' },
+  { id: 'twitch', label: 'Twitch', placeholder: 'https://twitch.tv/tuocanale', iconSlug: 'twitch', color: '#9146FF' },
+  { id: 'telegram', label: 'Telegram', placeholder: 'https://t.me/tuoprofilo', iconSlug: 'telegram', color: '#26A5E4' },
+  { id: 'mastodon', label: 'Mastodon', placeholder: 'https://mastodon.social/@utente', iconSlug: 'mastodon', color: '#6364FF' },
+  { id: 'threads', label: 'Threads', placeholder: 'https://threads.net/@utente', iconSlug: 'threads', color: '#FFFFFF' },
+  { id: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/utente', iconSlug: 'instagram', color: '#E4405F' },
+  { id: 'website', label: 'Sito Web / Portfolio', placeholder: 'https://tuosito.dev', iconSlug: 'googlechrome', color: '#00DC82' },
+  { id: 'repository', label: 'Repository / Docs', placeholder: 'https://github.com/org/repo', iconSlug: 'git', color: '#38BDF8' }
+]
+
+const newSocialPlatform = ref('youtube')
+const newSocialLabel = ref('')
+const newSocialUrl = ref('')
+
+function addCustomSocialLink() {
+  const cleanUrl = newSocialUrl.value.trim()
+  if (!cleanUrl) {
+    return triggerToast('Inserisci un URL valido per il social da aggiungere.')
+  }
+  const opt = availableSocialOptions.find((o) => o.id === newSocialPlatform.value) || availableSocialOptions[0]
+  const finalLabel = newSocialLabel.value.trim() || opt.label
+  profileForm.value.customSocials.push({
+    platform: opt.id,
+    label: finalLabel,
+    url: cleanUrl
+  })
+  newSocialLabel.value = ''
+  newSocialUrl.value = ''
+  triggerToast(`Link ${finalLabel} aggiunto! Clicca "Salva Modifiche nel Kernel" per renderlo pubblico.`)
+}
+
+function removeCustomSocialLink(index: number) {
+  profileForm.value.customSocials.splice(index, 1)
+}
 
 async function fetchUserProfile() {
   try {
@@ -372,7 +424,19 @@ async function fetchUserProfile() {
       if (u.github) profileForm.value.github = u.github
       if (u.twitter) profileForm.value.twitter = u.twitter
       if (u.linkedin) profileForm.value.linkedin = u.linkedin
-      if (u.reddit) profileForm.value.reddit = u.reddit
+            if (u.reddit) profileForm.value.reddit = u.reddit
+      if (u.discord || u.discordUrl) profileForm.value.discord = u.discord || u.discordUrl
+      if (u.telegram || u.telegramUrl) profileForm.value.telegram = u.telegram || u.telegramUrl
+      if (u.youtube || u.youtubeUrl) profileForm.value.youtube = u.youtube || u.youtubeUrl
+      if (u.repository || u.repositoryUrl) profileForm.value.repository = u.repository || u.repositoryUrl
+      if (u.website || u.websiteUrl) profileForm.value.website = u.website || u.websiteUrl
+      if (Array.isArray(u.customSocials)) {
+        profileForm.value.customSocials = u.customSocials.map((s: any) => ({
+          platform: String(s.platform || 'website'),
+          label: String(s.label || s.platform || 'Link'),
+          url: String(s.url || '')
+        }))
+      }
     }
 
     const statsRes: any = await $fetch('/api/user/xp/history').catch(() => null)
@@ -820,6 +884,85 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
             </div>
           </div>
 
+                    <!-- Social & Link Aggiuntivi Dinamici (YouTube, Discord, Facebook, Google, ecc.) -->
+          <div class="pt-4 border-t border-[#334155] flex flex-col gap-4 font-mono">
+            <div>
+              <h3 class="text-sm font-bold text-white m-0">
+                🌐 Social &amp; Link Extra Pubblici (YouTube, Discord, Facebook, Google, ecc.)
+              </h3>
+              <p class="text-[#64748b] text-xs mt-1 mb-0 font-sans">
+                Scegli la piattaforma disponibile e aggiungi tutti i tuoi link personalizzati: compariranno con la loro icona CDN nel tuo profilo pubblico.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#0f172a] border border-[#334155] rounded-xl p-3.5">
+              <div class="sm:col-span-3">
+                <label class="block text-[10px] font-bold text-[#64748b] uppercase mb-1">Piattaforma</label>
+                <select
+                  v-model="newSocialPlatform"
+                  class="w-full bg-[#1e293b] border border-[#334155] text-white px-3 py-2.5 rounded-xl text-xs outline-none focus:border-[#22d3ee]"
+                >
+                  <option v-for="opt in availableSocialOptions" :key="opt.id" :value="opt.id">
+                    {{ opt.label }}
+                  </option>
+                </select>
+              </div>
+              <div class="sm:col-span-3">
+                <label class="block text-[10px] font-bold text-[#64748b] uppercase mb-1">Etichetta (opzionale)</label>
+                <input
+                  v-model="newSocialLabel"
+                  type="text"
+                  placeholder="Es. Canale YouTube"
+                  class="w-full bg-[#1e293b] border border-[#334155] text-white px-3 py-2.5 rounded-xl text-xs outline-none focus:border-[#22d3ee] box-border"
+                />
+              </div>
+              <div class="sm:col-span-4">
+                <label class="block text-[10px] font-bold text-[#64748b] uppercase mb-1">URL Profilo / Canale</label>
+                <input
+                  v-model="newSocialUrl"
+                  type="url"
+                  placeholder="https://..."
+                  class="w-full bg-[#1e293b] border border-[#334155] text-white px-3 py-2.5 rounded-xl text-xs outline-none focus:border-[#22d3ee] box-border"
+                />
+              </div>
+              <div class="sm:col-span-2 flex items-end">
+                <button
+                  type="button"
+                  @click="addCustomSocialLink"
+                  class="w-full py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold cursor-pointer border-none transition-colors"
+                >
+                  + Aggiungi
+                </button>
+              </div>
+            </div>
+
+            <div v-if="profileForm.customSocials.length > 0" class="flex flex-col gap-2">
+              <div
+                v-for="(item, idx) in profileForm.customSocials"
+                :key="idx"
+                class="flex flex-wrap items-center justify-between gap-2 bg-[#0f172a] border border-[#334155] rounded-xl px-3.5 py-2.5 text-xs"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <img
+                    :src="`https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${(availableSocialOptions.find(o => o.id === item.platform)?.iconSlug || 'google')}.svg`"
+                    :alt="item.label"
+                    class="w-4 h-4 shrink-0 invert opacity-90"
+                    @error="($event.target as HTMLImageElement).style.display = 'none'"
+                  />
+                  <span class="text-[#22d3ee] font-bold">{{ item.label }}</span>
+                  <span class="text-slate-400 truncate">{{ item.url }}</span>
+                </div>
+                <button
+                  type="button"
+                  @click="removeCustomSocialLink(idx)"
+                  class="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[11px] font-bold cursor-pointer"
+                >
+                  Rimuovi
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="flex items-center gap-4 mt-2">
             <button type="submit" class="bg-[#22d3ee] text-[#0f172a] font-bold px-6 py-3 rounded-xl hover:brightness-110 transition-all text-xs sm:text-sm cursor-pointer font-mono">
               Salva Modifiche nel Kernel
@@ -950,6 +1093,14 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                   class="bg-[#0f172a] hover:bg-cyan-500/15 text-[#22d3ee] border border-[#334155] px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                 >
                   🔄 Aggiorna
+                </button>
+
+                <button
+                  type="button"
+                  @click="isCreatingThreadModal = true"
+                  class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-3.5 py-2.5 rounded-xl text-xs cursor-pointer transition-colors border-none"
+                >
+                  ➕ Pubblica Thread
                 </button>
               </div>
             </div>
@@ -1156,7 +1307,7 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
                   <td class="p-3.5 font-bold text-white font-display">{{ k.name || 'DKP Key' }}</td>
                   <td class="p-3.5">
                     <code class="text-cyan-400 bg-[#1e293b] px-2.5 py-1 rounded border border-[#334155]">
-                      {{ k.keyPrefix || k.prefix || 'dkp_live_••••••••' }}
+                      {{ k.keyPrefix || k.prefix || 'dkp_live_' }}
                     </code>
                   </td>
                   <td class="p-3.5">
@@ -1270,13 +1421,14 @@ onUnmounted(() => window.removeEventListener('dkp:xp_updated', fetchUserProfile)
 
     <!-- MODALE UNIFICATA DKP NODES RICH EDITOR -->
     <DKPnodesRichEditor
-      :is-open="Boolean(editingThreadModal)"
+      :is-open="Boolean(editingThreadModal) || isCreatingThreadModal"
       :categories="nodeTree.categories"
       :grouped-nodes="nodeTree.groupedNodes"
       :edit-post="editingThreadModal"
       :is-admin="isAdmin"
-      @close="editingThreadModal = null"
-      @updated="async () => { editingThreadModal = null; await fetchMyNodesThreads(); triggerToast('✅ Thread aggiornato con successo!') }"
+      @close="() => { editingThreadModal = null; isCreatingThreadModal = false }"
+      @published="async () => { isCreatingThreadModal = false; await fetchMyNodesThreads(); triggerToast('✅ Thread pubblicato e notarizzato con successo!') }"
+      @updated="async () => { editingThreadModal = null; isCreatingThreadModal = false; await fetchMyNodesThreads(); triggerToast('✅ Thread aggiornato con successo!') }"
     />
 
   </div>

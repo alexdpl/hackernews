@@ -1,252 +1,42 @@
 <!-- app/pages/[feed]/index.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue' 
+
+definePageMeta({
+  name: 'dkp-dynamic-feed-hub'
+})
 
 const route = useRoute()
-const currentFeed = computed(() => (route.params.feed as string) || 'feed')
+const rawFeed = computed(() => String(route.params.feed || 'top').toLowerCase())
 
-// Mappatura del tipo di feed per la query backend
-const queryType = computed(() => {
-  const f = currentFeed.value.toLowerCase()
-  return f === 'feed' ? 'news' : f
+const resolvedType = computed<'top' | 'newest' | 'ask' | 'show' | 'jobs'>(() => {
+  if (rawFeed.value === 'newest' || rawFeed.value === 'new') return 'newest'
+  if (rawFeed.value === 'ask' || rawFeed.value === 'askhn') return 'ask'
+  if (rawFeed.value === 'show' || rawFeed.value === 'showhn') return 'show'
+  if (rawFeed.value === 'jobs' || rawFeed.value === 'job') return 'jobs'
+  return 'top'
 })
 
-// Fetch dal feed crawler del DB Neon (15 notizie per pagina)
-const { data: responseData, pending } = await useFetch('/api/pulse/stories', {
-  query: { type: queryType, page: 1, limit: 15 },
-  watch: [queryType]
-})
-
-// Helper per l'estrazione sicura del dominio
-function getDomain(urlStr?: string, domainFallback?: string): string {
-  if (domainFallback) return domainFallback
-  if (!urlStr || urlStr.startsWith('/')) return 'devkernelpulse.org'
-  try {
-    return new URL(urlStr).hostname.replace('www.', '')
-  } catch {
-    return 'devkernelpulse.org'
-  }
+const titlesMap: Record<string, string> = {
+  top: 'Latest Tech Feed',
+  newest: 'Newest Submissions',
+  ask: 'Ask DKP / Ask HN',
+  show: 'Show DKP / Show HN',
+  jobs: 'Tech & Engineering Jobs'
 }
 
-// Logica di condivisione rapida
-const copySuccess = ref<string | null>(null)
-function shareStory(title: string, url?: string, id?: any) {
-  const targetUrl = url && url.startsWith('http') ? url : (typeof window !== 'undefined' ? `${window.location.origin}/news/${id}` : '')
-  if (navigator.clipboard && targetUrl) {
-    navigator.clipboard.writeText(targetUrl)
-    copySuccess.value = String(id)
-    setTimeout(() => { copySuccess.value = null }, 2000)
-  }
-}
+const currentTitle = computed(() => titlesMap[resolvedType.value] || 'Latest Tech Feed')
 
-// Normalizzazione con Safeguards e Sentinel Score
-const feedList = computed(() => {
-  const raw = responseData.value?.stories || responseData.value?.data || (Array.isArray(responseData.value) ? responseData.value : [])
-  return raw.map((item: any) => {
-    const safeSlug = item.slug || item.hn_id || item.id || `news-${Math.random().toString(36).substring(2, 7)}`
-    const points = item.points || item.hn_points || 1
-    const computedScore = item.tech_score || Math.min(95, Math.max(40, points * 2 + 50))
-
-    return {
-      ...item,
-      slug: safeSlug,
-      author: typeof item.author === 'object' ? item.author?.username || 'community' : (item.author || item.hn_by || 'community'),
-      url: item.url || item.original_url || `/news/${safeSlug}`,
-      domain: getDomain(item.url || item.original_url, item.domain),
-      points,
-      tech_score: computedScore,
-      comments_count: item.comments_count || item.commentsCount || 0,
-      xp_awarded: item.xp_awarded || 15
-    }
-  })
-})
-
-const pagination = computed(() => responseData.value?.pagination || {})
-const hasMore = computed(() => (pagination.value?.currentPage < pagination.value?.totalPages) || (pagination.value?.totalItems > 15) || responseData.value?.pagination?.hasMore || feedList.value.length >= 15)
-
-// 4 Articoli consigliati dal Vault
-const featuredArticles = ref<any[]>([])
-
-onMounted(async () => {
-  try {
-    const res: any = await $fetch('/api/blog/posts').catch(() => null)
-    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-    if (raw && raw.length > 0) {
-      featuredArticles.value = raw.slice(0, 4)
-    } else {
-      populateFallbackArticles()
-    }
-  } catch (err) {
-    console.error('Errore recupero articoli Vault:', err)
-    populateFallbackArticles()
-  }
-})
-
-function populateFallbackArticles() {
-  featuredArticles.value = [
-    { id: 1, title: 'Guida all\'Architettura Nuxt 4 & Rolldown', category: 'Cloud Native & DevOps', categoryName: 'DevOps', slug: 'nuxt-4-rolldown' },
-    { id: 2, title: 'Integrazione Ollama e LLM Locali in Vue 3', category: 'AI & Machine Learning', categoryName: 'AI / LLM', slug: 'ollama-vue3' },
-    { id: 3, title: 'Notarizzazione Codice & Hashing SHA-256', category: 'Cybersecurity & Vault', categoryName: 'Security', slug: 'vault-sha256' },
-    { id: 4, title: 'Telemetria SSE Live & Worker Nitro v2.6', category: 'Backend Architecture', categoryName: 'Backend', slug: 'sse-nitro-v26' }
-  ]
-}
-
-useHead({
-  title: `DKP Crawler Feed (${currentFeed.value.toUpperCase()}) — DevKernelPulse v2.6-PURE-SQL`,
-  meta: [
-    { name: 'description', content: 'Ultime notizie e articoli dal web raccolti in tempo reale in ordine cronologico da Sentinel AI Crawler.' }
-  ]
+useDkpSeo({
+  title: `${currentTitle.value} - DevKernelPulse Kernel v2.6-PURE-SQL`,
+  description: `${currentTitle.value} su DevKernelPulse: feed tech in tempo reale, discussioni e analisi Sentinel AI.`,
+  type: 'website'
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-12">
-    <div class="max-w-5xl mx-auto flex flex-col gap-8">
-      
-      <!-- HEADER FEED -->
-      <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl relative overflow-hidden">
-        <div class="flex flex-col gap-2 max-w-2xl relative z-10">
-          <div class="inline-flex items-center gap-2 bg-[#020420] border border-emerald-500/30 px-3 py-1 rounded-full w-fit">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-              ⚡ DKP CRAWLER STREAM • v2.6-PURE-SQL
-            </span>
-          </div>
-          <h1 class="text-3xl font-extrabold text-white tracking-tight font-sans">
-            🌍 Tech Stream <span class="text-emerald-400 capitalize">{{ currentFeed }}</span>
-          </h1>
-          <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
-            Flusso continuo di risorse e notizie tecnologiche indicizzate ed elaborate in tempo reale dal Sentinel Crawler Engine.
-          </p>
-        </div>
-
-        <NuxtLink to="/submit" class="px-5 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/40 font-bold text-xs rounded-xl hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0 flex items-center gap-1.5 relative z-10 font-mono">
-          <span>⚡</span> Invia Post (+15 XP)
-        </NuxtLink>
-      </div>
-
-      <!-- FEED DELLE NOTIZIE -->
-      <div v-if="pending" class="text-center py-16 bg-[#090d16] border border-slate-800 rounded-2xl text-emerald-400 font-mono text-xs animate-pulse">
-        ⚡ Ingestione flussi dal DB Neon in corso...
-      </div>
-
-      <div v-else-if="feedList.length > 0" class="flex flex-col gap-4">
-        <div class="flex flex-col gap-3">
-          <article 
-            v-for="(item, index) in feedList" 
-            :key="item.id || item.slug || index" 
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 sm:p-5 flex flex-col gap-3 transition-all shadow-md group"
-          >
-            <!-- Riga Titolo e Fonte -->
-            <div class="flex items-baseline gap-2 flex-wrap">
-              <span class="text-xs font-mono font-bold text-emerald-400 shrink-0">{{ index + 1 }}.</span>
-              
-              <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-base font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
-                {{ item.title }}
-              </a>
-
-              <span v-if="item.domain" class="text-xs font-mono text-slate-500">
-                ({{ item.domain }})
-              </span>
-            </div>
-
-            <!-- Badges e Metadati Metrici -->
-            <div class="flex items-center gap-3 font-mono text-[11px] text-slate-400 flex-wrap">
-              <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold">
-                🛡️ Score: {{ item.tech_score }}
-              </span>
-              <span>•</span>
-              <span class="text-purple-400">👤 @{{ item.author }}</span>
-              <span>•</span>
-              <span class="text-amber-400 font-bold">▲ {{ item.points }} pts</span>
-              <span>•</span>
-              <span class="text-emerald-400 font-bold">⭐ +{{ item.xp_awarded }} XP</span>
-              <span>•</span>
-              
-              <!-- SCHEDA NOTIZIA TRINITY AI -->
-              <NuxtLink :to="`/news/${item.slug || item.id}`" class="text-emerald-400 hover:underline font-bold transition-colors">
-                Leggi scheda ↗
-              </NuxtLink>
-              <span>•</span>
-
-              <!-- COMMENTI ITEM -->
-              <NuxtLink :to="`/item/${item.id || item.slug}`" class="text-sky-400 hover:text-emerald-400 hover:underline font-bold transition-colors">
-                💬 {{ item.comments_count }} commenti
-              </NuxtLink>
-
-              <span>•</span>
-              
-              <!-- PULSANTE CONDIVISIONE RAPIDA -->
-              <button 
-                @click="shareStory(item.title, item.url, item.id || item.slug)" 
-                class="text-slate-400 hover:text-emerald-400 font-bold transition-colors cursor-pointer"
-              >
-                🔗 {{ copySuccess === String(item.id || item.slug) ? 'Copiato!' : 'Condividi' }}
-              </button>
-            </div>
-          </article>
-        </div>
-        
-        <!-- BOTTONE PAGINAZIONE -->
-        <div v-if="hasMore" class="mt-4 flex justify-center">
-          <NuxtLink :to="`/${currentFeed}/2`" class="px-6 py-2.5 bg-[#090d16] border border-slate-800 text-emerald-400 font-mono font-bold text-xs rounded-xl hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all">
-            Vedi altre notizie ➔
-          </NuxtLink>
-        </div>
-      </div>
-
-      <!-- EMPTY STATE FALLBACK -->
-      <div v-else class="text-center py-12 bg-[#090d16] border border-slate-800 rounded-2xl text-slate-400 font-mono text-xs">
-        📭 Nessuna notizia presente in questo stream al momento.
-      </div>
-      <div class="mt-2 mb-6">
-       <DkpAdsWidget placement="global" />
-      </div>
-      <!-- SEZIONE VAULT (4 SCHEDE GRID) -->
-      <div v-if="featuredArticles.length > 0" class="pt-8 border-t border-slate-800 flex flex-col gap-4">
-        <div class="flex justify-between items-center">
-          <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono">
-            <span>🔗</span> Approfondimenti dal Vault
-          </h3>
-          <NuxtLink to="/blog" class="text-xs font-mono font-bold text-emerald-400 hover:underline">
-            Vedi tutti gli articoli ➔
-          </NuxtLink>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <NuxtLink 
-            v-for="art in featuredArticles" 
-            :key="art.id" 
-            :to="`/blog/${art.slug || art.id}`"
-            class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px]"
-          >
-            <div>
-              <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
-                {{ art.categoryName || art.category || 'Tech' }}
-              </span>
-              <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans">
-                {{ art.title }}
-              </h4>
-            </div>
-            <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-4">
-              Leggi articolo ➔
-            </span>
-          </NuxtLink>
-        </div>
-<!-- FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
-            <div class="pt-6 border-t border-slate-800 relative z-10">
-              <DKPRelatedThreads />
-            </div>
-        <DkpNodesHomeWidget />
-      </div>
-
-      <!-- BANNER DKP ADS STRIP -->
-      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-    </div>
-  </div>
+  <DkpLayout :title="currentTitle" :subtitle="`Feed Dinamico DKP v2.6 | ${resolvedType.value.toUpperCase()}`" :show-sidebar-ads="true">
+    <DkpHomeWidget :feed-type="resolvedType" />
+  </DkpLayout>
 </template>

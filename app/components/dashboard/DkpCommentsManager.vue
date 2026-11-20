@@ -26,6 +26,9 @@ interface UnifiedCommentItem {
   status: string
   isModerated: boolean
   isEdited: boolean
+  sentinelVerdict?: string
+  sentinelScore?: number
+  sentinelNote?: string
   createdAt: string
   updatedAt: string | null
   date: string

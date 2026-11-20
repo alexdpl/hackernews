@@ -1,9 +1,8 @@
-<!-- pages/status.vue -->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
 useHead({
-  title: 'API Status & Latency — DevKernelPulse v2.6-PURE-SQL',
+  title: 'API Status & Latency ÔÇö DevKernelPulse v2.6-PURE-SQL',
   meta: [
     { name: 'description', content: 'Monitoraggio in tempo reale dello stato dei microservizi, latenza GCP europe-west4 e uptime dell\'infrastruttura DevKernelPulse v2.6-PURE-SQL.' }
   ]
@@ -47,10 +46,22 @@ onMounted(() => {
 onUnmounted(() => {
   if (heartbeat) clearInterval(heartbeat)
 })
+
+useDkpSeo({
+  title: 'Stato del Sistema - DevKernelPulse',
+  description: 'Verifica lo stato operativo dei servizi DevKernelPulse: frontend Nuxt, endpoint Nitro, database Pure SQL e Sentinel AI.',
+  type: 'website',
+  canonicalPath: '/status'
+})
 </script>
 
 <template>
-  <div class="relative min-h-screen bg-[#020412] text-slate-300 font-sans p-6 sm:p-10 overflow-hidden">
+  <DkpLayout
+    title="Stato del Sistema"
+    subtitle="Diagnostica servizi, database Pure SQL e moduli attivi"
+    :show-sidebar-ads="true"
+  >
+<div class="relative min-h-screen bg-[#020412] text-slate-300 font-sans p-6 sm:p-10 overflow-hidden">
     <!-- Griglia Tech in Background -->
     <div class="absolute inset-0 pointer-events-none opacity-40" style="background-image: linear-gradient(rgba(30, 41, 59, 0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(30, 41, 59, 0.4) 1px, transparent 1px); background-size: 40px 40px;"></div>
 
@@ -63,7 +74,7 @@ onUnmounted(() => {
           System Health / Realtime Metrics
         </div>
         <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight flex items-center gap-3 font-sans">
-          <span class="drop-shadow-[0_0_15px_rgba(0,220,130,0.6)]">🟢</span> API Status &amp; Latency
+          <span class="drop-shadow-[0_0_15px_rgba(0,220,130,0.6)]"></span> API Status &amp; Latency
         </h1>
         <p class="text-slate-400 text-lg font-sans">Monitoraggio live infrastruttura GCP, Neon DB e stato Gamification.</p>
 
@@ -102,13 +113,13 @@ onUnmounted(() => {
         <!-- Pulse Sentinel AI -->
         <div class="bg-[#090d16]/80 backdrop-blur-md border border-slate-800 p-6 rounded-xl shadow-xl hover:-translate-y-1 hover:border-purple-500/40 transition-all duration-300 flex flex-col">
           <span class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2 font-mono">Sentinel WAF</span>
-          <span class="text-3xl font-black text-purple-400 mt-1 drop-shadow-[0_0_12px_rgba(168,85,247,0.3)] font-mono">🛡️ ACTIVE</span>
+          <span class="text-3xl font-black text-purple-400 mt-1 drop-shadow-[0_0_12px_rgba(168,85,247,0.3)] font-mono">ACTIVE</span>
           <span class="text-sm text-slate-500 font-medium mt-auto font-sans">Cloud Armor Sync On</span>
         </div>
 
         <!-- Gamification Sync -->
         <div class="bg-gradient-to-br from-[#090d16] to-[#020412] border border-amber-500/30 p-6 rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.05)] hover:-translate-y-1 hover:border-amber-500/60 transition-all duration-300 flex flex-col relative overflow-hidden">
-          <div class="absolute top-0 right-0 p-3 opacity-20 text-5xl">🎮</div>
+          <div class="absolute top-0 right-0 p-3 opacity-20 text-5xl"></div>
           <span class="text-xs text-amber-500 font-bold uppercase tracking-widest mb-2 relative z-10 font-mono">Gamification Sync DB</span>
           
           <div v-if="isLoadingXp" class="animate-pulse flex flex-col gap-2 mt-2 relative z-10">
@@ -142,7 +153,7 @@ onUnmounted(() => {
             
             <!-- Metriche Servizio -->
             <div class="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end text-xs">
-              <span class="text-sky-400 font-bold w-16 text-right">⚡ {{ s.latency }}</span>
+              <span class="text-sky-400 font-bold w-16 text-right">ÔÜí {{ s.latency }}</span>
               <span class="text-slate-400">{{ s.uptime }} Uptime</span>
               <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wider">Operativo</span>
             </div>
@@ -152,4 +163,5 @@ onUnmounted(() => {
 
     </div>
   </div>
+  </DkpLayout>
 </template>

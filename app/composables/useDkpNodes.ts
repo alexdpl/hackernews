@@ -1,3 +1,4 @@
+import { highlightCodeDynamic } from '~/composables/useDynamicPrism'
 // app/composables/useDkpNodes.ts
 export function cleanNodeLabel(raw: string): string {
   return String(raw || '').replace(/^(n\/)+/i, '').trim()

@@ -1,19 +1,21 @@
 <!-- app/pages/tools/terminal.vue -->
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue' 
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue' 
+
+useDkpSeo({
+  title: 'Terminal Web Shell v2.6 - DevKernelPulse',
+  description: 'Console diagnostica e web shell interattiva per ispezionare comandi, payload e flussi del Kernel v2.6.',
+  type: 'website',
+  canonicalPath: '/tools/terminal'
+})
+
 
 const auth = useAuthCore() || {}
 const currentUser = auth.currentUser || ref({ id: 1, username: 'alexdpl' })
 
 const currentUserId = computed(() => currentUser.value?.id || 1)
 const usernameDisplay = computed(() => currentUser.value?.username || 'guest')
-
-useDkpSeo({
-  title: 'Terminal Web Shell v2.6-PURE-SQL — DKP Tools',
-  description: 'Shell CLI interattiva in-browser e simulazione SDK DKP v2.6-PURE-SQL per diagnostica e comandi rapidi.'
-})
 
 const commandInput = ref('')
 const terminalContainer = ref<HTMLElement | null>(null)
@@ -92,7 +94,7 @@ async function executeCommand() {
   commandInput.value = ''
   isLoading.value = true
 
-  history.value.push({ cmd: currentCmd, res: '🔄 Esecuzione in corso...' })
+  history.value.push({ cmd: currentCmd, res: 'Esecuzione in corso...' })
   const lastIndex = history.value.length - 1
   scrollToBottom()
 
@@ -115,125 +117,16 @@ async function executeCommand() {
     scrollToBottom()
   }
 }
-</script>
-
-<template>
-  <div class="max-w-5xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">
-    
-    <!-- HEADER SEZIONE -->
-    <div class="mb-8 text-center sm:text-left relative">
-      <div class="absolute top-0 left-0 w-full h-32 bg-indigo-500/10 blur-[100px] pointer-events-none rounded-full"></div>
-
-      <div class="flex flex-col sm:flex-row sm:justify-between items-center mb-4 gap-4 relative z-10">
-        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-mono font-black tracking-widest uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)]">
-          💻 DKP WEB SHELL v2.6-PURE-SQL
-        </span>
-        <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors no-underline">
-          ← Torna al Toolkit
-        </NuxtLink>
-      </div>
-
-      <h1 class="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">
-        Terminal <span class="text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">Web Shell</span>
-      </h1>
-      
-      <p class="text-slate-400 text-base sm:text-lg max-w-3xl mx-auto sm:mx-0 leading-relaxed relative z-10">
-        Shell CLI interattiva per l'esecuzione rapida di comandi, esplorazione SDK Pure SQL e accumulo punti XP via console.
-      </p>
-    </div>
-
-    <!-- QUICK COMMANDS BAR -->
-    <div class="flex items-center gap-2 flex-wrap mb-4">
-      <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Comandi rapidi:</span>
-      <button
-        v-for="qCmd in quickCommands"
-        :key="qCmd"
-        type="button"
-        @click="runQuickCommand(qCmd)"
-        :disabled="isLoading"
-        class="text-xs font-mono px-3 py-1.5 rounded-lg bg-[#090d16] border border-slate-800 text-indigo-300 hover:border-indigo-500/50 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
-      >
-        {{ qCmd }}
-      </button>
-    </div>
-
-    <!-- TERMINAL EMULATOR -->
-    <div class="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl shadow-indigo-500/10 relative">
-      
-      <!-- Top Bar -->
-      <div class="bg-[#090d16] border-b border-slate-800 p-3.5 px-5 flex items-center justify-between">
-        <div class="flex gap-2">
-          <div class="w-3.5 h-3.5 rounded-full bg-red-500/85"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-yellow-500/85"></div>
-          <div class="w-3.5 h-3.5 rounded-full bg-emerald-500/85"></div>
-        </div>
-        <span class="text-xs text-slate-500 font-mono tracking-wide">dkp-sh v2.6 — @{{ usernameDisplay }}</span>
-      </div>
-
-      <!-- Terminal Body -->
-      <div
-        ref="terminalContainer"
-        class="p-5 sm:p-6 min-h-[420px] max-h-[600px] overflow-y-auto font-mono text-[0.9rem] sm:text-[0.92rem] flex flex-col gap-4 custom-scrollbar cursor-text"
-        @click="focusInput"
-      >
-        
-        <!-- Storico Comandi -->
-        <div v-for="(item, idx) in history" :key="idx" class="flex flex-col gap-1.5">
-          <!-- Prompt Line -->
-          <div class="flex gap-2 text-white">
-            <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>
-            <span class="text-sky-300 break-all">{{ item.cmd }}</span>
-          </div>
-          <!-- Response Line -->
-          <div
-            class="pl-4 leading-relaxed whitespace-pre-wrap break-words"
-            :class="item.isErr ? 'text-red-400 font-bold' : 'text-slate-400'"
-          >
-            {{ item.res }}
-          </div>
-        </div>
-
-        <!-- Current Input Line -->
-        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-900/60">
-          <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>
-          <input
-            ref="cmdInputRef"
-            v-model="commandInput"
-            @keyup.enter="executeCommand"
-            @keydown.up.prevent="navigateHistory('up')"
-            @keydown.down.prevent="navigateHistory('down')"
-            :disabled="isLoading"
-            type="text"
-            placeholder="Scrivi 'help', 'dkp info' o prova l'easter egg..."
-            class="flex-1 bg-transparent border-none text-sky-300 outline-none w-full font-mono placeholder:text-slate-700 text-[0.9rem] sm:text-[0.92rem]"
-            autofocus
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="mt-2 mb-6">
-       <DkpAdsWidget placement="global" />
-      </div>
-	  <div class="mt-2 mb-6">
-      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-      </div>
-</template>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+</script>  <template>  <DkpToolsSectionsNav />
+<div class="max-w-5xl mx-auto my-10 px-4 sm:px-6 font-sans text-slate-100 min-h-[85vh]">  <!-- HEADER SEZIONE -->  <div class="mb-8 text-center sm:text-left relative">  <div class="absolute top-0 left-0 w-full h-32 bg-indigo-500/10 blur-[100px] pointer-events-none rounded-full"></div>  <div class="flex flex-col sm:flex-row sm:justify-between items-center mb-4 gap-4 relative z-10">  <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-mono font-black tracking-widest uppercase shadow-[0_0_15px_rgba(99,102,241,0.15)]">  DKP WEB SHELL v2.6-PURE-SQL  </span>  <NuxtLink to="/tools" class="text-sky-400 text-sm font-bold hover:text-sky-300 hover:underline transition-colors no-underline">  ← Torna al Toolkit  </NuxtLink>  </div>  <h1 class="text-3xl sm:text-5xl font-black text-white mb-4 tracking-tight relative z-10">  Terminal <span class="text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">Web Shell</span>  </h1>  <p class="text-slate-400 text-base sm:text-lg max-w-3xl mx-auto sm:mx-0 leading-relaxed relative z-10">  Shell CLI interattiva per l'esecuzione rapida di comandi, esplorazione SDK Pure SQL e accumulo punti XP via console.  </p>  </div>  <!-- QUICK COMMANDS BAR -->  <div class="flex items-center gap-2 flex-wrap mb-4">  <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Comandi rapidi:</span>  <button  v-for="qCmd in quickCommands"  :key="qCmd"  type="button"  @click="runQuickCommand(qCmd)"  :disabled="isLoading"  class="text-xs font-mono px-3 py-1.5 rounded-lg bg-[#090d16] border border-slate-800 text-indigo-300 hover:border-indigo-500/50 hover:text-white transition-colors cursor-pointer disabled:opacity-40"  >  {{ qCmd }}  </button>  </div>  <!-- TERMINAL EMULATOR -->  <div class="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl shadow-indigo-500/10 relative">  <!-- Top Bar -->  <div class="bg-[#090d16] border-b border-slate-800 p-3.5 px-5 flex items-center justify-between">  <div class="flex gap-2">  <div class="w-3.5 h-3.5 rounded-full bg-red-500/85"></div>  <div class="w-3.5 h-3.5 rounded-full bg-yellow-500/85"></div>  <div class="w-3.5 h-3.5 rounded-full bg-emerald-500/85"></div>  </div>  <span class="text-xs text-slate-500 font-mono tracking-wide">dkp-sh v2.6  @{{ usernameDisplay }}</span>  </div>  <!-- Terminal Body -->  <div  ref="terminalContainer"  class="p-5 sm:p-6 min-h-[420px] max-h-[600px] overflow-y-auto font-mono text-[0.9rem] sm:text-[0.92rem] flex flex-col gap-4 custom-scrollbar cursor-text"  @click="focusInput"  >  <!-- Storico Comandi -->  <div v-for="(item, idx) in history" :key="idx" class="flex flex-col gap-1.5">  <!-- Prompt Line -->  <div class="flex gap-2 text-white">  <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>  <span class="text-sky-300 break-all">{{ item.cmd }}</span>  </div>  <!-- Response Line -->  <div  class="pl-4 leading-relaxed whitespace-pre-wrap break-words"  :class="item.isErr ? 'text-red-400 font-bold' : 'text-slate-400'"  >  {{ item.res }}  </div>  </div>  <!-- Current Input Line -->  <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-900/60">  <span class="text-emerald-400 font-bold whitespace-nowrap">dkp@kernel:~$</span>  <input  ref="cmdInputRef"  v-model="commandInput"  @keyup.enter="executeCommand"  @keydown.up.prevent="navigateHistory('up')"  @keydown.down.prevent="navigateHistory('down')"  :disabled="isLoading"  type="text"  placeholder="Scrivi 'help', 'dkp info' o prova l'easter egg..."  class="flex-1 bg-transparent border-none text-sky-300 outline-none w-full font-mono placeholder:text-slate-700 text-[0.9rem] sm:text-[0.92rem]"  autofocus  autocomplete="off"  spellcheck="false"  />  </div>  </div>  </div>  </div>  <div class="mt-2 mb-6">  <DkpAdsWidget placement="global" />  </div>  <div class="mt-2 mb-6">    </div>
+</template>  <style scoped>
+.custom-scrollbar::-webkit-scrollbar {  width: 8px;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #020617;
+.custom-scrollbar::-webkit-scrollbar-track {  background: #020617;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 4px;
+.custom-scrollbar::-webkit-scrollbar-thumb {  background: #1e293b;  border-radius: 4px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {  background: #334155;
 }
 </style>
+

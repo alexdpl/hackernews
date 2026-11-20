@@ -1,10 +1,10 @@
 <!-- app/pages/bounties/index.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 useDkpSeo({
-  title: 'Bounty Board & $PULSE Economy Hub — DevKernelPulse v2.5-GOLD',
+  title: 'Bounty Board & $PULSE Economy Hub  DevKernelPulse v2.5-GOLD',
   description: 'Guadagna token $PULSE risolvendo issue open-source, notarizzando audit ed esplorando il Rewards Store ufficiale.'
 })
 
@@ -85,18 +85,18 @@ const claimingId = ref<string | null>(null)
 const claimBounty = async (id: string, reward: number, title: string) => {
   claimingId.value = id
   setTimeout(() => {
-    triggerToast(`🎯 Task Reclamato! Completa la issue "${title.slice(0, 25)}..." per ricevere ${reward} $PULSE.`)
+    triggerToast(` Task Reclamato! Completa la issue "${title.slice(0, 25)}..." per ricevere ${reward} $PULSE.`)
     claimingId.value = null
   }, 700)
 }
 
 // --- 3. LOGICA REWARDS STORE (Spending) ---
 const storeItems = [
-  { itemId: 'BADGE_PRO', name: 'Badge Pro VIP Dorato', description: 'Aggiunge un badge VIP luccicante permanente sul profilo.', cost: 50, icon: '✨', category: 'Badge' },
-  { itemId: 'COLOR_NEON', name: 'Colore Nome Emerald Neon', description: 'Illumina il tuo username di verde neon nella community.', cost: 30, icon: '🟢', category: 'Style' },
-  { itemId: 'BOOST_SHOWCASE', name: 'Boost Project Showcase (24h)', description: 'Metti in primo piano il tuo articolo o repository nella home.', cost: 100, icon: '🚀', category: 'Boost' },
-  { itemId: 'AI_SCAN_PASS', name: 'AI Security Pass (50 Scans)', description: 'Sblocca 50 scansioni di vulnerabilità avanzate col motore SAST.', cost: 150, icon: '🤖', category: 'Dev Tools' },
-  { itemId: 'SDK_LICENSE', name: 'Licenza DKP SDK Enterprise', description: 'Accesso prioritario senza rate-limit alle API pubbliche.', cost: 300, icon: '🔑', category: 'Dev Tools' }
+  { itemId: 'BADGE_PRO', name: 'Badge Pro VIP Dorato', description: 'Aggiunge un badge VIP luccicante permanente sul profilo.', cost: 50, icon: '', category: 'Badge' },
+  { itemId: 'COLOR_NEON', name: 'Colore Nome Emerald Neon', description: 'Illumina il tuo username di verde neon nella community.', cost: 30, icon: '', category: 'Style' },
+  { itemId: 'BOOST_SHOWCASE', name: 'Boost Project Showcase (24h)', description: 'Metti in primo piano il tuo articolo o repository nella home.', cost: 100, icon: '', category: 'Boost' },
+  { itemId: 'AI_SCAN_PASS', name: 'AI Security Pass (50 Scans)', description: 'Sblocca 50 scansioni di vulnerabilità avanzate col motore SAST.', cost: 150, icon: '', category: 'Dev Tools' },
+  { itemId: 'SDK_LICENSE', name: 'Licenza DKP SDK Enterprise', description: 'Accesso prioritario senza rate-limit alle API pubbliche.', cost: 300, icon: '', category: 'Dev Tools' }
 ]
 
 const purchasing = ref(false)
@@ -105,7 +105,7 @@ const storeError = ref('')
 
 async function purchaseItem(item: any) {
   if (userPulseBalance.value < item.cost) {
-    return triggerToast(`❌ Saldo insufficiente! Ti mancano ${item.cost - userPulseBalance.value} $PULSE.`)
+    return triggerToast(`✕ Saldo insufficiente! Ti mancano ${item.cost - userPulseBalance.value} $PULSE.`)
   }
 
   purchasing.value = true
@@ -120,14 +120,14 @@ async function purchaseItem(item: any) {
 
     if (res && res.success) {
       userPulseBalance.value = res.newBalance
-      triggerToast(`🎉 Acquistato "${item.name}" con successo!`)
+      triggerToast(` Acquistato "${item.name}" con successo!`)
     } else {
       // Fallback simulazione client-side in assenza di backend endpoint
       userPulseBalance.value -= item.cost
-      triggerToast(`🎉 Acquistato "${item.name}"! Nuovo saldo: ${userPulseBalance.value} $PULSE`)
+      triggerToast(` Acquistato "${item.name}"! Nuovo saldo: ${userPulseBalance.value} $PULSE`)
     }
   } catch (err: any) {
-    triggerToast('❌ Errore durante la transazione.')
+    triggerToast('✕ Errore durante la transazione.')
   } finally {
     purchasing.value = false
   }
@@ -149,22 +149,22 @@ async function purchaseItem(item: any) {
       <!-- NAVIGATION TABS BAR -->
       <nav class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 bg-[#090d16] p-2 border border-slate-800 rounded-2xl shadow-xl">
         <NuxtLink to="/user/dashboard?tab=profile" class="py-2.5 px-3 rounded-xl font-extrabold text-xs text-slate-400 hover:text-white border border-transparent text-center truncate">
-          ⚙️ Profilo &amp; Social
+           Profilo &amp; Social
         </NuxtLink>
         <NuxtLink to="/user/dashboard?tab=content" class="py-2.5 px-3 rounded-xl font-extrabold text-xs text-slate-400 hover:text-white border border-transparent text-center truncate">
-          📰 I Miei Contenuti
+           I Miei Contenuti
         </NuxtLink>
         <NuxtLink to="/user/dashboard?tab=vault" class="py-2.5 px-3 rounded-xl font-extrabold text-xs text-slate-400 hover:text-white border border-transparent text-center truncate">
-          🛡️ Proof of Code Vault
+           Proof of Code Vault
         </NuxtLink>
         <NuxtLink to="/user/dashboard?tab=api" class="py-2.5 px-3 rounded-xl font-extrabold text-xs text-slate-400 hover:text-white border border-transparent text-center truncate">
-          🔑 DKP API Console
+           DKP API Console
         </NuxtLink>
         <NuxtLink to="/user/dashboard?tab=gamification" class="py-2.5 px-3 rounded-xl font-extrabold text-xs text-slate-400 hover:text-white border border-transparent text-center truncate">
-          🏆 Gamification &amp; XP
+           Gamification &amp; XP
         </NuxtLink>
         <div class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-amber-500/15 text-amber-400 border border-amber-500/40 text-center truncate shadow-sm">
-          🎯 Bounty &amp; $PULSE Wallet
+           Bounty &amp; $PULSE Wallet
         </div>
       </nav>
 
@@ -207,7 +207,7 @@ async function purchaseItem(item: any) {
           
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div class="flex items-center gap-2">
-              <span class="text-2xl">🛠️</span>
+              <span class="text-2xl"> </span>
               <h2 class="text-xl font-black text-white">Guadagna Token (Bounties)</h2>
             </div>
             
@@ -239,15 +239,15 @@ async function purchaseItem(item: any) {
 
           <!-- STATI DI CARICAMENTO / ERRORE -->
           <div v-if="pending" class="text-emerald-400 font-mono flex items-center justify-center p-12 bg-[#090d16] rounded-3xl border border-slate-800">
-            <span class="animate-spin mr-2">⚡</span> Sincronizzazione rete Bounties...
+            <span class="animate-spin mr-2"></span> Sincronizzazione rete Bounties...
           </div>
           
           <div v-else-if="bountyError" class="p-6 bg-red-950/40 text-red-300 rounded-3xl border border-red-800 text-center text-sm font-bold">
-            ❌ Errore durante il caricamento delle issue di rete.
+            ✕ Errore durante il caricamento delle issue di rete.
           </div>
 
           <div v-else-if="filteredBounties.length === 0" class="p-12 text-center text-slate-500 bg-[#090d16] rounded-3xl border border-slate-800 italic text-sm">
-            📭 Nessuna taglia trovata con i filtri selezionati.
+             Nessuna taglia trovata con i filtri selezionati.
           </div>
           
           <!-- LISTA CARDS BOUNTY -->
@@ -259,7 +259,7 @@ async function purchaseItem(item: any) {
             >
               <div class="flex flex-col gap-3">
                 <div class="flex justify-between items-start gap-2">
-                  <span class="text-[11px] font-mono text-slate-400 truncate">📦 {{ bounty.repo_name }}</span>
+                  <span class="text-[11px] font-mono text-slate-400 truncate"> {{ bounty.repo_name }}</span>
                   <span class="px-2.5 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-black font-mono shrink-0">
                     +{{ bounty.reward_pulse }} $PULSE
                   </span>
@@ -294,7 +294,7 @@ async function purchaseItem(item: any) {
                   :disabled="claimingId === bounty.github_issue_id" 
                   class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.2)]"
                 >
-                  {{ claimingId === bounty.github_issue_id ? 'In corso...' : 'Accetta 🎯' }}
+                  {{ claimingId === bounty.github_issue_id ? 'In corso...' : 'Accetta ' }}
                 </button>
               </div>
             </div>
@@ -305,7 +305,7 @@ async function purchaseItem(item: any) {
         <!-- COLONNA DESTRA: REWARDS STORE (SPENDING) -->
         <div class="xl:col-span-5 bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 h-fit">
           <div class="flex items-center gap-2">
-            <span class="text-2xl">🛍️</span>
+            <span class="text-2xl"></span>
             <h2 class="text-xl font-black text-white">Spendi Token (Store)</h2>
           </div>
 
@@ -324,7 +324,7 @@ async function purchaseItem(item: any) {
                 </div>
                 <p class="text-slate-400 text-xs mt-0.5 leading-relaxed">{{ item.description }}</p>
                 <div class="mt-2 text-emerald-400 font-mono font-black text-xs">
-                  ⚡ {{ item.cost }} $PULSE
+                   {{ item.cost }} $PULSE
                 </div>
               </div>
               <button 

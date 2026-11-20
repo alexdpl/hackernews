@@ -1,12 +1,6 @@
-<!-- app/pages/docs/api.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-
-useDkpSeo({
-  title: 'API Reference v2.6-PURE-SQL Interattiva — DKP Docs',
-  description: 'Documentazione tecnica interattiva ed OpenAPI delle API REST di DevKernelPulse v2.6-PURE-SQL. Integration OpenRouter, Neon Pure SQL metering, rate limit, validazione crittografica SHA-256 e code snippets.'
-})
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 const selectedLang = ref<'curl' | 'javascript' | 'python' | 'go'>('curl')
 const searchQuery = ref('')
@@ -140,7 +134,7 @@ const endpoints: Endpoint[] = [
     id: 'get-news-stream',
     method: 'GET',
     path: '/api/news',
-    title: 'DKP Tech Feed — Hacker News AI Stream',
+    title: 'DKP Tech Feed ÔÇö Hacker News AI Stream',
     description: 'Restituisce lo stream paginato e filtrabile delle notizie tecnologiche elaborate da Trinity AI e indicizzate da Sentinel Score su Neon PostgreSQL.',
     protected: false,
     rateLimit: '60 req/min per IP (Cache Edge + Pure SQL)',
@@ -172,7 +166,7 @@ const endpoints: Endpoint[] = [
     id: 'get-blog-posts',
     method: 'GET',
     path: '/api/blog/posts',
-    title: 'DKP Editorial Hub — Articoli & Vault Feed',
+    title: 'DKP Editorial Hub ÔÇö Articoli & Vault Feed',
     description: 'Estrae la lista completa degli articoli tecnici pubblicati nella community e notarizzati nel Vault DKP, ordinati cronologicamente dal più recente.',
     protected: false,
     rateLimit: '60 req/min per IP',
@@ -275,10 +269,22 @@ function copyCodeSnippet() {
     setTimeout(() => { copiedSnippet.value = false }, 2000)
   }
 }
+
+useDkpSeo({
+  title: 'API Docs - DevKernelPulse',
+  description: 'Documentazione API di DevKernelPulse: autenticazione, endpoint tool, notarizzazione Vault e gestione errori.',
+  type: 'website',
+  canonicalPath: '/docs/api'
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-200 px-4 sm:px-6 py-10 pb-20 font-sans">
+  <DkpLayout
+    title="Docs - API & Gateway"
+    subtitle="Riferimento endpoint, autenticazione e payload JSON"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-200 px-4 sm:px-6 py-10 pb-20 font-sans">
     <div class="max-w-7xl mx-auto flex flex-col gap-8">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -287,28 +293,28 @@ function copyCodeSnippet() {
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -318,7 +324,7 @@ function copyCodeSnippet() {
         <!-- LEFT SIDEBAR: FILTRI ED ENDPOINTS -->
         <aside class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 lg:sticky lg:top-20 shadow-xl">
           <div class="flex justify-between items-center border-b border-slate-800/80 pb-3">
-            <h3 class="text-white font-extrabold text-base m-0">🔌 DKP API Console</h3>
+            <h3 class="text-white font-extrabold text-base m-0">DKP API Console</h3>
             <span class="text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-black">
               v2.6-PURE-SQL
             </span>
@@ -327,7 +333,7 @@ function copyCodeSnippet() {
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="🔍 Cerca endpoint o URL..." 
+            placeholder="Cerca endpoint o URL..." 
             class="bg-[#020420] border border-slate-800 focus:border-emerald-500 text-white px-3.5 py-2.5 rounded-xl text-xs outline-none transition-colors"
           />
 
@@ -394,7 +400,7 @@ function copyCodeSnippet() {
           <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 flex justify-between items-start gap-6 flex-wrap shadow-xl">
             <div class="flex-1 min-w-[280px]">
               <div class="flex items-center gap-2 mb-2">
-                <h4 class="text-white font-extrabold text-base m-0">⚡ Consumo API &amp; Metering Pure SQL</h4>
+                <h4 class="text-white font-extrabold text-base m-0">ÔÜí Consumo API &amp; Metering Pure SQL</h4>
                 <span class="text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-bold">
                   SHA-256 ZERO-TRUST
                 </span>
@@ -433,10 +439,10 @@ function copyCodeSnippet() {
               </div>
 
               <span v-if="activeEndpoint.protected" class="bg-rose-500/15 text-rose-400 border border-rose-500/30 text-xs font-mono font-bold px-3 py-1 rounded-lg">
-                🔒 API Key Required
+                API Key Required
               </span>
               <span v-else class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold px-3 py-1 rounded-lg">
-                🌐 Public Endpoint
+                Public Endpoint
               </span>
             </div>
 
@@ -450,7 +456,7 @@ function copyCodeSnippet() {
               </div>
               <div class="bg-[#020420] border border-emerald-500/30 p-4 rounded-xl flex flex-col gap-1">
                 <span class="text-[11px] font-mono text-slate-500 font-bold uppercase">Costo &amp; Metering:</span>
-                <span class="text-xs sm:text-sm text-emerald-400 font-extrabold">⚡ {{ activeEndpoint.costPerReq }}</span>
+                <span class="text-xs sm:text-sm text-emerald-400 font-extrabold">ÔÜí {{ activeEndpoint.costPerReq }}</span>
               </div>
             </div>
 
@@ -482,7 +488,7 @@ function copyCodeSnippet() {
             <!-- CODE SNIPPET GENERATOR -->
             <div class="mt-6 bg-[#020420] border border-slate-800 rounded-xl overflow-hidden">
               <div class="bg-[#0d1322] px-4 py-2.5 flex justify-between items-center border-b border-slate-800 flex-wrap gap-2">
-                <h4 class="m-0 text-white text-xs font-mono font-bold">💻 Code Snippet Generato</h4>
+                <h4 class="m-0 text-white text-xs font-mono font-bold">Code Snippet Generato</h4>
                 <div class="flex items-center gap-1.5 font-mono">
                   <button
                     v-for="lang in (['curl', 'javascript', 'python', 'go'] as const)"
@@ -501,7 +507,7 @@ function copyCodeSnippet() {
                     @click="copyCodeSnippet"
                     class="ml-2 text-xs font-bold px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer transition-colors"
                   >
-                    {{ copiedSnippet ? '✅ Copiato!' : '📋 Copia' }}
+                    {{ copiedSnippet ? 'Ô£à Copiato!' : 'Copia' }}
                   </button>
                 </div>
               </div>
@@ -529,13 +535,14 @@ function copyCodeSnippet() {
       <!-- FOOTER NAVIGATION -->
       <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-slate-800 font-mono text-xs">
         <NuxtLink to="/tools" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
-          ← Ritorna ai Developer Tools
+          ÔåÉ Ritorna ai Developer Tools
         </NuxtLink>
         <NuxtLink to="/docs/cli-automation" class="text-emerald-400 hover:underline font-bold">
-          Vai a DKP CLI &amp; Local Automation v2.6 ➔
+          Vai a DKP CLI &amp; Local Automation v2.6 Ô×ö
         </NuxtLink>
       </div>
 
     </div>
   </div>
+  </DkpLayout>
 </template>

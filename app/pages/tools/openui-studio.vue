@@ -1,17 +1,18 @@
 <!-- app/pages/tools/openui-studio.vue -->
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+
+useDkpSeo({
+  title: 'OpenUI Studio v2.6 - DevKernelPulse',
+  description: 'Workspace interattivo per prototipazione UI, prompt engineering e ispezione componenti guidata da AI su DevKernelPulse.',
+  type: 'website',
+  canonicalPath: '/tools/openui-studio'
+})
 
 const auth = useAuthCore() || {}
 const currentUser = auth.currentUser || ref({ id: 1 })
 const isAuthenticated = auth.isAuthenticated || ref(true)
-
-useDkpSeo({
-  title: 'OpenUI Studio AI & Neural Playground v2.6-PURE-SQL — DKP Tools',
-  description: 'Genera interfacce Tailwind CSS in tempo reale con DKP Trinity AI, visualizza la live preview, ispeziona BEMYAGENT TTEV e notarizza il codice nel Vault Pure SQL.'
-})
 
 const dkpApiKey = ref('')
 const selectedModel = ref('dkp-coder')
@@ -30,15 +31,7 @@ const bemyError = ref('')
 const bemyProtocol = ref('BEMYAGENT-TTEV-v1')
 const bemyDocs = ref<Array<{ name: string; content: string }>>([])
 const bemyMilestones = ref<string[]>([])
-const ttevMetrics = ref<Array<{
-  sentinel: string
-  actionType: string
-  cdmTier: string | null
-  modelUsed: string | null
-  verdict: string | null
-  smtpDispatched: boolean
-  createdAt: string
-}>>([])
+const ttevMetrics = ref<Array<any>>([])
 const selectedDocName = ref('')
 
 const selectedDocContent = computed(() => {
@@ -105,15 +98,15 @@ function scrollChatToBottom() {
 
 const promptPresets = [
   {
-    label: '📊 Dashboard KPI',
+    label: 'Dashboard KPI',
     prompt: 'Crea una dashboard SaaS dark mode con 4 card KPI, barra di stato API e tabella transazioni recente usando Tailwind CSS.'
   },
   {
-    label: '💳 Pricing Table',
+    label: 'Pricing Table',
     prompt: 'Genera una sezione Pricing a 3 colonne (Free, Developer Pro, Enterprise) stile DevKernelPulse con badge evidenziato.'
   },
   {
-    label: '🛡️ Sentinel Telemetry UI',
+    label: 'Sentinel Telemetry UI',
     prompt: 'Crea un pannello di controllo dark mode per 4 agenti AI autonomi (Sentinel Network) con badge CDM tier, verdetto PASS/FAIL e stato invio email.'
   }
 ]
@@ -135,35 +128,28 @@ function applyPreset(presetPrompt: string) {
 
 async function onSubmit(e?: Event) {
   if (e) e.preventDefault()
-
   if (isAuthenticated.value === false) {
-    triggerToast('⚠️ Autenticazione richiesta per OpenUI Studio.')
+    triggerToast('Autenticazione richiesta per OpenUI Studio.')
     return
   }
-
   if (!dkpApiKey.value.trim()) {
-    triggerToast('⚠️ Inserisci la tua API Key DKP.')
+    triggerToast('Inserisci la tua API Key DKP.')
     return
   }
-
   const promptText = input.value?.trim()
   if (!promptText) {
-    triggerToast('⚠️ Scrivi un prompt prima di inviare.')
+    triggerToast('Scrivi un prompt prima di inviare.')
     return
   }
-
   input.value = ''
   const userMsgId = Math.random().toString(36).substring(7)
   messages.value.push({ id: userMsgId, role: 'user', content: promptText })
   scrollChatToBottom()
-
   isLoading.value = true
   stopSignal.value = false
-
   const aiMsgId = Math.random().toString(36).substring(7)
   messages.value.push({ id: aiMsgId, role: 'assistant', content: '' })
   const aiMessageIndex = messages.value.length - 1
-
   try {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
@@ -179,20 +165,16 @@ async function onSubmit(e?: Event) {
         maxTokens: maxTokens.value
       })
     })
-
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}))
       throw new Error(errJson.statusMessage || `Errore HTTP ${res.status}`)
     }
-
     const reader = res.body?.getReader()
     const decoder = new TextDecoder()
-
     if (reader) {
       while (!stopSignal.value) {
         const { done, value } = await reader.read()
         if (done) break
-
         const chunk = decoder.decode(value, { stream: true })
         const lines = chunk.split('\n')
         for (const line of lines) {
@@ -213,7 +195,7 @@ async function onSubmit(e?: Event) {
   } catch (err: any) {
     console.error('[DKP OpenUI Studio Error]:', err)
     messages.value[aiMessageIndex].content = `\n[Errore di connessione al Gateway: ${err.message}]`
-    triggerToast(`❌ Errore: ${err.message}`)
+    triggerToast(`Errore: ${err.message}`)
   } finally {
     isLoading.value = false
     scrollChatToBottom()
@@ -226,23 +208,19 @@ const lastAiMessage = computed(() => messages.value.filter(m => m.role === 'assi
 const extractedCode = computed(() => {
   const content = lastAiMessage.value
   if (!content) return ''
-
   const match = content.match(/```(?:html|xml|vue)?\s*([\s\S]*?)```/)
   if (match && match[1]) {
     return match[1].trim()
   }
-
   if (content.includes('<html') || content.includes('<div') || content.includes('<!DOCTYPE')) {
     return content
   }
-
   return ''
 })
 
 const renderedHtmlContent = computed(() => {
   const code = extractedCode.value
   const tailwindScript = '<script src="https://cdn.tailwindcss.com"><' + '/script>'
-
   if (!code) {
     return (
       '<!DOCTYPE html><html><head>' +
@@ -250,11 +228,9 @@ const renderedHtmlContent = computed(() => {
       '</head><body class="bg-slate-950 text-slate-400 p-8 text-center font-sans flex flex-col items-center justify-center min-h-screen"><h3 class="text-white font-bold text-lg">In attesa di codice OpenUI v2.6...</h3><p class="text-sm mt-2 max-w-sm">Chiedi a DKP-Coder di generare una card, una landing o una dashboard Tailwind.</p></body></html>'
     )
   }
-
   if (code.toLowerCase().includes('<!doctype') || code.toLowerCase().includes('<html')) {
     return code
   }
-
   return (
     '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
     tailwindScript +
@@ -268,7 +244,7 @@ function copyExtractedCode() {
   if (!extractedCode.value) return
   navigator.clipboard.writeText(extractedCode.value)
   isCodeCopied.value = true
-  triggerToast('📋 Codice HTML/Tailwind copiato negli appunti!')
+  triggerToast('Codice HTML/Tailwind copiato negli appunti!')
   setTimeout(() => {
     isCodeCopied.value = false
   }, 2000)
@@ -283,7 +259,7 @@ function downloadHtmlFile() {
   link.download = `dkp-openui-${Date.now()}.html`
   link.click()
   URL.revokeObjectURL(url)
-  triggerToast('⬇️ File HTML OpenUI esportato!')
+  triggerToast('File HTML OpenUI esportato!')
 }
 
 const isNotarizing = ref(false)
@@ -292,7 +268,6 @@ const lastUserMessage = computed(() => messages.value.filter(m => m.role === 'us
 async function notarizeToVault() {
   if (!lastAiMessage.value || isNotarizing.value) return
   isNotarizing.value = true
-
   try {
     const res: any = await $fetch('/api/user/vault', {
       method: 'POST',
@@ -303,13 +278,12 @@ async function notarizeToVault() {
         sastStatus: 'PASSED'
       }
     })
-
     if (res && res.success) {
       notifyXpUpdate()
-      triggerToast('🛡️ Output e UI salvati nel Vault Pure SQL! +100 XP.')
+      triggerToast('Output e UI salvati nel Vault Pure SQL! +100 XP.')
     }
   } catch {
-    triggerToast('❌ Errore durante la notarizzazione Vault.')
+    triggerToast('Errore durante la notarizzazione Vault.')
   } finally {
     isNotarizing.value = false
   }
@@ -317,8 +291,8 @@ async function notarizeToVault() {
 </script>
 
 <template>
+  <DkpToolsSectionsNav />
   <div class="max-w-[1600px] mx-auto my-6 px-4 font-sans text-slate-100 min-h-[calc(100vh-100px)] lg:h-[calc(100vh-100px)] flex flex-col">
-    
     <!-- TOAST -->
     <Transition name="fade">
       <div
@@ -335,14 +309,14 @@ async function notarizeToVault() {
       <div>
         <div class="flex flex-wrap items-center gap-2">
           <span class="bg-purple-500/10 text-purple-400 border border-purple-500/30 px-3.5 py-1 rounded-full text-[11px] font-mono font-black tracking-widest uppercase">
-            🎨 DKP NEURAL ENGINE v2.6-PURE-SQL + OPENUI
+            DKP NEURAL ENGINE v2.6-PURE-SQL + OPENUI
           </span>
           <button
             type="button"
             @click="activeTab = 'ttev'; loadBemyAgentWorkspace()"
             class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[11px] font-mono font-bold hover:bg-emerald-500/20 transition-colors cursor-pointer"
           >
-            🧠 {{ bemyProtocol }} ({{ bemyDocs.length }} docs)
+            {{ bemyProtocol }} ({{ bemyDocs.length }} docs)
           </button>
         </div>
         <h1 class="text-2xl sm:text-3xl font-black text-white mt-1.5 tracking-tight">
@@ -350,19 +324,17 @@ async function notarizeToVault() {
         </h1>
       </div>
       <NuxtLink to="/tools" class="text-sky-400 text-xs sm:text-sm font-bold hover:text-sky-300 hover:underline transition-colors no-underline">
-        ← Torna al Toolkit
+        &larr; Torna al Toolkit
       </NuxtLink>
     </div>
 
     <!-- MAIN GRID 3 COLONNE -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
-      
       <!-- COLONNA 1: CONFIGURAZIONE & MODELLI -->
       <div class="bg-[#090d16] border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col gap-4 overflow-y-auto custom-scrollbar">
         <h2 class="text-xs font-black uppercase text-slate-400 tracking-wider m-0">1. Configurazione Gateway v2.6</h2>
-        
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-bold text-emerald-400 flex items-center gap-1"><span>🔑</span> DKP API Key</label>
+          <label class="text-xs font-bold text-emerald-400">DKP API Key</label>
           <input
             v-model="dkpApiKey"
             type="password"
@@ -370,19 +342,17 @@ async function notarizeToVault() {
             class="bg-slate-950 border border-slate-700/80 text-white p-3 rounded-xl text-xs sm:text-sm focus:border-emerald-400 outline-none font-mono shadow-inner placeholder:text-slate-600"
           />
         </div>
-
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-bold text-slate-400 flex items-center gap-1"><span>🤖</span> DKP Trinity Model</label>
+          <label class="text-xs font-bold text-slate-400">DKP Trinity Model</label>
           <select
             v-model="selectedModel"
             class="bg-slate-950 border border-slate-700/80 text-white p-3 rounded-xl text-xs sm:text-sm focus:border-purple-400 outline-none cursor-pointer shadow-inner"
           >
-            <option value="dkp-flash">⚡ DKP-Flash — Veloce</option>
-            <option value="dkp-coder">💻 DKP-Coder — UI &amp; Code</option>
-            <option value="dkp-pro">🧠 DKP-Pro — Architettura Avanzata</option>
+            <option value="dkp-flash">DKP-Flash - Veloce</option>
+            <option value="dkp-coder">DKP-Coder - UI &amp; Code</option>
+            <option value="dkp-pro">DKP-Pro - Architettura Avanzata</option>
           </select>
         </div>
-
         <div class="grid grid-cols-2 gap-3">
           <div class="flex flex-col gap-1">
             <label class="text-xs font-bold text-slate-400 flex justify-between items-center">
@@ -399,7 +369,7 @@ async function notarizeToVault() {
 
         <!-- PROMPT PRESETS -->
         <div class="flex flex-col gap-1.5">
-          <label class="text-xs font-bold text-slate-400">⚡ Template Rapidi OpenUI</label>
+          <label class="text-xs font-bold text-slate-400">Template Rapidi OpenUI</label>
           <div class="flex flex-wrap gap-1.5">
             <button
               v-for="preset in promptPresets"
@@ -435,13 +405,12 @@ async function notarizeToVault() {
             :disabled="isNotarizing || !lastAiMessage"
             class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
           >
-            {{ isNotarizing ? 'Notarizzazione...' : '🛡️ Salva nel Vault' }}
+            {{ isNotarizing ? 'Notarizzazione...' : 'Salva nel Vault' }}
           </button>
         </div>
 
         <div ref="chatScrollRef" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
           <div v-if="messages.length === 0" class="m-auto text-center text-slate-500 text-sm max-w-xs px-4">
-            <span class="text-3xl mb-2 block">💬</span>
             Chiedi a <strong class="text-slate-300">DKP-Coder</strong> di creare una card, una tabella o una dashboard con Tailwind per vederla apparire nella Preview OpenUI a destra.
           </div>
 
@@ -450,8 +419,8 @@ async function notarizeToVault() {
             :key="message.id"
             :class="['flex gap-3 max-w-[95%]', message.role === 'user' ? 'ml-auto flex-row-reverse' : '']"
           >
-            <div :class="['w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0 border shadow-sm', message.role === 'user' ? 'bg-sky-500/20 border-sky-500/40 text-sky-300' : 'bg-purple-500/20 border-purple-500/40 text-purple-300']">
-              {{ message.role === 'user' ? '🧑‍💻' : '🤖' }}
+            <div :class="['w-8 h-8 rounded-xl flex items-center justify-center text-xs font-mono font-bold flex-shrink-0 border shadow-sm', message.role === 'user' ? 'bg-sky-500/20 border-sky-500/40 text-sky-300' : 'bg-purple-500/20 border-purple-500/40 text-purple-300']">
+              {{ message.role === 'user' ? 'YOU' : 'AI' }}
             </div>
             <div :class="['p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap font-mono shadow-inner', message.role === 'user' ? 'bg-slate-800 text-sky-100 rounded-tr-sm' : 'bg-slate-900 border border-slate-800 text-emerald-400 rounded-tl-sm']">
               {{ message.content }}
@@ -459,7 +428,7 @@ async function notarizeToVault() {
           </div>
 
           <div v-if="isLoading" class="flex items-center gap-2 text-purple-400 font-bold text-xs bg-slate-900/60 p-3 rounded-xl w-max border border-purple-500/30 shadow-sm">
-            <span>⚡ Generazione in corso...</span>
+            <span>Generazione in corso...</span>
             <button type="button" @click="stop" class="ml-2 text-[10px] bg-red-500/20 text-red-400 px-2.5 py-1 rounded-lg border border-red-500/30 font-bold cursor-pointer hover:bg-red-500/30 transition-colors">
               Ferma
             </button>
@@ -478,9 +447,9 @@ async function notarizeToVault() {
             <button
               type="submit"
               :disabled="isLoading || !input?.trim()"
-              class="absolute right-2.5 bg-purple-500 text-white font-black p-2.5 rounded-xl hover:bg-purple-400 disabled:opacity-40 text-xs transition-all shadow-md cursor-pointer"
+              class="absolute right-2.5 bg-purple-500 text-white font-black px-3 py-2 rounded-xl hover:bg-purple-400 disabled:opacity-40 text-xs transition-all shadow-md cursor-pointer"
             >
-              ➔
+              Invia
             </button>
           </div>
         </form>
@@ -488,31 +457,26 @@ async function notarizeToVault() {
 
       <!-- COLONNA 3: OPENUI LIVE PREVIEW / CODICE / BEMYAGENT TTEV -->
       <div class="bg-[#090d16] border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden min-h-[420px]">
-        
-        <!-- Tabs Anteprima vs Codice Puro vs TTEV Telemetry -->
         <div class="bg-slate-950 border-b border-slate-800 px-4 py-3 flex flex-wrap justify-between items-center gap-2 flex-shrink-0">
           <div class="flex items-center gap-1.5">
-            <span class="text-xs font-black text-purple-400 uppercase tracking-wider">⚡ OpenUI</span>
+            <span class="text-xs font-black text-purple-400 uppercase tracking-wider">OpenUI</span>
             <template v-if="extractedCode && activeTab !== 'ttev'">
               <button
                 type="button"
                 @click="copyExtractedCode"
-                class="text-[11px] font-mono px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer"
-                title="Copia codice HTML"
+                class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 transition-colors cursor-pointer"
               >
-                {{ isCodeCopied ? '✔' : '📋' }}
+                {{ isCodeCopied ? 'Copiato' : 'Copia' }}
               </button>
               <button
                 type="button"
                 @click="downloadHtmlFile"
-                class="text-[11px] font-mono px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-sky-400 transition-colors cursor-pointer"
-                title="Esporta file .html"
+                class="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-sky-400 transition-colors cursor-pointer"
               >
-                ⬇️
+                Export .html
               </button>
             </template>
           </div>
-
           <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
             <button
               type="button"
@@ -533,14 +497,12 @@ async function notarizeToVault() {
               @click="activeTab = 'ttev'; loadBemyAgentWorkspace()"
               :class="['px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer', activeTab === 'ttev' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-emerald-400 hover:text-emerald-300']"
             >
-              🧠 TTEV
+              TTEV
             </button>
           </div>
         </div>
 
-        <!-- Contenuto Preview / Codice / TTEV -->
         <div class="flex-1 overflow-hidden bg-slate-950 flex flex-col relative">
-          
           <!-- TAB 1: IFRAME LIVE PREVIEW -->
           <div v-show="activeTab === 'preview'" class="w-full h-full bg-slate-950 overflow-hidden relative">
             <iframe
@@ -562,7 +524,7 @@ async function notarizeToVault() {
               <div>
                 <span class="text-emerald-400 font-black uppercase tracking-wider">{{ bemyProtocol }}</span>
                 <p class="text-[11px] text-slate-400 mt-0.5">
-                  Workspace HTN: {{ bemyMilestones.join(', ') || 'milestone-2' }} • {{ bemyDocs.length }} docs attivi
+                  Workspace HTN: {{ bemyMilestones.join(', ') || 'milestone-2' }} | {{ bemyDocs.length }} docs attivi
                 </p>
               </div>
               <button
@@ -570,7 +532,7 @@ async function notarizeToVault() {
                 @click="loadBemyAgentWorkspace"
                 class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-emerald-400 text-[11px] cursor-pointer"
               >
-                {{ bemyLoading ? '...' : '↻ Aggiorna' }}
+                {{ bemyLoading ? '...' : 'Aggiorna' }}
               </button>
             </div>
 
@@ -578,7 +540,6 @@ async function notarizeToVault() {
               {{ bemyError }}
             </div>
 
-            <!-- Selettore Memoria Permanente .bemyagent/docs -->
             <div v-if="bemyDocs.length > 0" class="flex flex-col gap-2 bg-[#090d16] border border-slate-800 rounded-2xl p-3">
               <div class="flex items-center justify-between gap-2">
                 <select
@@ -586,7 +547,7 @@ async function notarizeToVault() {
                   class="bg-slate-950 border border-slate-700 text-emerald-300 text-[11px] rounded-lg px-2 py-1.5 outline-none flex-1"
                 >
                   <option v-for="doc in bemyDocs" :key="doc.name" :value="doc.name">
-                    📄 {{ doc.name }}
+                    {{ doc.name }}
                   </option>
                 </select>
                 <button
@@ -600,7 +561,6 @@ async function notarizeToVault() {
               <pre class="text-[11px] text-slate-300 whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar leading-relaxed bg-slate-950 p-2.5 rounded-xl border border-slate-900">{{ selectedDocContent }}</pre>
             </div>
 
-            <!-- Verdetti Live delle Sentinelle -->
             <div class="flex flex-col gap-2">
               <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ultime Decisioni Autonome (CDM + Symbiotic Validation)</span>
               <div v-if="ttevMetrics.length === 0" class="text-[11px] text-slate-500 p-3 bg-slate-900/50 rounded-xl border border-slate-800">
@@ -623,26 +583,22 @@ async function notarizeToVault() {
                   </div>
                 </div>
                 <div class="text-[11px] text-slate-300">
-                  Azione: <span class="text-purple-300">{{ item.actionType }}</span> • Modello: <span class="text-slate-400">{{ item.modelUsed || 'auto' }}</span>
+                  Azione: <span class="text-purple-300">{{ item.actionType }}</span> | Modello: <span class="text-slate-400">{{ item.modelUsed || 'auto' }}</span>
                 </div>
                 <div class="flex justify-between text-[10px] text-slate-500">
-                  <span>{{ item.smtpDispatched ? '✉️ Email Resend inviata' : '🗄️ Log interno' }}</span>
+                  <span>{{ item.smtpDispatched ? 'Email inviata' : 'Log interno' }}</span>
                   <span>{{ item.createdAt ? new Date(item.createdAt).toLocaleString() : '' }}</span>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
-
       </div>
     </div>
   </div>
-  <div class="mt-2 mb-6">
+
+  <div class="max-w-[1600px] mx-auto px-4 mt-2 mb-8">
     <DkpAdsWidget placement="global" />
-  </div>
-  <div class="mt-2 mb-6">
-    <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
   </div>
 </template>
 

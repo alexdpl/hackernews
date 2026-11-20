@@ -1,12 +1,6 @@
-<!-- app/pages/docs/faq.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-
-useDkpSeo({
-  title: 'Domande Frequenti (FAQ) & Knowledge Base AI — DKP v2.6-PURE-SQL',
-  description: 'Tutte le risposte sull\'ecosistema DevKernelPulse v2.6-PURE-SQL: OpenUI Studio, DKP Trinity AI Models, Neon Pure SQL Gateway crittografato, Vault e Pulse Sentinel.'
-})
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 const activeId = ref<string | null>('ai-1')
 const searchQuery = ref('')
@@ -32,7 +26,7 @@ interface FaqCategory {
 const faqData: FaqCategory[] = [
   {
     title: 'AI Gateway, OpenUI Studio & DKP Trinity',
-    icon: '🧠',
+    icon: '',
     accentText: 'text-pink-400',
     accentBorder: 'border-pink-500/20',
     items: [
@@ -55,7 +49,7 @@ const faqData: FaqCategory[] = [
   },
   {
     title: 'Ecosistema a 4 Pilastri & Open Source',
-    icon: '🚀',
+    icon: '',
     accentText: 'text-sky-400',
     accentBorder: 'border-sky-500/20',
     items: [
@@ -73,14 +67,14 @@ const faqData: FaqCategory[] = [
   },
   {
     title: 'Editorial Hub, Blog & Gamification',
-    icon: '🎮',
+    icon: '',
     accentText: 'text-emerald-400',
     accentBorder: 'border-emerald-500/20',
     items: [
       {
         id: 'gam-1',
         question: 'Come funziona il sistema di Gamification (XP) e Rank?',
-        answer: 'Eseguendo azioni virtuose — pubblicando articoli nel DKP Editorial Hub (+150 XP), notarizzando codice nel Vault (+100 XP), condividendo nodi nel Talks Hub (+50 XP) o commentando (+10 XP) — accumuli Punti XP che fanno salire il tuo livello e il tuo Rank pubblico.'
+        answer: 'Eseguendo azioni virtuose ÔÇö pubblicando articoli nel DKP Editorial Hub (+150 XP), notarizzando codice nel Vault (+100 XP), condividendo nodi nel Talks Hub (+50 XP) o commentando (+10 XP) ÔÇö accumuli Punti XP che fanno salire il tuo livello e il tuo Rank pubblico.'
       },
       {
         id: 'gam-2',
@@ -96,7 +90,7 @@ const faqData: FaqCategory[] = [
   },
   {
     title: 'API Gateway, SDK & Limiti',
-    icon: '🔌',
+    icon: '',
     accentText: 'text-purple-400',
     accentBorder: 'border-purple-500/20',
     items: [
@@ -119,7 +113,7 @@ const faqData: FaqCategory[] = [
   },
   {
     title: 'Proof of Code Vault',
-    icon: '🔐',
+    icon: '',
     accentText: 'text-amber-400',
     accentBorder: 'border-amber-500/20',
     items: [
@@ -131,13 +125,13 @@ const faqData: FaqCategory[] = [
       {
         id: 'vlt-2',
         question: 'Il codice sorgente che notarizzo è al sicuro?',
-        answer: 'Sì. Una volta calcolato l\'hash crittografico (SHA-256), il sistema può validare il certificato confrontando l\'impronta digitale senza dover esporre codice proprietario riservato.'
+        answer: 'Sì. Una volta calcolato l\'hash crittografico (SHA-256), il sistema pu validare il certificato confrontando l\'impronta digitale senza dover esporre codice proprietario riservato.'
       }
     ]
   },
   {
     title: 'Pulse Sentinel AI & Cloud Security',
-    icon: '⚡',
+    icon: '',
     accentText: 'text-rose-400',
     accentBorder: 'border-rose-500/20',
     items: [
@@ -170,10 +164,22 @@ const filteredFaqData = computed(() => {
     }))
     .filter(cat => cat.items.length > 0)
 })
+
+useDkpSeo({
+  title: 'Technical FAQ - DevKernelPulse',
+  description: 'FAQ tecniche su DevKernelPulse: sicurezza, database Pure SQL, notarizzazione e strumenti AI.',
+  type: 'website',
+  canonicalPath: '/docs/faq'
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+  <DkpLayout
+    title="Docs - FAQ Tecniche"
+    subtitle="Risposte tecniche su integrazioni, sicurezza e database"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
     <div class="max-w-5xl mx-auto flex flex-col gap-8">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -182,28 +188,28 @@ const filteredFaqData = computed(() => {
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -213,7 +219,7 @@ const filteredFaqData = computed(() => {
 
         <div class="mb-4 relative z-10">
           <span class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 px-4 py-1.5 rounded-full text-xs font-mono font-extrabold tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            📚 DOCUMENTAZIONE UFFICIALE v2.6-PURE-SQL
+            DOCUMENTAZIONE UFFICIALE v2.6-PURE-SQL
           </span>
         </div>
 
@@ -222,13 +228,13 @@ const filteredFaqData = computed(() => {
         </h1>
 
         <p class="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed mb-7 relative z-10">
-          Tutto ciò che devi sapere sull'ecosistema <strong class="text-white">DevKernelPulse v2.6-PURE-SQL</strong>: dall'architettura serverless Neon PostgreSQL ai modelli DKP Trinity AI, Vault e Pulse Sentinel.
+          Tutto ci che devi sapere sull'ecosistema <strong class="text-white">DevKernelPulse v2.6-PURE-SQL</strong>: dall'architettura serverless Neon PostgreSQL ai modelli DKP Trinity AI, Vault e Pulse Sentinel.
         </p>
 
         <!-- SEARCH INPUT RAPIDO -->
         <div class="max-w-xl mx-auto relative z-10">
           <div class="flex items-center bg-[#020420] border border-slate-800 focus-within:border-emerald-400 rounded-xl px-4 py-3 shadow-inner transition-colors">
-            <span class="mr-2.5 text-base">🔍</span>
+            <span class="mr-2.5 text-base"></span>
             <input
               v-model="searchQuery"
               type="text"
@@ -249,7 +255,7 @@ const filteredFaqData = computed(() => {
 
       <!-- EMPTY SEARCH STATE -->
       <div v-if="filteredFaqData.length === 0" class="text-center py-14 bg-[#090d16] border border-slate-800 rounded-2xl flex flex-col items-center gap-3">
-        <span class="text-4xl">🔎</span>
+        <span class="text-4xl"></span>
         <h3 class="text-lg font-bold text-white">Nessuna risposta trovata per "{{ searchQuery }}"</h3>
         <button
           type="button"
@@ -284,7 +290,7 @@ const filteredFaqData = computed(() => {
               >
                 <span>{{ item.question }}</span>
                 <span :class="['text-xs font-mono transition-transform duration-300 shrink-0', activeId === item.id ? 'rotate-180 text-emerald-400' : 'text-slate-500']">
-                  ▼
+                  Ôû
                 </span>
               </button>
               
@@ -309,16 +315,16 @@ const filteredFaqData = computed(() => {
         </div>
         <div class="flex flex-wrap justify-center gap-3 font-mono text-xs">
           <NuxtLink to="/docs/api" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold rounded-xl transition-all">
-            🔌 API Reference v2.6
+            API Reference v2.6
           </NuxtLink>
           <NuxtLink to="/docs/sdk" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold rounded-xl transition-all">
-            📦 SDK &amp; CLI Center
+            SDK &amp; CLI Center
           </NuxtLink>
           <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-slate-500 text-slate-200 font-extrabold rounded-xl transition-all">
-            🐙 GitHub Repository
+            GitHub Repository
           </a>
           <NuxtLink to="/shop" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)]">
-            🚀 Esplora Shop API Pass
+            Esplora Shop API Pass
           </NuxtLink>
         </div>
       </div>
@@ -326,4 +332,5 @@ const filteredFaqData = computed(() => {
       
     </div>
   </div>
+  </DkpLayout>
 </template>

@@ -1,14 +1,8 @@
-<!-- app/pages/docs/cli-automation.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
-
-useDkpSeo({
-  title: 'DKP CLI & Local Automation Guide v2.6-PURE-SQL — DevKernelPulse',
-  description: 'Documentazione ufficiale DKP CLI Toolkit v2.6-PURE-SQL. Scopri come automatizzare test E2E, verificare il database Neon Pure SQL, pubblicare articoli Markdown e gestire API Key dal terminale.'
-})
 
 const copiedKey = ref<string | null>(null)
 function copyCmd(key: string, text: string) {
@@ -18,10 +12,22 @@ function copyCmd(key: string, text: string) {
     setTimeout(() => { copiedKey.value = null }, 2000)
   }
 }
+
+useDkpSeo({
+  title: 'CLI & Automation Docs - DevKernelPulse',
+  description: 'Guida all automazione CLI e ai flussi operativi su DevKernelPulse.',
+  type: 'website',
+  canonicalPath: '/docs/cli-automation'
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
+  <DkpLayout
+    title="Docs - CLI & Automation"
+    subtitle="Automazione comandi, pipeline e flussi operativi"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-100 px-4 sm:px-6 py-10 pb-20 font-sans">
     <div class="max-w-5xl mx-auto flex flex-col gap-8">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -30,28 +36,28 @@ function copyCmd(key: string, text: string) {
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -61,7 +67,7 @@ function copyCmd(key: string, text: string) {
 
         <div class="mb-4 relative z-10">
           <span class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/50 px-4 py-1.5 rounded-full text-xs font-mono font-extrabold tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            ⚙️ DKP DEVELOPER DOCUMENTATION v2.6-PURE-SQL
+            ÔÜÖ´©Å DKP DEVELOPER DOCUMENTATION v2.6-PURE-SQL
           </span>
         </div>
 
@@ -80,7 +86,7 @@ function copyCmd(key: string, text: string) {
         <!-- SEZIONE 1: INTRODUZIONE E REQUISITI -->
         <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
           <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-4 pb-3 border-b border-slate-800">
-            🛠️ 1. Prerequisiti &amp; Installazione Globale
+            1. Prerequisiti &amp; Installazione Globale
           </h2>
           <p class="text-slate-400 text-sm sm:text-base leading-relaxed mb-4">
             Il <strong class="text-white">DKP CLI Toolkit v2.6-PURE-SQL</strong> è progettato per Node.js (richiesta versione <strong class="text-emerald-400">20.x+</strong> o <strong class="text-emerald-400">22.x LTS</strong>). Ti permette di governare l'intero ecosistema Pulse Nexus senza aprire il browser.
@@ -97,7 +103,7 @@ function copyCmd(key: string, text: string) {
                 @click="copyCmd('install', 'npm install -g @devkernelpulse/cli@latest')"
                 class="text-slate-300 hover:text-emerald-400 cursor-pointer"
               >
-                {{ copiedKey === 'install' ? '✅ Copiato!' : '📋 Copia' }}
+                {{ copiedKey === 'install' ? 'Ô£à Copiato!' : 'Copia' }}
               </button>
             </div>
             <pre class="p-4 m-0 overflow-x-auto"><code class="font-mono text-sky-400 text-xs sm:text-sm leading-relaxed"># Usa NPM (Consigliato)
@@ -108,14 +114,14 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
           </div>
 
           <p class="text-xs sm:text-sm text-slate-400 italic m-0">
-            ✅ <strong class="text-slate-200 not-italic">Verifica:</strong> Esegui <code class="text-emerald-400 bg-[#020420] px-1.5 py-0.5 rounded font-mono not-italic">dkp --version</code> per verificare che il runtime <code class="text-emerald-400 font-mono not-italic">v2.6.0-pure-sql</code> sia attivo.
+            Ô£à <strong class="text-slate-200 not-italic">Verifica:</strong> Esegui <code class="text-emerald-400 bg-[#020420] px-1.5 py-0.5 rounded font-mono not-italic">dkp --version</code> per verificare che il runtime <code class="text-emerald-400 font-mono not-italic">v2.6.0-pure-sql</code> sia attivo.
           </p>
         </section>
 
         <!-- SEZIONE 2: AUTENTICAZIONE ED ENDPOINT -->
         <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
           <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-4 pb-3 border-b border-slate-800">
-            🌐 2. Autenticazione &amp; Environment Sync
+            2. Autenticazione &amp; Environment Sync
           </h2>
           <p class="text-slate-400 text-sm sm:text-base leading-relaxed mb-4">
             Prima di interagire con i microservizi, lanciare scansioni AI o interrogare il database Neon, autentica la CLI con il tuo account DKP.
@@ -129,7 +135,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
               @click="copyCmd('login', 'dkp auth login')"
               class="text-xs font-mono text-slate-400 hover:text-emerald-400 shrink-0 cursor-pointer"
             >
-              {{ copiedKey === 'login' ? '✅ Copiato!' : '📋 Copia' }}
+              {{ copiedKey === 'login' ? 'Ô£à Copiato!' : 'Copia' }}
             </button>
           </div>
           <p class="text-slate-400 text-sm leading-relaxed mb-6">
@@ -152,7 +158,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
         <!-- SEZIONE 3: COMANDI PRINCIPALI (FOCUS V2.6-PURE-SQL) -->
         <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
           <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-4 pb-3 border-b border-slate-800">
-            ⚡ 3. Direttive Core &amp; Comandi v2.6-PURE-SQL
+            ÔÜí 3. Direttive Core &amp; Comandi v2.6-PURE-SQL
           </h2>
           <p class="text-slate-400 text-sm sm:text-base leading-relaxed mb-6">
             Tutte le direttive operative per gestire scansioni, database Pure SQL, pubblicazione editoriale e chiavi crittografiche.
@@ -164,7 +170,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
               <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
                 <strong class="text-emerald-400 font-mono text-sm sm:text-base">dkp db:health --pure-sql</strong>
                 <span class="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase">
-                  NEW v2.6 · PURE SQL
+                  NEW v2.6  PURE SQL
                 </span>
               </div>
               <p class="text-xs sm:text-sm text-slate-400 mb-3 leading-relaxed">
@@ -178,7 +184,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
               <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
                 <strong class="text-emerald-400 font-mono text-sm sm:text-base">dkp blog:publish [file.md]</strong>
                 <span class="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase">
-                  NEW v2.6 · EDITORIAL HUB
+                  NEW v2.6  EDITORIAL HUB
                 </span>
               </div>
               <p class="text-xs sm:text-sm text-slate-400 mb-3 leading-relaxed">
@@ -234,7 +240,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
         <!-- SEZIONE 4: AUTOMAZIONE CI/CD, CRAWLER & FIREWALL LIVE -->
         <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
           <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-4 pb-3 border-b border-slate-800">
-            🔒 4. Continuous Integration, Stream Sync &amp; Firewall SSE
+            4. Continuous Integration, Stream Sync &amp; Firewall SSE
           </h2>
           
           <h4 class="text-base font-bold text-slate-200 mb-2">Automazione dei Test E2E</h4>
@@ -261,13 +267,13 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
             <code class="font-mono text-sky-400 text-xs sm:text-sm">dkp firewall:monitor --level=critical,warning</code>
           </div>
           <p class="text-xs text-slate-500 italic m-0">
-            ⚠️ Usa <code class="text-slate-300 font-mono not-italic">Ctrl+C</code> per sganciare la CLI dallo stream live.
+            ÔÜá´©Å Usa <code class="text-slate-300 font-mono not-italic">Ctrl+C</code> per sganciare la CLI dallo stream live.
           </p>
         </section>
         
         <!-- SEZIONE 5: SUPPORTO -->
         <section class="bg-slate-900/40 border border-slate-700/80 rounded-2xl p-6">
-          <h3 class="text-base font-extrabold text-slate-200 mb-2">🆘 Troubleshooting &amp; Diagnostica</h3>
+          <h3 class="text-base font-extrabold text-slate-200 mb-2">Troubleshooting &amp; Diagnostica</h3>
           <p class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-2">
             Se incontri errori <code class="text-rose-400 font-mono">401 Unauthorized</code> o timeout di rete, verifica che il demone locale sia attivo (<code class="text-emerald-400 font-mono">dkp daemon status</code>) e rinnova la sessione con <code class="text-emerald-400 font-mono">dkp auth refresh</code>.
           </p>
@@ -283,13 +289,14 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
       <!-- FOOTER LINK -->
       <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-slate-800 font-mono text-xs">
         <NuxtLink to="/tools" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
-          ← Ritorna ai Developer Tools
+          ÔåÉ Ritorna ai Developer Tools
         </NuxtLink>
         <NuxtLink to="/docs/api" class="text-emerald-400 hover:underline font-bold">
-          Esplora API Reference v2.6-PURE-SQL ➔
+          Esplora API Reference v2.6-PURE-SQL Ô×ö
         </NuxtLink>
       </div>
 	  
     </div>
   </div>
+  </DkpLayout>
 </template>

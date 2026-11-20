@@ -60,7 +60,7 @@ function renderMarkdownTables(text: string): string {
   })
 }
 
-export function parseDkpMarkdown(contentVal: string): string {
+function parseDkpMarkdown(contentVal: string): string {
   try {
     if (!contentVal) return ''
 
@@ -76,7 +76,7 @@ export function parseDkpMarkdown(contentVal: string): string {
         const cleanLang = lang ? lang.replace(/[^a-zA-Z0-9+#-]/g, '').toLowerCase() : 'code'
         const languageClass = cleanLang && cleanLang !== 'code' ? `language-${cleanLang}` : 'language-none'
 
-        const languageLabel = `<div class="dkp-code-header"><span>${cleanLang || 'code'}</span><button type="button" class="dkp-copy-btn" data-code-id="code-block-${index}" title="Copia codice">📋</button></div>`
+        const languageLabel = `<div class="dkp-code-header"><span>${cleanLang || 'code'}</span><button type="button" class="dkp-copy-btn" data-code-id="code-block-${index}" title="Copia codice"></button></div>`
         const escapedCode = escapeHtml(code)
 
         codeBlocks.push(

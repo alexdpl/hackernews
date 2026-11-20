@@ -1,13 +1,13 @@
 <!-- app/pages/tools/ai-repo-scanner.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue' 
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue' 
-
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 useDkpSeo({
-  title: 'AI Repository & Link Scanner v2.6-PURE-SQL — DKP Tools',
-  description: 'Analizza repository GitHub, misura il rank di reputazione, la sicurezza del codice e ottieni un piano d\'audit per scalare la classifica DKP.'
+  title: 'AI Repository & Link Scanner v2.6 - DevKernelPulse',
+  description: 'Analisi repository, dipendenze, link tecnici e pattern architetturali con Sentinel AI su DevKernelPulse v2.6-PURE-SQL.',
+  type: 'website',
+  canonicalPath: '/tools/ai-repo-scanner'
 })
 
 const { currentUser } = useAuthCore()
@@ -43,17 +43,15 @@ async function runScan() {
   scanResult.value = null
   isNotarized.value = false
   errorMessage.value = ''
-
   try {
     const res: any = await $fetch('/api/tools/ai-scan', {
       method: 'POST',
       body: { url: targetUrl.value.trim(), userId: currentUserId.value }
     })
-
     if (res && res.success) {
       scanResult.value = res.data
       notifyXpUpdate()
-      triggerToast('✅ Audit Pure SQL completato! +50 XP registrati sul profilo.')
+      triggerToast('Audit Pure SQL completato! +50 XP registrati sul profilo.')
     } else {
       errorMessage.value = res?.error || 'Errore durante l\'analisi.'
     }
@@ -67,7 +65,6 @@ async function runScan() {
 async function notarizeToVault() {
   if (!scanResult.value || isNotarizing.value || isNotarized.value) return
   isNotarizing.value = true
-
   try {
     const res: any = await $fetch('/api/user/vault', {
       method: 'POST',
@@ -88,14 +85,13 @@ async function notarizeToVault() {
         sastStatus: scanResult.value.overallScore >= 85 ? 'PASSED' : 'WARNING'
       }
     })
-
     if (res && res.success) {
       isNotarized.value = true
       notifyXpUpdate()
-      triggerToast('🛡️ Audit notarizzato nel Vault! +100 XP extra.')
+      triggerToast('Audit notarizzato nel Vault! +100 XP extra.')
     }
   } catch {
-    triggerToast('❌ Errore durante la notarizzazione Vault.')
+    triggerToast('Errore durante la notarizzazione Vault.')
   } finally {
     isNotarizing.value = false
   }
@@ -108,8 +104,8 @@ function loadPreset(url: string) {
 </script>
 
 <template>
+  <DkpToolsSectionsNav />
   <div class="max-w-5xl mx-auto my-8 px-4 sm:px-6 font-sans text-slate-100 relative min-h-[80vh]">
-    
     <!-- TOAST NOTIFICATION -->
     <Transition name="fade">
       <div
@@ -123,36 +119,34 @@ function loadPreset(url: string) {
 
     <!-- HEADER HERO -->
     <header class="bg-[#090d16] border border-slate-800 rounded-3xl p-8 sm:p-14 text-center shadow-2xl mb-10 relative overflow-hidden">
-      <!-- Glow background effect -->
       <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-3/4 h-40 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none"></div>
 
       <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 relative z-10">
         <span class="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/50 px-4 py-1.5 rounded-full text-xs font-mono font-black tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-          🤖 DKP AI CORE ENGINE v2.6-PURE-SQL
+          DKP AI CORE ENGINE v2.6-PURE-SQL
         </span>
         <NuxtLink to="/tools" class="text-sky-400 text-xs sm:text-sm font-bold hover:text-sky-300 hover:underline transition-colors no-underline">
-          ← Torna al Toolkit
+          &larr; Torna al Toolkit
         </NuxtLink>
       </div>
-      
+
       <h1 class="text-3xl sm:text-5xl font-black mb-4 text-white tracking-tight relative z-10">
         AI Repository &amp; <span class="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Link Scanner</span>
       </h1>
-      
+
       <p class="text-slate-400 max-w-2xl mx-auto mb-10 text-base sm:text-lg leading-relaxed relative z-10">
-        Incolla l'URL di un repository o progetto: il motore IA analizzerà lo stack, calcolerà il <strong class="text-white">Rank DKP</strong> e ti farà guadagnare punti XP!
+        Incolla l'URL di un repository o progetto: il motore IA analizzer&agrave; lo stack, calcoler&agrave; il <strong class="text-white">Rank DKP</strong> e ti far&agrave; guadagnare punti XP!
       </p>
 
       <!-- SEARCH INPUT E BOTTONE -->
       <div class="flex flex-col sm:flex-row gap-4 max-w-2xl mx-auto relative z-10">
         <div class="relative flex-1">
-          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xl pointer-events-none">🔗</span>
           <input
             v-model="targetUrl"
             type="url"
             placeholder="https://github.com/username/repo..."
             @keyup.enter="runScan"
-            class="w-full py-3.5 px-4 pl-12 rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 outline-none transition-all placeholder:text-slate-500 shadow-inner"
+            class="w-full py-3.5 px-4 rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/50 outline-none transition-all placeholder:text-slate-500 shadow-inner"
           />
         </div>
         <button
@@ -161,7 +155,7 @@ function loadPreset(url: string) {
           :disabled="loading || !targetUrl.trim()"
           class="bg-emerald-500 text-slate-950 px-8 py-3.5 rounded-xl font-black hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
         >
-          {{ loading ? 'Scansione IA...' : 'Avvia Audit ⚡' }}
+          {{ loading ? 'Scansione IA...' : 'Avvia Audit' }}
         </button>
       </div>
 
@@ -181,14 +175,13 @@ function loadPreset(url: string) {
 
       <!-- ERROR MESSAGE -->
       <div v-if="errorMessage" role="alert" class="bg-red-500/15 border border-red-500/50 text-red-400 p-4 rounded-xl mt-6 font-bold text-sm max-w-2xl mx-auto relative z-10">
-        ⚠️ {{ errorMessage }}
+        {{ errorMessage }}
       </div>
     </header>
 
     <!-- RISULTATI SCAN -->
     <Transition name="fade">
       <div v-if="scanResult" class="bg-[#090d16] border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl">
-        
         <!-- TOP BAR: NOME, RANK E SCORE -->
         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-slate-800 pb-6 mb-8 gap-6">
           <div class="w-full lg:w-auto">
@@ -197,7 +190,7 @@ function loadPreset(url: string) {
             </span>
             <h2 class="text-2xl sm:text-3xl font-black text-white mt-3 mb-1 truncate">{{ scanResult.repoName }}</h2>
             <a :href="scanResult.url" target="_blank" rel="noopener noreferrer" class="text-xs sm:text-sm text-emerald-400 hover:underline font-mono truncate block max-w-full lg:max-w-md">
-              {{ scanResult.url }} 🔗
+              {{ scanResult.url }}
             </a>
           </div>
 
@@ -220,17 +213,15 @@ function loadPreset(url: string) {
                 : 'bg-sky-400 text-slate-950 hover:shadow-[0_0_15px_rgba(56,189,248,0.4)]'"
             >
               <span v-if="isNotarizing">Notarizzazione...</span>
-              <span v-else-if="isNotarized">✅ Salvato nel Vault</span>
-              <span v-else>🛡️ Salva nel Vault</span>
+              <span v-else-if="isNotarized">Salvato nel Vault</span>
+              <span v-else>Salva nel Vault</span>
             </button>
           </div>
         </div>
 
         <!-- METRICHE -->
         <div class="mb-10">
-          <h3 class="text-lg text-emerald-400 font-black mb-5 flex items-center gap-2">
-            <span>📊</span> Valutazione Dettagliata
-          </h3>
+          <h3 class="text-lg text-emerald-400 font-black mb-5">Valutazione Dettagliata</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div v-for="(metric, idx) in scanResult.rankMetrics" :key="idx" class="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-inner">
               <div class="flex justify-between items-center mb-3 text-sm font-bold">
@@ -247,16 +238,11 @@ function loadPreset(url: string) {
         <!-- STACK & SICUREZZA -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
           <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-inner">
-            <h4 class="text-[11px] text-slate-500 font-black tracking-widest uppercase mb-4 flex items-center gap-2">
-              <span>🔒</span> Sicurezza
-            </h4>
+            <h4 class="text-[11px] text-slate-500 font-black tracking-widest uppercase mb-4">Sicurezza</h4>
             <p class="text-emerald-400 font-bold m-0 text-sm md:text-base">{{ scanResult.securityStatus }}</p>
           </div>
-          
           <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 shadow-inner">
-            <h4 class="text-[11px] text-slate-500 font-black tracking-widest uppercase mb-4 flex items-center gap-2">
-              <span>🛠️</span> Tech Stack
-            </h4>
+            <h4 class="text-[11px] text-slate-500 font-black tracking-widest uppercase mb-4">Tech Stack</h4>
             <div class="flex gap-2 flex-wrap">
               <span
                 v-for="tech in scanResult.detectedStack"
@@ -271,21 +257,16 @@ function loadPreset(url: string) {
 
         <!-- SUMMARY DELL'IA -->
         <div class="bg-emerald-500/10 border border-emerald-500/30 p-6 sm:p-8 rounded-2xl mb-10">
-          <h4 class="text-emerald-400 font-black mb-3 text-sm flex items-center gap-2">
-            <span>🤖</span> Sintesi dell'Agente Pulse Nexus
-          </h4>
+          <h4 class="text-emerald-400 font-black mb-3 text-sm">Sintesi dell'Agente Pulse Nexus</h4>
           <p class="text-slate-300 text-sm leading-relaxed m-0">{{ scanResult.aiSummary }}</p>
         </div>
 
         <!-- ACTION PLAN -->
         <div class="bg-slate-950 border border-slate-800 rounded-2xl p-6 sm:p-8">
           <div class="mb-6">
-            <h3 class="text-xl text-white font-black flex items-center gap-2">
-              <span>🚀</span> Roadmap Miglioramenti
-            </h3>
+            <h3 class="text-xl text-white font-black">Roadmap Miglioramenti</h3>
             <span class="text-xs sm:text-sm text-slate-400 mt-1 block">Risolvi questi task per sbloccare XP extra nel DB Pure SQL.</span>
           </div>
-
           <div class="flex flex-col gap-3">
             <div
               v-for="(item, idx) in scanResult.improvementActionPlan"
@@ -300,22 +281,19 @@ function loadPreset(url: string) {
               </div>
               <div class="shrink-0 mt-2 sm:mt-0">
                 <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-black px-2.5 py-1.5 rounded-lg shadow-sm">
-                  ⭐ {{ item.xpGain }}
+                  +{{ item.xpGain }}
                 </span>
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </Transition>
   </div>
-  <div class="mt-2 mb-6">
-       <DkpAdsWidget placement="global" />
-      </div>
-	  <div class="mt-2 mb-6">
-      <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-      </div>
+
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 mt-2 mb-8">
+    <DkpAdsWidget placement="global" />
+  </div>
 </template>
 
 <style scoped>

@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { parseDkpMarkdown, cleanNodeLabel } from '~/composables/useDkpNodes'
+import { highlightDomElement, extractLanguagesFromMarkdown, prismRegistryVersion } from '~/composables/useDynamicPrism'
 
 const props = withDefaults(defineProps<{
   isOpen: boolean
@@ -37,15 +38,20 @@ const newPostIsPinned = ref(false)
 
 const editorMode = ref<'advanced' | 'simple'>('advanced')
 const editorTab = ref<'write' | 'preview'>('write')
-const selectedCodeLang = ref<'typescript' | 'sql' | 'rust' | 'bash' | 'python' | 'json'>('typescript')
+const selectedCodeLang = ref<string>('typescript')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const previewBoxRef = ref<HTMLElement | null>(null)
 const isSubmitting = ref(false)
 const formError = ref('')
 
+// AI Thread Copilot State
+const showAiCopilot = ref(false)
+const aiPromptHint = ref('')
+const isAiLoading = ref(false)
+const aiFeedback = ref('')
+const prevContentSnapshot = ref<string | null>(null)
+
 const { currentUser } = useAuthCore()
-const authToken = getDkpAuthToken()
-const authHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {}
-const { $prism } = useNuxtApp()
 
 const isEditMode = computed(() => Boolean(props.editPost?.id))
 
@@ -63,7 +69,6 @@ const selectedNodeInfo = computed(() => {
 })
 
 function syncInitialSelection() {
-  // Se siamo in modifica thread, carica i dati esistenti e blocca il nodo del post
   if (props.editPost?.id) {
     newPostTitle.value = props.editPost.title || ''
     newPostContent.value = props.editPost.content || ''
@@ -90,7 +95,6 @@ function syncInitialSelection() {
     newPostIsPinned.value = false
   }
 
-  // 1. Priorità al nodo pre-selezionato
   if (props.initialNodeId) {
     for (const [cat, list] of Object.entries(props.groupedNodes || {})) {
       const found = list.find((n: any) => Number(n.id) === Number(props.initialNodeId))
@@ -102,7 +106,6 @@ function syncInitialSelection() {
     }
   }
 
-  // 2. Priorità alla categoria pre-selezionata
   const targetCat =
     props.initialCategory && props.groupedNodes[props.initialCategory]?.length
       ? props.initialCategory
@@ -209,19 +212,78 @@ function insertLink() {
   applyMarkdown('[', '](https://)', 'Testo collegamento')
 }
 
+// ✨ AI THREAD COPILOT
+async function runNodeAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' | 'generate_code' | 'tldr_table') {
+  isAiLoading.value = true
+  aiFeedback.value = 'AI Copilot in esecuzione...'
+  prevContentSnapshot.value = newPostContent.value
+
+  const el = textareaRef.value
+  const selectedText = el ? newPostContent.value.substring(el.selectionStart, el.selectionEnd) : ''
+
+  try {
+    const res: any = await $fetch('/api/admin/ai-assist', {
+      method: 'POST',
+      body: {
+        mode,
+        context: 'nodes',
+        title: newPostTitle.value,
+        category: composerCategory.value,
+        subCategory: selectedNodeInfo.value?.name || '',
+        content: newPostContent.value,
+        selectedText,
+        promptHint: aiPromptHint.value,
+        codeLang: selectedCodeLang.value
+      }
+    })
+
+    if (res?.success && res.result) {
+      if (res.result.title && !newPostTitle.value.trim()) {
+        newPostTitle.value = res.result.title
+      }
+      if (mode === 'generate_code' || mode === 'tldr_table' || mode === 'security_audit') {
+        const snippet = res.result.insertSnippet || ''
+        if (el && snippet) {
+          const start = el.selectionStart
+          const before = newPostContent.value.substring(0, start)
+          const after = newPostContent.value.substring(el.selectionEnd)
+          newPostContent.value = `${before}${snippet}${after}`
+        } else if (res.result.content) {
+          newPostContent.value = res.result.content
+        }
+      } else if (res.result.content) {
+        newPostContent.value = res.result.content
+      }
+      aiFeedback.value = `Pronto (${res.source || 'AI'})`
+    }
+  } catch (err: any) {
+    aiFeedback.value = `Errore AI: ${err?.message || 'Errore'}`
+  } finally {
+    isAiLoading.value = false
+  }
+}
+
+function undoNodeAi() {
+  if (prevContentSnapshot.value !== null) {
+    newPostContent.value = prevContentSnapshot.value
+    prevContentSnapshot.value = null
+    aiFeedback.value = 'Ripristinato.'
+  }
+}
+
 const previewHtml = computed(() => {
+  void prismRegistryVersion.value
   if (!newPostContent.value.trim()) {
     return '<span class="text-slate-500 font-mono text-xs">Nessun contenuto in anteprima...</span>'
   }
+  extractLanguagesFromMarkdown(newPostContent.value)
   return parseDkpMarkdown(newPostContent.value)
 })
 
-watch([editorTab, previewHtml], async ([tab]) => {
-  if (tab === 'preview' && import.meta.client && $prism) {
+watch([editorTab, previewHtml, prismRegistryVersion], async ([tab]) => {
+  if (tab === 'preview' && import.meta.client) {
     await nextTick()
-    try {
-      ;($prism as any).highlightAll()
-    } catch {}
+    await highlightDomElement(previewBoxRef.value)
   }
 })
 
@@ -313,7 +375,16 @@ async function handlePublish() {
         </div>
 
         <div class="flex items-center gap-2 font-mono">
-          <div class="flex bg-[#020420] p-1 rounded-xl border border-slate-800 text-[11px]">
+          <button
+            type="button"
+            @click="showAiCopilot = !showAiCopilot"
+            class="px-2.5 py-1 rounded-xl font-bold text-[11px] cursor-pointer border transition-all"
+            :class="showAiCopilot ? 'bg-purple-500 text-slate-950 border-purple-400' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25'"
+          >
+            ✨ AI Copilot
+          </button>
+
+          <div class="flex bg-[#030712] p-1 rounded-xl border border-slate-800 text-[11px]">
             <button
               type="button"
               @click="editorMode = 'advanced'"
@@ -342,11 +413,49 @@ async function handlePublish() {
         </div>
       </div>
 
-      <!-- SELETTORE CATEGORIA -> NODO / SOTTO-NODO (CON INDENTAZIONE GERARCHICA) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#020420] p-3.5 rounded-xl border border-slate-800 font-mono text-xs">
+      <!-- AI THREAD COPILOT DRAWER -->
+      <div v-if="showAiCopilot" class="bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs">
+        <div class="flex flex-wrap gap-2">
+          <input
+            v-model="aiPromptHint"
+            type="text"
+            placeholder="Descrivi il thread o il problema tecnico da analizzare..."
+            class="flex-1 min-w-[220px] bg-[#030712] border border-slate-700 text-white px-3 py-2 rounded-lg outline-none"
+          />
+          <button
+            type="button"
+            :disabled="isAiLoading"
+            @click="runNodeAiAssist('generate_draft')"
+            class="px-3 py-2 rounded-lg bg-emerald-500 text-slate-950 font-extrabold border-none cursor-pointer"
+          >
+            ✨ Genera Thread
+          </button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" :disabled="isAiLoading" @click="runNodeAiAssist('expand')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 cursor-pointer">
+            🚀 Espandi &amp; Benchmark
+          </button>
+          <button type="button" :disabled="isAiLoading" @click="runNodeAiAssist('security_audit')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-cyan-300 cursor-pointer">
+            🛡️ Audit Sicurezza
+          </button>
+          <button type="button" :disabled="isAiLoading" @click="runNodeAiAssist('generate_code')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-emerald-300 cursor-pointer">
+            💻 Snippet {{ selectedCodeLang.toUpperCase() }}
+          </button>
+          <button type="button" :disabled="isAiLoading" @click="runNodeAiAssist('tldr_table')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-amber-300 cursor-pointer">
+            📊 Tabella Comparativa
+          </button>
+          <button v-if="prevContentSnapshot !== null" type="button" @click="undoNodeAi" class="px-2.5 py-1 rounded bg-rose-500/15 border border-rose-500/40 text-rose-300 cursor-pointer">
+            ↩️ Annulla
+          </button>
+          <span v-if="aiFeedback" class="text-[11px] text-emerald-400 ml-auto">{{ aiFeedback }}</span>
+        </div>
+      </div>
+
+      <!-- SELETTORE CATEGORIA -> NODO / SOTTO-NODO -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#030712] p-3.5 rounded-xl border border-slate-800 font-mono text-xs">
         <div>
           <label class="block text-sky-400 font-bold mb-1 text-[11px]">1. Categoria Principale:</label>
-          <select v-model="composerCategory" class="w-full bg-[#090d16] border border-slate-700 rounded-xl p-2.5 text-slate-200 outline-none font-sans">
+          <select v-model="composerCategory" class="w-full bg-[#030712] border border-slate-700 rounded-xl p-2.5 text-slate-200 outline-none font-sans">
             <option v-for="cat in categories" :key="cat" :value="cat">
               {{ cat }} ({{ groupedNodes[cat]?.length || 0 }})
             </option>
@@ -354,7 +463,7 @@ async function handlePublish() {
         </div>
         <div>
           <label class="block text-emerald-400 font-bold mb-1 text-[11px]">2. Nodo / Sotto-Nodo di Destinazione:</label>
-          <select v-model.number="newPostNodeId" class="w-full bg-[#090d16] border border-slate-700 rounded-xl p-2.5 text-slate-200 outline-none font-sans">
+          <select v-model.number="newPostNodeId" class="w-full bg-[#030712] border border-slate-700 rounded-xl p-2.5 text-slate-200 outline-none font-sans">
             <option v-for="node in composerSubNodes" :key="node.id" :value="Number(node.id)">
               {{ node.depth > 0 ? `${'—'.repeat(node.depth)}↳ ` : '' }}{{ node.icon || '#' }} n/{{ cleanNodeLabel(node.name) }}
             </option>
@@ -370,7 +479,7 @@ async function handlePublish() {
         <span class="text-slate-400">slug: {{ selectedNodeInfo.slug }}</span>
       </div>
 
-      <div v-if="isAdmin" class="flex items-center gap-2 bg-[#020420] border border-amber-500/30 p-3 rounded-xl font-mono text-xs">
+      <div v-if="isAdmin" class="flex items-center gap-2 bg-[#030712] border border-amber-500/30 p-3 rounded-xl font-mono text-xs">
         <input id="modal-pin-check" v-model="newPostIsPinned" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer" />
         <label for="modal-pin-check" class="text-amber-400 font-bold cursor-pointer">📌 Fissa questo thread in cima al feed (Pinned)</label>
       </div>
@@ -381,13 +490,12 @@ async function handlePublish() {
           v-model="newPostTitle"
           type="text"
           placeholder="Es. [Architecture] Benchmark Pure SQL vs ORM..."
-          class="w-full bg-[#020420] border border-slate-800 rounded-xl p-3 text-slate-100 focus:border-purple-400 outline-none font-sans font-bold text-sm"
+          class="w-full bg-[#030712] border border-slate-800 rounded-xl p-3 text-slate-100 focus:border-purple-400 outline-none font-sans font-bold text-sm"
         />
       </div>
 
       <!-- AREA EDITOR UNIFICATA -->
-      <div class="border border-slate-800 rounded-xl overflow-hidden bg-[#020420]">
-        <!-- TOOLBAR AVANZATA (stile Blog Slug) -->
+      <div class="border border-slate-800 rounded-xl overflow-hidden bg-[#030712]">
         <div
           v-if="editorMode === 'advanced'"
           class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[#0b101d] border-b border-slate-800 font-mono"
@@ -407,7 +515,6 @@ async function handlePublish() {
 
             <span class="text-slate-700">|</span>
 
-            <!-- NUOVI STRUMENTI ELENCO PUNTATO (-), NUMERATO (1.) E SUB-LISTA -->
             <button type="button" @click="insertBulletList" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs font-bold cursor-pointer" title="Elenco puntato (- )">- Lista</button>
             <button type="button" @click="insertNumberedList" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-300 text-xs font-bold cursor-pointer" title="Elenco numerato (1. )">1. Num</button>
             <button type="button" @click="insertSubList" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs cursor-pointer" title="Sotto-elenco indentato (  - )">↳ Sub</button>
@@ -420,13 +527,24 @@ async function handlePublish() {
             <button type="button" @click="insertLink" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs cursor-pointer" title="Link">Link</button>
             <button type="button" @click="insertDivider" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs cursor-pointer" title="Separatore ---">---</button>
 
-            <select v-model="selectedCodeLang" class="bg-slate-950 text-emerald-400 text-[11px] px-2 py-1 rounded outline-none border border-slate-800">
+            <select v-model="selectedCodeLang" class="bg-[#030712] text-emerald-400 text-[11px] px-2 py-1 rounded outline-none border border-slate-800">
               <option value="typescript">TS</option>
+              <option value="javascript">JS</option>
               <option value="sql">SQL</option>
               <option value="rust">Rust</option>
-              <option value="bash">Bash</option>
+              <option value="go">Go</option>
               <option value="python">Python</option>
+              <option value="bash">Bash</option>
+              <option value="docker">Docker</option>
+              <option value="yaml">YAML</option>
               <option value="json">JSON</option>
+              <option value="cpp">C++</option>
+              <option value="java">Java</option>
+              <option value="csharp">C#</option>
+              <option value="php">PHP</option>
+              <option value="kotlin">Kotlin</option>
+              <option value="swift">Swift</option>
+              <option value="solidity">Solidity</option>
             </select>
             <button type="button" @click="insertCodeBlock" class="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold border border-emerald-500/35 cursor-pointer">+ Code</button>
           </div>
@@ -437,12 +555,11 @@ async function handlePublish() {
           </div>
         </div>
 
-        <!-- HEADER MODALITÀ SEMPLICE (Raw Markdown pulito come nel vecchio modal) -->
         <div
           v-else
           class="flex items-center justify-between px-3 py-2 bg-[#0b101d] border-b border-slate-800 font-mono text-[11px] text-slate-400"
         >
-          <span>Contenuto (Markdown diretto — supporta ##, -, 1., ==highlight==, ```code```)</span>
+          <span>Contenuto (Markdown diretto — supporta ##, -, 1., ==highlight==, ```qualsiasi-linguaggio```)</span>
           <div class="flex gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
             <button type="button" @click="editorTab = 'write'" class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer" :class="editorTab === 'write' ? 'bg-sky-400 text-slate-950' : 'text-slate-400'">Markdown</button>
             <button type="button" @click="editorTab = 'preview'" class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer" :class="editorTab === 'preview' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'">Preview</button>
@@ -460,6 +577,7 @@ async function handlePublish() {
 
         <div
           v-else
+          ref="previewBoxRef"
           class="p-5 min-h-[220px] max-h-[360px] overflow-y-auto text-sm text-slate-200 leading-relaxed dkp-preview-content"
           v-html="previewHtml"
         ></div>
@@ -467,7 +585,7 @@ async function handlePublish() {
 
       <div class="font-mono text-xs">
         <label class="block text-slate-400 mb-1">Vault SHA-256 Hash (Opzionale — auto-generato On-Chain se vuoto):</label>
-        <input v-model="newPostVaultHash" type="text" placeholder="Generazione automatica SHA-256 sul Proof-of-Code Vault..." class="w-full bg-[#020420] border border-slate-800 rounded-xl p-2.5 text-slate-200 outline-none" />
+        <input v-model="newPostVaultHash" type="text" placeholder="Generazione automatica SHA-256 sul Proof-of-Code Vault..." class="w-full bg-[#030712] border border-slate-800 rounded-xl p-2.5 text-slate-200 outline-none" />
       </div>
 
       <div v-if="formError" role="alert" class="bg-rose-500/15 border border-rose-500/40 text-rose-300 px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold">{{ formError }}</div>
@@ -526,4 +644,20 @@ async function handlePublish() {
 :deep(ul > .dkp-li-main::before) { content: "○"; color: #38bdf8; position: absolute; left: -1.2rem; top: 0; font-weight: bold; }
 :deep(.dkp-li-nested) { margin-left: 1.5rem; margin-bottom: 0.25rem; color: #94a3b8; position: relative; }
 :deep(ul > .dkp-li-nested:not(.dkp-li-num)::before) { content: "▪"; color: #00dc82; position: absolute; left: -1.2rem; top: 0; }
+mark,
+.dkp-highlight {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.08rem 0.38rem !important;
+  font-weight: 700 !important;
+}
+
+.dkp-inline-code,
+:not(pre) > code {
+  background-color: rgba(30, 41, 59, 0.85) !important;
+  color: #38bdf8 !important;
+  border-radius: 0.3rem !important;
+}
 </style>

@@ -69,11 +69,22 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+let lastXpSoundAt = 0
+let xpAudioInstance: HTMLAudioElement | null = null
+
 const playXpSound = () => {
+  if (!import.meta.client) return
+  const now = Date.now()
+  if (now - lastXpSoundAt < 650) return
+  lastXpSoundAt = now
   try {
-    const audio = new Audio('/sounds/coin-up.mp3')
-    audio.volume = 0.3
-    audio.play().catch(() => {})
+    if (!xpAudioInstance) {
+      xpAudioInstance = new Audio('/sounds/coin-up.mp3')
+      xpAudioInstance.preload = 'auto'
+    }
+    xpAudioInstance.volume = 0.28
+    xpAudioInstance.currentTime = 0
+    xpAudioInstance.play().catch(() => {})
   } catch {}
 }
 

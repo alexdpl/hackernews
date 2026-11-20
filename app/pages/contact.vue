@@ -1,11 +1,5 @@
-<!-- app/pages/contact.vue -->
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
-
-useDkpSeo({
-  title: 'Contatti & Supporto Tecnico — DevKernelPulse v2.6-PURE-SQL',
-  description: 'Mettiti in contatto con il team di DevKernelPulse o con Alessandro De Paola per proposte, partnership, bug report e supporto API.'
-})
 
 interface ContactFormState {
   name: string
@@ -69,7 +63,7 @@ function validateForm(): boolean {
   }
 
   if (!form.message.trim()) {
-    errors.message = 'Il messaggio non può essere vuoto.'
+    errors.message = 'Il messaggio non pu essere vuoto.'
   } else if (form.message.trim().length < 10) {
     errors.message = 'Il messaggio deve contenere almeno 10 caratteri.'
   }
@@ -151,10 +145,22 @@ async function handleSubmit() {
 onMounted(() => {
   generateCaptcha()
 })
+
+useDkpSeo({
+  title: 'Contatti - DevKernelPulse',
+  description: 'Contatta il team di DevKernelPulse per supporto tecnico, segnalazioni di sicurezza e collaborazioni.',
+  type: 'website',
+  canonicalPath: '/contact'
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 pb-20 font-sans">
+  <DkpLayout
+    title="Contatti e Supporto"
+    subtitle="Canali per supporto tecnico, segnalazioni e collaborazioni"
+    :show-sidebar-ads="true"
+  >
+<div class="min-h-screen bg-[#020420] text-slate-300 py-10 px-4 sm:px-6 pb-20 font-sans">
     <div class="max-w-6xl mx-auto flex flex-col gap-8">
 
       <!-- BARRA 4 PILASTRI ECOSISTEMA DKP v2.6 -->
@@ -163,28 +169,28 @@ onMounted(() => {
           to="/news"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
-          🌍 DKP Tech Feed
+          DKP Tech Feed
         </NuxtLink>
 
         <NuxtLink
           to="/nodes"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
-          💬 DKP Talks Hub
+          DKP Talks Hub
         </NuxtLink>
 
         <NuxtLink
           to="/tools"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
-          🛠️ Developer Tools
+          Developer Tools
         </NuxtLink>
 
         <NuxtLink
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all no-underline"
         >
-          ✍️ DKP Editorial Hub
+          Ô£ì´©Å DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -203,7 +209,7 @@ onMounted(() => {
         </div>
 
         <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight mb-2 relative z-10">
-          📩 Contatta il Team • <span class="text-emerald-400">DevKernelPulse</span>
+          Contatta il Team ÔÇó <span class="text-emerald-400">DevKernelPulse</span>
         </h1>
         <p class="text-slate-400 text-xs sm:text-sm leading-relaxed m-0 max-w-3xl relative z-10">
           Hai domande sull'ecosistema, proposte di partnership tecnologica, vuoi segnalare un bug o richiedere supporto per API Pass e Vault? Compila il modulo protetto sottostante.
@@ -245,7 +251,7 @@ onMounted(() => {
                   :class="errors.name ? 'border-rose-500 focus:border-rose-400' : 'border-slate-800 focus:border-emerald-500'"
                 />
                 <span v-if="errors.name" id="err-name" class="text-rose-400 text-[11px] font-bold">
-                  ⚠️ {{ errors.name }}
+                  ÔÜá´©Å {{ errors.name }}
                 </span>
               </div>
 
@@ -264,7 +270,7 @@ onMounted(() => {
                   :class="errors.email ? 'border-rose-500 focus:border-rose-400' : 'border-slate-800 focus:border-emerald-500'"
                 />
                 <span v-if="errors.email" id="err-email" class="text-rose-400 text-[11px] font-bold">
-                  ⚠️ {{ errors.email }}
+                  ÔÜá´©Å {{ errors.email }}
                 </span>
               </div>
             </div>
@@ -272,7 +278,7 @@ onMounted(() => {
             <!-- OGGETTO -->
             <div class="flex flex-col gap-1.5">
               <label for="contact-subject" class="text-slate-300 font-bold uppercase tracking-wider">
-                🎯 Oggetto della Richiesta *
+                Oggetto della Richiesta *
               </label>
               <select
                 id="contact-subject"
@@ -301,7 +307,7 @@ onMounted(() => {
                 :class="errors.message ? 'border-rose-500 focus:border-rose-400' : 'border-slate-800 focus:border-emerald-500'"
               ></textarea>
               <span v-if="errors.message" id="err-message" class="text-rose-400 text-[11px] font-bold">
-                ⚠️ {{ errors.message }}
+                ÔÜá´©Å {{ errors.message }}
               </span>
             </div>
 
@@ -309,7 +315,7 @@ onMounted(() => {
             <div class="bg-[#040814] border border-slate-800 p-4 rounded-xl flex flex-col gap-3">
               <div class="flex justify-between items-center">
                 <span class="text-sky-400 font-black text-xs tracking-wider uppercase">
-                  🛡️ DKP KERNEL CAPTCHA
+                  DKP KERNEL CAPTCHA
                 </span>
                 <button
                   type="button"
@@ -317,7 +323,7 @@ onMounted(() => {
                   class="text-slate-400 hover:text-emerald-400 font-bold text-[11px] transition-colors cursor-pointer"
                   title="Genera nuovo quesito"
                 >
-                  🔄 Rigenera
+                  Rigenera
                 </button>
               </div>
 
@@ -338,7 +344,7 @@ onMounted(() => {
                 />
               </div>
               <span v-if="errors.captchaAnswer" id="err-captcha" class="text-rose-400 text-[11px] font-bold">
-                ⚠️ {{ errors.captchaAnswer }}
+                ÔÜá´©Å {{ errors.captchaAnswer }}
               </span>
             </div>
 
@@ -362,7 +368,7 @@ onMounted(() => {
                 </span>
               </label>
               <span v-if="errors.gdprConsent" id="err-gdpr" class="text-rose-400 text-[11px] font-bold">
-                ⚠️ {{ errors.gdprConsent }}
+                ÔÜá´©Å {{ errors.gdprConsent }}
               </span>
             </div>
 
@@ -375,7 +381,7 @@ onMounted(() => {
                 ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
                 : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'"
             >
-              <span>{{ isError ? '⚠️' : '⚡' }}</span>
+              <span>{{ isError ? 'ÔÜá´©Å' : 'ÔÜí' }}</span>
               <span>{{ responseMessage }}</span>
             </div>
 
@@ -385,8 +391,8 @@ onMounted(() => {
               :disabled="isSubmitting"
               class="w-full mt-1 py-3.5 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(0,220,130,0.25)] cursor-pointer disabled:opacity-50"
             >
-              <span v-if="isSubmitting">Trasmissione sicura al Kernel... ⚡</span>
-              <span v-else>🚀 Invia Messaggio</span>
+              <span v-if="isSubmitting">Trasmissione sicura al Kernel... ÔÜí</span>
+              <span v-else>Invia Messaggio</span>
             </button>
 
           </form>
@@ -395,14 +401,14 @@ onMounted(() => {
         <!-- SIDEBAR INFO & DIRECT DISPATCH -->
         <aside class="flex flex-col gap-5">
           <div class="bg-[#080d1a] border border-slate-800/80 rounded-3xl p-6 shadow-xl">
-            <h2 class="text-lg font-extrabold text-white mb-1.5">⚡ Direct Kernel Dispatch</h2>
+            <h2 class="text-lg font-extrabold text-white mb-1.5">ÔÜí Direct Kernel Dispatch</h2>
             <p class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-5">
               Preferisci un contatto diretto o hai un'emergenza infrastrutturale su API o Vault?
             </p>
 
             <div class="flex flex-col divide-y divide-slate-800">
               <div class="flex items-start gap-3 py-3.5">
-                <span class="text-xl">📧</span>
+                <span class="text-xl"></span>
                 <div>
                   <span class="block text-[11px] font-mono text-slate-500 uppercase font-extrabold">Email Ufficiale</span>
                   <a href="mailto:support@devkernelpulse.org" class="text-xs sm:text-sm text-white hover:text-emerald-400 font-semibold transition-colors no-underline">
@@ -412,7 +418,7 @@ onMounted(() => {
               </div>
 
               <div class="flex items-start gap-3 py-3.5">
-                <span class="text-xl">👨‍💻</span>
+                <span class="text-xl"></span>
                 <div>
                   <span class="block text-[11px] font-mono text-slate-500 uppercase font-extrabold">Lead Engineer Architect</span>
                   <span class="text-xs sm:text-sm text-white font-semibold">Alessandro De Paola (@alexdpl)</span>
@@ -420,17 +426,17 @@ onMounted(() => {
               </div>
 
               <div class="flex items-start gap-3 py-3.5">
-                <span class="text-xl">🐙</span>
+                <span class="text-xl"></span>
                 <div>
                   <span class="block text-[11px] font-mono text-slate-500 uppercase font-extrabold">Issue &amp; Open Source</span>
                   <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="text-xs sm:text-sm text-sky-400 hover:text-emerald-400 font-semibold transition-colors no-underline">
-                    github.com/alexdpl/hackernews ↗
+                    github.com/alexdpl/hackernews Ôåù
                   </a>
                 </div>
               </div>
 
               <div class="flex items-start gap-3 pt-3.5">
-                <span class="text-xl">⏱️</span>
+                <span class="text-xl">ÔÅ▒´©Å</span>
                 <div>
                   <span class="block text-[11px] font-mono text-slate-500 uppercase font-extrabold">SLA Risposta Media</span>
                   <span class="text-xs sm:text-sm text-emerald-400 font-mono font-bold">&lt; 2 ore (Sentinel Active)</span>
@@ -441,7 +447,7 @@ onMounted(() => {
 
           <div class="bg-gradient-to-br from-[#080d1a] to-purple-500/10 border border-purple-500/35 rounded-3xl p-6 shadow-xl">
             <span class="inline-block text-[11px] font-mono font-extrabold text-purple-300 bg-purple-500/15 border border-purple-500/40 px-2.5 py-1 rounded-md mb-3">
-              🛡️ GCP ARMOR &amp; SENTINEL v2.6
+              GCP ARMOR &amp; SENTINEL v2.6
             </span>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed m-0">
               Tutti i messaggi inviati tramite questo modulo sono validati con tracciamento consenso GDPR e protetti dal firewall euristico <strong class="text-white">Pulse Sentinel AI v2.6-PURE-SQL</strong>.
@@ -453,4 +459,5 @@ onMounted(() => {
 
     </div>
   </div>
+  </DkpLayout>
 </template>

@@ -1,651 +1,371 @@
-<!-- app/pages/nodes/index.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import VaultTrustBadge from '~/components/VaultTrustBadge.vue'
-import { buildCategoryNodeTree, cleanNodeLabel } from '~/composables/useDkpNodes'
-import DKPAdBanner from '~/components/DKPAdBanner.vue'
+import { ref, computed, onMounted } from 'vue'
+import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
+import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
+import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
+import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import { buildCategoryNodeTree, cleanNodeLabel } from '~/composables/useDkpNodes'
 
-useHead({
-  title: 'DKP Talks Hub - Discussioni Tecniche, Nodi e Community v2.6-PURE-SQL',
-  meta: [
-    {
-      name: 'description',
-      content: 'Esplora i DKP Nodes: discussioni verticali su Rust, JavaScript, AI Models, Web3, Mobile Dev e DevOps con notarizzazione SHA-256.'
-    }
-  ]
+useDkpSeo({
+  title: 'DKP Nodes & Talks Hub \u2014 Forum Tecnici & Blockchain Vault | DevKernelPulse',
+  description: 'Esplora i nodi e i sub-nodi tecnici di DevKernelPulse: Core Releases, AI Agents, Pure SQL e notarizzazione SHA-256.',
+  type: 'collection',
+  canonicalPath: '/nodes'
 })
 
-const activeSort = ref<'hot' | 'new' | 'top'>('hot')
-const selectedNodeSlug = ref<string | null>(null)
-const selectedCategoryName = ref<string | null>(null)
-const expandedCategories = ref<Record<string, boolean>>({})
-const searchNodeQuery = ref('')
-
-const currentPage = ref(1)
-const isModalOpen = ref(false)
-const toastMsg = ref('')
-
-const { currentUser } = useAuthCore()
-const isAdmin = computed(() => String(currentUser.value?.role || '').toUpperCase() === 'ADMIN')
-
-function cleanExcerpt(raw: string): string {
-  return String(raw || '')
-    .replace(/```[\w-]*\s*/g, '')
-    .replace(/```/g, '')
-    .replace(/\*\*/g, '')
-    .replace(/#{1,6}\s+/g, '')
-    .trim()
-}
-
-const { data: nodesRes } = await useFetch<any>('/api/nodes')
-const vaultConnected = computed(() => nodesRes.value?.vaultConnected !== false)
-
-const nodeTreeState = computed(() => {
-  const rawList = Array.isArray(nodesRes.value?.data)
-    ? nodesRes.value.data
-    : (Array.isArray(nodesRes.value) ? nodesRes.value : [])
-  return buildCategoryNodeTree(rawList)
-})
-
-const nodes = computed(() => nodeTreeState.value.nodes)
-const allCategoryNames = computed(() => nodeTreeState.value.categories)
-const allGroupedNodes = computed(() => nodeTreeState.value.groupedNodes)
-
-// Sidebar filtrata dalla barra di ricerca rapida
-const groupedNodes = computed<Record<string, any[]>>(() => {
-  const q = searchNodeQuery.value.trim().toLowerCase()
-  if (!q) return allGroupedNodes.value
-
-  const filtered: Record<string, any[]> = {}
-  for (const [cat, list] of Object.entries(allGroupedNodes.value)) {
-    const matches = list.filter((node: any) =>
-      String(node.name || '').toLowerCase().includes(q) ||
-      String(node.slug || '').toLowerCase().includes(q) ||
-      cat.toLowerCase().includes(q)
-    )
-    if (matches.length > 0) filtered[cat] = matches
-  }
-  return filtered
-})
-
-const categoryNames = computed(() => Object.keys(groupedNodes.value))
-
-const activeSelectedNodeId = computed<number | null>(() => {
-  if (!selectedNodeSlug.value) return null
-  const found = nodes.value.find((n: any) => n.slug === selectedNodeSlug.value)
-  return found ? Number(found.id) : null
-})
-
-watch(
-  groupedNodes,
-  (groups) => {
-    const keys = Object.keys(groups)
-    if (keys.length > 0 && Object.keys(expandedCategories.value).length === 0) {
-      expandedCategories.value[keys[0]] = true
-    }
+const heroCards = [
+  {
+    to: '/news',
+    icon: '\uD83C\uDF0D',
+    badge: 'LIVE STREAM',
+    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
+    title: 'DKP Tech Feed',
+    desc: 'Segnali tech e newsroom filtrati in tempo reale da Trinity AI'
   },
-  { immediate: true }
+  {
+    to: '/nodes',
+    icon: '\uD83D\uDCAC',
+    badge: 'COMMUNITY',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
+    title: 'DKP Talks Hub',
+    desc: 'Nodi tematici, architetture, bounty e discussioni tecniche'
+  },
+  {
+    to: '/tools',
+    icon: '\uD83D\uDEE0\uFE0F',
+    badge: 'SECURITY & DEV',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
+    title: 'Developer Tools',
+    desc: 'Utility crittografiche, audit SAST e diagnostica per ingegneri'
+  },
+  {
+    to: '/blog',
+    icon: '\uD83D\uDCDD',
+    badge: 'VAULT VERIFIED',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
+    title: 'DKP Editorial Hub',
+    desc: 'Deep-dive tecnici con certificazione SHA-256 immutabile'
+  }
+]
+
+const nodesList = ref<any[]>([])
+const recentThreads = ref<any[]>([])
+const isLoading = ref(true)
+const searchQuery = ref('')
+const selectedNodeGroup = ref('Tutti')
+const selectedSubnodeSlug = ref('Tutti')
+const { currentUser } = useAuthCore()
+
+const nodeTree = computed(() => buildCategoryNodeTree(nodesList.value))
+
+const nodeGroups = computed(() => {
+  const cats = nodeTree.value.categories || []
+  return cats.map((catName: string) => ({
+    name: catName,
+    subnodes: nodeTree.value.groupedNodes[catName] || []
+  }))
+})
+
+const activeGroupObj = computed(() =>
+  nodeGroups.value.find((g: any) => g.name === selectedNodeGroup.value) || null
 )
 
-const { data: postsRes, pending: loadingPosts, refresh: refreshPosts } = await useFetch<any>('/api/nodes/posts', {
-  query: computed(() => ({
-    sort: activeSort.value,
-    nodeSlug: selectedNodeSlug.value || undefined,
-    page: currentPage.value
-  }))
-})
-
-const rawPosts = computed<any[]>(() => {
-  const list = Array.isArray(postsRes.value?.posts)
-    ? postsRes.value.posts
-    : (Array.isArray(postsRes.value?.data) ? postsRes.value.data : (Array.isArray(postsRes.value) ? postsRes.value : []))
-
-  return list.map((p: any) => ({
-    ...p,
-    nodeName: cleanNodeLabel(p.nodeName || p.nodeSlug || 'General'),
-    vaultHash: p.vaultHash || p.vault_hash || null,
-    vaultBlockNumber: p.vaultBlockNumber ?? p.vault_block_number ?? null,
-    isPinned: Boolean(p.isPinned || p.is_pinned)
-  }))
-})
-
-const posts = computed(() => {
-  if (selectedNodeSlug.value || !selectedCategoryName.value) {
-    return rawPosts.value
-  }
-  const allowedSlugs = new Set((allGroupedNodes.value[selectedCategoryName.value] || []).map((n: any) => n.slug))
-  return rawPosts.value.filter((p: any) => allowedSlugs.has(p.nodeSlug))
-})
-
-const featuredArticles = ref<any[]>([])
-
-function populateFallbackArticles() {
-  featuredArticles.value = [
-    { id: 1, title: "Guida all'Architettura Nuxt 4 & Rolldown", category: 'Cloud Native & DevOps', categoryName: 'DevOps', slug: 'nuxt-4-rolldown' },
-    { id: 2, title: 'Integrazione Ollama e LLM Locali in Vue 3', category: 'AI & Machine Learning', categoryName: 'AI / LLM', slug: 'ollama-vue3' },
-    { id: 3, title: 'Notarizzazione Codice & Hashing SHA-256', category: 'Cybersecurity & Vault', categoryName: 'Security', slug: 'vault-sha256' },
-    { id: 4, title: 'Telemetria SSE Live & Worker Nitro v2.6', category: 'Backend Architecture', categoryName: 'Backend', slug: 'sse-nitro-v26' }
-  ]
+function selectNodeGroup(groupName: string) {
+  selectedNodeGroup.value = groupName
+  selectedSubnodeSlug.value = 'Tutti'
 }
 
-onMounted(async () => {
-  try {
-    const res: any = await $fetch('/api/blog/posts').catch(() => null)
-    const raw = res?.success ? res.data : (Array.isArray(res) ? res : [])
-    if (raw && raw.length > 0) {
-      featuredArticles.value = raw.slice(0, 4)
-    } else {
-      populateFallbackArticles()
+function selectSubnode(subSlug: string) {
+  selectedSubnodeSlug.value = subSlug
+}
+
+function resetNodeFilters() {
+  selectedNodeGroup.value = 'Tutti'
+  selectedSubnodeSlug.value = 'Tutti'
+  searchQuery.value = ''
+}
+
+const filteredThreads = computed<any[]>(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  const activeGroup = activeGroupObj.value
+
+  return recentThreads.value.filter((t: any) => {
+    const tSlug = String(t.nodeSlug || t.node_slug || '').toLowerCase().replace(/^(n\/)+/i, '')
+    const tName = String(t.nodeName || t.node_name || '').toLowerCase()
+    const tNodeId = Number(t.nodeId || t.node_id || 0)
+
+    if (selectedNodeGroup.value !== 'Tutti' && activeGroup) {
+      const subList = activeGroup.subnodes || []
+      const groupSlugs = new Set(subList.map((n: any) => String(n.slug || '').toLowerCase().replace(/^(n\/)+/i, '')))
+      const groupNames = new Set(subList.map((n: any) => String(cleanNodeLabel(n.name || '')).toLowerCase()))
+      const groupIds = new Set(subList.map((n: any) => Number(n.id || 0)).filter((id: number) => id > 0))
+      const matchesGroup =
+        groupSlugs.has(tSlug) ||
+        groupNames.has(tName) ||
+        (tNodeId > 0 && groupIds.has(tNodeId)) ||
+        String(t.category || '').toLowerCase() === selectedNodeGroup.value.toLowerCase()
+      if (!matchesGroup) return false
     }
-  } catch {
-    populateFallbackArticles()
-  }
+
+    if (selectedSubnodeSlug.value !== 'Tutti') {
+      const targetSub = selectedSubnodeSlug.value.toLowerCase().replace(/^(n\/)+/i, '')
+      const subObj = (activeGroup?.subnodes || []).find(
+        (n: any) => String(n.slug || '').toLowerCase().replace(/^(n\/)+/i, '') === targetSub
+      )
+      const matchSlug = tSlug === targetSub
+      const matchId = subObj?.id && tNodeId > 0 && Number(subObj.id) === tNodeId
+      if (!matchSlug && !matchId) return false
+    }
+
+    if (q) {
+      const hay = `${t.title || ''} ${t.content || ''} ${tSlug} ${tName} ${t.authorUsername || t.author || ''}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+
+    return true
+  })
 })
 
-watch([activeSort, selectedNodeSlug, selectedCategoryName], () => {
-  currentPage.value = 1
-})
-
-function nextPage() {
-  currentPage.value++
-  if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-function prevPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--
-    if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-}
-
-function showNotification(msg: string) {
-  toastMsg.value = msg
-  setTimeout(() => {
-    toastMsg.value = ''
-  }, 4000)
-}
-
-function copyPostLink(postId: number) {
-  const url = `${window.location.origin}/nodes/thread/${postId}`
-  navigator.clipboard.writeText(url)
-  showNotification('🔗 Link del thread copiato negli appunti!')
-}
-
-async function togglePinPostCard(post: any) {
-  const newPinState = !post.isPinned
+async function loadNodesHub() {
+  isLoading.value = true
   try {
-    await $fetch(`/api/nodes/posts/${post.id}`, {
-      method: 'PATCH',
-      body: { is_pinned: newPinState, userId: currentUser.value?.id }
-    })
-    post.isPinned = newPinState
-    showNotification(newPinState ? '📌 Thread fissato in alto!' : '📍 Thread rimosso dai pinned.')
-    await refreshPosts()
-  } catch {
-    showNotification('❌ Errore durante l\'aggiornamento dello stato pinned.')
+    const [nRes, pRes]: any = await Promise.all([
+      $fetch('/api/nodes').catch(() => null),
+      $fetch('/api/nodes/posts?limit=40&_t=' + Date.now()).catch(() => null)
+    ])
+    nodesList.value = nRes?.data || []
+    recentThreads.value = pRes?.posts || pRes?.data || []
+  } finally {
+    isLoading.value = false
   }
 }
 
-async function onThreadPublished() {
-  isModalOpen.value = false
-  showNotification('⛓️ Thread pubblicato e notarizzato SHA-256 con successo! +25 XP')
-  await refreshPosts()
-}
-
-async function handleVote(post: any, direction: 'up' | 'down') {
-  const delta = direction === 'up' ? 1 : -1
-  post.karmaScore = (post.karmaScore || 0) + delta
-  await $fetch(`/api/nodes/posts/${post.id}/vote`, {
-    method: 'POST',
-    body: { direction, userId: currentUser.value?.id }
+async function handleToggleLock(thread: any) {
+  const nextLocked = !thread.isLocked
+  const res: any = await $fetch(`/api/nodes/posts/${thread.id}/close`, {
+    method: 'PATCH',
+    body: { isLocked: nextLocked }
   }).catch(() => null)
+  if (res?.success) thread.isLocked = nextLocked
 }
 
-function selectNode(slug: string | null) {
-  selectedNodeSlug.value = slug
-  if (slug) {
-    selectedCategoryName.value = null
-  }
-}
-
-function selectCategory(catName: string) {
-  selectedNodeSlug.value = null
-  selectedCategoryName.value = selectedCategoryName.value === catName ? null : catName
-  expandedCategories.value[catName] = true
-}
-
-function toggleCategoryAccordion(catName: string) {
-  expandedCategories.value[catName] = !expandedCategories.value[catName]
-}
-
-function resetAllFilters() {
-  selectedNodeSlug.value = null
-  selectedCategoryName.value = null
-}
+onMounted(loadNodesHub)
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#020420] text-slate-100 font-sans p-4 md:p-8">
-    <div
-      v-if="toastMsg"
-      role="status"
-      class="fixed top-6 right-6 z-[10000] bg-[#041a13]/95 border border-emerald-500/50 text-emerald-300 px-4 py-3 rounded-xl shadow-2xl font-mono text-xs font-bold"
-    >
-      {{ toastMsg }}
-    </div>
+  <div class="bg-dkp-bg text-dkp-text font-display min-h-screen bg-grid-pattern relative">
+    <DkpHomeTelemetry />
 
-    <div class="max-w-7xl mx-auto flex flex-col gap-8">
-      <!-- HERO HEADER -->
-      <section class="relative py-8 px-6 text-center flex flex-col items-center gap-5 bg-[#090d16] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-purple-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+    <!-- HERO SECTION SPECULARE ALLA HOME, /news E /blog -->
+    <section class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dkp-card border border-dkp-border font-mono text-xs text-dkp-accent font-bold mb-6 card-glow">
+        <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+        <span> DKP TALKS HUB &bull; FORUM TECNICI &amp; SHA-256 VAULT V2.6-PURE-SQL</span>
+      </div>
 
-        <div class="flex flex-wrap items-center justify-center gap-2.5">
-          <div class="inline-flex items-center gap-2 bg-[#020420] border border-purple-500/30 px-4 py-1.5 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-            <span class="relative flex h-2.5 w-2.5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
-            </span>
-            <span class="text-[11px] font-mono font-black text-purple-400 uppercase tracking-widest">
-              DKP TALKS HUB v2.6-PURE-SQL
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight m-0 mb-5">
+        <span class="text-white">DKP Nodes &amp; </span>
+        <span class="bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+          Talks Hub
+        </span>
+      </h1>
+
+      <p class="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed mb-8">
+        Forum tecnici verticali, sub-nodi specializzati, code review e discussioni notarizzate su Neon PostgreSQL dalla community DevKernelPulse.
+      </p>
+
+      <!-- 4 CARD PRINCIPALI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left mb-7">
+        <NuxtLink
+          v-for="card in heroCards"
+          :key="card.to"
+          :to="card.to"
+          :class="[
+            'bg-dkp-card/95 border rounded-2xl p-5 no-underline transition-all card-glow group flex flex-col justify-between gap-4',
+            card.to === '/nodes' ? 'border-violet-400/60 shadow-[0_0_20px_rgba(167,139,250,0.16)]' : 'border-dkp-border hover:border-cyan-400/60'
+          ]"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">{{ card.icon }}</span>
+            <span :class="['font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-md border uppercase', card.badgeClass]">
+              {{ card.badge }}
             </span>
           </div>
+          <div>
+            <h2 class="text-base font-bold text-white group-hover:text-dkp-accent transition-colors flex items-center justify-between m-0 mb-1.5">
+              <span>{{ card.title }}</span>
+              <span class="text-slate-400 group-hover:text-dkp-accent transition-transform group-hover:translate-x-1">&rarr;</span>
+            </h2>
+            <p class="text-xs text-slate-300 leading-relaxed m-0">{{ card.desc }}</p>
+          </div>
+        </NuxtLink>
+      </div>
 
-          <NuxtLink
-            to="/nodes/n/blockchain-vault"
-            class="inline-flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/35 px-3.5 py-1.5 rounded-full font-mono text-[11px] font-bold text-emerald-400 transition-all no-underline"
-          >
-            <span>⛓️</span>
-            <span>{{ vaultConnected ? 'VAULT ON-CHAIN: n/blockchain-vault' : 'VAULT SYNCING' }}</span>
-          </NuxtLink>
-        </div>
+      <!-- AZIONI RAPIDE NODI -> PUBBLICA THREAD APRE DASHBOARD -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-6">
+        <NuxtLink
+          to="/user/dashboard?tab=content&subtab=nodes&new=1"
+          class="px-5 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-mono text-xs sm:text-sm font-extrabold no-underline shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all"
+        >
+           Pubblica Thread (+50 XP)
+        </NuxtLink>
 
-        <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight max-w-4xl m-0">
-          DKP <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-sky-400 to-emerald-400">Talks &amp; Nodes</span>
-        </h1>
-
-        <p class="text-slate-400 text-sm md:text-base max-w-2xl leading-relaxed font-sans m-0">
-          Spazio di discussione verticale per sviluppatori. Ogni thread viene notarizzato crittograficamente in <strong class="text-emerald-400 font-mono">SHA-256</strong> sul nodo pubblico <strong class="text-sky-400 font-mono">n/blockchain-vault</strong>.
-        </p>
-
-        <div class="flex flex-wrap gap-3 justify-center relative z-10 font-mono">
-          <NuxtLink active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/news">
-            DKP Tech Feed
-          </NuxtLink>
-          <NuxtLink active-class="!bg-purple-500 !text-slate-950 !border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/nodes">
-            DKP Talks Hub
-          </NuxtLink>
-          <NuxtLink active-class="!bg-sky-400 !text-slate-950 !border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/tools">
-            Developer Tools
-          </NuxtLink>
-          <NuxtLink active-class="!bg-emerald-500 !text-slate-950 !border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]" class="px-5 py-2.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all shadow-lg no-underline" to="/blog">
-            DKP Editorial Hub
-          </NuxtLink>
-        </div>
+        <NuxtLink
+          to="/nodes/n/blockchain-vault"
+          class="px-4 py-2.5 rounded-xl bg-dkp-card border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-mono text-xs sm:text-sm font-bold no-underline transition-colors"
+        >
+           n/blockchain-vault
+        </NuxtLink>
 
         <button
           type="button"
-          @click="isModalOpen = true"
-          class="mt-1 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold font-mono text-xs rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center gap-2 cursor-pointer"
+          @click="loadNodesHub"
+          class="px-4 py-2.5 rounded-xl bg-dkp-card border border-dkp-border hover:border-cyan-400 text-slate-200 font-mono text-xs sm:text-sm font-bold cursor-pointer transition-colors"
         >
-          <span>+</span> Apri Nuovo Thread - Rich Editor (+25 XP)
+           Aggiorna Feed
         </button>
-      </section>
-
-      <!-- GRIGLIA 2 COLONNE -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <!-- SIDEBAR SINISTRA (9 Cat - 163 Nodi + Subnodi) -->
-        <aside class="lg:col-span-1 flex flex-col gap-6">
-          <div class="bg-[#090d16] border border-emerald-500/35 rounded-2xl p-4 shadow-xl flex flex-col gap-2.5 font-mono">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-black text-emerald-400 flex items-center gap-1.5">
-                ⛓️ Proof-of-Code Vault
-              </span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
-                PUBLIC NOTARY
-              </span>
-            </div>
-            <p class="text-[11px] text-slate-400 font-sans m-0 leading-relaxed">
-              Nodo pubblico ufficiale di notarizzazione SHA-256 e verifica integrità dei thread DKP.
-            </p>
-            <div class="flex items-center justify-between pt-1">
-              <NuxtLink
-                to="/nodes/n/blockchain-vault"
-                class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg no-underline transition-colors"
-              >
-                Apri n/blockchain-vault →
-              </NuxtLink>
-              <span class="text-[10px] text-slate-500">SHA-256 MAINNET</span>
-            </div>
-          </div>
-
-          <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h2 class="text-sm font-bold tracking-wider text-white font-mono uppercase flex items-center gap-2 m-0">
-                <span class="text-purple-400">#</span> Categorie &amp; Nodi
-              </h2>
-              <span class="text-[10px] bg-purple-500/10 text-purple-400 font-mono px-2 py-0.5 rounded border border-purple-500/20 font-bold">
-                {{ categoryNames.length }} Cat - {{ nodes.length }} Nodi
-              </span>
-            </div>
-
-            <div class="flex flex-col gap-1.5 font-mono text-xs">
-              <label for="quick-node-select" class="text-slate-400 text-[11px] font-bold">Salto Rapido Sotto-Nodo:</label>
-              <select
-                id="quick-node-select"
-                :value="selectedNodeSlug || ''"
-                @change="selectNode(($event.target as HTMLSelectElement).value || null)"
-                class="w-full bg-[#020420] border border-slate-800 hover:border-purple-500/40 rounded-xl p-2.5 text-slate-200 focus:border-purple-400 outline-none transition-all cursor-pointer font-sans text-xs"
-              >
-                <option value="">Feed Globale (Tutti i {{ nodes.length }} nodi)</option>
-                <optgroup v-for="(nodeList, catName) in groupedNodes" :key="catName" :label="`${catName} (${nodeList.length})`">
-                  <option v-for="node in nodeList" :key="node.id" :value="node.slug">
-                    {{ node.depth > 0 ? `${'—'.repeat(node.depth)}↳ ` : '' }}{{ node.icon || '#' }} n/{{ node.name }} ({{ node.subscribersCount || 0 }})
-                  </option>
-                </optgroup>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-1.5 font-mono text-xs">
-              <input
-                v-model="searchNodeQuery"
-                type="text"
-                aria-label="Filtra categoria o sotto-nodo"
-                placeholder="Cerca categoria o sotto-nodo..."
-                class="w-full bg-[#020420] border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:border-purple-400 outline-none text-xs"
-              />
-            </div>
-
-            <div class="max-h-[520px] overflow-y-auto pr-1 flex flex-col gap-2 font-mono text-xs">
-              <button
-                type="button"
-                @click="resetAllFilters"
-                class="shrink-0 flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left cursor-pointer"
-                :class="selectedNodeSlug === null && selectedCategoryName === null ? 'bg-purple-500/15 text-purple-300 border border-purple-500/35 font-bold' : 'bg-[#020420] text-slate-400 border border-slate-800/80 hover:text-slate-200'"
-              >
-                <span class="flex items-center gap-2">Feed Globale</span>
-                <span class="text-[10px] text-slate-500">{{ nodes.length }} nodi</span>
-              </button>
-
-              <div
-                v-for="(nodeList, catName) in groupedNodes"
-                :key="catName"
-                class="shrink-0 bg-[#020420] border border-slate-800/90 rounded-xl overflow-hidden"
-              >
-                <div class="flex items-center justify-between px-3 py-2.5 bg-slate-950/70">
-                  <button
-                    type="button"
-                    @click="selectCategory(String(catName))"
-                    class="flex-1 text-left bg-transparent border-none p-0 cursor-pointer flex items-center justify-between gap-2 min-w-0"
-                  >
-                    <span
-                      class="font-bold text-xs truncate"
-                      :class="selectedCategoryName === catName ? 'text-emerald-400' : 'text-slate-100 hover:text-sky-400'"
-                    >
-                      {{ catName }}
-                    </span>
-                    <span class="text-[10px] bg-slate-900 text-sky-400 border border-slate-800 px-1.5 py-0.5 rounded shrink-0">
-                      {{ nodeList.length }}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    @click="toggleCategoryAccordion(String(catName))"
-                    :aria-expanded="Boolean(expandedCategories[String(catName)])"
-                    class="ml-2 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 cursor-pointer text-[11px] shrink-0"
-                  >
-                    {{ expandedCategories[String(catName)] || searchNodeQuery.trim() ? 'v' : '>' }}
-                  </button>
-                </div>
-
-                <div
-                  v-if="expandedCategories[String(catName)] || searchNodeQuery.trim().length > 0"
-                  class="p-1.5 flex flex-col gap-1 border-t border-slate-800/70 max-h-64 overflow-y-auto"
-                >
-                  <div
-                    v-for="node in nodeList"
-                    :key="node.id"
-                    class="shrink-0 flex items-center justify-between gap-1 rounded-lg px-2 py-1.5 transition-all"
-                    :style="node.depth > 0 ? { paddingLeft: `${0.5 + node.depth * 0.75}rem` } : undefined"
-                    :class="selectedNodeSlug === node.slug ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'"
-                  >
-                    <button
-                      type="button"
-                      @click="selectNode(node.slug)"
-                      class="flex-1 flex items-center gap-1.5 text-left bg-transparent border-none p-0 cursor-pointer truncate text-xs text-inherit"
-                    >
-                      <span v-if="node.depth > 0" class="text-slate-600">↳</span>
-                      <span>{{ node.icon || '#' }}</span>
-                      <span class="truncate">n/{{ node.name }}</span>
-                      <span
-                        v-if="node.subNodesCount > 0"
-                        class="text-[9px] px-1.5 py-0.2 rounded bg-slate-900 text-emerald-400 border border-slate-800 shrink-0"
-                        :title="`${node.subNodesCount} sotto-nodi`"
-                      >
-                        +{{ node.subNodesCount }}
-                      </span>
-                    </button>
-
-                    <NuxtLink
-                      :to="`/nodes/n/${node.slug}`"
-                      class="text-[10px] text-slate-500 hover:text-emerald-400 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 no-underline shrink-0"
-                      title="Apri pagina dedicata del nodo"
-                    >
-                      -&gt;
-                    </NuxtLink>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="isModalOpen = true"
-              class="w-full mt-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold font-mono text-xs py-2.5 px-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>+</span> Nuovo Thread (+25 XP)
-            </button>
-          </div>
-
-          <DKPAdBanner />
-        </aside>
-
-        <!-- MAIN FEED CENTRALE -->
-        <main class="lg:col-span-2 flex flex-col gap-6">
-          <div class="bg-[#090d16] border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
-            <div class="flex items-center gap-2 font-mono">
-              <span class="text-xs text-slate-400">Ordinamento:</span>
-              <div class="flex bg-[#020420] p-1 rounded-xl border border-slate-800 text-xs">
-                <button
-                  type="button"
-                  @click="activeSort = 'hot'"
-                  class="px-3 py-1 rounded-lg font-bold transition-all cursor-pointer"
-                  :class="activeSort === 'hot' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-400 hover:text-slate-200'"
-                >
-                  Hot
-                </button>
-                <button
-                  type="button"
-                  @click="activeSort = 'new'"
-                  class="px-3 py-1 rounded-lg font-bold transition-all cursor-pointer"
-                  :class="activeSort === 'new' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-400 hover:text-slate-200'"
-                >
-                  New
-                </button>
-                <button
-                  type="button"
-                  @click="activeSort = 'top'"
-                  class="px-3 py-1 rounded-lg font-bold transition-all cursor-pointer"
-                  :class="activeSort === 'top' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-slate-400 hover:text-slate-200'"
-                >
-                  Top
-                </button>
-              </div>
-            </div>
-
-            <div class="font-mono text-xs text-slate-400 flex items-center gap-2">
-              <span>Filtro:</span>
-              <span class="text-emerald-400 font-bold">
-                {{ selectedNodeSlug ? `n/${selectedNodeSlug}` : (selectedCategoryName || 'Tutti i Nodi') }}
-              </span>
-              <button
-                v-if="selectedNodeSlug || selectedCategoryName"
-                type="button"
-                @click="resetAllFilters"
-                class="text-[10px] text-rose-400 hover:underline bg-transparent border-none cursor-pointer"
-              >
-                (Reset)
-              </button>
-            </div>
-          </div>
-
-          <div v-if="loadingPosts" class="p-12 text-center text-emerald-400 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800 animate-pulse">
-            Ingestione discussioni e verifica impronte SHA-256 dal DB Neon in corso...
-          </div>
-
-          <div v-else-if="posts.length === 0" class="p-12 text-center text-slate-400 font-mono text-xs bg-[#090d16] rounded-2xl border border-slate-800 flex flex-col items-center gap-3">
-            <span>Nessun thread pubblicato in questa sezione. Sii il primo a creare una discussione!</span>
-            <button
-              type="button"
-              @click="isModalOpen = true"
-              class="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs cursor-pointer"
-            >
-              Scrivi il primo thread
-            </button>
-          </div>
-
-          <div v-else class="flex flex-col gap-4">
-            <article
-              v-for="post in posts"
-              :key="post.id"
-              class="bg-[#090d16] border border-slate-800 hover:border-purple-500/40 rounded-2xl p-5 shadow-xl transition-all flex gap-4 group"
-            >
-              <div class="flex flex-col items-center justify-start bg-[#020420] p-2.5 rounded-xl border border-slate-800 font-mono text-xs h-fit min-w-[44px]">
-                <button type="button" @click="handleVote(post, 'up')" class="text-slate-500 hover:text-emerald-400 transition-colors text-sm font-bold bg-transparent border-none cursor-pointer">▲</button>
-                <span class="font-extrabold my-1 text-slate-200">{{ post.karmaScore || 1 }}</span>
-                <button type="button" @click="handleVote(post, 'down')" class="text-slate-500 hover:text-rose-400 transition-colors text-sm font-bold bg-transparent border-none cursor-pointer">▼</button>
-              </div>
-
-              <div class="flex-1 flex flex-col gap-2 min-w-0">
-                <div class="flex items-center gap-2 font-mono text-[11px] text-slate-400 flex-wrap">
-                  <span v-if="post.isPinned" class="text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">📌 PINNED</span>
-
-                  <NuxtLink v-if="post.nodeSlug" :to="`/nodes/n/${post.nodeSlug}`" class="text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 no-underline">
-                    {{ post.nodeIcon || '#' }} n/{{ post.nodeName || post.nodeSlug }}
-                  </NuxtLink>
-                  <span v-else class="text-purple-400 font-bold bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                    {{ post.nodeIcon || '#' }} n/{{ post.nodeName || 'General' }}
-                  </span>
-                  <span>-</span>
-                  <span class="text-slate-300 font-semibold">@{{ post.authorUsername || post.authorName || 'community' }}</span>
-                  <span>-</span>
-                  <span>{{ new Date(post.createdAt || Date.now()).toLocaleDateString('it-IT') }}</span>
-
-                  <div class="ml-auto">
-                    <VaultTrustBadge
-                      :post-id="post.id"
-                      :vault-hash="post.vaultHash"
-                      :block-number="post.vaultBlockNumber"
-                      :compact="true"
-                      @notarized="(h) => { post.vaultHash = h }"
-                    />
-                  </div>
-                </div>
-
-                <NuxtLink :to="`/nodes/thread/${post.id}`" class="text-base font-bold text-slate-100 group-hover:text-purple-400 transition-colors font-sans leading-snug no-underline">
-                  {{ post.title }}
-                </NuxtLink>
-
-                <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed font-sans m-0">
-                  {{ cleanExcerpt(post.content) }}
-                </p>
-
-                <div class="flex items-center justify-between gap-4 mt-2 pt-2 border-t border-slate-800/80 font-mono text-[11px] text-slate-400 flex-wrap">
-                  <NuxtLink :to="`/nodes/thread/${post.id}`" class="hover:text-emerald-400 transition-colors flex items-center gap-1.5 font-bold no-underline text-sky-400">
-                    {{ post.commentsCount || 0 }} Commenti - Apri Thread -&gt;
-                  </NuxtLink>
-
-                  <div class="flex items-center gap-3">
-                    <button type="button" @click="copyPostLink(post.id)" class="text-slate-400 hover:text-emerald-400 bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors">
-                      🔗 Condividi
-                    </button>
-
-                    <button
-                      v-if="isAdmin"
-                      type="button"
-                      @click="togglePinPostCard(post)"
-                      class="text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded cursor-pointer font-bold transition-colors"
-                    >
-                      📌 {{ post.isPinned ? 'Unpin' : 'Pinna' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <div class="flex items-center justify-between bg-[#090d16] border border-slate-800 rounded-xl p-4 font-mono text-xs shadow-xl">
-            <button type="button" @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all">
-              ← Pagina Precedente
-            </button>
-            <span class="text-purple-400 font-bold">Pagina {{ currentPage }}</span>
-            <button type="button" @click="nextPage" :disabled="posts.length < 10" class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-purple-400 text-slate-200 rounded-lg disabled:opacity-40 cursor-pointer transition-all">
-              Pagina Successiva →
-            </button>
-          </div>
-
-          <div class="pt-6 border-t border-slate-800">
-            <DKPRelatedThreads :currentNodeSlug="selectedNodeSlug || undefined" />
-          </div>
-
-          <div v-if="featuredArticles.length > 0" class="pt-6 border-t border-slate-800 flex flex-col gap-4">
-            <div class="flex justify-between items-center">
-              <h3 class="text-base font-bold text-white flex items-center gap-2 font-mono m-0">
-                Approfondimenti dal Vault
-              </h3>
-              <NuxtLink class="text-xs font-mono font-bold text-emerald-400 hover:underline no-underline" to="/blog">
-                Vedi tutti gli articoli -&gt;
-              </NuxtLink>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <NuxtLink v-for="art in featuredArticles" :key="art.id" :to="`/blog/${art.slug || art.id}`" class="bg-[#090d16] border border-slate-800 hover:border-emerald-500/50 rounded-xl p-5 flex flex-col justify-between transition-all hover:-translate-y-1 shadow-md group text-left min-h-[160px] no-underline">
-                <div>
-                  <span class="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
-                    {{ art.categoryName || art.category || 'Tech' }}
-                  </span>
-                  <h4 class="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition-colors leading-snug font-sans m-0">
-                    {{ art.title }}
-                  </h4>
-                </div>
-                <span class="text-[11px] font-mono font-bold text-sky-400 group-hover:underline mt-4">
-                  Leggi articolo -&gt;
-                </span>
-              </NuxtLink>
-            </div>
-          </div>
-
-          <div class="pt-6 border-t border-slate-800">
-            <DkpNodesHomeWidget />
-          </div>
-          <AdsDkpAdsWidget placement="nodeTalks" />
-         <DkpAdStrip categoryTag="DKP DEV LIBRARY • LIBRI CONSIGLIATI" />
-        </main>
       </div>
-    </div>
 
-    <DKPnodesRichEditor
-      :is-open="isModalOpen"
-      :categories="allCategoryNames"
-      :grouped-nodes="allGroupedNodes"
-      :initial-category="selectedCategoryName || undefined"
-      :initial-node-id="activeSelectedNodeId"
-      :is-admin="isAdmin"
-      @close="isModalOpen = false"
-      @published="onThreadPublished"
-    />
+      <!-- BARRA RICERCA THREAD -->
+      <div class="max-w-3xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+        <div class="relative flex-1">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Cerca thread, architetture, nodi (es. BEMYAGENT, Pure SQL, Rust, AI)..."
+            class="w-full bg-dkp-card/95 border border-dkp-border focus:border-violet-400 text-white pl-10 pr-4 py-3 rounded-xl font-mono text-xs outline-none box-border"
+          />
+        </div>
+        <div class="px-4 py-3 rounded-xl bg-dkp-card/95 border border-dkp-border font-mono text-xs font-bold text-violet-300 shrink-0">
+           {{ filteredThreads.length }} thread
+        </div>
+      </div>
+
+      <!-- MENU NODi & SUBNODi A PILLOLE SOTTO LA BARRA DI RICERCA (COME CATEGORIE & SOTTOCATEGORIE IN BLOG) -->
+      <div v-if="nodeGroups.length > 0" class="max-w-6xl mx-auto text-left bg-dkp-card/90 border border-dkp-border rounded-2xl p-4 space-y-3 card-glow">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="font-mono text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+             Nodi &amp; Sub-Nodi
+          </span>
+          <button
+            v-if="selectedNodeGroup !== 'Tutti' || selectedSubnodeSlug !== 'Tutti' || searchQuery"
+            type="button"
+            @click="resetNodeFilters"
+            class="font-mono text-[11px] text-rose-400 hover:text-rose-300 bg-transparent border-none cursor-pointer font-bold"
+          >
+             Reset filtri
+          </button>
+        </div>
+
+        <!-- Pillole Macro-Nodi -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            @click="selectNodeGroup('Tutti')"
+            :class="[
+              'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border transition-all cursor-pointer',
+              selectedNodeGroup === 'Tutti'
+                ? 'bg-violet-500 text-white border-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.3)]'
+                : 'bg-[#020420] text-slate-300 border-slate-800 hover:border-violet-400/50'
+            ]"
+          >
+            Tutti i Nodi ({{ recentThreads.length }})
+          </button>
+
+          <button
+            v-for="grp in nodeGroups"
+            :key="grp.name"
+            type="button"
+            @click="selectNodeGroup(grp.name)"
+            :class="[
+              'px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold border transition-all cursor-pointer',
+              selectedNodeGroup === grp.name
+                ? 'bg-violet-500/20 text-violet-200 border-violet-400'
+                : 'bg-[#020420] text-slate-300 border-slate-800 hover:border-cyan-400/50'
+            ]"
+          >
+            {{ grp.name }} ({{ grp.subnodes.length }})
+          </button>
+        </div>
+
+        <!-- Pillole Sub-Nodi del gruppo selezionato -->
+        <div
+          v-if="activeGroupObj && activeGroupObj.subnodes.length > 0"
+          class="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-800/80"
+        >
+          <span class="font-mono text-[10px] text-cyan-400 uppercase font-bold mr-1">Sub-nodi:</span>
+          <button
+            type="button"
+            @click="selectSubnode('Tutti')"
+            :class="[
+              'px-3 py-1 rounded-lg font-mono text-[11px] font-bold border transition-all cursor-pointer',
+              selectedSubnodeSlug === 'Tutti'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-slate-200'
+            ]"
+          >
+            Tutti
+          </button>
+
+          <button
+            v-for="sub in activeGroupObj.subnodes"
+            :key="sub.slug"
+            type="button"
+            @click="selectSubnode(sub.slug)"
+            :class="[
+              'px-3 py-1 rounded-lg font-mono text-[11px] font-bold border transition-all cursor-pointer',
+              selectedSubnodeSlug === sub.slug
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
+                : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-emerald-300'
+            ]"
+          >
+            n/{{ cleanNodeLabel(sub.name || sub.slug) }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LAYOUT CON SIDEBAR UNIFICATA + THREAD + BLOG & CRAWLER NEWS -->
+    <DkpLayout :hide-section-header="true" :show-sidebar-ads="true">
+      <!-- Feed Card dei Thread -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-lg font-bold text-white m-0"> Ultime Discussioni nei Nodi</h3>
+          <span class="text-xs font-mono text-emerald-400">{{ filteredThreads.length }} thread</span>
+        </div>
+
+        <div v-if="isLoading" class="bg-dkp-card border border-slate-800 rounded-2xl p-10 text-center font-mono text-xs text-emerald-400 animate-pulse">
+           Sincronizzazione thread dal database Pure SQL...
+        </div>
+
+        <div v-else-if="filteredThreads.length === 0" class="bg-dkp-card border border-slate-800 rounded-2xl p-10 text-center font-mono text-xs text-slate-400">
+          Nessuna discussione trovata con i filtri attivi.
+        </div>
+
+        <div v-else class="space-y-3.5">
+          <DkpThreadCard
+            v-for="thread in filteredThreads"
+            :key="thread.id"
+            :thread="thread"
+            :can-moderate="Boolean(currentUser)"
+            @toggle-lock="handleToggleLock"
+          />
+        </div>
+      </div>
+
+      <!-- IDENTICO ALLA HOME: Ultimi Articoli dal Blog & Ultime Notizie Crawler AI -->
+      <DkpRelatedBlogWidget />
+      <DkpHomeWidget />
+
+      <!-- Circuito Approfondimenti dal Vault -->
+      <DkpAdStrip
+        layout="horizontal"
+        category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"
+        topic="pure sql ai security architecture"
+        :tags="['sql', 'ai', 'security', 'architecture']"
+      />
+    </DkpLayout>
   </div>
 </template>

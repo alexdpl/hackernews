@@ -3,7 +3,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
 import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
 

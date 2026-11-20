@@ -1,682 +1,621 @@
-<!-- app/pages/blog/index.vue -->
+<-- app/pages/blog/index.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useBlog } from '~/composables/useBlog'
+import { ref, computed, watch } from 'vue'
+import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
+import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
+import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import DkpAdsWidget from '~/components/DkpAdsWidget.vue'
-import DkpNodesHomeWidget from '~/components/DkpNodesHomeWidget.vue'
-import DKPRelatedThreads from '~/components/nodes/DKPRelatedThreads.vue'
-
-interface EcosystemPillar {
-  to: string
-  icon: string
-  tag: string
-  title: string
-  subtitle: string
-  accentClass: string
-  active?: boolean
-}
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 useDkpSeo({
-  title: 'DKP Editorial Hub & Technical Blog v2.6-PURE-SQL — DevKernelPulse',
-  description: 'Aggiornamenti di sistema, rilasci del kernel v2.6-PURE-SQL, architetture cloud e approfondimenti tecnologici notarizzati dalla community di DevKernelPulse.',
+  title: 'DKP Native Blog & Vault \u2014 Deep-Dive Certificati SHA-256 | DevKernelPulse',
+  description: 'Approfondimenti di sistema, architetture cloud, rilasci del kernel e guide notarizzate su Neon PostgreSQL dalla community.',
   type: 'collection',
   canonicalPath: '/blog'
 })
 
-const ecosystemPillars: EcosystemPillar[] = [
+const heroCards = [
   {
     to: '/news',
-    icon: '🌍',
-    tag: 'LIVE STREAM',
+    icon: '\uD83C\uDF0D',
+    badge: 'LIVE STREAM',
+    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
     title: 'DKP Tech Feed',
-    subtitle: 'Segnali tech e newsroom filtrati in tempo reale da Trinity AI',
-    accentClass: 'pillar-emerald'
+    desc: 'Segnali tech e newsroom filtrati in tempo reale da Trinity AI'
   },
   {
     to: '/nodes',
-    icon: '💬',
-    tag: 'COMMUNITY',
+    icon: '\uD83D\uDCAC',
+    badge: 'COMMUNITY',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
     title: 'DKP Talks Hub',
-    subtitle: 'Nodi tematici, architetture, bounty e discussioni tecniche',
-    accentClass: 'pillar-purple'
+    desc: 'Nodi tematici, architetture, bounty e discussioni tecniche'
   },
   {
     to: '/tools',
-    icon: '🛠️',
-    tag: 'SECURITY & DEV',
+    icon: '\uD83D\uDEE0\uFE0F',
+    badge: 'SECURITY & DEV',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
     title: 'Developer Tools',
-    subtitle: 'Utility crittografiche, audit SAST e diagnostica per ingegneri',
-    accentClass: 'pillar-cyan'
+    desc: 'Utility crittografiche, audit SAST e diagnostica per ingegneri'
   },
   {
     to: '/blog',
-    icon: '✍️',
-    tag: 'VAULT VERIFIED',
+    icon: '\uD83D\uDCDD',
+    badge: 'VAULT VERIFIED',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
     title: 'DKP Editorial Hub',
-    subtitle: 'Deep-dive tecnici con certificazione SHA-256 immutabile',
-    accentClass: 'pillar-amber',
-    active: true
+    desc: 'Deep-dive tecnici con certificazione SHA-256 immutabile'
   }
 ]
 
-// --- 1. CARICAMENTO DATI IMMEDIATO (SSR + CLIENT REFRESH) ---
-const { posts, fetchPosts, getAuthorRank, isLoading } = useBlog()
-const isRefreshing = ref(false)
+const FALLBACK_CATEGORIES = [
+  {
+    name: 'AI, LLM & Machine Learning',
+    icon: '\uD83E\uDD16',
+    subcategories: [
+      'Machine Learning & Deep Learning',
+      'LLM & Generative AI',
+      'AI Agents & Agentic Workflows',
+      'RAG & Vector Databases',
+      'Prompt Engineering',
+      'AI Safety & Robustness'
+    ]
+  },
+  {
+    name: 'Cloud Native & DevOps',
+    icon: '\u2601\uFE0F',
+    subcategories: ['Kubernetes & Containers', 'CI/CD & GitOps', 'Serverless & Edge', 'Observability & Telemetry']
+  },
+  {
+    name: 'Blockchain & Web3',
+    icon: '\u26D3\uFE0F',
+    subcategories: ['SHA-256 Notarization', 'Smart Contracts', 'Zero-Knowledge Proofs', 'DePIN & Distributed Ledgers']
+  },
+  {
+    name: 'Frontend Architecture',
+    icon: '\uD83C\uDFA8',
+    subcategories: ['Nuxt 4 & Vue 3', 'TypeScript Patterns', 'Design Systems & Tailwind', 'Web Performance & Core Web Vitals']
+  },
+  {
+    name: 'Backend & Microservices',
+    icon: '\u2699\uFE0F',
+    subcategories: ['Nitro & Edge APIs', 'Distributed Systems', 'Event-Driven Architecture', 'gRPC & GraphQL']
+  },
+  {
+    name: 'Cybersecurity & Vault',
+    icon: '\uD83D\uDEE1\uFE0F',
+    subcategories: ['SAST & Static Analysis', 'Zero-Trust Auth', 'Cryptography & Hashing', 'API Hardening']
+  },
+  {
+    name: 'DKP Ecosystem & Releases',
+    icon: '\uD83D\uDE80',
+    subcategories: ['Kernel v2.6 Pure SQL', 'BEMYAGENT.md', 'DKP SDK & CLI', 'Sentinel AI Updates']
+  },
+  {
+    name: 'Databases & Data Pipeline',
+    icon: '\uD83D\uDCBE',
+    subcategories: ['Neon PostgreSQL', 'Pure SQL Optimization', 'Indexing & Query Tuning', 'ETL & Streaming']
+  }
+]
 
-await useAsyncData('dkp-blog-posts-v26', async () => {
-  await fetchPosts()
-  return posts.value
+const { data: postsRes, pending, refresh } = await useFetch<any>('/api/blog/posts', {
+  key: 'dkp-blog-posts-hub',
+  query: { limit: 100 }
 })
 
-const { data: catResponse, pending: loadingCats } = await useFetch('/api/blog/categories', {
-  key: 'dkp-blog-categories-v26'
+const { data: catsRes } = await useFetch<any>('/api/blog/categories', {
+  key: 'dkp-blog-categories-hub'
 })
 
-const categories = computed(() => {
-  const raw = (catResponse.value as any)?.data || []
+const allPosts = computed<any[]>(() => {
+  const raw = postsRes.value?.data || postsRes.value || []
   return Array.isArray(raw) ? raw : []
 })
 
-async function refreshFeedNow() {
-  isRefreshing.value = true
-  try {
-    await fetchPosts()
-  } finally {
-    setTimeout(() => { isRefreshing.value = false }, 350)
-  }
+function getCategoryIcon(name: string): string {
+  const n = name.toLowerCase()
+  if (n.includes('ai') || n.includes('llm')) return '\uD83E\uDD16'
+  if (n.includes('cloud')) return '\u2601\uFE0F'
+  if (n.includes('blockchain') || n.includes('web3')) return '\u26D3\uFE0F'
+  if (n.includes('frontend')) return '\uD83C\uDFA8'
+  if (n.includes('backend')) return '\u2699\uFE0F'
+  if (n.includes('security') || n.includes('vault')) return '\uD83D\uDEE1\uFE0F'
+  if (n.includes('ecosystem') || n.includes('release')) return '\uD83D\uDE80'
+  if (n.includes('database') || n.includes('data')) return '\uD83D\uDCBE'
+  if (n.includes('mobile')) return '\uD83D\uDCF1'
+  if (n.includes('game')) return '\uD83C\uDFAE'
+  if (n.includes('kernel') || n.includes('low-level')) return '\uD83E\uDDEC'
+  return '\u26A1'
 }
 
-onMounted(async () => {
-  await fetchPosts()
-})
-
-// --- 2. STATI DI FILTRAGGIO, RICERCA & PAGINAZIONE ---
-const selectedCategory = ref<string | null>(null)
-const selectedSubcategory = ref<string | null>(null)
-const searchQuery = ref('')
-const currentPage = ref(1)
-const itemsPerPage = 9
-
-function parseTags(tagsRaw: any): string[] {
-  if (Array.isArray(tagsRaw)) {
-    const expanded: string[] = []
-    for (const item of tagsRaw) {
-      if (typeof item === 'string' && (item.includes(',') || item.includes(';'))) {
-        expanded.push(...item.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean))
-      } else if (item) {
-        expanded.push(String(item).trim().replace(/^#/, ''))
+const categories = computed(() => {
+  const dbCats = catsRes.value?.data || []
+  if (Array.isArray(dbCats) && dbCats.length > 0) {
+    return dbCats.map((c: any) => {
+      const rawSubs = Array.isArray(c.subcategories) ? c.subcategories : []
+      const subNames = rawSubs
+        .map((s: any) => (typeof s === 'string' ? s : String(s?.name || '')))
+        .filter(Boolean)
+      return {
+        id: Number(c.id || 0),
+        slug: String(c.slug || ''),
+        name: String(c.name),
+        icon: getCategoryIcon(String(c.name)),
+        subcategories: subNames
       }
-    }
-    return expanded
+    })
   }
-  if (typeof tagsRaw === 'string') {
-    return tagsRaw.split(/[,;]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
-  }
-  return []
-}
-
-function getCategoryName(category: any): string {
-  if (!category) return 'Generale'
-  if (typeof category === 'object') return category.name || 'Generale'
-  return String(category)
-}
-
-function getSubcategoryName(subCategory: any): string {
-  if (!subCategory) return ''
-  if (typeof subCategory === 'object') return subCategory.name || ''
-  return String(subCategory)
-}
-
-function getCategoryIcon(category: any): string {
-  if (typeof category === 'object' && category?.icon) return category.icon
-  return '🏷️'
-}
-
-function getCategoryStyle(category: any) {
-  if (typeof category === 'object' && category?.color) {
-    return {
-      backgroundColor: `${category.color}20`,
-      color: category.color,
-      borderColor: `${category.color}40`
-    }
-  }
-  return {}
-}
-
-const activeSubcategories = computed(() => {
-  if (!selectedCategory.value) return []
-  const cat = categories.value.find((c: any) => getCategoryName(c).toLowerCase() === selectedCategory.value?.toLowerCase())
-  return cat?.subcategories || []
+  return FALLBACK_CATEGORIES.map((c, idx) => ({ ...c, id: idx + 1, slug: '' }))
 })
 
-function selectCategory(catName: string | null) {
+const searchQuery = ref('')
+const selectedCategory = ref('Tutti')
+const selectedSubcategory = ref('Tutte')
+const currentPage = ref(1)
+const pageSize = 9
+
+const activeCategoryObj = computed(() =>
+  categories.value.find((c) => c.name === selectedCategory.value) || null
+)
+
+function selectCategory(catName: string) {
   selectedCategory.value = catName
-  selectedSubcategory.value = null
+  selectedSubcategory.value = 'Tutte'
   currentPage.value = 1
 }
 
-function calculateReadTime(post: any): number {
-  const text = post.content || post.description || post.summary || ''
-  if (!text) return 1
-  const plainText = text.replace(/<\/?[^>]+(>|$)/g, '').replace(/[#*`_\[\]()]/g, '')
-  const words = plainText.trim().split(/\s+/).length
-  return Math.max(1, Math.ceil(words / 200))
+const filteredPosts = computed<any[]>(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  const activeCat = activeCategoryObj.value
+  return allPosts.value.filter((post: any) => {
+    if (selectedCategory.value !== 'Tutti') {
+      const postCat = String(post.category || '').trim().toLowerCase()
+      const selCat = selectedCategory.value.trim().toLowerCase()
+      const idMatch = activeCat?.id && Number(post.categoryId) === Number(activeCat.id)
+      const slugMatch = activeCat?.slug && String(post.categorySlug || '') === activeCat.slug
+      if (!idMatch && !slugMatch && postCat !== selCat) return false
+    }
+    if (selectedSubcategory.value !== 'Tutte') {
+      const selSub = selectedSubcategory.value.trim().toLowerCase()
+      const postSub = String(post.subcategory || '').trim().toLowerCase()
+      const hay = `${postSub} ${post.title || ''} ${post.excerpt || ''} ${(post.tags || []).join(' ')}`.toLowerCase()
+      if (postSub !== selSub && !hay.includes(selSub)) return false
+    }
+    if (q) {
+      const hay = `${post.title || ''} ${post.excerpt || ''} ${post.category || ''} ${post.subcategory || ''} ${post.authorName || ''} ${(post.tags || []).join(' ')}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+})
+
+const featuredPost = computed<any | null>(() => {
+  if (currentPage.value !== 1 || filteredPosts.value.length === 0) return null
+  return filteredPosts.value[0]
+})
+
+const gridSourcePosts = computed<any[]>(() => {
+  if (currentPage.value === 1 && filteredPosts.value.length > 0) {
+    return filteredPosts.value.slice(1)
+  }
+  return filteredPosts.value
+})
+
+const totalPages = computed(() => Math.max(1, Math.ceil(gridSourcePosts.value.length / pageSize)))
+
+const paginatedPosts = computed<any[]>(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return gridSourcePosts.value.slice(start, start + pageSize)
+})
+
+watch([searchQuery, selectedSubcategory], () => {
+  currentPage.value = 1
+})
+
+function estimateReadMin(post: any): number {
+  const txt = `${post?.excerpt || ''} ${post?.content || ''}`.trim()
+  const words = txt ? txt.split(/\s+/).length : 180
+  return Math.max(3, Math.ceil(words / 180))
 }
 
-// --- 3. ORDINAMENTO (PIÙ RECENTI IN CIMA) & FILTRO ARTICOLI ---
-const sortedAndFilteredPosts = computed(() => {
-  const list = Array.isArray(posts.value) ? [...posts.value] : []
+function formatDate(raw: any): string {
+  if (!raw) return new Date().toLocaleDateString('it-IT')
+  const d = new Date(raw)
+  return isNaN(d.getTime()) ? new Date().toLocaleDateString('it-IT') : d.toLocaleDateString('it-IT')
+}
 
-  list.sort((a: any, b: any) => {
-    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
-    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
-    if (dateB !== dateA) return dateB - dateA
-    return Number(b.id || 0) - Number(a.id || 0)
-  })
+// Modale Pubblica Articolo (+150 XP)
+const showPublishModal = ref(false)
+const isPublishing = ref(false)
+const publishError = ref('')
+const publishSuccess = ref('')
 
-  return list.filter((p: any) => {
-    const catName = getCategoryName(p.categoryObject || p.category || p.categoryName)
-    const subName = getSubcategoryName(p.subcategoryObject || p.subCategory || p.subcategoryName)
-
-    const matchesCat = !selectedCategory.value || catName.toLowerCase() === selectedCategory.value.toLowerCase()
-    const matchesSub = !selectedSubcategory.value || subName.toLowerCase() === selectedSubcategory.value.toLowerCase()
-
-    const q = searchQuery.value.trim().toLowerCase()
-    const matchesSearch = !q ||
-      (p.title && p.title.toLowerCase().includes(q)) ||
-      (p.excerpt && p.excerpt.toLowerCase().includes(q)) ||
-      (p.summary && p.summary.toLowerCase().includes(q)) ||
-      (Array.isArray(p.tags) && p.tags.some((t: string) => t.toLowerCase().includes(q)))
-
-    return matchesCat && matchesSub && matchesSearch
-  })
+const articleForm = ref({
+  title: '',
+  category: 'DKP Ecosystem & Releases',
+  excerpt: '',
+  content: '',
+  tagsRaw: 'PureSQL, Nuxt4, SentinelAI'
 })
 
-const featuredPost = computed(() => {
-  if (currentPage.value === 1 && !selectedCategory.value && !selectedSubcategory.value && !searchQuery.value.trim() && sortedAndFilteredPosts.value.length > 0) {
-    return sortedAndFilteredPosts.value[0]
+async function submitNewArticle() {
+  publishError.value = ''
+  publishSuccess.value = ''
+  if (!articleForm.value.title.trim() || !articleForm.value.content.trim()) {
+    publishError.value = 'Inserisci titolo e contenuto tecnico dell articolo.'
+    return
   }
-  return null
-})
+  isPublishing.value = true
+  try {
+    const tags = articleForm.value.tagsRaw
+      .split(',')
+      .map((t) => t.trim().replace(/^#/, ''))
+      .filter(Boolean)
 
-const gridSourcePosts = computed(() => {
-  if (featuredPost.value) {
-    return sortedAndFilteredPosts.value.slice(1)
-  }
-  return sortedAndFilteredPosts.value
-})
-
-// --- 4. PAGINAZIONE CALCOLATA ---
-const totalPages = computed(() => Math.max(1, Math.ceil(gridSourcePosts.value.length / itemsPerPage)))
-
-const paginatedPosts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return gridSourcePosts.value.slice(start, end)
-})
-
-function changePage(page: number) {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 320, behavior: 'smooth' })
+    const res: any = await $fetch('/api/blog/submit', {
+      method: 'POST',
+      body: {
+        title: articleForm.value.title.trim(),
+        category: articleForm.value.category,
+        excerpt: articleForm.value.excerpt.trim() || articleForm.value.content.trim().slice(0, 180),
+        content: articleForm.value.content.trim(),
+        tags
+      }
+    })
+    if (res?.success || res?.data || res?.id) {
+      publishSuccess.value = 'Articolo notarizzato su SHA-256 Vault! +150 XP accreditati.'
+      articleForm.value = {
+        title: '',
+        category: 'DKP Ecosystem & Releases',
+        excerpt: '',
+        content: '',
+        tagsRaw: 'PureSQL, Nuxt4, SentinelAI'
+      }
+      await refresh()
+      setTimeout(() => {
+        showPublishModal.value = false
+        publishSuccess.value = ''
+      }, 1600)
     }
+  } catch (err: any) {
+    publishError.value = err?.data?.statusMessage || 'Errore durante la notarizzazione nel Vault.'
+  } finally {
+    isPublishing.value = false
   }
 }
 </script>
 
 <template>
-  <main class="min-h-screen bg-[var(--bg-kernel)] text-[var(--text-main)] font-sans px-4 sm:px-6 py-10 sm:py-14 relative overflow-hidden transition-colors duration-500">
-    <!-- BACKGROUND GLOW & TECHNICAL GRID (ALLINEATO ALLA HOME) -->
-    <div class="hero-grid-bg pointer-events-none" aria-hidden="true"></div>
-    <div
-      class="absolute -top-44 left-1/2 -translate-x-1/2 w-[860px] h-[340px] bg-[var(--accent-emerald)]/10 blur-[130px] rounded-full pointer-events-none"
-      aria-hidden="true"
-    ></div>
+  <div class="bg-dkp-bg text-dkp-text font-display min-h-screen bg-grid-pattern relative">
+    <DkpHomeTelemetry />
 
-    <div class="max-w-6xl mx-auto flex flex-col gap-10 relative z-10">
-      <!-- 1. HERO HEADER ALLINEATO ALLA HOME -->
-      <header class="relative pt-2 sm:pt-6 text-center flex flex-col items-center gap-6">
-        <div class="inline-flex items-center gap-2.5 bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--accent-emerald)]/35 px-4 py-1.5 rounded-full shadow-[0_0_24px_rgba(16,185,129,0.14)]">
-          <span class="relative flex h-2.5 w-2.5">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-emerald)] opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent-emerald)]"></span>
-          </span>
-          <span class="text-[11px] font-mono font-black text-[var(--accent-emerald)] uppercase tracking-widest">
-            ✍️ DKP Editorial Hub • SHA-256 Vault v2.6-PURE-SQL
-          </span>
-        </div>
+    <!-- HERO SECTION GEMELLA DELLA HOME & /news -->
+    <section class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dkp-card border border-dkp-border font-mono text-xs text-dkp-accent font-bold mb-6 card-glow">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span> DKP EDITORIAL HUB &bull; SHA-256 VAULT V2.6-PURE-SQL</span>
+      </div>
 
-        <h1 class="text-4xl sm:text-6xl font-black text-[var(--text-main)] tracking-tight leading-[1.1] max-w-4xl mx-auto">
-          DKP Native
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-emerald)] via-[var(--accent-cyan)] to-amber-400">
-            Blog &amp; Vault
-          </span>
-        </h1>
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight m-0 mb-5">
+        <span class="text-white">DKP Native </span>
+        <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 bg-clip-text text-transparent">
+          Blog &amp; Vault
+        </span>
+      </h1>
 
-        <p class="text-[var(--text-muted)] text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          Approfondimenti di sistema, architetture cloud, rilasci del kernel e guide notarizzate su Neon PostgreSQL dalla community.
-        </p>
+      <p class="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed mb-8">
+        Approfondimenti di sistema, architetture cloud, rilasci del kernel e guide notarizzate su Neon PostgreSQL dalla community.
+      </p>
 
-        <!-- BENTO GRID 4 PILASTRI DELL'ECOSISTEMA -->
-        <nav aria-label="Moduli principali DevKernelPulse" class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mt-2 text-left">
-          <NuxtLink
-            v-for="pillar in ecosystemPillars"
-            :key="pillar.to"
-            :to="pillar.to"
-            :class="[
-              'pillar-card group',
-              pillar.accentClass,
-              pillar.active ? 'border-amber-500/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]' : ''
-            ]"
-          >
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <span class="text-xl" aria-hidden="true">{{ pillar.icon }}</span>
-              <span class="pillar-tag font-mono text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
-                {{ pillar.tag }}
-              </span>
-            </div>
-            <h2 class="text-sm font-extrabold text-[var(--text-main)] group-hover:text-[var(--accent-emerald)] transition-colors flex items-center justify-between">
-              <span>{{ pillar.title }}</span>
-              <span class="text-xs opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">➔</span>
+      <!-- 4 CARD PRINCIPALI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left mb-7">
+        <NuxtLink
+          v-for="card in heroCards"
+          :key="card.to"
+          :to="card.to"
+          :class="[
+            'bg-dkp-card/95 border rounded-2xl p-5 no-underline transition-all card-glow group flex flex-col justify-between gap-4',
+            card.to === '/blog' ? 'border-amber-400/60 shadow-[0_0_20px_rgba(251,191,36,0.14)]' : 'border-dkp-border hover:border-cyan-400/60'
+          ]"
+        >
+          <div class="flex items-center justify-between">
+            <span class="text-2xl">{{ card.icon }}</span>
+            <span :class="['font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-md border uppercase', card.badgeClass]">
+              {{ card.badge }}
+            </span>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white group-hover:text-dkp-accent transition-colors flex items-center justify-between m-0 mb-1.5">
+              <span>{{ card.title }}</span>
+              <span class="text-slate-400 group-hover:text-dkp-accent transition-transform group-hover:translate-x-1">&rarr;</span>
             </h2>
-            <p class="text-xs text-[var(--text-muted)] leading-relaxed mt-1">
-              {{ pillar.subtitle }}
-            </p>
-          </NuxtLink>
-        </nav>
+            <p class="text-xs text-slate-300 leading-relaxed m-0">{{ card.desc }}</p>
+          </div>
+        </NuxtLink>
+      </div>
 
-        <!-- CTA SCRITTURA & SYNC ISTANTANEO -->
-        <div class="flex flex-wrap justify-center items-center gap-3 font-mono mt-1">
-          <NuxtLink
-            to="/user/dashboard?tab=content"
-            class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)]"
-          >
-            ✍️ Pubblica Articolo (+150 XP)
-          </NuxtLink>
+      <!-- PULSANTE PUBBLICA ARTICOLO (+150 XP) + AGGIORNA FEED -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-6">
+        <NuxtLink
+          to="/user/dashboard?tab=content"
+          class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs sm:text-sm font-extrabold no-underline shadow-[0_0_20px_rgba(16,185,129,0.28)] transition-all inline-flex items-center gap-2"
+        >
+           Pubblica Articolo (+150 XP)
+        </NuxtLink>
 
-          <button
-            type="button"
-            @click="refreshFeedNow"
-            :disabled="isRefreshing || isLoading"
-            class="px-4 py-2.5 bg-[var(--bg-surface)] hover:border-[var(--accent-cyan)] text-[var(--text-main)] hover:text-[var(--accent-cyan)] border border-[var(--border-color)] font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50 shadow-md"
-            title="Sincronizza subito gli ultimi articoli dal database"
-          >
-            <span :class="{ 'inline-block animate-spin': isRefreshing }">🔄</span>
-            {{ isRefreshing ? ' Sincronizzazione...' : ' Aggiorna Feed' }}
-          </button>
-        </div>
-      </header>
+        <button
+          type="button"
+          @click="() => refresh()"
+          class="px-4 py-2.5 rounded-xl bg-dkp-card border border-dkp-border hover:border-cyan-400 text-slate-200 font-mono text-xs sm:text-sm font-bold cursor-pointer transition-colors"
+        >
+           Aggiorna Feed
+        </button>
+      </div>
 
-      <!-- 2. BARRA DI RICERCA LIVE & CONTATORE ARTICOLI -->
-      <div class="flex flex-col sm:flex-row items-center gap-3 max-w-3xl mx-auto w-full">
-        <div class="relative flex-1 w-full flex items-center bg-[var(--bg-surface)] border border-[var(--border-color)] focus-within:border-[var(--accent-emerald)] rounded-xl px-4 py-3 shadow-xl transition-colors">
-          <span class="text-base mr-2.5">🔍</span>
+      <!-- BARRA RICERCA + CONTATORE ARTICOLI -->
+      <div class="max-w-3xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div class="relative flex-1">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></span>
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Cerca articoli, release notes o tag (es. #PureSQL, #Nuxt4, #Security)..."
-            class="w-full bg-transparent border-none text-[var(--text-main)] text-sm outline-none placeholder-slate-500"
-            @input="currentPage = 1"
+            class="w-full bg-dkp-card/95 border border-dkp-border focus:border-cyan-400 text-white pl-10 pr-4 py-3 rounded-xl font-mono text-xs outline-none box-border"
           />
-          <button
-            v-if="searchQuery"
-            @click="searchQuery = ''; currentPage = 1"
-            class="text-rose-400 hover:text-rose-300 font-black text-lg px-1 cursor-pointer"
-            type="button"
-          >
-            ×
-          </button>
         </div>
-        <div class="text-xs font-mono text-[var(--text-muted)] bg-[var(--bg-surface)] border border-[var(--border-color)] px-4 py-3.5 rounded-xl shrink-0 shadow-xl">
-          📚 <strong class="text-[var(--accent-emerald)]">{{ sortedAndFilteredPosts.length }}</strong> articoli
+        <div class="px-4 py-3 rounded-xl bg-dkp-card/95 border border-dkp-border font-mono text-xs font-bold text-emerald-400 shrink-0">
+           {{ filteredPosts.length }} articoli
         </div>
       </div>
+    </section>
 
-      <!-- 3. BANNER DKP ADS WIDGET -->
-      <DkpAdsWidget placement="blogSidebar" />
-
-      <!-- 4. BARRA CATEGORIE DINAMICHE -->
-      <nav aria-label="Categorie Blog" class="flex justify-center gap-2 flex-wrap">
-        <button
-          @click="selectCategory(null)"
-          :class="[
-            'px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer inline-flex items-center gap-1.5',
-            selectedCategory === null
-              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-              : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-slate-600'
-          ]"
-          type="button"
-        >
-          🔥 Tutti
-        </button>
-
-        <div v-if="loadingCats" class="text-xs text-[var(--text-muted)] font-mono self-center px-2">⏳ Caricamento categorie...</div>
-
-        <button
-          v-for="cat in categories"
-          :key="cat.id"
-          @click="selectCategory(cat.name)"
-          :style="selectedCategory === cat.name ? getCategoryStyle(cat) : {}"
-          :class="[
-            'px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer inline-flex items-center gap-1.5',
-            selectedCategory === cat.name
-              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500'
-              : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-slate-600'
-          ]"
-          type="button"
-        >
-          <span>{{ getCategoryIcon(cat) }}</span>
-          <span>{{ getCategoryName(cat) }}</span>
-        </button>
-      </nav>
-
-      <!-- BARRA SOTTOCATEGORIE DINAMICHE -->
-      <Transition name="fade-sub">
-        <div v-if="activeSubcategories.length > 0" class="flex flex-wrap items-center justify-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-color)] px-4 py-2.5 rounded-xl max-w-4xl mx-auto">
-          <span class="text-[11px] font-mono font-extrabold text-[var(--text-muted)] uppercase mr-1">Sottocategorie:</span>
+    <!-- LAYOUT CON SIDEBAR UNIFICATA + CONTENUTI BLOG + CRAWLER NEWS & NODES -->
+    <DkpLayout :hide-section-header="true" :show-sidebar-ads="true">
+      <!-- 1. PILLS CATEGORIE + SOTTOCATEGORIE DINAMICHE -->
+      <section class="space-y-4">
+        <div class="flex flex-wrap items-center justify-center gap-2">
           <button
-            @click="selectedSubcategory = null; currentPage = 1"
-            :class="['px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer', selectedSubcategory === null ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30' : 'text-[var(--text-muted)] hover:text-[var(--accent-emerald)]']"
             type="button"
+            @click="selectCategory('Tutti')"
+            :class="[
+              'px-3.5 py-2 rounded-xl font-mono text-xs font-bold border cursor-pointer transition-all',
+              selectedCategory === 'Tutti'
+                ? 'bg-emerald-500/15 border-emerald-400 text-emerald-300'
+                : 'bg-dkp-card/95 border-dkp-border text-slate-300 hover:border-slate-600'
+            ]"
           >
-            Tutte
+             Tutti
           </button>
+
           <button
-            v-for="sub in activeSubcategories"
-            :key="sub.id || sub.name"
-            @click="selectedSubcategory = sub.name; currentPage = 1"
-            :class="['px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer', selectedSubcategory === sub.name ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30' : 'text-[var(--text-muted)] hover:text-[var(--accent-emerald)]']"
+            v-for="cat in categories"
+            :key="cat.name"
             type="button"
+            @click="selectCategory(cat.name)"
+            :class="[
+              'px-3.5 py-2 rounded-xl font-mono text-xs font-bold border cursor-pointer transition-all',
+              selectedCategory === cat.name
+                ? 'bg-emerald-500/15 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.16)]'
+                : 'bg-dkp-card/95 border-dkp-border text-slate-300 hover:border-slate-600'
+            ]"
           >
-            {{ sub.name }}
+            {{ cat.icon }} {{ cat.name }}
           </button>
         </div>
-      </Transition>
 
-      <!-- 5. SPINNER & EMPTY STATE -->
-      <div v-if="isLoading && posts.length === 0" class="text-center py-16 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl text-[var(--accent-emerald)] font-mono text-xs animate-pulse">
-        ⏳ Estrazione articoli dal Vault Neon DB v2.6 in corso...
-      </div>
-
-      <div v-else-if="sortedAndFilteredPosts.length === 0" class="text-center py-16 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl flex flex-col items-center gap-3">
-        <span class="text-4xl">📂</span>
-        <h3 class="text-lg font-bold text-[var(--text-main)]">Nessun articolo trovato</h3>
-        <p class="text-xs text-[var(--text-muted)] max-w-md">Nessun contenuto corrisponde ai filtri attuali. Prova a sincronizzare il feed o ripristina la ricerca.</p>
-        <div class="flex gap-3 mt-2 font-mono">
-          <button @click="selectCategory(null); searchQuery = ''; currentPage = 1" class="px-4 py-2 bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-lg cursor-pointer hover:bg-emerald-400" type="button">
-            Ripristina Filtri
-          </button>
-          <button @click="refreshFeedNow" class="px-4 py-2 bg-[var(--bg-kernel)] border border-[var(--border-color)] text-[var(--accent-cyan)] font-bold text-xs rounded-lg cursor-pointer hover:border-sky-400" type="button">
-            🔄 Ricarica DB
-          </button>
+        <!-- Pannello Sottocategorie quando una categoria e' selezionata -->
+        <div
+          v-if="activeCategoryObj && activeCategoryObj.subcategories.length > 0"
+          class="bg-dkp-card/95 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3"
+        >
+          <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+            <span class="text-slate-400 uppercase font-bold">SOTTOCATEGORIE:</span>
+            <button
+              type="button"
+              @click="selectedSubcategory = 'Tutte'"
+              :class="[
+                'px-3 py-1 rounded-lg border font-bold cursor-pointer',
+                selectedSubcategory === 'Tutte'
+                  ? 'bg-sky-500/20 border-sky-400 text-sky-300'
+                  : 'bg-dkp-bg border-slate-800 text-slate-300'
+              ]"
+            >
+              Tutte
+            </button>
+            <button
+              v-for="sub in activeCategoryObj.subcategories"
+              :key="sub"
+              type="button"
+              @click="selectedSubcategory = sub"
+              :class="[
+                'px-3 py-1 rounded-lg border font-bold cursor-pointer transition-colors',
+                selectedSubcategory === sub
+                  ? 'bg-sky-500/20 border-sky-400 text-sky-300'
+                  : 'bg-transparent border-transparent text-slate-300 hover:text-white'
+              ]"
+            >
+              {{ sub }}
+            </button>
+          </div>
         </div>
+      </section>
+
+      <!-- 2. CARICAMENTO O ARTICOLI BLOG -->
+      <div v-if="pending && allPosts.length === 0" class="bg-dkp-card border border-dkp-border rounded-2xl p-10 text-center font-mono text-xs text-emerald-400 animate-pulse">
+         Lettura articoli certificati dal database Pure SQL...
       </div>
 
       <template v-else>
-        <!-- ARTICOLO IN EVIDENZA (ULTIMO RILASCIO) -->
+	  <!-- CIRCUITO DKP ADS + ACQUISTA SPAZIO (ORIZZONTALE) -->
+<DkpAdsWidget
+  placement="feedInline"
+  layout="horizontal"
+  :limit="3"
+  :show-advertise-link="true"
+/>
+        <!-- HERO CARD: ULTIMO ARTICOLO -->
         <article
           v-if="featuredPost"
-          class="bg-[var(--bg-surface)] border border-[var(--accent-emerald)]/40 rounded-3xl p-6 sm:p-8 shadow-[0_15px_40px_rgba(16,185,129,0.08)] flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center relative overflow-hidden group"
+          class="bg-[#050a18]/95 border border-slate-700/90 hover:border-emerald-400/60 rounded-2xl p-6 sm:p-8 card-glow transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-6"
         >
-          <div class="flex-1 flex flex-col gap-3">
-            <div class="flex flex-wrap items-center gap-2 font-mono">
-              <span class="bg-emerald-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded uppercase tracking-wider">
-                ✨ ULTIMO ARTICOLO
+          <div class="space-y-4 flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-2.5 font-mono text-[11px]">
+              <span class="px-2.5 py-1 rounded bg-emerald-500 text-slate-950 font-extrabold uppercase">
+                 ULTIMO ARTICOLO
               </span>
-              <span class="bg-sky-500/10 text-[var(--accent-cyan)] border border-sky-500/30 text-[11px] font-bold px-2.5 py-0.5 rounded">
-                {{ getCategoryName(featuredPost.categoryObject || featuredPost.category) }}
+              <span class="px-2.5 py-1 rounded bg-sky-500/15 text-sky-300 border border-sky-500/35 font-bold">
+                {{ featuredPost.category || 'DKP Ecosystem & Releases' }}
               </span>
-              <span v-if="featuredPost.isVerified" class="text-[11px] text-[var(--accent-emerald)] font-bold bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded">
-                🛡️ Verified
+              <span class="px-2.5 py-1 rounded bg-teal-500/15 text-teal-300 border border-teal-500/35 font-bold">
+                 Verified
               </span>
-              <span class="text-xs text-[var(--text-muted)]">
-                ⏱️ {{ calculateReadTime(featuredPost) }} min • 📅 {{ featuredPost.createdAt ? new Date(featuredPost.createdAt).toLocaleDateString('it-IT') : 'Oggi' }}
-              </span>
+              <span class="text-slate-400"> {{ estimateReadMin(featuredPost) }} min &bull;  {{ formatDate(featuredPost.createdAt) }}</span>
             </div>
 
-            <h2 class="text-2xl sm:text-3xl font-black text-[var(--text-main)] leading-tight group-hover:text-[var(--accent-emerald)] transition-colors">
-              <NuxtLink :to="`/blog/${featuredPost.slug || featuredPost.id}`">
-                {{ featuredPost.title }}
-              </NuxtLink>
-            </h2>
+            <NuxtLink
+              :to="`/blog/${featuredPost.slug}`"
+              class="text-2xl sm:text-3xl font-extrabold text-sky-400 hover:text-cyan-300 no-underline block leading-tight"
+            >
+              {{ featuredPost.title }}
+            </NuxtLink>
 
-            <p class="text-[var(--text-muted)] text-sm leading-relaxed line-clamp-2 max-w-3xl">
-              {{ featuredPost.excerpt || featuredPost.summary || 'Approfondimento tecnico pubblicato nell\'ecosistema DevKernelPulse.' }}
+            <p class="text-slate-300 text-sm leading-relaxed m-0">
+              {{ featuredPost.excerpt }}
             </p>
 
-            <div v-if="featuredPost.tags && parseTags(featuredPost.tags).length > 0" class="flex flex-wrap gap-1.5 mt-1">
-              <span v-for="tag in parseTags(featuredPost.tags)" :key="tag" class="bg-[var(--bg-kernel)] text-[var(--accent-cyan)] border border-[var(--border-color)] text-[11px] px-2 py-0.5 rounded font-mono">
+            <div v-if="featuredPost.tags?.length" class="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+              <span
+                v-for="tag in featuredPost.tags"
+                :key="tag"
+                class="px-2.5 py-0.5 rounded bg-[#081226] border border-slate-700/80 text-sky-400 font-bold"
+              >
                 #{{ tag }}
               </span>
             </div>
           </div>
 
-          <div class="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end justify-between w-full lg:w-auto gap-4 pt-4 lg:pt-0 border-t lg:border-t-0 border-[var(--border-color)] shrink-0">
+          <div class="flex flex-row lg:flex-col items-center lg:items-end justify-between gap-4 shrink-0 border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-800">
             <div class="flex items-center gap-2.5">
-              <div
-                class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs border"
-                :style="{ background: `linear-gradient(135deg, ${getAuthorRank(featuredPost.authorXp).color}, #0f172a)`, borderColor: getAuthorRank(featuredPost.authorXp).color }"
-              >
-                {{ (featuredPost.authorName || 'D')[0].toUpperCase() }}
+              <div class="w-9 h-9 rounded-full bg-emerald-500 text-slate-950 font-extrabold flex items-center justify-center text-sm">
+                {{ String(featuredPost.authorName || 'A').charAt(0).toUpperCase() }}
               </div>
               <div class="text-left">
-                <div class="text-xs font-bold text-[var(--text-main)]">{{ featuredPost.authorName || 'DevKernelPulse' }}</div>
-                <div class="text-[10px] font-mono" :style="{ color: getAuthorRank(featuredPost.authorXp).color }">
-                  {{ getAuthorRank(featuredPost.authorXp).badge }} {{ getAuthorRank(featuredPost.authorXp).title }}
-                </div>
+                <div class="text-white font-bold text-xs">{{ featuredPost.authorName || 'alexdpl' }}</div>
+                <div class="text-emerald-400 font-mono text-[10px]"> Kernel Initiate</div>
               </div>
             </div>
 
             <NuxtLink
-              :to="`/blog/${featuredPost.slug || featuredPost.id}`"
-              class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-extrabold text-xs rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.25)] whitespace-nowrap"
+              :to="`/blog/${featuredPost.slug}`"
+              class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs font-extrabold no-underline transition-colors"
             >
-              Leggi ora ➔
+              Leggi ora &rarr;
             </NuxtLink>
           </div>
         </article>
 
-        <!-- GRIGLIA ARTICOLI v2.6-PURE-SQL -->
-        <section v-if="paginatedPosts.length > 0" aria-label="Articoli Editorial Hub" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- GRIGLIA A 3 COLONNE DELLE CARD DEL BLOG -->
+        <div v-if="paginatedPosts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <article
             v-for="post in paginatedPosts"
             :key="post.id"
-            class="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-6 flex flex-col justify-between shadow-xl group hover:-translate-y-1 hover:border-[var(--accent-emerald)]/50 hover:shadow-[0_12px_30px_rgba(16,185,129,0.12)] transition-all"
+            class="bg-[#050a18]/95 border border-slate-800 hover:border-cyan-400/60 rounded-2xl p-5 card-glow transition-all flex flex-col justify-between gap-4"
           >
-            <div>
-              <div class="mb-4 flex flex-col gap-2.5 border-b border-[var(--border-color)] pb-3">
-                <div class="flex w-full">
-                  <span
-                    class="text-[var(--accent-emerald)] font-extrabold bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-md text-[11px] truncate max-w-full"
-                    :title="getCategoryName(post.categoryObject || post.category)"
-                  >
-                    {{ getCategoryName(post.categoryObject || post.category) }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between w-full">
-                  <span
-                    v-if="post.isVerified"
-                    class="text-[10px] text-[var(--accent-emerald)] font-bold border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1"
-                    title="Verificato dal Vault DKP"
-                  >
-                    🛡️ Verified
-                  </span>
-                  <div v-else></div>
-                  <span class="font-mono text-[11px] text-[var(--text-muted)]">
-                    ⏱️ {{ calculateReadTime(post) }} min
-                  </span>
-                </div>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between gap-2 font-mono text-[11px]">
+                <span class="px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 font-bold truncate max-w-[185px]">
+                  {{ post.category || 'DKP Editorial Hub' }}
+                </span>
+                <span class="text-slate-400 shrink-0"> {{ estimateReadMin(post) }} min</span>
               </div>
 
-              <h2 class="text-lg font-extrabold text-[var(--text-main)] leading-snug mb-2.5">
-                <NuxtLink :to="`/blog/${post.slug || post.id}`" class="group-hover:text-[var(--accent-emerald)] transition-colors">
+              <div>
+                <span class="inline-block px-2 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/35 font-mono text-[10px] font-bold mb-2">
+                   Verified
+                </span>
+                <NuxtLink
+                  :to="`/blog/${post.slug}`"
+                  class="text-base sm:text-lg font-extrabold text-sky-400 hover:text-cyan-300 no-underline block leading-snug line-clamp-3"
+                >
                   {{ post.title }}
                 </NuxtLink>
-              </h2>
+              </div>
 
-              <p class="text-[var(--text-muted)] text-xs sm:text-sm leading-relaxed mb-4 line-clamp-3">
-                {{ post.excerpt || post.summary || 'Nessuna anteprima disponibile.' }}
+              <p class="text-slate-300 text-xs leading-relaxed m-0 line-clamp-3">
+                {{ post.excerpt }}
               </p>
+            </div>
 
-              <div v-if="post.tags && parseTags(post.tags).length > 0" class="flex flex-wrap gap-1.5 mb-5">
-                <span v-for="tag in parseTags(post.tags)" :key="tag" class="bg-[var(--bg-kernel)] text-[var(--accent-cyan)] border border-[var(--border-color)] text-[11px] px-2 py-0.5 rounded font-mono">
+            <div class="space-y-3 pt-1">
+              <div v-if="post.tags?.length" class="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                <span
+                  v-for="tag in post.tags.slice(0, 3)"
+                  :key="tag"
+                  class="px-2 py-0.5 rounded bg-[#081226] border border-slate-700/80 text-sky-400 font-bold"
+                >
                   #{{ tag }}
                 </span>
               </div>
-            </div>
 
-            <div class="flex flex-col items-start border-t border-[var(--border-color)] pt-4 mt-auto">
-              <div class="flex items-center gap-2.5 mb-3 w-full border-b border-[var(--border-color)] pb-2.5">
-                <div
-                  class="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs border shrink-0"
-                  :style="{ background: `linear-gradient(135deg, ${getAuthorRank(post.authorXp).color}, #0f172a)`, borderColor: getAuthorRank(post.authorXp).color }"
-                >
-                  {{ (post.authorName || 'D')[0].toUpperCase() }}
-                </div>
-                <div class="flex flex-col overflow-hidden">
-                  <span class="text-xs font-bold text-[var(--text-main)] leading-tight truncate">{{ post.authorName || 'DevKernelPulse' }}</span>
-                  <span class="text-[10px] leading-tight font-mono truncate" :style="{ color: getAuthorRank(post.authorXp).color }">
-                    {{ getAuthorRank(post.authorXp).badge }} {{ getAuthorRank(post.authorXp).title }}
-                  </span>
-                </div>
+              <div class="pt-2.5 border-t border-slate-800/90 flex items-center justify-between font-mono text-[11px]">
+                <span class="text-slate-400">by @{{ post.authorName || 'alexdpl' }}</span>
+                <NuxtLink :to="`/blog/${post.slug}`" class="text-emerald-400 hover:text-emerald-300 font-extrabold no-underline">
+                  Leggi articolo &rarr;
+                </NuxtLink>
               </div>
-
-              <div class="w-full flex justify-between items-center text-xs mb-3">
-                <span class="text-[var(--text-muted)] font-mono text-[11px]">📅 {{ post.createdAt ? new Date(post.createdAt).toLocaleDateString('it-IT') : (post.date || 'Recente') }}</span>
-                <div class="flex gap-3 font-mono text-[11px]">
-                  <span title="Visualizzazioni" class="text-[var(--text-muted)]">👁️ {{ post.views || 0 }}</span>
-                  <span title="Karma Likes" class="text-rose-400">❤️ {{ post.likes || 0 }}</span>
-                </div>
-              </div>
-
-              <NuxtLink :to="`/blog/${post.slug || post.id}`" class="w-full text-center bg-emerald-500/10 hover:bg-emerald-400 text-[var(--accent-emerald)] hover:text-slate-950 border border-emerald-500/30 py-2 rounded-lg font-mono font-extrabold text-xs transition-all">
-                Leggi articolo ↗
-              </NuxtLink>
             </div>
           </article>
-        </section>
-      </template>
-
-      <!-- 6. CONTROLLI PAGINAZIONE NUMERATA -->
-      <div v-if="totalPages > 1" class="flex justify-center items-center gap-3 pt-6 border-t border-[var(--border-color)] font-mono">
-        <button
-          @click="changePage(currentPage - 1)"
-          :disabled="currentPage === 1"
-          class="bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] px-4 py-2 rounded-xl font-bold text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          type="button"
-        >
-          ← Indietro
-        </button>
-
-        <div class="flex gap-1.5">
-          <button
-            v-for="page in totalPages"
-            :key="page"
-            @click="changePage(page)"
-            :class="[
-              'w-9 h-9 rounded-xl font-bold text-xs flex items-center justify-center border cursor-pointer transition-all',
-              currentPage === page
-                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-slate-600'
-            ]"
-            type="button"
-          >
-            {{ page }}
-          </button>
         </div>
 
-        <button
-          @click="changePage(currentPage + 1)"
-          :disabled="currentPage === totalPages"
-          class="bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-main)] hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] px-4 py-2 rounded-xl font-bold text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-          type="button"
-        >
-          Avanti →
-        </button>
-      </div>
+        <!-- PAGINAZIONE -->
+        <nav v-if="totalPages > 1" aria-label="Paginazione Blog" class="flex flex-wrap items-center justify-center gap-2 pt-2 font-mono text-xs">
+          <button
+            type="button"
+            :disabled="currentPage <= 1"
+            @click="currentPage--"
+            class="px-3.5 py-2 rounded-xl bg-dkp-card border border-dkp-border disabled:opacity-40 text-slate-200 font-bold cursor-pointer"
+          >
+            &larr; Indietro
+          </button>
 
-      <!-- 7. FEED DEL FORUM: DISCUSSIONI CORRELATE NEI NODI -->
-      <section aria-label="Discussioni attive nei DKP Nodes" class="pt-6 border-t border-[var(--border-color)]">
-        <DKPRelatedThreads />
-      </section>
+          <button
+            v-for="p in totalPages"
+            :key="p"
+            type="button"
+            @click="currentPage = p"
+            :class="[
+              'w-9 h-9 rounded-xl border font-extrabold cursor-pointer',
+              currentPage === p
+                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                : 'bg-dkp-card border-dkp-border text-slate-300 hover:border-slate-600'
+            ]"
+          >
+            {{ p }}
+          </button>
 
-      <!-- 8. WIDGET STREAM NODI & FORUM COMMUNITY -->
-      <section aria-label="DKP Nodes Live Stream" class="pt-4 border-t border-[var(--border-color)]">
-        <DkpNodesHomeWidget />
-      </section>
+          <button
+            type="button"
+            :disabled="currentPage >= totalPages"
+            @click="currentPage++"
+            class="px-3.5 py-2 rounded-xl bg-dkp-card border border-dkp-border disabled:opacity-40 text-slate-200 font-bold cursor-pointer"
+          >
+            Avanti &rarr;
+          </button>
+        </nav>
+      </template>
 
-      <!-- 9. BANNER DKP ADS STRIP -->
-      <aside aria-label="Risorse e letture tecniche">
-        <DkpAdStrip categoryTag="DKP DEV LIBRARY • LETTURE TECNICHE" />
-      </aside>
-    </div>
-  </main>
+      <!-- 3. IDENTICO ALLA HOME: Ultime Discussioni Nodi & Ultime Notizie Crawler AI -->
+      <DkpRelatedNodesWidget />
+      <DkpHomeWidget />
+
+      <!-- 4. IDENTICO ALLA HOME: Circuito Approfondimenti dal Vault -->
+      <DkpAdStrip
+        layout="horizontal"
+        category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"
+        topic="pure sql ai security architecture"
+        :tags="['sql', 'ai', 'security', 'architecture']"
+      />
+    </DkpLayout>
+  </div>
 </template>
-
-<style scoped>
-.hero-grid-bg {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 80% 55% at 50% 10%, #000 40%, transparent 100%);
-}
-
-.pillar-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 1rem;
-  padding: 1.1rem 1.15rem;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.pillar-card:hover {
-  transform: translateY(-3px);
-}
-
-.pillar-emerald:hover {
-  border-color: rgba(16, 185, 129, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(16, 185, 129, 0.25);
-}
-.pillar-emerald .pillar-tag {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-}
-
-.pillar-purple:hover {
-  border-color: rgba(168, 85, 247, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(168, 85, 247, 0.25);
-}
-.pillar-purple .pillar-tag {
-  background: rgba(168, 85, 247, 0.12);
-  color: #c084fc;
-}
-
-.pillar-cyan:hover {
-  border-color: rgba(56, 189, 248, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(56, 189, 248, 0.25);
-}
-.pillar-cyan .pillar-tag {
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
-}
-
-.pillar-amber:hover {
-  border-color: rgba(245, 158, 11, 0.55);
-  box-shadow: 0 12px 28px -10px rgba(245, 158, 11, 0.25);
-}
-.pillar-amber .pillar-tag {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-}
-
-.fade-sub-enter-active, .fade-sub-leave-active { transition: all 0.25s ease; }
-.fade-sub-enter-from, .fade-sub-leave-to { opacity: 0; transform: translateY(-6px); }
-</style>

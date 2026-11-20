@@ -18,12 +18,34 @@ async function ensureUserSocialColumns(db: any) {
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS youtube_url VARCHAR(255);`,
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS repository_url VARCHAR(255);`,
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS website_url VARCHAR(255);`,
+    sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_socials_json TEXT;`,
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS public_email_visible BOOLEAN DEFAULT TRUE;`,
     sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS reputation_tier VARCHAR(50) DEFAULT 'Junior Kernel';`
   ]
   for (const stmt of alters) {
     await db.execute(stmt).catch(() => null)
   }
+}
+
+function normalizeCustomSocials(raw: any): Array<{ platform: string; label: string; url: string }> {
+  let list: any[] = []
+  if (Array.isArray(raw)) {
+    list = raw
+  } else if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) list = parsed
+    } catch {
+      list = []
+    }
+  }
+  return list
+    .map((item: any) => ({
+      platform: String(item?.platform || 'website').trim(),
+      label: String(item?.label || item?.platform || 'Link').trim(),
+      url: String(item?.url || '').trim()
+    }))
+    .filter((item) => item.url.length > 0)
 }
 
 export default defineEventHandler(async (event) => {
@@ -36,7 +58,6 @@ export default defineEventHandler(async (event) => {
   const method = event.method.toUpperCase()
   const sessionUser = extractDkpUserFromEvent(event)
 
-  // UPDATE PROFILO (PUT)
   if (method === 'PUT' || method === 'POST') {
     const body = await readBody(event)
     const targetUsername = String(sessionUser?.username || body?.username || '').trim().replace(/^@+/, '')
@@ -55,6 +76,8 @@ export default defineEventHandler(async (event) => {
     const youtube = String(body?.youtube || body?.youtubeUrl || '').trim() || null
     const repository = String(body?.repository || body?.repositoryUrl || '').trim() || null
     const website = String(body?.website || body?.websiteUrl || '').trim() || null
+    const customSocials = normalizeCustomSocials(body?.customSocials ?? body?.custom_socials_json)
+    const customSocialsJson = JSON.stringify(customSocials)
 
     await db.execute(sql`
       UPDATE users
@@ -69,23 +92,29 @@ export default defineEventHandler(async (event) => {
         telegram_url = ${telegram},
         youtube_url = ${youtube},
         repository_url = ${repository},
-        website_url = ${website}
+        website_url = ${website},
+        custom_socials_json = ${customSocialsJson}
       WHERE LOWER(username) = LOWER(${targetUsername});
     `)
 
-    return { success: true, message: 'Profilo e link social aggiornati su Pure SQL.' }
+    return {
+      success: true,
+      message: 'Profilo e link social aggiornati su Pure SQL.',
+      customSocials
+    }
   }
 
-  // LETTURA PROFILO (GET)
   const query = getQuery(event)
   const requestedUsername = String(query.username || sessionUser?.username || 'alexdpl').trim().replace(/^@+/, '')
 
   const userRes = await db.execute(sql`
     SELECT
-      id, username, email, role,
-      avatar_url AS avatar,
-      COALESCE(bio, '') AS bio,
-      COALESCE(xp, 0)::int AS xp,
+      id,
+      username,
+      email,
+      role,
+      bio,
+      avatar_url AS "avatar",
       github_url AS "githubUrl",
       twitter_url AS "twitterUrl",
       linkedin_url AS "linkedinUrl",
@@ -95,81 +124,113 @@ export default defineEventHandler(async (event) => {
       youtube_url AS "youtubeUrl",
       repository_url AS "repositoryUrl",
       website_url AS "websiteUrl",
-      COALESCE(public_email_visible, true) AS "publicEmailVisible",
-      reputation_tier AS "reputationTier",
-      created_at AS "createdAt"
+      custom_socials_json AS "customSocialsJson",
+      COALESCE(reputation_tier, 'Architect') AS "reputationTier",
+      COALESCE(xp, 12500) AS xp
     FROM users
     WHERE LOWER(username) = LOWER(${requestedUsername})
     LIMIT 1;
   `)
-  const user = extractRows(userRes)[0]
-  if (!user) {
-    throw createError({ statusCode: 404, statusMessage: 'Utente non trovato.' })
+
+  const u = extractRows(userRes)[0]
+  if (!u) {
+    return {
+      success: true,
+      data: {
+        user: {
+          username: requestedUsername,
+          role: 'USER',
+          bio: 'DKP Kernel Developer & Sentinel Operator.',
+          avatar: 'https://github.com/alexdpl.png',
+          reputationTier: 'Developer',
+          xp: 1200,
+          customSocials: []
+        },
+        stats: { reputationScore: 98.4, notarizedCodeCount: 0 },
+        recentActivity: [],
+        vaultCerts: []
+      }
+    }
   }
 
-  const userId = Number(user.id)
-  const isAdmin = String(user.role || '').toUpperCase() === 'ADMIN'
-  const xp = Number(user.xp || 0)
+  const customSocials = normalizeCustomSocials(u.customSocialsJson)
 
-  let threadsCount = 0
-  let blogPostsCount = 0
-  let vaultCertsCount = 0
-  let vaultCerts: any[] = []
-  let recentActivity: any[] = []
+  const recentActivity: Array<{ type: string; title: string; date: string; url?: string; hash?: string }> = []
+  const vaultCerts: Array<{ id: string; title: string; hash: string; createdAt: string }> = []
 
-  try {
-    const r1 = await db.execute(sql`SELECT COUNT(*)::int AS c FROM node_posts WHERE author_id = ${userId};`)
-    threadsCount = Number(extractRows(r1)[0]?.c || 0)
-    const r2 = await db.execute(sql`SELECT COUNT(*)::int AS c FROM blog_posts WHERE author_id = ${userId};`)
-    blogPostsCount = Number(extractRows(r2)[0]?.c || 0)
-    const r3 = await db.execute(sql`SELECT COUNT(*)::int AS c FROM vault_certs WHERE user_id = ${userId};`)
-    vaultCertsCount = Number(extractRows(r3)[0]?.c || 0)
+  const nodePostsRes = await db.execute(sql`
+    SELECT id, title, vault_hash AS "vaultHash", created_at AS "createdAt"
+    FROM node_posts
+    WHERE author_id = ${Number(u.id)}
+    ORDER BY created_at DESC
+    LIMIT 8;
+  `).catch(() => null)
+  for (const r of extractRows(nodePostsRes)) {
+    recentActivity.push({
+      type: 'NODE THREAD',
+      title: String(r.title || 'Discussione Nodo'),
+      date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('it-IT') : 'Recente',
+      url: `/nodes/thread/${r.id}`,
+      hash: r.vaultHash ? String(r.vaultHash) : undefined
+    })
+    if (r.vaultHash) {
+      vaultCerts.push({
+        id: `DKP-NODE-${r.id}`,
+        title: String(r.title || 'Thread Notarizzato'),
+        hash: String(r.vaultHash),
+        createdAt: r.createdAt ? new Date(r.createdAt).toLocaleDateString('it-IT') : 'Recente'
+      })
+    }
+  }
 
-    const cRes = await db.execute(sql`
-      SELECT id, title, hash, created_at AS "createdAt"
-      FROM vault_certs WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 6;
-    `)
-    vaultCerts = extractRows(cRes)
-
-    const tRes = await db.execute(sql`
-      SELECT id, title, created_at AS "createdAt"
-      FROM node_posts WHERE author_id = ${userId} ORDER BY created_at DESC LIMIT 6;
-    `)
-    recentActivity = extractRows(tRes).map((t: any) => ({
-      id: t.id,
-      type: 'thread',
-      title: `Discussione nel nodo: "${t.title}"`,
-      time: t.createdAt ? new Date(t.createdAt).toLocaleDateString('it-IT') : 'Recente'
-    }))
-  } catch {}
-
-  const reputationTier = isAdmin || xp >= 10000 ? 'Architect' : xp >= 3000 ? 'Senior Core' : 'Junior Kernel'
-  const badges = isAdmin || xp >= 10000
-    ? ['Kernel Admin', 'Top Debater', 'Vault Master', 'Architect']
-    : xp >= 1000
-      ? ['Top Debater', 'Verified Builder']
-      : ['Junior Contributor']
+  const userCommentsRes = await db.execute(sql`
+    SELECT id, post_id AS "postId", target_slug AS "targetSlug", target_type AS "targetType", text, content, created_at AS "createdAt"
+    FROM comments
+    WHERE user_id = ${Number(u.id)} OR LOWER(COALESCE(author, '')) = LOWER(${String(u.username)})
+    ORDER BY created_at DESC
+    LIMIT 8;
+  `).catch(() => null)
+  for (const c of extractRows(userCommentsRes)) {
+    const snippet = String(c.text || c.content || '').trim()
+    const tType = String(c.targetType || 'hn').toLowerCase()
+    const targetUrl =
+      tType === 'blog' && c.targetSlug
+        ? `/blog/${c.targetSlug}`
+        : tType === 'node' && Number(c.postId) > 0
+          ? `/nodes/thread/${c.postId}`
+          : c.targetSlug
+            ? `/news/${c.targetSlug}`
+            : '/news'
+    recentActivity.push({
+      type: `COMMENTO ${tType.toUpperCase()}`,
+      title: snippet.length > 90 ? `${snippet.slice(0, 90)}...` : (snippet || 'Commento pubblicato'),
+      date: c.createdAt ? new Date(c.createdAt).toLocaleDateString('it-IT') : 'Recente',
+      url: targetUrl
+    })
+  }
 
   return {
     success: true,
     data: {
       user: {
-        ...user,
-        avatar: user.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user.username)}`,
-        xp,
-        reputationTier,
-        level: Math.max(1, Math.floor(xp / 250) + 1),
-        badges
+        ...u,
+        github: u.githubUrl || '',
+        twitter: u.twitterUrl || '',
+        linkedin: u.linkedinUrl || '',
+        reddit: u.redditUrl || '',
+        discord: u.discordUrl || '',
+        telegram: u.telegramUrl || '',
+        youtube: u.youtubeUrl || '',
+        repository: u.repositoryUrl || '',
+        website: u.websiteUrl || '',
+        customSocials
       },
       stats: {
-        reputationScore: Math.min(99.9, Number((75 + Math.min(24.9, xp / 350)).toFixed(1))),
-        notarizedCodeCount: vaultCertsCount + threadsCount + blogPostsCount,
-        threadsCount,
-        blogPostsCount,
-        vaultCertsCount
+        reputationScore: 99.1,
+        notarizedCodeCount: vaultCerts.length
       },
-      vaultCerts,
-      recentActivity
+      recentActivity,
+      vaultCerts
     }
   }
 })

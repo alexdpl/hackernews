@@ -2,6 +2,11 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { getDb } from '~~/server/utils/db'
 import { sql } from 'drizzle-orm'
+import {
+  parseSessionUser,
+  evaluateCommentWithSentinel,
+  syncUnifiedCommentRow
+} from '~~/server/utils/dkpComments'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -10,7 +15,7 @@ export default defineEventHandler(async (event) => {
     const content = body?.content ? String(body.content).trim() : ''
 
     if (!slugParam || !content) {
-      throw createError({ statusCode: 400, statusMessage: 'Parametri mancanti per il invio del commento.' })
+      throw createError({ statusCode: 400, statusMessage: 'Parametri mancanti per l invio del commento.' })
     }
 
     const db = await getDb()
@@ -18,7 +23,10 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: 'Database non disponibile' })
     }
 
-    // Tabella di sicurezza
+    const sessionUser = parseSessionUser(event)
+    const authorName = String(body?.author || sessionUser?.username || 'dev_kernel').trim()
+    const authorUsername = String(sessionUser?.username || body?.authorUsername || 'dev_kernel').trim()
+
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS news_comments (
         id SERIAL PRIMARY KEY,
@@ -30,22 +38,44 @@ export default defineEventHandler(async (event) => {
       )
     `)
 
-    // Inserisce il commento collegandolo allo slug della notizia
+    const sentinel = await evaluateCommentWithSentinel({
+      content,
+      section: 'HN',
+      author: authorUsername,
+      targetSlug: slugParam
+    })
+
     const result: any = await db.execute(sql`
       INSERT INTO news_comments (story_slug, author, author_username, content, created_at)
-      VALUES (${slugParam}, 'Developer', 'dev_kernel', ${content}, NOW())
+      VALUES (${slugParam}, ${authorName}, ${authorUsername}, ${content}, NOW())
       RETURNING id, story_slug AS "storySlug", author, author_username AS "authorUsername", content, created_at AS "createdAt"
     `)
 
     const newComment = (result.rows || result)[0]
 
+    // Risolve eventuale post_id numerico se slugParam è un ID o presente in posts
+    const numericId = /^\d+$/.test(slugParam) ? Number(slugParam) : 0
+    await syncUnifiedCommentRow(db, {
+      postId: numericId,
+      targetSlug: slugParam,
+      userId: sessionUser?.id || null,
+      targetType: 'hn',
+      author: authorUsername,
+      content,
+      sentinel
+    }).catch(() => null)
+
     return {
       success: true,
       id: newComment?.id,
-      data: newComment
+      data: {
+        ...newComment,
+        sentinel
+      },
+      sentinel
     }
   } catch (err: any) {
-    console.error('❌ [API Comments Post Error]:', err)
+    console.error('[API Comments Post Error]:', err)
     if (err.statusCode) throw err
 
     throw createError({

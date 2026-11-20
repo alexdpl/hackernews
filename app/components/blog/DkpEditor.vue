@@ -1,63 +1,8 @@
 <!-- app/components/blog/DkpEditor.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
-
-// 🎨 PRISMJS: Importazione NATIVA ordinata per prevenire l'Errore 500
-import Prism from 'prismjs'
-import 'prismjs/themes/prism-tomorrow.css'
-
-import 'prismjs/components/prism-markup'
-import 'prismjs/components/prism-css'
-import 'prismjs/components/prism-clike'
-import 'prismjs/components/prism-javascript'
-import 'prismjs/components/prism-c'
-import 'prismjs/components/prism-java'
-import 'prismjs/components/prism-markup-templating'
-import 'prismjs/components/prism-javadoclike'
-
-import 'prismjs/components/prism-cpp'
-import 'prismjs/components/prism-objectivec'
-import 'prismjs/components/prism-opencl'
-import 'prismjs/components/prism-scala'
-import 'prismjs/components/prism-php'
-import 'prismjs/components/prism-django'
-import 'prismjs/components/prism-javadoc'
-import 'prismjs/components/prism-xml-doc'
-
-import 'prismjs/components/prism-typescript'
-import 'prismjs/components/prism-python'
-import 'prismjs/components/prism-bash'
-import 'prismjs/components/prism-json'
-import 'prismjs/components/prism-jsonp'
-import 'prismjs/components/prism-sql'
-import 'prismjs/components/prism-go'
-import 'prismjs/components/prism-rust'
-import 'prismjs/components/prism-yaml'
-import 'prismjs/components/prism-csharp'
-import 'prismjs/components/prism-kotlin'
-import 'prismjs/components/prism-swift'
-import 'prismjs/components/prism-ruby'
-import 'prismjs/components/prism-perl'
-import 'prismjs/components/prism-docker'
-import 'prismjs/components/prism-graphql'
-import 'prismjs/components/prism-haskell'
-import 'prismjs/components/prism-apacheconf'
-import 'prismjs/components/prism-applescript'
-import 'prismjs/components/prism-git'
-import 'prismjs/components/prism-makefile'
-import 'prismjs/components/prism-mongodb'
-import 'prismjs/components/prism-neon'
-import 'prismjs/components/prism-nginx'
-import 'prismjs/components/prism-visual-basic'
-import 'prismjs/components/prism-wiki'
-import 'prismjs/components/prism-cobol'
-import 'prismjs/components/prism-http'
-import 'prismjs/components/prism-pascal'
-import 'prismjs/components/prism-powershell'
-import 'prismjs/components/prism-qsharp'
-import 'prismjs/components/prism-rest'
-import 'prismjs/components/prism-typoscript'
+import { highlightCodeDynamic, prismRegistryVersion } from '~/composables/useDynamicPrism'
 
 useCodeCopy()
 
@@ -84,6 +29,15 @@ const content = ref(props.modelValue?.content || '')
 const activeTab = ref<'write' | 'preview'>('write')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isZenMode = ref(false)
+
+// AI Studio State
+const showAiBar = ref(false)
+const aiPromptHint = ref('')
+const aiTone = ref<'deep-dive' | 'tutorial' | 'rfc'>('deep-dive')
+const aiCodeLang = ref('typescript')
+const isAiGenerating = ref(false)
+const aiStatusMessage = ref('')
+const previousContentSnapshot = ref<string | null>(null)
 
 function toggleZenMode() {
   isZenMode.value = !isZenMode.value
@@ -242,40 +196,99 @@ function handleEnter(e: KeyboardEvent) {
   }
 }
 
-function getPrismGrammar(lang: string) {
-  if (!lang) return null
-  const l = lang.toLowerCase()
-  const aliases: Record<string, string> = { js: 'javascript', ts: 'typescript', py: 'python', sh: 'bash', bash: 'bash', yml: 'yaml', yaml: 'yaml', html: 'markup', xml: 'markup', json: 'json', css: 'css', cpp: 'cpp', c: 'c', cs: 'csharp', java: 'java', php: 'php', sql: 'sql' }
-  const target = aliases[l] || l
-  return Prism.languages[target] || Prism.languages[l] || null
+// ✨ FUNZIONI AI STUDIO PER STESURA INTELLIGENTE ARTICOLI
+async function runAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' | 'seo_optimize' | 'generate_code' | 'tldr_table') {
+  isAiGenerating.value = true
+  aiStatusMessage.value = 'Elaborazione AI Studio in corso...'
+
+  const textarea = textareaRef.value
+  const selectedText = textarea
+    ? content.value.substring(textarea.selectionStart, textarea.selectionEnd)
+    : ''
+
+  previousContentSnapshot.value = content.value
+
+  try {
+    const res: any = await $fetch('/api/admin/ai-assist', {
+      method: 'POST',
+      body: {
+        mode,
+        context: 'blog',
+        title: title.value,
+        category: categoryName.value,
+        subCategory: subCategoryName.value,
+        tags: tags.value,
+        summary: summary.value,
+        content: content.value,
+        selectedText,
+        promptHint: aiPromptHint.value,
+        codeLang: aiCodeLang.value,
+        tone: aiTone.value
+      }
+    })
+
+    if (res?.success && res.result) {
+      if (res.result.title && (!title.value.trim() || mode === 'seo_optimize' || mode === 'generate_draft')) {
+        title.value = res.result.title
+      }
+      if (res.result.summary && (!summary.value.trim() || mode === 'seo_optimize' || mode === 'generate_draft')) {
+        summary.value = res.result.summary
+      }
+      if (Array.isArray(res.result.tags) && res.result.tags.length > 0 && (tags.value.length === 0 || mode === 'seo_optimize')) {
+        tags.value = Array.from(new Set([...tags.value, ...res.result.tags])).slice(0, 10)
+      }
+
+      if (mode === 'generate_code' || mode === 'tldr_table' || mode === 'security_audit') {
+        const snippet = res.result.insertSnippet || ''
+        if (textarea && snippet) {
+          const start = textarea.selectionStart
+          const before = content.value.substring(0, start)
+          const after = content.value.substring(textarea.selectionEnd)
+          content.value = `${before}${snippet}${after}`
+        } else if (res.result.content) {
+          content.value = res.result.content
+        }
+      } else if (mode !== 'seo_optimize' && res.result.content) {
+        content.value = res.result.content
+      }
+
+      syncToParent()
+      aiStatusMessage.value = `Completato (${res.source || 'AI Engine'})`
+    }
+  } catch (err: any) {
+    aiStatusMessage.value = `Errore AI: ${err?.message || 'Impossibile completare'}`
+  } finally {
+    isAiGenerating.value = false
+  }
 }
 
-// 🟢 FUNZIONE DEFINITIVA E BLINDATA AL COMPILATORE VUE/VITE
+function undoLastAiAction() {
+  if (previousContentSnapshot.value !== null) {
+    content.value = previousContentSnapshot.value
+    previousContentSnapshot.value = null
+    aiStatusMessage.value = 'Modifica AI annullata.'
+    syncToParent()
+  }
+}
+
+// 🟢 FUNZIONE DEFINITIVA E BLINDATA AL COMPILATORE VUE/VITE CON PRISM DINAMICO MULTI-LINGUAGGIO
 const parsedContent = computed(() => {
+  // Dipendenza reattiva: quando Prism carica dinamicamente un nuovo linguaggio, ricalcola subito
+  void prismRegistryVersion.value
+
   if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...' + '<' + '/p>'
   
   let rawContent = content.value;
   const codeBlocks: string[] = [];
   
-  // 1. ISOLAMENTO BLOCCHI DI CODICE
-  rawContent = rawContent.replace(/```([a-zA-Z0-9+#-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
+  // 1. ISOLAMENTO BLOCCHI DI CODICE + HIGHLIGHT DINAMICO SU TUTTI I LINGUAGGI
+  rawContent = rawContent.replace(/```([a-zA-Z0-9_+#.-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
     const index = codeBlocks.length;
     const cleanLang = lang ? lang.trim().toLowerCase() : '';
     const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
     const languageLabel = cleanLang ? `<` + `div class="dkp-code-header"><span>${cleanLang}<` + `/span><button class="dkp-copy-btn" type="button">📋 Copia<` + `/button><` + `/div>` : '';
     
-    let highlightedCode = ''
-    const grammar = getPrismGrammar(cleanLang)
-    
-    if (grammar) {
-      try {
-        highlightedCode = Prism.highlight(code, grammar, cleanLang)
-      } catch (err) {
-        highlightedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      }
-    } else {
-      highlightedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    }
+    const highlightedCode = highlightCodeDynamic(code, cleanLang)
     
     codeBlocks.push(`<` + `div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}<` + `/code><` + `/pre><` + `/div>`);
     
@@ -304,7 +317,7 @@ const parsedContent = computed(() => {
 
   html = html
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
-    .replace(/@[video]\(([^)]+)\)/g, '<' + 'div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen><' + '/iframe><' + '/div>')
+    .replace(/@\[video\]\(([^)]+)\)/g, '<' + 'div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen><' + '/iframe><' + '/div>')
     .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1<' + '/mark>')
     .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1<' + '/u>')
     .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1<' + '/code>')
@@ -333,7 +346,6 @@ const parsedContent = computed(() => {
      let line = lines[i];
      let trimmed = line.trim();
      
-     // Ignoriamo i placeholder dei blocchi codice
      if (trimmed.includes('__DKP_CODE_BLOCK_')) {
         parsedHtml += line + '\n';
      } else if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) || /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)) {
@@ -346,7 +358,6 @@ const parsedContent = computed(() => {
   }
 
   // 4. REINSERIMENTO SICURO DEI BLOCCHI DI CODICE 
-  // FIX: L'uso di "() => block" impedisce ai simboli del dollaro ($) nel codice di rompere i tag HTML!
   codeBlocks.forEach((block, index) => {
     parsedHtml = parsedHtml.replace(new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'), () => block);
   });
@@ -367,7 +378,7 @@ const parsedContent = computed(() => {
       <div class="editor-fields-grid">
         <div class="field-group full-width">
           <label class="field-label">TITOLO DELL'ARTICOLO *</label>
-          <input v-model="title" type="text" class="dkp-input-element" placeholder="Es: Architettura DKP v2.4-GOLD su Cloud GCP..." />
+          <input v-model="title" type="text" class="dkp-input-element" placeholder="Es: Architettura DKP v2.6-PURE-SQL su Cloud GCP..." />
         </div>
 
         <div class="field-group">
@@ -439,14 +450,84 @@ const parsedContent = computed(() => {
           <div class="tool-divider"></div>
           <div class="tool-group">
             <button type="button" @click="insertFormatting('`', '`')" class="tool-icon-btn code-font" title="Codice Inline">`</button>
-            <button type="button" @click="insertFormatting('\n```\n', '\n```\n')" class="tool-icon-btn code-font" title="Blocco Codice">{ }</button>
+            <button type="button" @click="insertFormatting('\n```typescript\n', '\n```\n')" class="tool-icon-btn code-font" title="Blocco Codice (Tutti i linguaggi PrismJS)">{ }</button>
             <button type="button" @click="toggleZenMode" :class="['tool-icon-btn text-emerald-400', { 'text-emerald-400': isZenMode }]" :title="isZenMode ? 'Esci da Zen Mode' : 'Zen Mode (Fullscreen)'"> {{ isZenMode ? '↙️' : '🗖' }}</button>
           </div>
+          <div class="tool-divider"></div>
+          <button
+            type="button"
+            @click="showAiBar = !showAiBar"
+            :class="['ai-toggle-pill', showAiBar ? 'active' : '']"
+            title="Apri DKP AI Editorial Studio"
+          >
+            ✨ AI Studio
+          </button>
+        </div>
+      </div>
+
+      <!-- PANNELLO AI EDITORIAL STUDIO (COMPRIMIBILE) -->
+      <div v-if="showAiBar && activeTab === 'write'" class="ai-studio-panel">
+        <div class="ai-studio-top">
+          <input
+            v-model="aiPromptHint"
+            type="text"
+            class="ai-prompt-input"
+            placeholder="Argomento o istruzione AI (es: Confronto latenze Rust vs Go su edge worker)..."
+          />
+          <select v-model="aiTone" class="ai-mini-select" title="Stile editoriale">
+            <option value="deep-dive">Tono: Deep-Dive</option>
+            <option value="tutorial">Tono: Tutorial</option>
+            <option value="rfc">Tono: RFC Spec</option>
+          </select>
+          <select v-model="aiCodeLang" class="ai-mini-select" title="Linguaggio snippet">
+            <option value="typescript">Code: TypeScript</option>
+            <option value="sql">Code: SQL</option>
+            <option value="rust">Code: Rust</option>
+            <option value="go">Code: Go</option>
+            <option value="python">Code: Python</option>
+            <option value="bash">Code: Bash</option>
+            <option value="docker">Code: Docker</option>
+            <option value="yaml">Code: YAML</option>
+            <option value="cpp">Code: C++</option>
+            <option value="java">Code: Java</option>
+            <option value="csharp">Code: C#</option>
+            <option value="php">Code: PHP</option>
+          </select>
+        </div>
+
+        <div class="ai-studio-actions">
+          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('generate_draft')" class="ai-action-btn primary">
+            ✨ Genera Bozza
+          </button>
+          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('expand')" class="ai-action-btn">
+            🚀 Espandi Testo
+          </button>
+          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('security_audit')" class="ai-action-btn">
+            🛡️ Sentinel Audit
+          </button>
+          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('seo_optimize')" class="ai-action-btn">
+            🎯 SEO &amp; Tag
+          </button>
+          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('generate_code')" class="ai-action-btn">
+            💻 Snippet Codice
+          </button>
+          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('tldr_table')" class="ai-action-btn">
+            📊 TL;DR &amp; Tabella
+          </button>
+          <button
+            v-if="previousContentSnapshot !== null"
+            type="button"
+            @click="undoLastAiAction"
+            class="ai-action-btn undo"
+          >
+            ↩️ Annulla AI
+          </button>
+          <span v-if="aiStatusMessage" class="ai-status-text">{{ aiStatusMessage }}</span>
         </div>
       </div>
 
       <div v-show="activeTab === 'write'" class="textarea-container">
-        <textarea ref="textareaRef" v-model="content" class="markdown-textarea" placeholder="Inizia a scrivere il tuo articolo qui..." @keydown.enter="handleEnter"></textarea>
+        <textarea ref="textareaRef" v-model="content" class="markdown-textarea" placeholder="Inizia a scrivere il tuo articolo qui (supporta ```qualsiasi-linguaggio con PrismJS dinamico)..." @keydown.enter="handleEnter"></textarea>
       </div>
       
       <div v-show="activeTab === 'preview'" class="preview-container">
@@ -496,14 +577,14 @@ const parsedContent = computed(() => {
   gap: 0.65rem; 
   width: 100%; 
   height: calc(100vh - 250px);
-  min-height: 380px;
-  max-height: 560px;
+  min-height: 410px;
+  max-height: 600px;
   overflow: hidden; 
   box-sizing: border-box;
 }
 
 .top-fields-scroll {
-  max-height: 135px; 
+  max-height: 145px; 
   overflow-y: auto; 
   flex-shrink: 0;
   padding-right: 4px;
@@ -517,13 +598,13 @@ const parsedContent = computed(() => {
 .field-group.full-width { grid-column: 1 / -1; }
 .field-label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
 
-.dkp-input-element { background: #020420; border: 1px solid #1e293b; color: #ffffff; padding: 0.45rem 0.7rem; border-radius: 6px; font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
+.dkp-input-element { background: #030712; border: 1px solid #1e293b; color: #ffffff; padding: 0.45rem 0.7rem; border-radius: 6px; font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
 .dkp-input-element:focus { border-color: #00dc82; }
 
 .editor-body-box { 
   border: 1px solid #1e293b; 
   border-radius: 8px; 
-  background: #020420;
+  background: #030712;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -540,7 +621,93 @@ const parsedContent = computed(() => {
   z-index: 10;
 }
 @media (min-width: 768px) {
-  .toolbar-bar { flex-direction: row; justify-content: flex-start; align-items: center; padding: 0.3rem 0.5rem; gap: 0.65rem; }
+  .toolbar-bar { flex-direction: row; justify-content: flex-start; align-items: center; padding: 0.3rem 0.5rem; gap: 0.55rem; }
+}
+
+.ai-toggle-pill {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  color: #d8b4fe;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ai-toggle-pill.active, .ai-toggle-pill:hover {
+  background: #a855f7;
+  color: #030712;
+}
+
+.ai-studio-panel {
+  background: #060b19;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.35);
+  padding: 0.55rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+.ai-studio-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.ai-prompt-input {
+  flex: 1;
+  min-width: 200px;
+  background: #030712 !important;
+  border: 1px solid #334155 !important;
+  color: #f8fafc !important;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+}
+.ai-mini-select {
+  background: #030712 !important;
+  border: 1px solid #334155 !important;
+  color: #38bdf8 !important;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ai-studio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.ai-action-btn {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 0.25rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ai-action-btn:hover:not(:disabled) {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+.ai-action-btn.primary {
+  background: #10b981;
+  border-color: #10b981;
+  color: #030712;
+  font-weight: 800;
+}
+.ai-action-btn.undo {
+  border-color: rgba(244, 63, 94, 0.5);
+  color: #fda4af;
+}
+.ai-status-text {
+  font-size: 0.7rem;
+  color: #34d399;
+  margin-left: auto;
 }
 
 .textarea-container, .preview-container {
@@ -573,8 +740,7 @@ const parsedContent = computed(() => {
 .tab-toggle-btn { background: transparent; border: 1px solid transparent; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
 .tab-toggle-btn:hover { color: #cbd5e1; }
 .tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
-.formatting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.2rem 0; }
-.zen-mode-active .formatting-tools { flex-wrap: nowrap; }
+.formatting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; padding: 0.2rem 0; }
 .tool-group { display: flex; gap: 0.1rem; background: #020420; padding: 0.1rem; border-radius: 5px; border: 1px solid #1e293b; }
 .tool-divider { width: 1px; height: 14px; background: #334155; margin: 0 0.1rem; }
 .tool-icon-btn { background: transparent; border: 1px solid transparent; color: #94a3b8; min-width: 20px; height: 24px; padding: 0 0.2rem; border-radius: 4px; font-size: 0.72rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s ease; }
@@ -591,4 +757,20 @@ const parsedContent = computed(() => {
 :deep(.dkp-table-wrapper) { overflow-x: auto; margin: 0.8rem 0; border-radius: 6px; border: 1px solid #1e293b; }
 :deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.82rem;}
 :deep(.dkp-table td) { padding: 0.6rem 0.85rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+mark,
+.dkp-highlight {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.08rem 0.38rem !important;
+  font-weight: 700 !important;
+}
+
+.dkp-inline-code,
+:not(pre) > code {
+  background-color: rgba(30, 41, 59, 0.85) !important;
+  color: #38bdf8 !important;
+  border-radius: 0.3rem !important;
+}
 </style>
