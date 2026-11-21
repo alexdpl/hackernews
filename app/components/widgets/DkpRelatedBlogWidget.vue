@@ -1,15 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const { data: blogRes, pending, refresh } = await useFetch<any>('/api/blog/posts', {
-  key: 'dkp-home-latest-blog-posts',
-  query: { limit: 5 }
+  query: { limit: 5 },
+  default: () => ({ data: [] })
 })
 
 const articles = computed<any[]>(() => {
   const raw = blogRes.value
   const list = raw?.data || raw?.posts || raw?.articles || (Array.isArray(raw) ? raw : [])
   return list.slice(0, 5)
+})
+
+onMounted(() => {
+  if (articles.value.length === 0) {
+    void refresh()
+  }
 })
 </script>
 

@@ -4,7 +4,7 @@ import 'prismjs/themes/prism-tomorrow.css'
 import componentsManifest from 'prismjs/components.json'
 
 // Caricamento lazy di tutti i componenti linguaggi PrismJS (~300 linguaggi)
-const prismModules = import.meta.glob('/node_modules/prismjs/components/prism-*.min.js')
+const prismModules = import.meta.glob('../../../node_modules/prismjs/components/prism-*.min.js')
 
 const loadedLanguages = new Set<string>(Object.keys(Prism.languages))
 const loadingPromises = new Map<string, Promise<void>>()
@@ -96,8 +96,9 @@ async function loadSinglePrismLanguage(rawLang: string): Promise<void> {
     }
 
     // 2. Trova il modulo corrispondente in node_modules/prismjs/components
-    const exactKey = `/node_modules/prismjs/components/prism-${lang}.min.js`
-    const loader = prismModules[exactKey]
+    const targetSuffix = `/prism-${lang}.min.js`
+    const matchedKey = Object.keys(prismModules).find((k) => k.endsWith(targetSuffix))
+    const loader = matchedKey ? prismModules[matchedKey] : undefined
     if (loader) {
       try {
         // Assicura che Prism sia visibile globalmente ai plugin UMD di PrismJS
@@ -195,7 +196,15 @@ export async function highlightDomElement(root?: HTMLElement | Document | null):
   for (const el of codeEls) {
     if (el.tagName.toLowerCase() === 'code') {
       try {
-        Prism.highlightElement(el as HTMLElement)
+        const match = el.className.match(/language-([a-zA-Z0-9_+#.-]+)/)
+        const lang = match?.[1] ? normalizePrismLang(match[1]) : ''
+        const grammar = lang ? Prism.languages[lang] : undefined
+        if (lang && grammar) {
+          const rawCode = el.textContent || ''
+          ;(el as HTMLElement).innerHTML = Prism.highlight(rawCode, grammar, lang)
+        } else {
+          Prism.highlightElement(el as HTMLElement)
+        }
       } catch {}
     }
   }

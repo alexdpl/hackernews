@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const { data: newsRes, pending, refresh } = await useFetch<any>('/api/news', {
-  key: 'dkp-home-live-crawler-news',
-  query: { type: 'top', page: 1, limit: 8 }
+  query: { type: 'top', page: 1, limit: 8 },
+  default: () => ({ data: [] })
 })
 
 const newsItems = computed<any[]>(() => {
@@ -16,6 +16,12 @@ function buildNewsInternalUrl(item: any): string {
   if (item?.slug) return `/news/${item.slug}`
   return `/item/${item.id}`
 }
+
+onMounted(() => {
+  if (newsItems.value.length === 0) {
+    void refresh()
+  }
+})
 </script>
 
 <template>

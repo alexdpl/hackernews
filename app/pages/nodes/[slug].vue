@@ -1,3 +1,4 @@
+<!-- app/pages/nodes/[slug].vue -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -43,7 +44,7 @@ async function loadNodeData() {
       }).catch(() => null)
     ])
     if (nRes?.data) nodesList.value = nRes.data
-    posts.value = pRes?.data || []
+    posts.value = pRes?.posts || pRes?.data || []
   } finally {
     isLoading.value = false
   }
@@ -157,7 +158,7 @@ onMounted(loadNodeData)
       :grouped-nodes="nodeTree.groupedNodes"
       :is-admin="isAdmin"
       @close="isEditorOpen = false"
-      @created="async () => { isEditorOpen = false; await loadNodeData() }"
+      @published="async () => { isEditorOpen = false; await loadNodeData() }"
       @updated="async () => { isEditorOpen = false; await loadNodeData() }"
     />
   </DkpLayout>

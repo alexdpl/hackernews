@@ -1,4 +1,3 @@
-// app/composables/useCodeCopy.ts
 import { onMounted, onUnmounted } from 'vue'
 
 export function useCodeCopy() {
@@ -7,23 +6,19 @@ export function useCodeCopy() {
     const copyBtn = target.closest('.dkp-copy-btn') as HTMLButtonElement | null
     if (!copyBtn) return
 
-    // Trova il wrapper genitore del blocco di codice
     const wrapper = copyBtn.closest('.dkp-code-wrapper')
     if (!wrapper) return
 
-    // Trova il tag code o pre con il codice sorgente
     const codeEl = wrapper.querySelector('code') || wrapper.querySelector('pre')
     if (!codeEl) return
 
     const textToCopy = codeEl.innerText || codeEl.textContent || ''
-
     if (!textToCopy) return
 
-    // Copia negli appunti tramite Clipboard API
     navigator.clipboard.writeText(textToCopy)
       .then(() => {
         const originalContent = copyBtn.innerHTML
-        copyBtn.innerHTML = '✅ <span style="font-size: 0.7rem; font-weight: 800; color: #00dc82;">Copiato!</span>'
+        copyBtn.innerHTML = '&#9989; <span style="font-size: 0.72rem; font-weight: 800; color: #00dc82;">Copiato!</span>'
         copyBtn.style.pointerEvents = 'none'
 
         setTimeout(() => {
@@ -31,9 +26,7 @@ export function useCodeCopy() {
           copyBtn.style.pointerEvents = 'auto'
         }, 2000)
       })
-      .catch((err) => {
-        console.error('Errore durante la copia del codice negli appunti:', err)
-      })
+      .catch(() => {})
   }
 
   onMounted(() => {

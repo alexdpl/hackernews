@@ -1,6 +1,7 @@
-<-- app/pages/blog/index.vue -->
+<!-- app/pages/blog/index.vue -->
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
 import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
@@ -149,21 +150,79 @@ const categories = computed(() => {
   return FALLBACK_CATEGORIES.map((c, idx) => ({ ...c, id: idx + 1, slug: '' }))
 })
 
-const searchQuery = ref('')
+const route = useRoute()
+const router = useRouter()
+
+const searchQuery = ref(String(route.query.q || ''))
 const selectedCategory = ref('Tutti')
 const selectedSubcategory = ref('Tutte')
 const currentPage = ref(1)
 const pageSize = 9
 
+function applyQueryFiltersFromRoute() {
+  const qCat = String(route.query.category || '').trim()
+  const qSub = String(route.query.subcategory || '').trim()
+
+  if (!qCat) {
+    selectedCategory.value = 'Tutti'
+    selectedSubcategory.value = 'Tutte'
+    return
+  }
+
+  const matchedCat = categories.value.find(
+    (c) =>
+      c.name.toLowerCase() === qCat.toLowerCase() ||
+      (c.slug && c.slug.toLowerCase() === qCat.toLowerCase())
+  )
+  selectedCategory.value = matchedCat ? matchedCat.name : qCat
+
+  if (qSub) {
+    const subs = matchedCat?.subcategories || []
+    const matchedSub = subs.find((s: string) => s.toLowerCase() === qSub.toLowerCase())
+    selectedSubcategory.value = matchedSub || qSub
+  } else {
+    selectedSubcategory.value = 'Tutte'
+  }
+}
+
+watch(
+  [() => route.query.category, () => route.query.subcategory, categories],
+  () => {
+    applyQueryFiltersFromRoute()
+  },
+  { immediate: true }
+)
+
 const activeCategoryObj = computed(() =>
-  categories.value.find((c) => c.name === selectedCategory.value) || null
+  categories.value.find((c) => c.name.toLowerCase() === selectedCategory.value.toLowerCase()) || null
 )
 
 function selectCategory(catName: string) {
   selectedCategory.value = catName
   selectedSubcategory.value = 'Tutte'
   currentPage.value = 1
+  const nextQuery: Record<string, any> = { ...route.query }
+  delete nextQuery.subcategory
+  if (catName === 'Tutti') {
+    delete nextQuery.category
+  } else {
+    nextQuery.category = catName
+  }
+  router.replace({ query: nextQuery }).catch(() => {})
 }
+
+watch(selectedSubcategory, (nextSub) => {
+  const nextQuery: Record<string, any> = { ...route.query }
+  if (selectedCategory.value !== 'Tutti') {
+    nextQuery.category = selectedCategory.value
+  }
+  if (!nextSub || nextSub === 'Tutte') {
+    delete nextQuery.subcategory
+  } else {
+    nextQuery.subcategory = nextSub
+  }
+  router.replace({ query: nextQuery }).catch(() => {})
+})
 
 const filteredPosts = computed<any[]>(() => {
   const q = searchQuery.value.toLowerCase().trim()

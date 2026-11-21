@@ -21,7 +21,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = (await readBody(event).catch(() => ({}))) || {}
-  const { nodeId, title, content, vaultHash, isPinned } = body
+  const { nodeId, title, content, vaultHash, isPinned, tags } = body
+  const cleanTags = Array.isArray(tags) ? tags.map((t: any) => String(t).trim().replace(/^#/, '')).filter(Boolean).slice(0, 12) : []
+  const tagsJson = JSON.stringify(cleanTags)
 
   const numericNodeId = Number(nodeId)
   const cleanTitle = String(title || '').trim()
@@ -89,9 +91,9 @@ export default defineEventHandler(async (event) => {
     }
 
     // 1. Inserimento del nuovo Thread nel nodo
+    await db.execute(sql`ALTER TABLE node_posts ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;`).catch(() => {})
     const postResult: any = await db.execute(sql`
-      INSERT INTO node_posts (node_id, author_id, title, content, vault_hash, is_pinned, karma_score)
-      VALUES (${numericNodeId}, ${targetUserId}, ${cleanTitle}, ${cleanContent}, ${normalizedVaultHash}, ${canPin}, 1)
+      INSERT INTO node_posts (node_id, author_id, title, content, tags, vault_hash, is_pinned, karma_score) VALUES (${numericNodeId}, ${targetUserId}, ${cleanTitle}, ${cleanContent}, ${tagsJson}::jsonb, ${normalizedVaultHash}, ${canPin}, 1)
       RETURNING
         id,
         node_id AS "nodeId",

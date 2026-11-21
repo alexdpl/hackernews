@@ -8,6 +8,29 @@ function extractRows(res: any): any[] {
   return Array.isArray(res) ? res : (res?.rows || [])
 }
 
+function slugifyTitle(raw: string): string {
+  return String(raw || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96)
+}
+
+function parseTags(raw: any): string[] {
+  if (Array.isArray(raw)) return raw.map((t) => String(t).trim()).filter(Boolean)
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed.map((t) => String(t).trim()).filter(Boolean)
+    } catch {
+      return raw.split(/[,;]+/).map((t) => t.trim().replace(/^#/, '')).filter(Boolean)
+    }
+  }
+  return []
+}
+
 export default defineEventHandler(async (event) => {
   const idParam = String(getRouterParam(event, 'id') || '').trim()
   if (!idParam) {
@@ -17,17 +40,26 @@ export default defineEventHandler(async (event) => {
   const db = await getDb()
   if (!db) throw createError({ statusCode: 500, statusMessage: 'Database offline' })
 
-  const isNumeric = /^\d+$/.test(idParam)
-  const postId = isNumeric ? Number(idParam) : 0
+  await db.execute(sql`
+    ALTER TABLE node_posts ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;
+  `).catch(() => {})
+
+  const leadingIdMatch = idParam.match(/^(\d+)(?:-|$)/)
+  const postId = leadingIdMatch ? Number(leadingIdMatch[1]) : 0
+  const slugWithoutPrefix = idParam.replace(/^\d+-+/, '')
+  const cleanSlugParam = slugifyTitle(slugWithoutPrefix || idParam)
+  const likeWordsPattern = `%${cleanSlugParam.replace(/-/g, '%')}%`
 
   try {
     let rows: any[] = []
-    if (isNumeric && postId > 0) {
+
+    if (postId > 0) {
       const result: any = await db.execute(sql`
         SELECT
           p.id,
           p.title,
-          p.content,
+          COALESCE(p.content, '') AS content,
+          COALESCE(p.tags, '[]'::jsonb) AS tags,
           p.karma_score AS "karmaScore",
           p.comments_count AS "commentsCount",
           p.vault_hash AS "vaultHash",
@@ -37,16 +69,19 @@ export default defineEventHandler(async (event) => {
           p.updated_at AS "updatedAt",
           n.id AS "nodeId",
           n.name AS "nodeName",
-          n.slug AS "nodeSlug",
+          REGEXP_REPLACE(COALESCE(n.slug, 'general'), '^(n/)+', '', 'i') AS "nodeSlug",
           n.icon AS "nodeIcon",
           n.color AS "nodeColor",
+          pn.name AS "parentNodeName",
           u.id AS "authorId",
-          u.username AS "authorUsername",
+          COALESCE(u.username, 'alexdpl') AS "authorUsername",
+          COALESCE(u.username, 'alexdpl') AS "authorName",
           u.avatar_url AS "authorAvatar",
           COALESCE(u.is_bot, FALSE) AS "authorIsBot",
           u.bot_specialty AS "authorBotSpecialty"
         FROM node_posts p
         LEFT JOIN nodes n ON p.node_id = n.id
+        LEFT JOIN nodes pn ON n.parent_id = pn.id
         LEFT JOIN users u ON p.author_id = u.id
         WHERE p.id = ${postId}
         LIMIT 1;
@@ -54,12 +89,13 @@ export default defineEventHandler(async (event) => {
       rows = extractRows(result)
     }
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && cleanSlugParam) {
       const slugMatch: any = await db.execute(sql`
         SELECT
           p.id,
           p.title,
-          p.content,
+          COALESCE(p.content, '') AS content,
+          COALESCE(p.tags, '[]'::jsonb) AS tags,
           p.karma_score AS "karmaScore",
           p.comments_count AS "commentsCount",
           p.vault_hash AS "vaultHash",
@@ -69,18 +105,21 @@ export default defineEventHandler(async (event) => {
           p.updated_at AS "updatedAt",
           n.id AS "nodeId",
           n.name AS "nodeName",
-          n.slug AS "nodeSlug",
+          REGEXP_REPLACE(COALESCE(n.slug, 'general'), '^(n/)+', '', 'i') AS "nodeSlug",
           n.icon AS "nodeIcon",
           n.color AS "nodeColor",
+          pn.name AS "parentNodeName",
           u.id AS "authorId",
-          u.username AS "authorUsername",
+          COALESCE(u.username, 'alexdpl') AS "authorUsername",
+          COALESCE(u.username, 'alexdpl') AS "authorName",
           u.avatar_url AS "authorAvatar",
           COALESCE(u.is_bot, FALSE) AS "authorIsBot",
           u.bot_specialty AS "authorBotSpecialty"
         FROM node_posts p
         LEFT JOIN nodes n ON p.node_id = n.id
+        LEFT JOIN nodes pn ON n.parent_id = pn.id
         LEFT JOIN users u ON p.author_id = u.id
-        WHERE LOWER(p.title) LIKE ${'%' + idParam.toLowerCase().replace(/-/g, ' ') + '%'}
+        WHERE LOWER(p.title) LIKE ${likeWordsPattern}
         ORDER BY p.id DESC
         LIMIT 1;
       `).catch(() => null)
@@ -98,16 +137,26 @@ export default defineEventHandler(async (event) => {
       vaultHash = crypto.createHash('sha256').update(rawString).digest('hex')
     }
 
+    const tSlug = slugifyTitle(post.title)
+    const canonicalSlug = tSlug ? `${post.id}-${tSlug}` : String(post.id)
+    const cleanNodeSlug = String(post.nodeSlug || 'general').split('/').filter(Boolean).filter((p) => p.toLowerCase() !== 'n').join('/').toLowerCase() || 'general'
+
+    const normalizedPost = {
+      ...post,
+      slug: canonicalSlug,
+      tags: parseTags(post.tags),
+      nodeName: post.nodeName || 'General',
+      nodeSlug: cleanNodeSlug,
+      parentNodeName: post.parentNodeName || null,
+      nodeIcon: post.nodeIcon || '#',
+      vaultHash,
+      vaultCertificateId: `DKP-NODE-${post.id}`
+    }
+
     return {
       success: true,
-      post: {
-        ...post,
-        nodeName: post.nodeName || 'General',
-        nodeSlug: post.nodeSlug || 'general',
-        nodeIcon: post.nodeIcon || '💬',
-        vaultHash,
-        vaultCertificateId: `DKP-NODE-${post.id}`
-      }
+      data: normalizedPost,
+      post: normalizedPost
     }
   } catch (err: any) {
     console.error('[GET POST ERROR]:', err)

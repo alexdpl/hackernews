@@ -1,4 +1,4 @@
-﻿// server/api/nodes/posts/index.post.ts
+// server/api/nodes/posts/index.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../../../utils/db'
@@ -24,11 +24,62 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  function normalizeTagSlug(val: unknown): string {
+  return String(val || '')
+    .trim()
+    .replace(/^#+/, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase()
+}
+
+function autoPopulateThreadTags(titleText: string, bodyText: string, explicitTags: unknown): string[] {
+  const manual = Array.isArray(explicitTags)
+    ? explicitTags.map(normalizeTagSlug).filter(Boolean)
+    : (typeof explicitTags === 'string' && explicitTags.trim()
+        ? explicitTags.split(/[,;]+/).map(normalizeTagSlug).filter(Boolean)
+        : [])
+
+  if (manual.length > 0) {
+    return Array.from(new Set(manual)).slice(0, 12)
+  }
+
+  const hay = `${titleText} ${bodyText}`.toLowerCase()
+  const detected: string[] = []
+  const rules: Array<[RegExp, string]> = [
+    [/\b(pure-?sql|sql|postgres|postgresql|neon)\b/, 'pure-sql'],
+    [/\b(blockchain|vault|merkle|sha-?256|ledger|on-?chain)\b/, 'blockchain-vault'],
+    [/\b(nuxt|nuxt4|nuxt-4)\b/, 'nuxt-4'],
+    [/\b(vue|vue3|vue-3)\b/, 'vue-3'],
+    [/\b(typescript|ts)\b/, 'typescript'],
+    [/\b(python|py)\b/, 'python'],
+    [/\b(rust)\b/, 'rust'],
+    [/\b(docker|container|kubernetes|k8s)\b/, 'docker'],
+    [/\b(security|zero-?trust|auth|owasp|exploit|audit)\b/, 'security'],
+    [/\b(ai|llm|sentinel|nexus|rag|ollama|qdrant)\b/, 'ai-nexus'],
+    [/\b(prism|markdown|editor|ui|css)\b/, 'dkp-ui'],
+    [/\b(api|sdk|webhook|endpoint)\b/, 'sdk-api']
+  ]
+
+  for (const [rx, tag] of rules) {
+    if (rx.test(hay) && !detected.includes(tag)) {
+      detected.push(tag)
+    }
+  }
+
+  if (detected.length === 0) {
+    detected.push('dkp-nodes', 'discussion')
+  }
+
+  return detected.slice(0, 8)
+}
+
   const body = await readBody(event)
   const nodeId = Number(body.nodeId)
   const title = body.title?.trim()
   const content = body.content?.trim()
   const requestVaultProof = body.requestVaultProof !== false
+  const resolvedTags = autoPopulateThreadTags(title, content, body.tags)
+  const resolvedTagsJson = JSON.stringify(resolvedTags)
 
   if (!nodeId || !title || !content) {
     throw createError({ statusCode: 400, statusMessage: 'Compilare tutti i campi obbligatori.' })

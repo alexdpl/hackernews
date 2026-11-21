@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
 import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
 import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
@@ -53,8 +54,10 @@ const nodesList = ref<any[]>([])
 const recentThreads = ref<any[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
-const selectedNodeGroup = ref('Tutti')
-const selectedSubnodeSlug = ref('Tutti')
+const route = useRoute()
+const selectedNodeGroup = ref(String(route.query.group || 'Tutti'))
+const selectedSubnodeSlug = ref(String(route.query.sub || 'Tutti'))
+watch(() => route.query.group, (g) => { selectedNodeGroup.value = g ? String(g) : 'Tutti'; selectedSubnodeSlug.value = 'Tutti' })
 const { currentUser } = useAuthCore()
 
 const nodeTree = computed(() => buildCategoryNodeTree(nodesList.value))

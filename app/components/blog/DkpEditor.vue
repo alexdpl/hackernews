@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
+import { useSentinelGrammar } from '~/composables/useSentinelGrammar'
 import { highlightCodeDynamic, prismRegistryVersion } from '~/composables/useDynamicPrism'
 
 useCodeCopy()
@@ -25,12 +26,13 @@ const subCategoryName = ref(props.modelValue?.subCategory || '')
 const tags = ref<string[]>(props.modelValue?.tags || [])
 const summary = ref(props.modelValue?.summary || '')
 const content = ref(props.modelValue?.content || '')
+const { detectedLang: sentinelLang, grammarIssues: sentinelIssues, applyGrammarFix: applySentinelFix } = useSentinelGrammar(content)
 
 const activeTab = ref<'write' | 'preview'>('write')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isZenMode = ref(false)
 
-// AI Studio State
+// DKP Ai Nexus© State
 const showAiBar = ref(false)
 const aiPromptHint = ref('')
 const aiTone = ref<'deep-dive' | 'tutorial' | 'rfc'>('deep-dive')
@@ -196,10 +198,10 @@ function handleEnter(e: KeyboardEvent) {
   }
 }
 
-// ✨ FUNZIONI AI STUDIO PER STESURA INTELLIGENTE ARTICOLI
+// ✨ FUNZIONI DKP Ai Nexus© PER STESURA INTELLIGENTE ARTICOLI
 async function runAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' | 'seo_optimize' | 'generate_code' | 'tldr_table') {
   isAiGenerating.value = true
-  aiStatusMessage.value = 'Elaborazione AI Studio in corso...'
+  aiStatusMessage.value = 'Elaborazione DKP Ai Nexus© in corso...'
 
   const textarea = textareaRef.value
   const selectedText = textarea
@@ -411,6 +413,43 @@ const parsedContent = computed(() => {
       </div>
     </div>
 
+    <!-- DKP Ai Nexus© — Sentinella Passiva Grammarly-Style -->
+    <div style="background:#050a18;border:1px solid rgba(168,85,247,0.35);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#c084fc;font-weight:800;">DKP Ai Nexus© &bull; Sentinella Passiva</span>
+          <span style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.35);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;">
+            LANG: {{ sentinelLang }}
+          </span>
+        </div>
+        <span v-if="sentinelIssues.length === 0" style="color:#34d399;font-size:11px;">
+          &#10003; Sintassi, punteggiatura e Markdown verificati
+        </span>
+        <span v-else style="color:#fbbf24;font-size:11px;font-weight:700;">
+          {{ sentinelIssues.length }} suggeriment{{ sentinelIssues.length === 1 ? 'o' : 'i' }} in tempo reale
+        </span>
+      </div>
+      <div v-if="sentinelIssues.length > 0" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+        <div
+          v-for="issue in sentinelIssues.slice(0, 3)"
+          :key="issue.id"
+          style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#090d16;border:1px solid #1e293b;border-radius:8px;padding:6px 10px;"
+        >
+          <div style="color:#cbd5e1;font-size:11px;">
+            <strong style="color:#38bdf8;">[{{ issue.rule }}]</strong> {{ issue.message }}
+          </div>
+          <button
+            v-if="issue.replacement || issue.id === 'double-space' || issue.id === 'unclosed-fence'"
+            type="button"
+            @click="applySentinelFix(issue)"
+            style="background:#10b981;color:#020617;border:none;border-radius:6px;padding:3px 9px;font-size:10px;font-weight:800;cursor:pointer;"
+          >
+            Correggi 1-Click
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Area Editor -->
     <div :class="['editor-body-box', { 'zen-mode-active': isZenMode }]">
       <div class="toolbar-bar">
@@ -458,16 +497,16 @@ const parsedContent = computed(() => {
             type="button"
             @click="showAiBar = !showAiBar"
             :class="['ai-toggle-pill', showAiBar ? 'active' : '']"
-            title="Apri DKP AI Editorial Studio"
+            title="Apri DKP Ai Nexus©"
           >
-            ✨ AI Studio
+            ✨ DKP Ai Nexus©
           </button>
         </div>
       </div>
 
-      <!-- PANNELLO AI EDITORIAL STUDIO (COMPRIMIBILE) -->
-      <div v-if="showAiBar && activeTab === 'write'" class="ai-studio-panel">
-        <div class="ai-studio-top">
+      <!-- PANNELLO DKP Ai Nexus© (COMPRIMIBILE) -->
+      <div v-if="showAiBar && activeTab === 'write'" class="ai-nexus-panel">
+        <div class="ai-nexus-top">
           <input
             v-model="aiPromptHint"
             type="text"
@@ -495,7 +534,7 @@ const parsedContent = computed(() => {
           </select>
         </div>
 
-        <div class="ai-studio-actions">
+        <div class="ai-nexus-actions">
           <button type="button" :disabled="isAiGenerating" @click="runAiAssist('generate_draft')" class="ai-action-btn primary">
             ✨ Genera Bozza
           </button>
@@ -640,7 +679,7 @@ const parsedContent = computed(() => {
   color: #030712;
 }
 
-.ai-studio-panel {
+.ai-nexus-panel {
   background: #060b19;
   border-bottom: 1px solid rgba(168, 85, 247, 0.35);
   padding: 0.55rem 0.65rem;
@@ -649,7 +688,7 @@ const parsedContent = computed(() => {
   gap: 0.45rem;
   flex-shrink: 0;
 }
-.ai-studio-top {
+.ai-nexus-top {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -674,7 +713,7 @@ const parsedContent = computed(() => {
   font-weight: 700;
   cursor: pointer;
 }
-.ai-studio-actions {
+.ai-nexus-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

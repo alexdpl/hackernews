@@ -163,7 +163,7 @@ const isActive = (path: string) => computed(() => route.path === path)
                   <span class="status-dot bg-dkp-accent text-dkp-accent"></span>
                   Contract
                 </span>
-                <NuxtLink to="/ecosystem" class="text-dkp-accent hover:text-white font-bold no-underline">
+                <NuxtLink to="/docs/BEMYAGENT.md" class="text-dkp-accent hover:text-white font-bold no-underline">
                   BEMYAGENT.md
                 </NuxtLink>
               </div>

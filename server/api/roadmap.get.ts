@@ -61,42 +61,42 @@ const DEFAULT_MILESTONES: RoadmapMilestone[] = [
   {
     id: 'q4-2026',
     quarter: 'Q4 2026',
-    phaseTitle: 'DKP Blockchain Vault©, Forum & Blog On-Chain v2.6-PURE-SQL',
+    phaseTitle: 'DKP Kernel v2.6 Pure SQL: Unificazione Ecosistema, DKP Ai Nexus© & Mail Nexus©',
     version: 'v2.6-PURE-SQL',
     status: 'completed',
     progress: 100,
-    description: 'Notarizzazione crittografica SHA-256 concatenata su ledger Pure-SQL per Forum (DKP Nodes), Blog Editoriale e nodo pubblico n/blockchain-vault.',
+    description: 'Design system unificato, DKP Ai Nexus© con Sentinella Passiva, DKP Mail Nexus© (Resend + Brevo), 10 Macro-Nodi semantici, Pulsebot (BEMYAGENT.md) e Blockchain Vault© SHA-256.',
     features: [
-      'DKP Blockchain Vault© (dkp_vault_ledger con Block #N, previous_hash e Merkle Root)',
-      'Forum On-Chain (DKP Nodes) con notarizzazione automatica, upvote karma e badge VaultTrustBadge',
-      'Editorial Blog On-Chain con certificato Proof-of-Code e audit anti-manomissione live',
-      'Nodo Pubblico Auditor n/blockchain-vault con verifica istantanea hash SHA-256',
-      'OpenUI Studio, DKP Trinity Engine & Pulse Sentinel SAST'
+      'Unificazione Ecosistema (DKP Sentinel Style) su Tech Feed, Nodes, Blog e Tools',
+      'DKP Ai Nexus© & Sentinella Passiva Grammarly-Style negli editor con Prism.js dinamico',
+      'DKP Mail Nexus© 2.6: Resend (Sentinel/Nexus) + Brevo (Newsletter Double Opt-In & Webhooks idempotenti)',
+      'Gerarchia DB Nodi ristrutturata su 10 Macro-Domini semantici & DKP Blockchain Vault© SHA-256',
+      'Pulsebot (BEMYAGENT.md): Sentinella guardiana per audit build, sicurezza, dipendenze e CI/CD Playwright'
     ]
   },
   {
     id: 'q1-2027',
     quarter: 'Q1 2027',
-    phaseTitle: 'DKP Public SDK & Developer Ecosystem',
-    version: 'v3.0-BETA',
-    status: 'completed',
-    progress: 100,
-    description: 'Rilascio ufficiale del pacchetto NPM @devkernelpulse/sdk. Permette a chiunque di integrare Vault, AI e NewsRoom nelle proprie app.',
+    phaseTitle: 'DKP ADS Marketplace, Public SDK & Sentinel Network Expansion',
+    version: 'v2.7-NEXT',
+    status: 'in-progress',
+    progress: 45,
+    description: 'Marketplace self-service DKP ADS, rilascio pacchetto NPM @devkernelpulse/sdk ed espansione del Sentinel Network.',
     features: [
+      'Marketplace DKP ADS self-service con metriche trasparenti',
       'Rilascio pacchetto npm ufficiale @devkernelpulse/sdk',
-      'Documentazione interattiva API Hub con snippet TS/JS',
-      'Integrazione client-side sicura con token crittografati',
-      'Supporto per framework moderni (Vue, React, Svelte, Vanilla)'
+      'Auto-remediation assistita da Pulsebot su dipendenze e audit SAST',
+      'Reputation Tier dinamici collegati al Proof of Code Vault'
     ]
   },
   {
     id: 'q2-2027',
     quarter: 'Q2 2027',
     phaseTitle: 'Autonomous Neural Agents & Auto-Patching',
-    version: 'v3.2',
-    status: 'in-progress',
-    progress: 15,
-    description: 'Evoluzione del Neural Playground in un agente autonomo capace di PR su GitHub.',
+    version: 'v3.0',
+    status: 'upcoming',
+    progress: 10,
+    description: 'Evoluzione degli agenti BEMYAGENT.md per suggerire e validare patch di sicurezza via PR su GitHub.',
     features: [
       'Agentic AI per auto-remediation delle vulnerabilità via PR',
       'Canary Endpoints per ban istantaneo scanner malevoli',
@@ -106,14 +106,14 @@ const DEFAULT_MILESTONES: RoadmapMilestone[] = [
   {
     id: 'q3-2027',
     quarter: 'Q3 2027',
-    phaseTitle: 'Multi-Tenant Enterprise Cloud & Web3',
+    phaseTitle: 'Multi-Tenant Enterprise Cloud & Web3 Settlement',
     version: 'v4.0-VISION',
     status: 'upcoming',
     progress: 0,
-    description: 'Soluzione enterprise per grandi aziende e settlement Smart Contract per Bounty Open Source.',
+    description: 'Soluzione enterprise per team e settlement Smart Contract per Bounty Open Source.',
     features: [
       'Chiavi API Effimere a tempo (15m - 1h) per CI/CD',
-      'Federazione Multi-Tenant per Kubernetes',
+      'Federazione Multi-Tenant su Google Cloud Run',
       'Web3 Settlement per Bounty in $PULSE su PR merged'
     ]
   }
@@ -129,41 +129,37 @@ function computeCompletion(items: RoadmapMilestone[]): number {
 }
 
 export default defineEventHandler(async () => {
-  let milestones = [...DEFAULT_MILESTONES]
+  const milestones = [...DEFAULT_MILESTONES]
 
-  // Se in futuro aggiorni lo stato/progresso di una milestone su Neon DB, viene letto automaticamente
   try {
     const db = await getDb()
     if (db) {
       const res: any = await db.execute(sql`
         SELECT id, status, progress
         FROM roadmap_milestones;
-      `).catch(() => null)
-
+      `).catch(() => [])
       const rows = Array.isArray(res) ? res : (res?.rows || [])
       if (rows.length > 0) {
         const overrideMap = new Map<string, any>(rows.map((r: any) => [String(r.id), r]))
-        milestones = milestones.map((m) => {
+        for (const m of milestones) {
           const ov = overrideMap.get(m.id)
-          if (!ov) return m
-          const status = (ov.status || m.status) as RoadmapMilestone['status']
-          const progress = status === 'completed' ? 100 : Number(ov.progress ?? m.progress)
-          return { ...m, status, progress }
-        })
+          if (ov) {
+            if (ov.status === 'completed' || ov.status === 'in-progress' || ov.status === 'upcoming') {
+              m.status = ov.status
+            }
+            if (typeof ov.progress === 'number') {
+              m.progress = ov.progress
+            }
+          }
+        }
       }
     }
-  } catch {
-    // Fallback silenzioso sulle milestone statiche v2.6-PURE-SQL
-  }
-
-  const overallCompletion = computeCompletion(milestones)
+  } catch {}
 
   return {
     success: true,
     version: 'v2.6-PURE-SQL',
-    overallCompletion,
-    completedMilestones: milestones.filter((m) => m.status === 'completed').length,
-    totalMilestones: milestones.length,
+    completion: computeCompletion(milestones),
     milestones
   }
 })

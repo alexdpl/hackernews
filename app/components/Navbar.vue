@@ -70,7 +70,13 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 let lastXpSoundAt = 0
+let lastXpFetchAt = 0
 let xpAudioInstance: HTMLAudioElement | null = null
+let translatorInitialized = false
+
+const isAnyMenuOpen = computed(() =>
+  Boolean(activeDropdown.value || isMobileMenuOpen.value || isXpMenuOpen.value)
+)
 
 const playXpSound = () => {
   if (!import.meta.client) return
@@ -80,7 +86,7 @@ const playXpSound = () => {
   try {
     if (!xpAudioInstance) {
       xpAudioInstance = new Audio('/sounds/coin-up.mp3')
-      xpAudioInstance.preload = 'auto'
+      xpAudioInstance.preload = 'none'
     }
     xpAudioInstance.volume = 0.28
     xpAudioInstance.currentTime = 0
@@ -88,8 +94,11 @@ const playXpSound = () => {
   } catch {}
 }
 
-// Sync XP dall'endpoint unificato Pure SQL
-const refreshXpData = async () => {
+// Sync XP dall'endpoint unificato Pure SQL con dedup temporale
+const refreshXpData = async (force = false) => {
+  const now = Date.now()
+  if (!force && now - lastXpFetchAt < 15000) return
+  lastXpFetchAt = now
   try {
     const res: any = await $fetch('/api/user/gamification')
     if (res?.success && res?.data) {
@@ -97,38 +106,58 @@ const refreshXpData = async () => {
       if (newXp > globalXp.value && globalXp.value > 0) {
         isXpAnimating.value = true
         playXpSound()
-        setTimeout(() => { isXpAnimating.value = false }, 1500)
+        window.setTimeout(() => { isXpAnimating.value = false }, 1500)
       }
       globalXp.value = newXp
       globalLevel.value = res.data.level
         ? (typeof res.data.level === 'number' ? res.data.level : 2)
         : 1
     }
-  } catch (e) {
-    console.warn('Errore sync XP Navbar:', e)
+  } catch {
+    // Silenzioso per non bloccare il rendering della navbar
   }
 }
 
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  document.addEventListener('keydown', handleKeydown)
-  if (typeof initTranslator === 'function') initTranslator()
+const onXpUpdatedEvent = () => {
+  void refreshXpData(true)
+}
 
-  if (isAuthenticated.value || currentUser.value?.id) {
-    refreshXpData()
+watch(isAnyMenuOpen, (open) => {
+  if (!import.meta.client) return
+  if (open) {
+    document.addEventListener('click', handleClickOutside, { passive: true })
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
+onMounted(() => {
+  if (!translatorInitialized && typeof initTranslator === 'function') {
+    translatorInitialized = true
+    initTranslator()
   }
 
-  window.addEventListener('dkp:xp_updated', refreshXpData)
+  if (isAuthenticated.value || currentUser.value?.id) {
+    void refreshXpData(false)
+  }
+
+  window.addEventListener('dkp:xp_updated', onXpUpdatedEvent)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-  document.removeEventListener('keydown', handleKeydown)
-  window.removeEventListener('dkp:xp_updated', refreshXpData)
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('keydown', handleKeydown)
+  }
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('dkp:xp_updated', onXpUpdatedEvent)
+  }
 })
 
 watch(isAuthenticated, (newVal) => {
-  if (newVal) refreshXpData()
+  if (newVal) void refreshXpData(true)
 })
 
 // Categorie e Feed unificati v2.6-PURE-SQL
@@ -186,7 +215,7 @@ async function handleLogout() {
 <template>
   <header
     ref="navbarRef"
-  class="bg-[#020420]/95 backdrop-blur-xl border-b-2 border-emerald-500 sticky top-0 z-50 px-4 sm:px-6 py-2.5 shadow-[0_4px_24px_rgba(0,220,130,0.08)] font-sans"
+  class="bg-[#020420] border-b-2 border-emerald-500 sticky top-0 z-50 px-4 sm:px-6 py-2.5 shadow-[0_4px_24px_rgba(0,220,130,0.08)] font-sans"
 >
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
       

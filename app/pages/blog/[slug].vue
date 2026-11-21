@@ -4,6 +4,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBlog } from '~/composables/useBlog'
 import { useDynamicPrism } from '~/composables/useDynamicPrism'
+import { parseDkpMarkdown } from '~/utils/dkpMarkdown'
 import SocialShare from '~/components/blog/SocialShare.vue'
 import DkpRelatedPosts from '~/components/blog/DkpRelatedPosts.vue'
 import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
@@ -219,14 +220,40 @@ const readTime = computed(() => {
   return Math.max(1, Math.ceil(words / 200))
 })
 
+// --- NORMALIZZAZIONE INLINE CODE BLOG ---
+function renderInlineBackticksInHtml(html: string): string {
+  if (!html) return ''
+  const protectedBlocks: string[] = []
+  let working = html.replace(/<(pre|code)\b[^>]*>[\s\S]*?<\/\1>/gi, (m) => {
+    const idx = protectedBlocks.length
+    protectedBlocks.push(m)
+    return `__DKP_PROTECTED_CODE_${idx}__`
+  })
+
+  working = working.replace(/`+([^`\r\n]+?)`+/g, (_m, inner: string) => {
+    const cleanInner = inner.replace(/^`+|`+$/g, '').trim()
+    if (!cleanInner) return ''
+    return `<code class="dkp-inline-code">${cleanInner}</code>`
+  })
+
+  protectedBlocks.forEach((block, idx) => {
+    working = working.replace(new RegExp(`__DKP_PROTECTED_CODE_${idx}__`, 'g'), () => block)
+  })
+
+  working = working.replace(/(<code\b[^>]*>)`+([^<]*?)`+(<\/code>)/gi, '$1$2$3')
+  return working
+}
+
 const parsedContent = computed(() => {
   const contentVal = post.value?.content || post.value?.description || ''
   if (!contentVal) return ''
 
   const baseHtml = parseDkpMarkdown(contentVal)
 
+  const normalizedInlineHtml = renderInlineBackticksInHtml(baseHtml)
+
   // Supporto sicuro per embed video (solo YouTube / Vimeo allowlisted)
-  return baseHtml.replace(/@\[video\]\(([^)]+)\)/g, (_m, rawUrl: string) => {
+  return normalizedInlineHtml.replace(/@\[video\]\(([^)]+)\)/g, (_m, rawUrl: string) => {
     const validEmbed = safeVideoEmbedUrl(rawUrl)
     if (!validEmbed) return ''
     return `<div class="dkp-video-wrapper not-prose"><iframe src="${validEmbed}" title="Video embed" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
@@ -508,7 +535,7 @@ function handleLike() {
         >
           <!-- BREADCRUMB NAVBAR SEO-READY CON CASETTA -->
           <div class="flex flex-col gap-4 mb-8 relative z-10 border-b border-slate-800 pb-4">
-            <nav aria-label="Breadcrumb" class="w-full text-sm text-slate-400">
+            <nav aria-label="Breadcrumb" class="w-full text-xs sm:text-sm text-slate-400 font-mono">
               <ol class="flex items-center gap-2 m-0 p-0 list-none font-medium flex-wrap">
                 <li>
                   <NuxtLink
@@ -516,37 +543,41 @@ function handleLike() {
                     class="inline-flex items-center gap-1.5 text-slate-400 hover:text-emerald-400 transition-colors no-underline"
                     title="Torna alla Home"
                   >
-                    <span aria-hidden="true">🏠</span>
                     <span>Home</span>
                   </NuxtLink>
                 </li>
-                <li class="flex items-center gap-2">
-                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
-                  <NuxtLink to="/blog" class="text-slate-400 hover:text-emerald-400 transition-colors no-underline">
-                    Editorial Hub
+                <li aria-hidden="true" class="text-slate-600">/</li>
+                <li>
+                  <NuxtLink
+                    to="/blog"
+                    class="text-slate-300 hover:text-emerald-400 transition-colors no-underline"
+                  >
+                    DKP Editorial Hub
                   </NuxtLink>
                 </li>
-                <li class="flex items-center gap-2">
-                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
+                <li aria-hidden="true" class="text-slate-600">/</li>
+                <li>
                   <NuxtLink
-                    :to="`/blog?category=${encodeURIComponent(categoryLabel)}`"
-                    class="text-sky-400 hover:text-sky-300 max-w-[140px] sm:max-w-[220px] truncate transition-colors no-underline"
-                    :title="categoryLabel"
+                    :to="{ path: '/blog', query: { category: categoryLabel } }"
+                    class="text-cyan-400 hover:text-emerald-300 transition-colors no-underline font-bold"
                   >
                     {{ categoryLabel }}
                   </NuxtLink>
                 </li>
-                <li v-if="subcategoryLabel" class="flex items-center gap-2">
-                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
-                  <span class="text-sky-300 max-w-[140px] sm:max-w-[220px] truncate" :title="subcategoryLabel">
-                    {{ subcategoryLabel }}
-                  </span>
-                </li>
-                <li class="flex items-center gap-2 min-w-0" aria-current="page">
-                  <span class="text-slate-600 font-bold" aria-hidden="true">/</span>
-                  <span class="text-slate-200 max-w-[180px] sm:max-w-[300px] truncate" :title="post.title">
-                    {{ post.title }}
-                  </span>
+                <template v-if="subcategoryLabel">
+                  <li aria-hidden="true" class="text-slate-600">/</li>
+                  <li>
+                    <NuxtLink
+                      :to="{ path: '/blog', query: { category: categoryLabel, subcategory: subcategoryLabel } }"
+                      class="text-emerald-400 hover:text-emerald-300 transition-colors no-underline font-bold"
+                    >
+                      {{ subcategoryLabel }}
+                    </NuxtLink>
+                  </li>
+                </template>
+                <li aria-hidden="true" class="text-slate-600">/</li>
+                <li aria-current="page" class="text-slate-300 truncate max-w-[240px] sm:max-w-[380px]">
+                  {{ post.title }}
                 </li>
               </ol>
             </nav>
@@ -910,5 +941,268 @@ mark,
   background-color: rgba(30, 41, 59, 0.85) !important;
   color: #38bdf8 !important;
   border-radius: 0.3rem !important;
+}
+:deep(ul) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 0.75rem 0 !important;
+}
+:deep(ol) {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 0.75rem 0 !important;
+}
+:deep(li) {
+  display: list-item !important;
+  margin: 0.35rem 0 !important;
+}
+:deep(ul > li.dkp-li::before) {
+  content: none !important;
+}
+:deep(:not(pre) > code),
+:deep(.dkp-inline-code) {
+  background-color: rgba(30, 41, 59, 0.88) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.15rem 0.45rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
+}
+:deep(.token.comment),
+:deep(.token.prolog),
+:deep(.token.cdata) { color: #64748b !important; }
+:deep(.token.punctuation) { color: #cbd5e1 !important; }
+:deep(.token.property),
+:deep(.token.tag),
+:deep(.token.boolean),
+:deep(.token.number),
+:deep(.token.constant),
+:deep(.token.symbol) { color: #38bdf8 !important; }
+:deep(.token.selector),
+:deep(.token.attr-name),
+:deep(.token.string),
+:deep(.token.char),
+:deep(.token.builtin) { color: #34d399 !important; }
+:deep(.token.operator),
+:deep(.token.entity),
+:deep(.token.url) { color: #f472b6 !important; }
+:deep(.token.atrule),
+:deep(.token.attr-value),
+:deep(.token.keyword) { color: #c084fc !important; font-weight: 600 !important; }
+:deep(.token.function),
+:deep(.token.class-name) { color: #fbbf24 !important; }
+
+:deep(.dkp-code-header) {
+  background: #081224 !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22) !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 1rem !important;
+  color: #7dd3fc !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+:deep(.dkp-copy-btn) {
+  border-radius: 2px !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  color: #bae6fd !important;
+  padding: 0.2rem 0.55rem !important;
+  font-size: 0.75rem !important;
+}
+
+:deep(.dkp-copy-btn:hover) {
+  border-color: #22d3ee !important;
+  color: #22d3ee !important;
+}
+
+:deep(.dkp-code-block) {
+  background: #050a14 !important;
+  border-radius: 0 !important;
+  padding: 1rem 1.1rem !important;
+  margin: 0 !important;
+  overflow-x: auto !important;
+}
+
+:deep(pre code),
+:deep(.dkp-code-block code) {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.9rem !important;
+  line-height: 1.72 !important;
+  letter-spacing: 0.01em !important;
+}
+
+:deep(ul) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 0.75rem 0 !important;
+}
+
+:deep(ul)::marker,
+:deep(ul li)::marker {
+  color: #22d3ee !important;
+  font-weight: 700 !important;
+}
+
+:deep(ol) {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 0.75rem 0 !important;
+}
+
+:deep(ol)::marker,
+:deep(ol li)::marker {
+  color: #22d3ee !important;
+  font-weight: 700 !important;
+}
+
+:deep(li) {
+  display: list-item !important;
+  margin: 0.35rem 0 !important;
+}
+
+:deep(ul > li.dkp-li::before) {
+  content: none !important;
+}
+
+/* --- BREADCRUMB PROTETTO DA LISTE MARKDOWN --- */
+:deep(nav[aria-label="Breadcrumb"] ol),
+:deep(nav[aria-label="Breadcrumb"] ul) {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+:deep(nav[aria-label="Breadcrumb"] li),
+:deep(nav[aria-label="Breadcrumb"] li::marker) {
+  list-style: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  content: none !important;
+}
+
+/* --- STILE UNIFICATO CODE BLOCK (DARK CYBERPUNK SQUADRATO) & LISTE CYAN --- */
+:deep(.post-content ul),
+:deep(.dkp-preview-content ul),
+:deep(.prose ul) {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin: 0.75rem 0 !important;
+}
+
+:deep(.post-content ol),
+:deep(.dkp-preview-content ol),
+:deep(.prose ol) {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin: 0.75rem 0 !important;
+}
+
+:deep(.post-content ul)::marker,
+:deep(.post-content ul li)::marker,
+:deep(.dkp-preview-content ul)::marker,
+:deep(.dkp-preview-content ul li)::marker,
+:deep(.prose ul)::marker,
+:deep(.prose ul li)::marker {
+  color: #22d3ee !important;
+  font-weight: 700 !important;
+}
+
+:deep(.post-content ol)::marker,
+:deep(.post-content ol li)::marker,
+:deep(.dkp-preview-content ol)::marker,
+:deep(.dkp-preview-content ol li)::marker,
+:deep(.prose ol)::marker,
+:deep(.prose ol li)::marker {
+  color: #22d3ee !important;
+  font-weight: 700 !important;
+}
+
+:deep(.post-content li),
+:deep(.dkp-preview-content li),
+:deep(.prose li) {
+  display: list-item !important;
+  margin: 0.35rem 0 !important;
+}
+
+:deep(.post-content ul > li.dkp-li::before),
+:deep(.dkp-preview-content ul > li.dkp-li::before),
+:deep(.prose ul > li.dkp-li::before) {
+  content: none !important;
+}
+
+:deep(.dkp-code-wrapper) {
+  background: #050a14 !important;
+  border: 1px solid rgba(56, 189, 248, 0.28) !important;
+  border-radius: 2px !important;
+  overflow: hidden !important;
+  margin: 1.25rem 0 !important;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 10px 25px rgba(2, 6, 23, 0.65) !important;
+}
+
+:deep(.dkp-code-header) {
+  background: #081224 !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22) !important;
+  border-radius: 0 !important;
+  padding: 0.5rem 1rem !important;
+  color: #7dd3fc !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+:deep(.dkp-copy-btn) {
+  border-radius: 2px !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  color: #bae6fd !important;
+  padding: 0.2rem 0.55rem !important;
+  font-size: 0.75rem !important;
+}
+
+:deep(.dkp-copy-btn:hover) {
+  border-color: #22d3ee !important;
+  color: #22d3ee !important;
+}
+
+:deep(.dkp-code-block) {
+  background: #050a14 !important;
+  border-radius: 0 !important;
+  padding: 1rem 1.1rem !important;
+  margin: 0 !important;
+  overflow-x: auto !important;
+}
+
+:deep(pre code),
+:deep(.dkp-code-block code) {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.9rem !important;
+  line-height: 1.72 !important;
+  letter-spacing: 0.01em !important;
+}
+
+:deep(.post-content :not(pre) > code),
+:deep(.dkp-preview-content :not(pre) > code),
+:deep(.prose :not(pre) > code),
+:deep(.dkp-inline-code) {
+  background-color: rgba(14, 116, 144, 0.22) !important;
+  color: #67e8f9 !important;
+  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  border-radius: 4px !important;
+  padding: 0.12rem 0.42rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 0.875em !important;
+  font-weight: 600 !important;
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { buildCategoryNodeTree } from '~/composables/useDkpNodes'
+import { buildCategoryNodeTree, cleanNodeLabel } from '~/composables/useDkpNodes'
 
 const props = defineProps<{
   nodes?: any[]
@@ -19,43 +19,34 @@ const navRef = ref<HTMLElement | null>(null)
 const activeSlug = computed(() => String(route.params.slug || '').toLowerCase())
 
 const resolvedNodes = computed(() => {
-  const source = (props.nodes && props.nodes.length > 0) ? props.nodes : internalNodes.value
+  const source = props.nodes && props.nodes.length > 0 ? props.nodes : internalNodes.value
   return source.map((n: any) => ({
+    ...n,
     id: n.id,
-    name: n.name || n.slug,
-    slug: n.slug,
-    icon: n.icon || '💬',
+    name: cleanNodeLabel(n.name || n.slug),
+    slug: String(n.slug || '').replace(/^(n\/)+/i, '').trim(),
+    icon: n.icon || '#',
     color: n.color,
-    category: n.category || n.categoryName || n.category_name || 'Ecosistema DKP',
-    categoryId: n.categoryId ?? n.category_id ?? 1,
-    categoryName: n.categoryName ?? n.category_name ?? n.category ?? 'Ecosistema DKP'
+    category: n.category || n.parentName || n.categoryName || 'DKP Ecosystem & Core'
   }))
 })
 
 const categoryGroups = computed(() => {
   const tree = buildCategoryNodeTree(resolvedNodes.value)
   if (tree.categories && tree.categories.length > 0) {
-    return tree.categories.map((cat: any) => ({
-      key: String(cat.id || cat.name),
-      name: cat.name,
-      icon: cat.icon || '📂',
-      items: tree.groupedNodes[cat.id] || tree.groupedNodes[cat.name] || []
-    })).filter((g: any) => g.items.length > 0)
+    return tree.categories
+      .map((cat: any) => {
+        const catName = typeof cat === 'string' ? cat : String(cat?.name || '')
+        const items = tree.groupedNodes[catName] || []
+        return {
+          key: catName,
+          name: catName,
+          items
+        }
+      })
+      .filter((g: any) => g.name && g.items.length > 0)
   }
-
-  // Fallback raggruppamento diretto se categoryName è testuale
-  const map = new Map<string, any[]>()
-  for (const node of resolvedNodes.value) {
-    const key = node.categoryName || 'Nodi Tecnici'
-    if (!map.has(key)) map.set(key, [])
-    map.get(key)!.push(node)
-  }
-  return Array.from(map.entries()).map(([name, items]) => ({
-    key: name,
-    name,
-    icon: '📂',
-    items
-  }))
+  return []
 })
 
 function toggleCategory(key: string) {
@@ -84,7 +75,6 @@ onUnmounted(() => {
 <template>
   <div ref="navRef" class="bg-[#090d16] border border-slate-800/90 rounded-2xl p-3 card-glow font-mono relative z-30">
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <!-- Link Rapidi + Categorie a Tendina -->
       <div class="flex flex-wrap items-center gap-1.5">
         <NuxtLink
           to="/nodes"
@@ -95,11 +85,11 @@ onUnmounted(() => {
               : 'bg-[#020420] text-slate-300 hover:text-white border border-slate-800'
           ]"
         >
-          <span>🔥</span> Tutti i Nodi
+          <span>Tutti i Nodi</span>
         </NuxtLink>
 
         <NuxtLink
-          to="/nodes/blockchain-vault"
+          to="/nodes/n/blockchain-vault"
           :class="[
             'px-3 py-2 rounded-xl text-xs font-bold no-underline transition-all flex items-center gap-1.5',
             activeSlug === 'blockchain-vault'
@@ -107,10 +97,10 @@ onUnmounted(() => {
               : 'bg-[#020420] text-emerald-400 hover:bg-emerald-500/15 border border-emerald-500/30'
           ]"
         >
-          <span>⛓️</span> n/blockchain-vault
+          <span>n/blockchain-vault</span>
         </NuxtLink>
 
-        <!-- Menu a Tendina per ogni Categoria & Sub-nodi -->
+        <!-- Menu a Tendina per ciascuno dei 10 Macro-Nodi -->
         <div
           v-for="group in categoryGroups"
           :key="group.key"
@@ -124,27 +114,25 @@ onUnmounted(() => {
             :class="[
               'px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border',
               openDropdownCat === group.key || group.items.some((i: any) => i.slug === activeSlug)
-                ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-400'
+                ? 'bg-violet-500/15 border-violet-500/50 text-violet-300'
                 : 'bg-[#020420] border-slate-800 text-slate-200 hover:border-slate-600'
             ]"
           >
-            <span>{{ group.icon }}</span>
             <span>{{ group.name }}</span>
-            <span class="text-[10px] opacity-75">▼</span>
+            <span class="text-[10px] opacity-75">&#9662;</span>
           </button>
 
-          <!-- Dropdown Sub-nodi -->
           <div
             v-if="openDropdownCat === group.key"
-            class="absolute left-0 top-full mt-1.5 w-64 bg-[#090d16] border border-emerald-500/40 rounded-xl shadow-2xl p-2 z-50 space-y-1"
+            class="absolute left-0 top-full mt-1.5 w-64 bg-[#090d16] border border-violet-500/40 rounded-xl shadow-2xl p-2 z-50 space-y-1 max-h-80 overflow-y-auto"
           >
             <div class="px-2.5 py-1 text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
-              Sub-nodi in {{ group.name }}
+              {{ group.name }}
             </div>
             <NuxtLink
               v-for="sub in group.items"
               :key="sub.slug"
-              :to="`/nodes/${sub.slug}`"
+              :to="`/nodes/n/${sub.slug}`"
               @click="openDropdownCat = null"
               :class="[
                 'flex items-center justify-between px-3 py-2 rounded-lg text-xs no-underline transition-colors',
@@ -153,18 +141,17 @@ onUnmounted(() => {
                   : 'text-slate-200 hover:bg-[#020420] hover:text-emerald-400'
               ]"
             >
-              <span class="truncate">{{ sub.icon }} n/{{ sub.name }}</span>
-              <span class="text-[10px] text-slate-500 ml-2">→</span>
+              <span class="truncate">n/{{ sub.name }}</span>
+              <span class="text-[10px] text-slate-500 ml-2">&rarr;</span>
             </NuxtLink>
           </div>
         </div>
       </div>
 
-      <!-- Pulsante Azione Rapida -->
       <button
         type="button"
         @click="emit('create-thread')"
-        class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-[#020420] font-extrabold text-xs cursor-pointer transition-all shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+        class="px-3.5 py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-xs border-none cursor-pointer transition-colors"
       >
         + Nuovo Thread
       </button>

@@ -24,7 +24,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = (await readBody(event).catch(() => ({}))) || {}
-  const { title, content, nodeId, node_id, vaultHash, vault_hash, isPinned, is_pinned } = body
+  const { title, content, tags, nodeId, node_id, vaultHash, vault_hash, isPinned, is_pinned } = body
+  const nextTagsJson: string | null = Array.isArray(tags) ? JSON.stringify(tags.map((t: any) => String(t).trim().replace(/^#/, '')).filter(Boolean).slice(0, 12)) : null
 
   const db = await getDb()
   if (!db) {
@@ -128,10 +129,11 @@ export default defineEventHandler(async (event) => {
       nextVaultHash = rawVaultHash.trim().toLowerCase()
     }
 
+    await db.execute(sql`ALTER TABLE node_posts ADD COLUMN IF NOT EXISTS tags JSONB DEFAULT '[]'::jsonb;`).catch(() => {})
     const updated: any = await db.execute(sql`
       UPDATE node_posts
       SET
-        title = COALESCE(${nextTitle}, title),
+        title = COALESCE(${nextTitle}, title), tags = COALESCE(${nextTagsJson}::jsonb, tags),
         content = COALESCE(${nextContent}, content),
         node_id = COALESCE(${nextNodeId}, node_id),
         vault_hash = COALESCE(${nextVaultHash}, vault_hash),

@@ -2,11 +2,15 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DkpLayout from '~/components/DkpLayout.vue'
+import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
+import DkpNodesNavBar from '~/components/nodes/DkpNodesNavBar.vue'
 import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import { cleanNodeLabel } from '~/composables/useDkpNodes'
 
 const route = useRoute()
-const slug = computed(() => String(route.params.slug || 'general').toLowerCase())
+const slug = computed(() => String(route.params.slug || 'general').toLowerCase().replace(/^(n\/)+/i, ''))
+const { currentUser } = useAuthCore()
 
 const { data: nodesRes } = await useFetch<any>('/api/nodes', { key: 'dkp-nodes-catalog-n' })
 const { data: postsRes, pending, refresh } = await useFetch<any>('/api/nodes/posts', {
@@ -14,11 +18,21 @@ const { data: postsRes, pending, refresh } = await useFetch<any>('/api/nodes/pos
   query: () => ({ nodeSlug: slug.value, limit: 50 })
 })
 
+const allNodes = computed<any[]>(() => nodesRes.value?.data || [])
+
 const currentNode = computed(() => {
-  const list = nodesRes.value?.data || []
-  return list.find((n: any) => String(n.slug || '').toLowerCase() === slug.value) || {
+  const found = allNodes.value.find((n: any) => String(n.slug || '').toLowerCase() === slug.value)
+  if (found) {
+    return {
+      ...found,
+      name: cleanNodeLabel(found.name || found.slug),
+      category: found.parentName || found.category || 'DKP Ecosystem & Core'
+    }
+  }
+  return {
     name: slug.value.replace(/-/g, ' ').toUpperCase(),
     slug: slug.value,
+    category: 'DKP Ecosystem & Core',
     description: 'Nodo tematico tecnico e discussioni notarizzate su DevKernelPulse.'
   }
 })
@@ -35,6 +49,15 @@ const filteredPosts = computed(() => {
       String(p.content || '').toLowerCase().includes(q)
   )
 })
+
+async function handleToggleLock(thread: any) {
+  const nextLocked = !thread.isLocked
+  const res: any = await $fetch(`/api/nodes/posts/${thread.id}/close`, {
+    method: 'PATCH',
+    body: { isLocked: nextLocked }
+  }).catch(() => null)
+  if (res?.success) thread.isLocked = nextLocked
+}
 
 const seoTitle = computed(() => `n/${currentNode.value.slug} \u2014 ${currentNode.value.name} | DKP Talks Hub`)
 const seoDescription = computed(() => currentNode.value.description || 'Discussioni tecniche e thread verificati con SHA-256 Vault.')
@@ -53,18 +76,50 @@ watch(slug, () => refresh())
   <DkpLayout
     :title="`n/${currentNode.slug}`"
     :subtitle="currentNode.description"
-    icon=""
     :seo-title="seoTitle"
     :seo-description="seoDescription"
+    :show-sidebar-ads="true"
   >
-    <div class="space-y-6">
+    <div class="space-y-5">
+      <!-- BREADCRUMB GERARCHICA MACRO-NODO -> SUB-NODO -->
+      <nav aria-label="Breadcrumb" class="bg-dkp-card/90 border border-dkp-border rounded-xl px-4 py-2.5 font-mono text-xs text-slate-400">
+        <ol class="flex items-center gap-2 m-0 p-0 list-none flex-wrap">
+          <li>
+            <NuxtLink to="/" class="text-slate-400 hover:text-emerald-400 no-underline">Home</NuxtLink>
+          </li>
+          <li class="text-slate-600">/</li>
+          <li>
+            <NuxtLink to="/nodes" class="text-slate-300 hover:text-violet-300 no-underline">DKP Talks Hub</NuxtLink>
+          </li>
+          <li class="text-slate-600">/</li>
+          <li>
+            <NuxtLink
+              :to="{ path: '/nodes', query: { group: currentNode.category } }"
+              class="text-violet-300 hover:text-cyan-300 font-bold no-underline"
+            >
+              {{ currentNode.category }}
+            </NuxtLink>
+          </li>
+          <li class="text-slate-600">/</li>
+          <li aria-current="page" class="text-emerald-400 font-bold">
+            n/{{ currentNode.slug }}
+          </li>
+        </ol>
+      </nav>
+
+      <!-- NAVBAR RAPIDA 10 MACRO-NODI -->
+      <DkpNodesNavBar :nodes="allNodes" @create-thread="navigateTo('/user/dashboard?tab=content&subtab=nodes&new=1')" />
+
+      <!-- HEADER DEL NODO -->
       <div class="bg-dkp-card/95 border border-violet-500/35 rounded-2xl p-5 card-glow flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div class="font-mono text-xs text-violet-300 font-bold">NODO TEMATICO &bull; /nodes/n/{{ currentNode.slug }}</div>
+          <div class="font-mono text-xs text-violet-300 font-bold">
+            {{ currentNode.category }} &bull; /nodes/n/{{ currentNode.slug }}
+          </div>
           <h1 class="text-xl sm:text-2xl font-extrabold text-white m-0 mt-1">{{ currentNode.name }}</h1>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <input
             v-model="searchQ"
             type="text"
@@ -72,46 +127,30 @@ watch(slug, () => refresh())
             class="bg-dkp-bg border border-dkp-border text-white px-3.5 py-2 rounded-xl font-mono text-xs outline-none focus:border-violet-400"
           />
           <NuxtLink
-            to="/nodes"
-            class="px-3.5 py-2 rounded-xl bg-violet-500/20 border border-violet-500/40 text-violet-200 font-mono text-xs font-bold no-underline whitespace-nowrap"
+            to="/user/dashboard?tab=content&subtab=nodes&new=1"
+            class="px-3.5 py-2 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-mono text-xs font-extrabold no-underline whitespace-nowrap"
           >
-            Tutti i Nodi
+            + Nuovo Thread
           </NuxtLink>
         </div>
       </div>
 
-      <div v-if="pending && filteredPosts.length === 0" class="bg-dkp-card border border-dkp-border rounded-2xl p-8 text-center font-mono text-xs text-violet-400">
+      <div v-if="pending && filteredPosts.length === 0" class="bg-dkp-card border border-dkp-border rounded-2xl p-8 text-center font-mono text-xs text-violet-400 animate-pulse">
         Caricamento thread del nodo n/{{ slug }}...
       </div>
 
       <div v-else-if="filteredPosts.length === 0" class="bg-dkp-card border border-dkp-border rounded-2xl p-8 text-center font-mono text-xs text-slate-300">
-        Nessuna discussione attiva in n/{{ slug }}. Avvia un nuovo thread da <NuxtLink to="/nodes" class="text-cyan-400">DKP Talks Hub</NuxtLink>.
+        Nessuna discussione attiva in n/{{ slug }}. Avvia un nuovo thread da <NuxtLink to="/user/dashboard?tab=content&subtab=nodes&new=1" class="text-cyan-400">Dashboard &rarr; Nodi</NuxtLink>.
       </div>
 
-      <div v-else class="space-y-3">
-        <article
-          v-for="p in filteredPosts"
-          :key="p.id"
-          class="bg-dkp-card/95 border border-dkp-border hover:border-violet-400/60 rounded-2xl p-5 card-glow transition-all"
-        >
-          <NuxtLink
-            :to="p.sourceType === 'blog' && p.slug ? `/blog/${p.slug}` : `/nodes/thread/${String(p.id).replace(/^blog-/, '')}`"
-            class="text-base font-bold text-white hover:text-cyan-300 no-underline block"
-          >
-            {{ p.title }} &rarr;
-          </NuxtLink>
-          <p v-if="p.content" class="text-slate-400 text-xs mt-1.5 mb-2 line-clamp-2">
-            {{ p.content }}
-          </p>
-          <div class="flex flex-wrap items-center gap-3 font-mono text-[11px] text-slate-400">
-            <span class="text-emerald-400 font-bold"> {{ p.karmaScore || p.karma_score || 1 }} karma</span>
-            <span>by @{{ p.authorUsername || p.authorName || 'dkp_dev' }}</span>
-            <span>{{ p.commentsCount || 0 }} risposte</span>
-            <span v-if="p.vaultHash" class="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/35 font-bold">
-              SHA-256 VERIFIED
-            </span>
-          </div>
-        </article>
+      <div v-else class="space-y-3.5">
+        <DkpThreadCard
+          v-for="thread in filteredPosts"
+          :key="thread.id"
+          :thread="thread"
+          :can-moderate="Boolean(currentUser)"
+          @toggle-lock="handleToggleLock"
+        />
       </div>
 
       <DkpRelatedNodesWidget :current-slug="slug" />

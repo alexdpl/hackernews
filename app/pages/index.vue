@@ -53,7 +53,7 @@ const heroCards = [
     <!-- HERO SECTION VETRINA + 4 CARD + 3 METRICHE KPI -->
     <section class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4 text-center">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dkp-card border border-dkp-border font-mono text-xs text-dkp-accent font-bold mb-6 card-glow">
-        <span class="text-amber-400 text-xs leading-none"></span>
+        <span class="text-amber-400 text-xs leading-none">&#9889;</span>
         <span>DEVKERNELPULSE PRO V2.6 &bull; BEMYAGENT.md &bull; PURE SQL &amp; SHA-256 VAULT</span>
       </div>
 
@@ -95,9 +95,7 @@ const heroCards = [
       <!-- 3 METRICHE KPI -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
         <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-2xl shrink-0">
-            
-          </div>
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-2xl shrink-0">&#128272;</div>
           <div>
             <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">1.2M+</div>
             <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">LINEE CODICE NOTARIZZATE</div>
@@ -105,9 +103,7 @@ const heroCards = [
         </div>
 
         <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-400/35 flex items-center justify-center text-2xl shrink-0">
-            
-          </div>
+          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-400/35 flex items-center justify-center text-2xl shrink-0">&#128142;</div>
           <div>
             <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">48K+</div>
             <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">BOUNTIES RISOLTE ($PULSE)</div>
@@ -115,9 +111,7 @@ const heroCards = [
         </div>
 
         <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center text-2xl shrink-0">
-            
-          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center text-2xl shrink-0">&#128737;&#65039;</div>
           <div>
             <div class="flex items-center gap-2">
               <span class="text-2xl sm:text-3xl font-extrabold text-white font-mono">Live</span>
