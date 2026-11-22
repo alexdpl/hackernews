@@ -23,16 +23,22 @@ const emit = defineEmits(['update:modelValue'])
 const title = ref(props.modelValue?.title || '')
 const categoryName = ref(props.modelValue?.category || '')
 const subCategoryName = ref(props.modelValue?.subCategory || '')
-const tags = ref<string[]>(props.modelValue?.tags || [])
+const tags = ref<string[]>(Array.isArray(props.modelValue?.tags) ? [...props.modelValue.tags] : [])
 const summary = ref(props.modelValue?.summary || '')
 const content = ref(props.modelValue?.content || '')
-const { detectedLang: sentinelLang, grammarIssues: sentinelIssues, applyGrammarFix: applySentinelFix } = useSentinelGrammar(content)
+
+const {
+  detectedLang: sentinelLang,
+  grammarIssues: sentinelIssues,
+  applyGrammarFix: applySentinelFix,
+  lastFixMessage
+} = useSentinelGrammar(content)
 
 const activeTab = ref<'write' | 'preview'>('write')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isZenMode = ref(false)
 
-// DKP Ai Nexus© State
+// DKP Ai Nexus State
 const showAiBar = ref(false)
 const aiPromptHint = ref('')
 const aiTone = ref<'deep-dive' | 'tutorial' | 'rfc'>('deep-dive')
@@ -41,29 +47,48 @@ const isAiGenerating = ref(false)
 const aiStatusMessage = ref('')
 const previousContentSnapshot = ref<string | null>(null)
 
+// Autosave locale anti-perdita dati
+const BLOG_AUTOSAVE_KEY = 'DKP_BLOG_EDITOR_AUTOSAVE_V1'
+const autosaveNotice = ref('')
+const savedDraftAvailable = ref<{
+  title: string
+  category: string
+  subCategory: string
+  tags: string[]
+  summary: string
+  content: string
+  savedAt: number
+} | null>(null)
+
 function toggleZenMode() {
   isZenMode.value = !isZenMode.value
-  if (isZenMode.value) {
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
+  if (import.meta.client) {
+    document.body.style.overflow = isZenMode.value ? 'hidden' : ''
   }
 }
 
 onUnmounted(() => {
-  document.body.style.overflow = ''
+  if (import.meta.client) {
+    document.body.style.overflow = ''
+  }
 })
 
-watch(() => props.modelValue, (newVal) => {
-  if (newVal) {
-    title.value = newVal.title || ''
-    categoryName.value = newVal.category || ''
-    subCategoryName.value = newVal.subCategory || ''
-    tags.value = newVal.tags || []
-    summary.value = newVal.summary || ''
-    content.value = newVal.content || ''
-  }
-}, { deep: true })
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (!newVal) return
+    if ((newVal.title || '') !== title.value) title.value = newVal.title || ''
+    if ((newVal.category || '') !== categoryName.value) categoryName.value = newVal.category || ''
+    if ((newVal.subCategory || '') !== subCategoryName.value) subCategoryName.value = newVal.subCategory || ''
+    if ((newVal.summary || '') !== summary.value) summary.value = newVal.summary || ''
+    if ((newVal.content || '') !== content.value) content.value = newVal.content || ''
+    const nextTags = Array.isArray(newVal.tags) ? newVal.tags : []
+    if (JSON.stringify(nextTags) !== JSON.stringify(tags.value)) {
+      tags.value = [...nextTags]
+    }
+  },
+  { deep: true }
+)
 
 function syncToParent() {
   emit('update:modelValue', {
@@ -76,9 +101,77 @@ function syncToParent() {
   })
 }
 
-watch([title, categoryName, subCategoryName, tags, summary, content], () => {
+watch(
+  [title, categoryName, subCategoryName, tags, summary, content],
+  () => {
+    syncToParent()
+    if (!import.meta.client) return
+    if (!title.value.trim() && !content.value.trim() && !summary.value.trim()) return
+    try {
+      localStorage.setItem(
+        BLOG_AUTOSAVE_KEY,
+        JSON.stringify({
+          title: title.value,
+          category: categoryName.value,
+          subCategory: subCategoryName.value,
+          tags: tags.value,
+          summary: summary.value,
+          content: content.value,
+          savedAt: Date.now()
+        })
+      )
+      autosaveNotice.value = 'Bozza salvata localmente'
+    } catch {}
+  },
+  { deep: true }
+)
+
+if (import.meta.client) {
+  try {
+    const rawDraft = localStorage.getItem(BLOG_AUTOSAVE_KEY)
+    if (rawDraft) {
+      const parsed = JSON.parse(rawDraft)
+      if (parsed && (parsed.content || parsed.title)) {
+        if (!title.value.trim() && !content.value.trim()) {
+          title.value = String(parsed.title || '')
+          categoryName.value = String(parsed.category || '')
+          subCategoryName.value = String(parsed.subCategory || '')
+          tags.value = Array.isArray(parsed.tags) ? parsed.tags : []
+          summary.value = String(parsed.summary || '')
+          content.value = String(parsed.content || '')
+          autosaveNotice.value = 'Bozza ripristinata automaticamente'
+          syncToParent()
+        } else if (parsed.content !== content.value) {
+          savedDraftAvailable.value = parsed
+        }
+      }
+    }
+  } catch {}
+}
+
+function restoreSavedDraft() {
+  if (!savedDraftAvailable.value) return
+  const d = savedDraftAvailable.value
+  title.value = d.title || ''
+  categoryName.value = d.category || ''
+  subCategoryName.value = d.subCategory || ''
+  tags.value = Array.isArray(d.tags) ? [...d.tags] : []
+  summary.value = d.summary || ''
+  content.value = d.content || ''
+  savedDraftAvailable.value = null
+  autosaveNotice.value = 'Bozza locale ripristinata'
   syncToParent()
-}, { deep: true })
+}
+
+function clearSavedDraft() {
+  savedDraftAvailable.value = null
+  autosaveNotice.value = ''
+  if (import.meta.client) {
+    try {
+      localStorage.removeItem(BLOG_AUTOSAVE_KEY)
+    } catch {}
+  }
+}
 
 const { data: catResponse } = useFetch<any>('/api/blog/categories')
 
@@ -90,7 +183,7 @@ const categories = computed(() => {
 const availableSubcategories = computed(() => {
   if (!categoryName.value) return []
   const cat = categories.value.find((c: any) => c.name === categoryName.value)
-  return (cat?.subcategories || []).map((s: any) => typeof s === 'string' ? s : s.name)
+  return (cat?.subcategories || []).map((s: any) => (typeof s === 'string' ? s : s.name))
 })
 
 function onCategoryChange() {
@@ -99,14 +192,18 @@ function onCategoryChange() {
   syncToParent()
 }
 
-function insertFormatting(prefix: string, suffix: string = '') {
+function insertFormatting(prefix: string, suffix: string = '', placeholder: string = '') {
   const textarea = textareaRef.value
-  if (!textarea) return
+  if (!textarea) {
+    content.value = `${content.value}${prefix}${placeholder}${suffix}`
+    syncToParent()
+    return
+  }
 
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
-  const selectedText = content.value.substring(start, end)
-  
+  const selectedText = content.value.substring(start, end) || placeholder
+
   const before = content.value.substring(0, start)
   const after = content.value.substring(end)
 
@@ -115,30 +212,39 @@ function insertFormatting(prefix: string, suffix: string = '') {
 
   setTimeout(() => {
     textarea.focus()
-    textarea.setSelectionRange(start + prefix.length, end + prefix.length)
+    textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length)
   }, 0)
 }
 
-function insertList(type: 'bullet' | 'number') {
+function insertCodeBlock() {
+  const nl = content.value && !content.value.endsWith('\n') ? '\n' : ''
+  insertFormatting(`${nl}\`\`\`${aiCodeLang.value}\n`, `\n\`\`\`\n`, '// Inserisci qui il tuo codice')
+}
+
+function insertList(type: 'bullet' | 'number' | 'sub') {
   const textarea = textareaRef.value
   if (!textarea) return
 
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   const selectedText = content.value.substring(start, end)
-  
+
   const before = content.value.substring(0, start)
   const after = content.value.substring(end)
 
   let newText = ''
   if (selectedText) {
     const lines = selectedText.split('\n')
-    newText = lines.map((line, index) => {
-      const cleanLine = line.replace(/^(\s*)(\d+\.|-)\s+/, '$1')
-      return type === 'number' ? `${index + 1}. ${cleanLine}` : `- ${cleanLine}`
-    }).join('\n')
+    newText = lines
+      .map((line, index) => {
+        const cleanLine = line.replace(/^(\s*)(\d+\.|-)\s+/, '$1')
+        if (type === 'number') return `${index + 1}. ${cleanLine}`
+        if (type === 'sub') return `  - ${cleanLine}`
+        return `- ${cleanLine}`
+      })
+      .join('\n')
   } else {
-    newText = type === 'number' ? '1. ' : '- '
+    newText = type === 'number' ? '1. ' : type === 'sub' ? '  - ' : '- '
   }
 
   content.value = `${before}${newText}${after}`
@@ -153,55 +259,54 @@ function insertList(type: 'bullet' | 'number') {
 function handleEnter(e: KeyboardEvent) {
   const textarea = textareaRef.value
   if (!textarea) return
-  
+
   const start = textarea.selectionStart
   const textBeforeCursor = content.value.substring(0, start)
   const lines = textBeforeCursor.split('\n')
-  const lastLine = lines[lines.length - 1] 
-  
+  const lastLine = lines[lines.length - 1]
+
   const numberMatch = lastLine.match(/^(\s*)(\d+)\.\s+(.*)$/)
   const bulletMatch = lastLine.match(/^(\s*)-\s+(.*)$/)
-  
+
   if (numberMatch || bulletMatch) {
-    e.preventDefault() 
-    
+    e.preventDefault()
+
     const spaces = numberMatch ? numberMatch[1] : bulletMatch![1]
     const textContent = numberMatch ? numberMatch[3] : bulletMatch![2]
-    
+
     if (!textContent.trim()) {
-       const beforeWithoutLastLine = content.value.substring(0, start - lastLine.length)
-       const after = content.value.substring(textarea.selectionEnd)
-       content.value = beforeWithoutLastLine + '\n' + after
-       syncToParent()
-       setTimeout(() => {
-         textarea.selectionStart = textarea.selectionEnd = start - lastLine.length + 1
-       }, 0)
-       return
+      const beforeWithoutLastLine = content.value.substring(0, start - lastLine.length)
+      const after = content.value.substring(textarea.selectionEnd)
+      content.value = beforeWithoutLastLine + '\n' + after
+      syncToParent()
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start - lastLine.length + 1
+      }, 0)
+      return
     }
-    
+
     let prefix = ''
     if (numberMatch) {
       const currentNum = parseInt(numberMatch[2], 10)
-      prefix = `\n${spaces}${currentNum + 1}. ` 
+      prefix = `\n${spaces}${currentNum + 1}. `
     } else {
       prefix = `\n${spaces}- `
     }
-    
+
     const before = content.value.substring(0, start)
     const after = content.value.substring(textarea.selectionEnd)
     content.value = `${before}${prefix}${after}`
     syncToParent()
-    
+
     setTimeout(() => {
       textarea.selectionStart = textarea.selectionEnd = start + prefix.length
     }, 0)
   }
 }
 
-// ✨ FUNZIONI DKP Ai Nexus© PER STESURA INTELLIGENTE ARTICOLI
 async function runAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' | 'seo_optimize' | 'generate_code' | 'tldr_table') {
   isAiGenerating.value = true
-  aiStatusMessage.value = 'Elaborazione DKP Ai Nexus© in corso...'
+  aiStatusMessage.value = 'Elaborazione DKP Ai Nexus in corso...'
 
   const textarea = textareaRef.value
   const selectedText = textarea
@@ -237,7 +342,7 @@ async function runAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' 
         summary.value = res.result.summary
       }
       if (Array.isArray(res.result.tags) && res.result.tags.length > 0 && (tags.value.length === 0 || mode === 'seo_optimize')) {
-        tags.value = Array.from(new Set([...tags.value, ...res.result.tags])).slice(0, 10)
+        tags.value = Array.from(new Set([...tags.value, ...res.result.tags])).slice(0, 12)
       }
 
       if (mode === 'generate_code' || mode === 'tldr_table' || mode === 'security_audit') {
@@ -273,47 +378,49 @@ function undoLastAiAction() {
   }
 }
 
-// 🟢 FUNZIONE DEFINITIVA E BLINDATA AL COMPILATORE VUE/VITE CON PRISM DINAMICO MULTI-LINGUAGGIO
 const parsedContent = computed(() => {
-  // Dipendenza reattiva: quando Prism carica dinamicamente un nuovo linguaggio, ricalcola subito
   void prismRegistryVersion.value
 
-  if (!content.value) return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...' + '<' + '/p>'
-  
-  let rawContent = content.value;
-  const codeBlocks: string[] = [];
-  
-  // 1. ISOLAMENTO BLOCCHI DI CODICE + HIGHLIGHT DINAMICO SU TUTTI I LINGUAGGI
+  if (!content.value) {
+    return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...' + '<' + '/p>'
+  }
+
+  let rawContent = content.value
+  const codeBlocks: string[] = []
+
   rawContent = rawContent.replace(/```([a-zA-Z0-9_+#.-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
-    const index = codeBlocks.length;
-    const cleanLang = lang ? lang.trim().toLowerCase() : '';
-    const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none';
-    const languageLabel = cleanLang ? `<` + `div class="dkp-code-header"><span>${cleanLang}<` + `/span><button class="dkp-copy-btn" type="button">📋 Copia<` + `/button><` + `/div>` : '';
-    
+    const index = codeBlocks.length
+    const cleanLang = lang ? lang.trim().toLowerCase() : ''
+    const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none'
+    const languageLabel = cleanLang
+      ? `<` + `div class="dkp-code-header"><span>${cleanLang}<` + `/span><button class="dkp-copy-btn" type="button">Copia<` + `/button><` + `/div>`
+      : ''
+
     const highlightedCode = highlightCodeDynamic(code, cleanLang)
-    
-    codeBlocks.push(`<` + `div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}<` + `/code><` + `/pre><` + `/div>`);
-    
-    return `__DKP_CODE_BLOCK_${index}__`;
-  });
 
-  // 2. PARSING MARKDOWN SICURO
+    codeBlocks.push(
+      `<` + `div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}<` + `/code><` + `/pre><` + `/div>`
+    )
+
+    return `__DKP_CODE_BLOCK_${index}__`
+  })
+
   let html = rawContent
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 
-  html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, "<" + "div class='dkp-custom-html'>")
-  html = html.replace(/&lt;\/div&gt;/g, "<" + "/div>")
+  html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, '<' + "div class='dkp-custom-html'>")
+  html = html.replace(/&lt;\/div&gt;/g, '<' + '/div>')
 
   html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
-    const cells = p1.split('|').map(c => c.trim())
-    if (cells.every(c => /^:?-+:?$/.test(c))) return '' 
-    const rowHtml = cells.map(c => `<td>${c}<` + `/td>`).join('')
+    const cells = p1.split('|').map((c: string) => c.trim())
+    if (cells.every((c: string) => /^:?-+:?$/.test(c))) return ''
+    const rowHtml = cells.map((c: string) => `<td>${c}<` + `/td>`).join('')
     return `<tr>${rowHtml}<` + `/tr>`
   })
   html = html.replace(new RegExp('(<tr>.*?<\\/tr>[\\s\\n\\r]*)+', 'g'), (match) => {
-    const cleanRows = match.replace(/[\n\r]+/g, '') 
+    const cleanRows = match.replace(/[\n\r]+/g, '')
     return `<` + `div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}<` + `/tbody><` + `/table><` + `/div>`
   })
 
@@ -323,10 +430,10 @@ const parsedContent = computed(() => {
     .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1<' + '/mark>')
     .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1<' + '/u>')
     .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1<' + '/code>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="dkp-bold">$1<' + '/strong>') 
-    .replace(/\*(.*?)\*/g, '<em class="dkp-italic">$1<' + '/em>') 
-    .replace(/~~(.*?)~~/g, '<del class="dkp-strike">$1<' + '/del>') 
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1<' + '/a>') 
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="dkp-bold">$1<' + '/strong>')
+    .replace(/\*(.*?)\*/g, '<em class="dkp-italic">$1<' + '/em>')
+    .replace(/~~(.*?)~~/g, '<del class="dkp-strike">$1<' + '/del>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1<' + '/a>')
 
   html = html
     .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1<' + '/h1>')
@@ -340,476 +447,544 @@ const parsedContent = computed(() => {
   html = html.replace(/^ {0,1}-\s+(.*?)\r?$/gm, '<ul class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ul>')
   html = html.replace(/^ {0,1}[0-9]+\.\s+(.*?)\r?$/gm, '<ol class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ol>')
 
-  // 3. GESTIONE A CAPO E PARAGRAFI
-  let lines = html.split(/\r?\n/);
-  let parsedHtml = '';
-  
+  const lines = html.split(/\r?\n/)
+  let parsedHtml = ''
+
   for (let i = 0; i < lines.length; i++) {
-     let line = lines[i];
-     let trimmed = line.trim();
-     
-     if (trimmed.includes('__DKP_CODE_BLOCK_')) {
-        parsedHtml += line + '\n';
-     } else if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) || /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)) {
-        parsedHtml += line + '\n'; 
-     } else if (trimmed === '') {
-        parsedHtml += '<br />\n';
-     } else {
-        parsedHtml += line + (i < lines.length - 1 ? '<br />' : '');
-     }
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    if (trimmed.includes('__DKP_CODE_BLOCK_')) {
+      parsedHtml += line + '\n'
+    } else if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) || /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)) {
+      parsedHtml += line + '\n'
+    } else if (trimmed === '') {
+      parsedHtml += '<br />\n'
+    } else {
+      parsedHtml += line + (i < lines.length - 1 ? '<br />' : '')
+    }
   }
 
-  // 4. REINSERIMENTO SICURO DEI BLOCCHI DI CODICE 
   codeBlocks.forEach((block, index) => {
-    parsedHtml = parsedHtml.replace(new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'), () => block);
-  });
+    parsedHtml = parsedHtml.replace(new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'), () => block)
+  })
 
-  // 5. CLEANUP FINALE
   parsedHtml = parsedHtml
-      .replace(new RegExp('(<\\/h[1-6]>)<br \\/>', 'g'), '$1') 
-      .replace(new RegExp('(<\\/div>)<br \\/>', 'g'), '$1');
+    .replace(new RegExp('(<\\/h[1-6]>)<br \\/>', 'g'), '$1')
+    .replace(new RegExp('(<\\/div>)<br \\/>', 'g'), '$1')
 
   return parsedHtml
 })
 </script>
 
 <template>
-  <div class="dkp-editor-wrapper">
-    <!-- Area superiore compattata con scrollbar indipendente -->
-    <div class="top-fields-scroll">
-      <div class="editor-fields-grid">
-        <div class="field-group full-width">
-          <label class="field-label">TITOLO DELL'ARTICOLO *</label>
-          <input v-model="title" type="text" class="dkp-input-element" placeholder="Es: Architettura DKP v2.6-PURE-SQL su Cloud GCP..." />
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">CATEGORIA *</label>
-          <select v-model="categoryName" @change="onCategoryChange" class="dkp-input-element">
-            <option value="" disabled>Seleziona Categoria</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.name">
-              {{ cat.icon || '🏷️' }} {{ cat.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">SOTTOCATEGORIA</label>
-          <select v-model="subCategoryName" class="dkp-input-element" :disabled="!categoryName || availableSubcategories.length === 0">
-            <option value="">Nessuna / Generale</option>
-            <option v-for="sub in availableSubcategories" :key="sub" :value="sub">{{ sub }}</option>
-          </select>
-        </div>
-        
-        <div class="field-group full-width">
-          <label class="field-label">TAGS DELL'ARTICOLO (AUTOSUGGEST 600+)</label>
-          <DkpTagInput v-model="tags"></DkpTagInput>
-        </div>
-
-        <div class="field-group full-width">
-          <label class="field-label">BREVE RIASSUNTO (EXCERPT)</label>
-          <textarea v-model="summary" rows="2" class="dkp-input-element" placeholder="Un breve riassunto per le card dell'articolo..."></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- DKP Ai Nexus© — Sentinella Passiva Grammarly-Style -->
-    <div style="background:#050a18;border:1px solid rgba(168,85,247,0.35);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="color:#c084fc;font-weight:800;">DKP Ai Nexus© &bull; Sentinella Passiva</span>
-          <span style="background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.35);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;">
-            LANG: {{ sentinelLang }}
+  <Teleport :disabled="!isZenMode" to="body">
+    <div
+      :class="
+        isZenMode
+          ? 'fixed inset-0 z-[9999] w-screen h-screen bg-[#050814] flex flex-col overflow-hidden'
+          : 'w-full bg-[#070b14] border border-slate-800/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xl'
+      "
+    >
+      <!-- NAVBAR SUPERIORE DEDICATA SOLO ALLO ZEN MODE (PAGINA INTERA ANTIDISTRAZIONE) -->
+      <div
+        v-if="isZenMode"
+        class="shrink-0 bg-[#070b14] border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap"
+      >
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-extrabold">
+            ZEN MODE
           </span>
-        </div>
-        <span v-if="sentinelIssues.length === 0" style="color:#34d399;font-size:11px;">
-          &#10003; Sintassi, punteggiatura e Markdown verificati
-        </span>
-        <span v-else style="color:#fbbf24;font-size:11px;font-weight:700;">
-          {{ sentinelIssues.length }} suggeriment{{ sentinelIssues.length === 1 ? 'o' : 'i' }} in tempo reale
-        </span>
-      </div>
-      <div v-if="sentinelIssues.length > 0" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-        <div
-          v-for="issue in sentinelIssues.slice(0, 3)"
-          :key="issue.id"
-          style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#090d16;border:1px solid #1e293b;border-radius:8px;padding:6px 10px;"
-        >
-          <div style="color:#cbd5e1;font-size:11px;">
-            <strong style="color:#38bdf8;">[{{ issue.rule }}]</strong> {{ issue.message }}
+          <span class="text-slate-300 font-mono text-xs font-bold truncate max-w-[220px] sm:max-w-sm">
+            {{ title || 'Nuovo Articolo Blog' }}
+          </span>
+          <div class="inline-flex rounded-lg bg-[#030712] p-0.5 border border-slate-800 font-mono text-xs">
+            <button
+              type="button"
+              @click="activeTab = 'write'"
+              :class="activeTab === 'write' ? 'bg-emerald-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-slate-200'"
+              class="px-3 py-1 rounded-md transition cursor-pointer"
+            >
+              Scrivi
+            </button>
+            <button
+              type="button"
+              @click="activeTab = 'preview'"
+              :class="activeTab === 'preview' ? 'bg-cyan-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-slate-200'"
+              class="px-3 py-1 rounded-md transition cursor-pointer"
+            >
+              Anteprima
+            </button>
           </div>
-          <button
-            v-if="issue.replacement || issue.id === 'double-space' || issue.id === 'unclosed-fence'"
-            type="button"
-            @click="applySentinelFix(issue)"
-            style="background:#10b981;color:#020617;border:none;border-radius:6px;padding:3px 9px;font-size:10px;font-weight:800;cursor:pointer;"
-          >
-            Correggi 1-Click
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Area Editor -->
-    <div :class="['editor-body-box', { 'zen-mode-active': isZenMode }]">
-      <div class="toolbar-bar">
-        <div class="tab-switch-group">
-          <button type="button" @click="activeTab = 'write'" :class="['tab-toggle-btn', activeTab === 'write' ? 'active' : '']">✏️ Editor</button>
-          <button type="button" @click="activeTab = 'preview'" :class="['tab-toggle-btn', activeTab === 'preview' ? 'active' : '']">👁️ Preview</button>
         </div>
 
-        <div v-show="activeTab === 'write'" class="formatting-tools">
-          <div class="tool-group">
-            <button type="button" @click="insertFormatting('# ')" class="tool-icon-btn" title="Titolo 1">H1</button>
-            <button type="button" @click="insertFormatting('## ')" class="tool-icon-btn" title="Titolo 2">H2</button>
-            <button type="button" @click="insertFormatting('### ')" class="tool-icon-btn" title="Titolo 3">H3</button>
-          </div>
-          <div class="tool-divider"></div>
-          <div class="tool-group">
-            <button type="button" @click="insertFormatting('**', '**')" class="tool-icon-btn font-bold" title="Grassetto">B</button>
-            <button type="button" @click="insertFormatting('*', '*')" class="tool-icon-btn italic" title="Corsivo">I</button>
-            <button type="button" @click="insertFormatting('++', '++')" class="tool-icon-btn underline-btn" title="Sottolinea">U</button>
-            <button type="button" @click="insertFormatting('~~', '~~')" class="tool-icon-btn strikethrough" title="Barrato">S</button>
-            <button type="button" @click="insertFormatting('==', '==')" class="tool-icon-btn highlight-btn" title="Evidenzia Testo">🖍️</button>
-          </div>
-          <div class="tool-divider"></div>
-          <div class="tool-group">
-            <button type="button" @click="insertList('bullet')" class="tool-icon-btn symbol-btn" title="Elenco Puntato">•</button>
-            <button type="button" @click="insertList('number')" class="tool-icon-btn symbol-btn" title="Elenco Numerato">1.</button>
-            <button type="button" @click="insertFormatting('> ')" class="tool-icon-btn symbol-btn" title="Citazione">”</button>
-            <button type="button" @click="insertFormatting('\n---\n')" class="tool-icon-btn symbol-btn" title="Linea Orizzontale">—</button>
-          </div>
-          <div class="tool-divider"></div>
-          <div class="tool-group">
-            <button type="button" @click="insertFormatting('[', '](url)')" class="tool-icon-btn" title="Inserisci Link">🔗</button>
-            <button type="button" @click="insertFormatting('![Descrizione Immagine](', ')')" class="tool-icon-btn" title="Inserisci Immagine">🖼️</button>
-            <button type="button" @click="insertFormatting('@[video](', ')')" class="tool-icon-btn" title="Embed Video">🎬</button>
-            <button type="button" @click="insertFormatting('\n| Intestazione 1 | Intestazione 2 |\n|---|---|\n| Cella 1 | Cella 2 |\n', '')" class="tool-icon-btn text-emerald-400" title="Tabella">⊞</button>
-          </div>
-          <div class="tool-divider"></div>
-          <div class="tool-group">
-            <button type="button" @click="insertFormatting('`', '`')" class="tool-icon-btn code-font" title="Codice Inline">`</button>
-            <button type="button" @click="insertFormatting('\n```typescript\n', '\n```\n')" class="tool-icon-btn code-font" title="Blocco Codice (Tutti i linguaggi PrismJS)">{ }</button>
-            <button type="button" @click="toggleZenMode" :class="['tool-icon-btn text-emerald-400', { 'text-emerald-400': isZenMode }]" :title="isZenMode ? 'Esci da Zen Mode' : 'Zen Mode (Fullscreen)'"> {{ isZenMode ? '↙️' : '🗖' }}</button>
-          </div>
-          <div class="tool-divider"></div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[11px] font-mono text-slate-400 hidden sm:inline">
+            {{ content.length }} caratteri
+          </span>
           <button
             type="button"
             @click="showAiBar = !showAiBar"
-            :class="['ai-toggle-pill', showAiBar ? 'active' : '']"
-            title="Apri DKP Ai Nexus©"
+            :class="showAiBar ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
+            class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
           >
-            ✨ DKP Ai Nexus©
+            &#10024; DKP Ai Nexus&copy;
+          </button>
+          <button
+            type="button"
+            @click="toggleZenMode"
+            class="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs font-extrabold transition cursor-pointer shadow-lg"
+          >
+            &#8617; Torna all'Editor
           </button>
         </div>
       </div>
 
-      <!-- PANNELLO DKP Ai Nexus© (COMPRIMIBILE) -->
-      <div v-if="showAiBar && activeTab === 'write'" class="ai-nexus-panel">
-        <div class="ai-nexus-top">
+      <!-- HEADER STANDARD QUANDO NON IN ZEN MODE -->
+      <div
+        v-if="!isZenMode"
+        class="flex items-center justify-between gap-3 flex-wrap border-b border-slate-800/80 pb-3"
+      >
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="text-slate-100 font-extrabold text-sm sm:text-base font-mono tracking-tight">
+            DKP Blog Rich Editor
+          </span>
+          <span class="text-emerald-400 font-mono text-xs font-bold">
+            - Rich Editor Avanzato
+          </span>
+          <span
+            v-if="autosaveNotice"
+            class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono text-[10px] font-bold"
+          >
+            {{ autosaveNotice }}
+            <button
+              type="button"
+              @click="clearSavedDraft"
+              title="Svuota bozza salvata"
+              class="text-slate-400 hover:text-rose-300 bg-transparent border-none cursor-pointer p-0 ml-1"
+            >
+              &times;
+            </button>
+          </span>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            @click="showAiBar = !showAiBar"
+            :class="showAiBar ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
+            class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
+            title="Apri DKP Ai Nexus"
+          >
+            &#10024; DKP Ai Nexus&copy;
+          </button>
+
+          <button
+            type="button"
+            @click="toggleZenMode"
+            class="px-3 py-1.5 rounded-xl border bg-slate-900 text-cyan-300 border-slate-700 hover:bg-slate-800 font-bold font-mono text-xs transition cursor-pointer"
+            title="Attiva Modalita Zen a schermo intero"
+          >
+            Zen Mode
+          </button>
+        </div>
+      </div>
+
+      <!-- TUTTE LE SCHEDE METADATI NASCOSTE IN ZEN MODE -->
+      <template v-if="!isZenMode">
+        <!-- BANNER RIPRISTINO BOZZA SE PRESENTE -->
+        <div
+          v-if="savedDraftAvailable"
+          class="flex items-center justify-between gap-3 flex-wrap bg-amber-500/10 border border-amber-500/40 rounded-xl px-3.5 py-2 font-mono text-xs"
+        >
+          <span class="text-amber-300">
+            Trovata una bozza locale salvata in precedenza ({{ savedDraftAvailable.title || 'Senza titolo' }}).
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="restoreSavedDraft"
+              class="px-2.5 py-1 rounded bg-emerald-500 text-slate-950 font-extrabold text-[11px] cursor-pointer"
+            >
+              Ripristina
+            </button>
+            <button
+              type="button"
+              @click="clearSavedDraft"
+              class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-300 text-[11px] cursor-pointer"
+            >
+              Ignora
+            </button>
+          </div>
+        </div>
+
+        <!-- DKP Ai Nexus — SENTINELLA PASSIVA GRAMMARLY-STYLE -->
+        <div class="bg-[#050a18] border border-purple-500/35 rounded-xl px-3.5 py-2.5 font-mono text-xs space-y-2">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-purple-300 font-extrabold">DKP Ai Nexus&copy; &bull; Sentinella Passiva</span>
+              <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-[10px] font-bold uppercase">
+                LANG: {{ sentinelLang }}
+              </span>
+              <span
+                v-if="lastFixMessage"
+                class="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 text-[10px] font-bold"
+              >
+                &#10003; {{ lastFixMessage }}
+              </span>
+            </div>
+
+            <span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
+              &#10003; Sintassi, punteggiatura e Markdown verificati
+            </span>
+            <span v-else class="text-[11px] text-amber-300 font-bold">
+              {{ sentinelIssues.length }} suggeriment{{ sentinelIssues.length === 1 ? 'o' : 'i' }} in tempo reale
+            </span>
+          </div>
+
+          <div v-if="sentinelIssues.length > 0" class="space-y-1.5">
+            <div
+              v-for="issue in sentinelIssues.slice(0, 3)"
+              :key="issue.id"
+              class="flex items-center justify-between gap-2 flex-wrap bg-[#090d16] border border-slate-800 rounded-lg px-2.5 py-1.5"
+            >
+              <span class="text-[11px] text-slate-300">
+                <strong class="text-sky-400">[{{ issue.rule }}]</strong> {{ issue.message }}
+              </span>
+              <button
+                v-if="issue.replacement || issue.id === 'double-space' || issue.id === 'unclosed-fence' || issue.id === 'unclosed-inline-code'"
+                type="button"
+                @click="applySentinelFix(issue)"
+                class="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[10px] border-none cursor-pointer"
+              >
+                Correggi 1-Click
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DESTINAZIONE EDITORIALE: CATEGORIA & SOTTOCATEGORIA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#090e1c] border border-slate-800/80 rounded-xl p-3">
+          <div>
+            <label class="block text-[11px] font-mono font-bold text-sky-400 mb-1.5">
+              1. Categoria Principale *
+            </label>
+            <select
+              v-model="categoryName"
+              @change="onCategoryChange"
+              class="w-full bg-[#030712] border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-slate-100 text-xs sm:text-sm outline-none"
+            >
+              <option value="" disabled>Seleziona Categoria</option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+                {{ cat.name }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-mono font-bold text-emerald-400 mb-1.5">
+              2. Sottocategoria di Destinazione
+            </label>
+            <select
+              v-model="subCategoryName"
+              :disabled="!categoryName || availableSubcategories.length === 0"
+              class="w-full bg-[#030712] border border-slate-700/80 focus:border-emerald-400 rounded-xl px-3 py-2 text-slate-100 text-xs sm:text-sm outline-none disabled:opacity-50"
+            >
+              <option value="">Nessuna / Generale</option>
+              <option v-for="sub in availableSubcategories" :key="sub" :value="sub">
+                {{ sub }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DESTINAZIONE ATTIVA BAR -->
+        <div class="flex items-center justify-between gap-2 flex-wrap bg-emerald-950/35 border border-emerald-500/35 rounded-xl px-3.5 py-2 font-mono text-xs">
+          <span class="text-emerald-300 font-bold">
+            Destinazione attiva: {{ categoryName || 'Seleziona categoria' }}<span v-if="subCategoryName"> / {{ subCategoryName }}</span>
+          </span>
+          <span class="text-slate-400 text-[11px]">
+            {{ tags.length }} tag selezionati
+          </span>
+        </div>
+
+        <!-- TITOLO ARTICOLO -->
+        <div>
+          <label class="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Titolo Articolo *
+          </label>
+          <input
+            v-model="title"
+            type="text"
+            placeholder="Es: Architettura DKP Kernel v2.6 Pure-SQL su GCP Cloud Run..."
+            class="w-full bg-[#030712] border border-slate-800 focus:border-cyan-400 rounded-xl px-3.5 py-2.5 text-slate-100 text-sm font-medium outline-none"
+          />
+        </div>
+
+        <!-- TAGS ARTICOLO (AUTOSUGGEST 600+) -->
+        <div>
+          <label class="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Tags dell'Articolo (Autosuggest 600+)
+          </label>
+          <DkpTagInput v-model="tags" />
+        </div>
+
+        <!-- ESTRATTO BREVE (SUMMARY / EXCERPT) -->
+        <div>
+          <label class="block text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Estratto Breve (Anteprima Card &amp; SEO)
+          </label>
+          <textarea
+            v-model="summary"
+            rows="2"
+            placeholder="Breve sintesi tecnica dell'articolo visibile nelle card del blog..."
+            class="w-full bg-[#030712] border border-slate-800 focus:border-cyan-400 rounded-xl px-3.5 py-2 text-slate-200 text-xs sm:text-sm outline-none resize-y"
+          ></textarea>
+        </div>
+      </template>
+
+      <!-- PANNELLO DKP Ai Nexus (DISPONIBILE SIA IN STANDARD CHE IN ZEN MODE) -->
+      <div
+        v-if="showAiBar"
+        :class="isZenMode ? 'shrink-0 mx-4 sm:mx-6 mt-2 bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs' : 'bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs'"
+      >
+        <div class="flex items-center gap-2 flex-wrap">
           <input
             v-model="aiPromptHint"
             type="text"
-            class="ai-prompt-input"
-            placeholder="Argomento o istruzione AI (es: Confronto latenze Rust vs Go su edge worker)..."
+            placeholder="Argomento o istruzione AI (es: Analisi architetturale Pure-SQL vs ORM)..."
+            class="flex-1 min-w-[220px] bg-[#030712] border border-slate-700 focus:border-purple-400 rounded-lg px-3 py-1.5 text-slate-100 outline-none"
           />
-          <select v-model="aiTone" class="ai-mini-select" title="Stile editoriale">
+          <select v-model="aiTone" class="bg-[#030712] border border-slate-700 text-purple-300 rounded-lg px-2.5 py-1.5 outline-none">
             <option value="deep-dive">Tono: Deep-Dive</option>
             <option value="tutorial">Tono: Tutorial</option>
             <option value="rfc">Tono: RFC Spec</option>
           </select>
-          <select v-model="aiCodeLang" class="ai-mini-select" title="Linguaggio snippet">
-            <option value="typescript">Code: TypeScript</option>
-            <option value="sql">Code: SQL</option>
-            <option value="rust">Code: Rust</option>
-            <option value="go">Code: Go</option>
-            <option value="python">Code: Python</option>
-            <option value="bash">Code: Bash</option>
-            <option value="docker">Code: Docker</option>
-            <option value="yaml">Code: YAML</option>
-            <option value="cpp">Code: C++</option>
-            <option value="java">Code: Java</option>
-            <option value="csharp">Code: C#</option>
-            <option value="php">Code: PHP</option>
-          </select>
         </div>
 
-        <div class="ai-nexus-actions">
-          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('generate_draft')" class="ai-action-btn primary">
-            ✨ Genera Bozza
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            :disabled="isAiGenerating"
+            @click="runAiAssist('generate_draft')"
+            class="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold cursor-pointer disabled:opacity-50"
+          >
+            &#10024; Genera Bozza
           </button>
-          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('expand')" class="ai-action-btn">
-            🚀 Espandi Testo
+          <button
+            type="button"
+            :disabled="isAiGenerating"
+            @click="runAiAssist('expand')"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 cursor-pointer disabled:opacity-50"
+          >
+            Espandi Testo
           </button>
-          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('security_audit')" class="ai-action-btn">
-            🛡️ Sentinel Audit
+          <button
+            type="button"
+            :disabled="isAiGenerating"
+            @click="runAiAssist('security_audit')"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-cyan-300 cursor-pointer disabled:opacity-50"
+          >
+            Sentinel Audit
           </button>
-          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('seo_optimize')" class="ai-action-btn">
-            🎯 SEO &amp; Tag
+          <button
+            type="button"
+            :disabled="isAiGenerating"
+            @click="runAiAssist('seo_optimize')"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-purple-300 cursor-pointer disabled:opacity-50"
+          >
+            SEO &amp; Tag
           </button>
-          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('generate_code')" class="ai-action-btn">
-            💻 Snippet Codice
+          <button
+            type="button"
+            :disabled="isAiGenerating"
+            @click="runAiAssist('generate_code')"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-emerald-300 cursor-pointer disabled:opacity-50"
+          >
+            Snippet {{ aiCodeLang.toUpperCase() }}
           </button>
-          <button type="button" :disabled="isAiGenerating" @click="runAiAssist('tldr_table')" class="ai-action-btn">
-            📊 TL;DR &amp; Tabella
+          <button
+            type="button"
+            :disabled="isAiGenerating"
+            @click="runAiAssist('tldr_table')"
+            class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-amber-300 cursor-pointer disabled:opacity-50"
+          >
+            TL;DR &amp; Tabella
           </button>
           <button
             v-if="previousContentSnapshot !== null"
             type="button"
             @click="undoLastAiAction"
-            class="ai-action-btn undo"
+            class="px-2.5 py-1 rounded bg-rose-500/15 border border-rose-500/40 text-rose-300 cursor-pointer"
           >
-            ↩️ Annulla AI
+            Annulla AI
           </button>
-          <span v-if="aiStatusMessage" class="ai-status-text">{{ aiStatusMessage }}</span>
+          <span v-if="aiStatusMessage" class="text-[11px] text-emerald-400 ml-auto">
+            {{ aiStatusMessage }}
+          </span>
         </div>
       </div>
 
-      <div v-show="activeTab === 'write'" class="textarea-container">
-        <textarea ref="textareaRef" v-model="content" class="markdown-textarea" placeholder="Inizia a scrivere il tuo articolo qui (supporta ```qualsiasi-linguaggio con PrismJS dinamico)..." @keydown.enter="handleEnter"></textarea>
+      <!-- TOOLBAR STRUMENTI (SEMPRE VISIBILE ANCHE IN ZEN MODE) -->
+      <div
+        :class="isZenMode ? 'shrink-0 bg-[#090e1c] border-b border-slate-800 px-4 sm:px-6 py-2' : 'bg-[#090e1c] border border-slate-800 rounded-xl p-2 space-y-2'"
+      >
+        <div class="flex items-center gap-1.5 flex-wrap font-mono">
+          <button type="button" @click="insertFormatting('**', '**', 'grassetto')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-100 text-xs font-extrabold cursor-pointer" title="Grassetto **testo**">B</button>
+          <button type="button" @click="insertFormatting('*', '*', 'corsivo')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs italic cursor-pointer" title="Corsivo *testo*">I</button>
+          <button type="button" @click="insertFormatting('++', '++', 'sottolineato')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs underline cursor-pointer" title="Sottolineato ++testo++">U</button>
+          <button type="button" @click="insertFormatting('~~', '~~', 'barrato')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs line-through cursor-pointer" title="Barrato ~~testo~~">S</button>
+          <button type="button" @click="insertFormatting('==', '==', 'evidenziato')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-400 text-xs font-bold cursor-pointer" title="Evidenzia ==testo==">==H==</button>
+
+          <span class="text-slate-700">|</span>
+
+          <button type="button" @click="insertFormatting('# ', '', 'Titolo 1')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold cursor-pointer" title="Titolo H1">H1</button>
+          <button type="button" @click="insertFormatting('## ', '', 'Titolo 2')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold cursor-pointer" title="Titolo H2">H2</button>
+          <button type="button" @click="insertFormatting('### ', '', 'Titolo 3')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-400 text-xs font-bold cursor-pointer" title="Titolo H3">H3</button>
+
+          <span class="text-slate-700">|</span>
+
+          <button type="button" @click="insertList('bullet')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs font-bold cursor-pointer" title="Elenco puntato (- )">- Lista</button>
+          <button type="button" @click="insertList('number')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-300 text-xs font-bold cursor-pointer" title="Elenco numerato (1. )">1. Num</button>
+          <button type="button" @click="insertList('sub')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs cursor-pointer" title="Sotto-elenco indentato (  - )">&crarr; Sub</button>
+
+          <span class="text-slate-700">|</span>
+
+          <button type="button" @click="insertFormatting('`', '`', 'codice')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-400 text-xs cursor-pointer" title="Codice inline">&lt;/&gt;</button>
+          <button type="button" @click="insertFormatting('> ', '', 'Citazione')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs cursor-pointer" title="Citazione">Quote</button>
+          <button type="button" @click="insertFormatting('\n| Intestazione 1 | Intestazione 2 |\n|---|---|\n| Cella 1 | Cella 2 |\n', '')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs cursor-pointer" title="Tabella Markdown">Table</button>
+          <button type="button" @click="insertFormatting('[', '](https://)', 'Testo link')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs cursor-pointer" title="Link">Link</button>
+          <button type="button" @click="insertFormatting('![Descrizione Immagine](', ')', 'https://')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-300 text-xs cursor-pointer" title="Inserisci Immagine">Img</button>
+          <button type="button" @click="insertFormatting('@[video](', ')', 'https://')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-purple-300 text-xs cursor-pointer" title="Embed Video @[video](url)">Video</button>
+          <button type="button" @click="insertFormatting('\n---\n', '')" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs cursor-pointer" title="Separatore ---">---</button>
+
+          <select v-model="aiCodeLang" class="bg-[#030712] text-emerald-400 text-[11px] px-2 py-1 rounded outline-none border border-slate-800">
+            <option value="typescript">TS</option>
+            <option value="javascript">JS</option>
+            <option value="sql">SQL</option>
+            <option value="rust">Rust</option>
+            <option value="go">Go</option>
+            <option value="python">Python</option>
+            <option value="bash">Bash</option>
+            <option value="docker">Docker</option>
+            <option value="yaml">YAML</option>
+            <option value="json">JSON</option>
+            <option value="cpp">C++</option>
+            <option value="java">Java</option>
+            <option value="csharp">C#</option>
+            <option value="php">PHP</option>
+            <option value="kotlin">Kotlin</option>
+            <option value="swift">Swift</option>
+            <option value="solidity">Solidity</option>
+          </select>
+
+          <button
+            type="button"
+            @click="insertCodeBlock"
+            class="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-bold border border-emerald-500/35 cursor-pointer"
+          >
+            + Code
+          </button>
+        </div>
+
+        <!-- SWITCHER SCRIVI / ANTEPRIMA IN MODALITA STANDARD -->
+        <div v-if="!isZenMode" class="flex items-center justify-between pt-1 border-t border-slate-800/70">
+          <div class="inline-flex rounded-lg bg-[#030712] p-0.5 border border-slate-800 font-mono text-xs">
+            <button
+              type="button"
+              @click="activeTab = 'write'"
+              :class="activeTab === 'write' ? 'bg-emerald-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-slate-200'"
+              class="px-3 py-1 rounded-md transition cursor-pointer"
+            >
+              Scrivi
+            </button>
+            <button
+              type="button"
+              @click="activeTab = 'preview'"
+              :class="activeTab === 'preview' ? 'bg-cyan-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-slate-200'"
+              class="px-3 py-1 rounded-md transition cursor-pointer"
+            >
+              Anteprima
+            </button>
+          </div>
+
+          <span class="text-[11px] font-mono text-slate-500">
+            {{ content.length }} caratteri
+          </span>
+        </div>
       </div>
-      
-      <div v-show="activeTab === 'preview'" class="preview-container">
+
+      <!-- AREA SCRITTURA / ANTEPRIMA -->
+      <div
+        v-show="activeTab === 'write'"
+        :class="isZenMode ? 'flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 flex flex-col overflow-hidden' : ''"
+      >
+        <textarea
+          ref="textareaRef"
+          v-model="content"
+          rows="16"
+          placeholder="Inizia a scrivere il tuo articolo qui (supporta ```qualsiasi-linguaggio con PrismJS dinamico, immagini, @[video](url) e tabelle)..."
+          @keydown.enter="handleEnter"
+          :class="
+            isZenMode
+              ? 'flex-1 w-full h-full bg-[#030712] border border-slate-800/90 focus:border-cyan-400 rounded-xl p-5 sm:p-6 text-slate-100 font-mono text-sm leading-relaxed outline-none resize-none'
+              : 'w-full min-h-[340px] bg-[#030712] border border-slate-800 focus:border-cyan-400 rounded-xl p-4 text-slate-100 font-mono text-xs sm:text-sm leading-relaxed outline-none resize-y'
+          "
+        ></textarea>
+      </div>
+
+      <div
+        v-show="activeTab === 'preview'"
+        :class="
+          isZenMode
+            ? 'flex-1 w-full max-w-5xl mx-auto p-6 overflow-y-auto bg-[#050814]'
+            : 'min-h-[340px] bg-[#050814] border border-slate-800 rounded-xl p-4 sm:p-5 overflow-x-auto'
+        "
+      >
         <div class="dkp-preview-content" v-html="parsedContent"></div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
-/* 🟢 FORMATTAZIONE INLINE (Sconfigge il Reset CSS di Tailwind) */
-:deep(.dkp-bold) { font-weight: 800; color: #ffffff; }
-:deep(.dkp-italic) { font-style: italic; color: #e2e8f0; }
-:deep(.dkp-strike) { text-decoration: line-through; color: #64748b; }
-:deep(.dkp-inline-code) { background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 0.15rem 0.35rem; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.85em; }
+.dkp-preview-content {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
 
-/* 🟢 FORMATTAZIONE LISTE */
-:deep(ul.dkp-main-list), :deep(ul.dkp-sub-list) { list-style-type: disc; margin: 0.2rem 0; padding-left: 1.5rem; }
-:deep(ol.dkp-main-list), :deep(ol.dkp-sub-list) { list-style-type: decimal; margin: 0.2rem 0; padding-left: 1.5rem; }
-:deep(ul.dkp-sub-list), :deep(ol.dkp-sub-list) { list-style-type: circle; margin: 0.2rem 0; padding-left: 2.2rem; border-left: 1px solid #1e293b; }
+:deep(.dkp-h1) { font-size: 1.6rem; font-weight: 800; color: #f8fafc; margin: 1.2rem 0 0.6rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.35rem; }
+:deep(.dkp-h2) { font-size: 1.3rem; font-weight: 800; color: #38bdf8; margin: 1.1rem 0 0.5rem; }
+:deep(.dkp-h3) { font-size: 1.1rem; font-weight: 700; color: #22d3ee; margin: 0.95rem 0 0.4rem; }
+:deep(.dkp-bold) { color: #f8fafc; font-weight: 700; }
+:deep(.dkp-italic) { color: #cbd5e1; font-style: italic; }
+:deep(.dkp-underline) { text-decoration: underline; text-decoration-color: #38bdf8; text-underline-offset: 3px; }
+:deep(.dkp-strike) { color: #64748b; text-decoration: line-through; }
+:deep(.dkp-highlight) { background: rgba(16, 185, 129, 0.22); color: #6ee7b7; padding: 0.1rem 0.35rem; border-radius: 4px; }
+:deep(.dkp-quote) { border-left: 3px solid #22d3ee; padding: 0.45rem 0.9rem; margin: 0.75rem 0; background: rgba(15, 23, 42, 0.7); color: #cbd5e1; font-style: italic; }
+:deep(.dkp-hr) { border: 0; border-top: 1px solid #1e293b; margin: 1.2rem 0; }
+:deep(.dkp-img) { max-width: 100%; border-radius: 8px; border: 1px solid #1e293b; margin: 0.85rem 0; }
+
+:deep(ul.dkp-main-list), :deep(ul.dkp-sub-list) { list-style-type: disc; margin: 0.25rem 0; padding-left: 1.5rem; }
+:deep(ol.dkp-main-list), :deep(ol.dkp-sub-list) { list-style-type: decimal; margin: 0.25rem 0; padding-left: 1.5rem; }
+:deep(.dkp-li-main::marker), :deep(.dkp-li-nested::marker) { color: #22d3ee; font-weight: 700; }
 :deep(.dkp-li-main), :deep(.dkp-li-nested) { margin-bottom: 0.35rem; color: #cbd5e1; }
 
-:deep(.dkp-img) { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: block; }
-:deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1rem 0; border-radius: 8px; }
+:deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1rem 0; border-radius: 8px; border: 1px solid #1e293b; }
 :deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-:deep(.dkp-highlight) { background-color: rgba(0, 220, 130, 0.25); color: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; }
-:deep(.dkp-underline) { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #38bdf8; text-decoration-thickness: 2px; }
 
-:deep(.dkp-code-wrapper) { background: #0d1117; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; margin: 1rem 0; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-:deep(.dkp-code-header) { background: #161b22; padding: 0.4rem 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; font-family: sans-serif; font-size: 0.75rem; font-weight: bold; color: #8b949e; text-transform: uppercase; }
-:deep(.dkp-copy-btn) { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #8b949e; cursor: pointer; font-size: 0.72rem; padding: 0.2rem 0.5rem; border-radius: 4px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.3rem; }
-:deep(.dkp-copy-btn:hover) { background: rgba(0, 220, 130, 0.15); border-color: rgba(0, 220, 130, 0.4); color: #00dc82; }
-:deep(.dkp-code-block) { padding: 0.85rem 1rem; margin: 0; overflow-x: auto; background: #080c14; }
-:deep(.dkp-code-block code) { font-family: 'Fira Code', 'Courier New', Courier, monospace; font-size: 0.85rem; line-height: 1.6; color: #c9d1d9; }
+:deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px; }
 
-:deep(.token.punctuation) { color: #cbd5e1; }
-:deep(.token.property), :deep(.token.class-name), :deep(.token.constant), :deep(.token.symbol) { color: #f8c555; font-weight: 600; }
-:deep(.token.string), :deep(.token.char), :deep(.token.attr-value) { color: #7ec699; }
-:deep(.token.number), :deep(.token.boolean), :deep(.token.function) { color: #f08d49; font-weight: 600; }
-:deep(.token.keyword), :deep(.token.atrule), :deep(.token.selector) { color: #cc99cd; font-weight: bold; }
-:deep(.token.operator), :deep(.token.entity), :deep(.token.url) { color: #67cdcc; }
-:deep(.token.comment) { color: #64748b; font-style: italic; }
-
-.dkp-editor-wrapper { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 0.65rem; 
-  width: 100%; 
-  height: calc(100vh - 250px);
-  min-height: 410px;
-  max-height: 600px;
-  overflow: hidden; 
-  box-sizing: border-box;
-}
-
-.top-fields-scroll {
-  max-height: 145px; 
-  overflow-y: auto; 
-  flex-shrink: 0;
-  padding-right: 4px;
-}
-.top-fields-scroll::-webkit-scrollbar { width: 5px; }
-.top-fields-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-
-.editor-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
-@media (max-width: 650px) { .editor-fields-grid { grid-template-columns: 1fr; } }
-.field-group { display: flex; flex-direction: column; gap: 0.25rem; }
-.field-group.full-width { grid-column: 1 / -1; }
-.field-label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
-
-.dkp-input-element { background: #030712; border: 1px solid #1e293b; color: #ffffff; padding: 0.45rem 0.7rem; border-radius: 6px; font-size: 0.82rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
-.dkp-input-element:focus { border-color: #00dc82; }
-
-.editor-body-box { 
-  border: 1px solid #1e293b; 
-  border-radius: 8px; 
-  background: #030712;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.toolbar-bar { 
-  display: flex; 
-  flex-direction: column; 
-  background: #0b1120; 
-  border-bottom: 1px solid #1e293b; 
-  flex-shrink: 0;
-  z-index: 10;
-}
-@media (min-width: 768px) {
-  .toolbar-bar { flex-direction: row; justify-content: flex-start; align-items: center; padding: 0.3rem 0.5rem; gap: 0.55rem; }
-}
-
-.ai-toggle-pill {
-  background: rgba(168, 85, 247, 0.15);
-  border: 1px solid rgba(168, 85, 247, 0.45);
-  color: #d8b4fe;
-  padding: 0.2rem 0.55rem;
-  border-radius: 5px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.ai-toggle-pill.active, .ai-toggle-pill:hover {
-  background: #a855f7;
-  color: #030712;
-}
-
-.ai-nexus-panel {
-  background: #060b19;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.35);
-  padding: 0.55rem 0.65rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  flex-shrink: 0;
-}
-.ai-nexus-top {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-.ai-prompt-input {
-  flex: 1;
-  min-width: 200px;
-  background: #030712 !important;
-  border: 1px solid #334155 !important;
-  color: #f8fafc !important;
-  padding: 0.35rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.76rem;
-}
-.ai-mini-select {
-  background: #030712 !important;
-  border: 1px solid #334155 !important;
-  color: #38bdf8 !important;
-  padding: 0.35rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.ai-nexus-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-}
-.ai-action-btn {
-  background: #0f172a;
-  border: 1px solid #334155;
-  color: #e2e8f0;
-  padding: 0.25rem 0.55rem;
-  border-radius: 5px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.ai-action-btn:hover:not(:disabled) {
-  border-color: #38bdf8;
-  color: #38bdf8;
-}
-.ai-action-btn.primary {
-  background: #10b981;
-  border-color: #10b981;
-  color: #030712;
-  font-weight: 800;
-}
-.ai-action-btn.undo {
-  border-color: rgba(244, 63, 94, 0.5);
-  color: #fda4af;
-}
-.ai-status-text {
-  font-size: 0.7rem;
-  color: #34d399;
-  margin-left: auto;
-}
-
-.textarea-container, .preview-container {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto; 
-  box-sizing: border-box;
-}
-
-.preview-container { padding: 1rem; background: #050814; }
-.markdown-textarea { 
-  width: 100%; height: 100%; background: transparent; color: #f8fafc; padding: 1rem; 
-  border: none; outline: none; resize: none; font-family: monospace; font-size: 0.88rem; 
-  line-height: 1.6; box-sizing: border-box; 
-}
-
-.zen-mode-active {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  z-index: 999999 !important; border-radius: 0; border: none; background: #050814; 
-  display: flex; flex-direction: column;
-}
-.zen-mode-active .toolbar-bar { flex-shrink: 0; position: sticky; top: 0; z-index: 100; width: 100%; }
-.zen-mode-active .textarea-container, 
-.zen-mode-active .preview-container { height: calc(100vh - 55px); overflow-y: auto; flex-grow: 1; }
-.zen-mode-active .markdown-textarea,
-.zen-mode-active .dkp-preview-content { max-width: 800px; margin: 0 auto; }
-
-.tab-switch-group { display: flex; gap: 0.2rem; padding: 0.2rem; background: #020420; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
-@media (min-width: 768px) { .tab-switch-group { border-bottom: none; padding: 0; background: transparent; } }
-.tab-toggle-btn { background: transparent; border: 1px solid transparent; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 5px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; }
-.tab-toggle-btn:hover { color: #cbd5e1; }
-.tab-toggle-btn.active { background: #1e293b; color: #00dc82; border: 1px solid #334155; }
-.formatting-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; padding: 0.2rem 0; }
-.tool-group { display: flex; gap: 0.1rem; background: #020420; padding: 0.1rem; border-radius: 5px; border: 1px solid #1e293b; }
-.tool-divider { width: 1px; height: 14px; background: #334155; margin: 0 0.1rem; }
-.tool-icon-btn { background: transparent; border: 1px solid transparent; color: #94a3b8; min-width: 20px; height: 24px; padding: 0 0.2rem; border-radius: 4px; font-size: 0.72rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s ease; }
-.tool-icon-btn:hover { background: #1e293b; color: #e2e8f0; }
-.tool-icon-btn.text-emerald-400 { color: #00dc82; } 
-.preview-empty { color: #64748b; font-style: italic; }
-
-:deep(.dkp-h1) { font-size: 1.6rem; font-weight: 900; color: #ffffff; margin-top: 1rem; margin-bottom: 0.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.25rem;}
-:deep(.dkp-h2) { font-size: 1.3rem; font-weight: 800; color: #ffffff; margin-top: 0.8rem; margin-bottom: 0.4rem; }
-:deep(.dkp-h3) { font-size: 1rem; font-weight: 700; color: #00dc82; margin-top: 0.7rem; margin-bottom: 0.3rem; }
-:deep(.dkp-quote) { border-left: 3px solid #00dc82; padding-left: 0.7rem; color: #94a3b8; font-style: italic; margin: 0.6rem 0; background: rgba(0, 220, 130, 0.05); }
-:deep(.dkp-link) { color: #38bdf8; text-decoration: underline; text-underline-offset: 2px;}
-:deep(.dkp-hr) { border: none; height: 1px; background-color: #334155; margin: 1.2rem 0; }
-:deep(.dkp-table-wrapper) { overflow-x: auto; margin: 0.8rem 0; border-radius: 6px; border: 1px solid #1e293b; }
-:deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.82rem;}
+:deep(.dkp-table-wrapper) { overflow-x: auto; margin: 0.85rem 0; border-radius: 6px; border: 1px solid #1e293b; }
+:deep(.dkp-table) { width: 100%; border-collapse: collapse; text-align: left; background: #090d16; font-size: 0.84rem; }
 :deep(.dkp-table td) { padding: 0.6rem 0.85rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-mark,
-.dkp-highlight {
-  background-color: rgba(16, 185, 129, 0.16) !important;
-  color: #6ee7b7 !important;
-  border: 1px solid rgba(16, 185, 129, 0.35) !important;
-  border-radius: 0.375rem !important;
-  padding: 0.08rem 0.38rem !important;
-  font-weight: 700 !important;
-}
 
-.dkp-inline-code,
-:not(pre) > code {
-  background-color: rgba(30, 41, 59, 0.85) !important;
-  color: #38bdf8 !important;
-  border-radius: 0.3rem !important;
-}
+:deep(.dkp-code-wrapper) { margin: 0.9rem 0; border-radius: 2px; border: 1px solid rgba(56, 189, 248, 0.28); background: #050a14; overflow: hidden; }
+:deep(.dkp-code-header) { display: flex; align-items: center; justify-content: space-between; padding: 0.35rem 0.8rem; background: #091122; border-bottom: 1px solid rgba(56, 189, 248, 0.2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.72rem; text-transform: uppercase; color: #38bdf8; font-weight: 700; }
+:deep(.dkp-copy-btn) { background: rgba(56, 189, 248, 0.12); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 3px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer; }
+:deep(.dkp-code-block) { margin: 0; padding: 0.95rem 1.05rem; overflow-x: auto; background: #050a14 !important; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace; font-size: 0.84rem; line-height: 1.72; }
+:deep(.dkp-code-block code) { background: transparent !important; border: none !important; padding: 0 !important; color: #e2e8f0; }
+:deep(.dkp-inline-code) { background: rgba(30, 41, 59, 0.85); color: #38bdf8; padding: 0.12rem 0.38rem; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; }
+.preview-empty { color: #64748b; font-style: italic; font-family: ui-monospace, monospace; font-size: 0.85rem; }
 </style>

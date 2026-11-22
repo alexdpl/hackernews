@@ -1,3 +1,4 @@
+import { KnowledgeDependabotService } from '~~/server/utils/knowledgeDependabot'
 // server/api/blog/posts/index.post.ts
 import crypto from 'node:crypto'
 import { defineEventHandler, readBody, createError } from 'h3'
@@ -256,6 +257,18 @@ export default defineEventHandler(async (event) => {
         WHERE id = ${postId};
       `).catch(() => null)
       proof = { vaultHash: fallbackHash, blockNumber: null }
+    }
+
+    // 6B. Sentinel Network — Knowledge Dependabot su articolo Blog
+    if (newPost?.id) {
+      void KnowledgeDependabotService.inspectAndAutoComment({
+        entityType: 'blog',
+        entityId: Number(newPost.id),
+        entitySlug: String(newPost.slug || ''),
+        title: cleanTitle,
+        content: String(body.content || ''),
+        authorUsername: String(sessionUser?.username || '')
+      }).catch(() => null)
     }
 
     // 7. Assegnazione +150 XP all'autore autenticato

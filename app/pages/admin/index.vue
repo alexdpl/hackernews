@@ -30,7 +30,10 @@ const stats = ref({
   mailsUnread: 0,
   subscribers: 0,
   bountiesOpen: 0,
-  usersTotal: 0
+  usersTotal: 0,
+  vaultTotal: 0,
+  dependabotScans: 0,
+  dependabotComments: 0
 })
 
 const isLoading = ref(true)
@@ -43,32 +46,135 @@ const formattedUptime = computed(() => {
   return h > 0 ? `${h}h ${m}m` : `${m}m ${sec}s`
 })
 
-const quickModules = [
-  { to: '/admin/api-gateway', title: 'API Gateway & Keys', desc: 'Chiavi Bearer, rate-limit e telemetria endpoint v2.6', badge: 'CORE' },
-  { to: '/admin/mail', title: 'Mail Center Webmail', desc: 'Caselle Cloudflare & invio transazionale Brevo v3', badge: 'SMTP' },
-  { to: '/admin/newsletter', title: 'Newsletter & Broadcast', desc: 'Audience Double Opt-In e campagne HTML', badge: 'BREVO' },
-  { to: '/admin/autoresponder', title: 'Autoresponder Engine', desc: 'Regole euristiche e risposte automatiche SMTP', badge: 'BOT' },
-  { to: '/admin/crawler', title: 'DKP Crawler Engine', desc: 'Ingestione HackerNews, GitHub, ArXiv & RemoteOK', badge: 'INGEST' },
-  { to: '/admin/blog', title: 'Blog & Editorial CMS', desc: 'Articoli tecnici, guide e pubblicazione SEO', badge: 'CMS' },
-  { to: '/admin/nodes', title: 'Gestione Nodi & Forum', desc: 'Albero n/ & n/n/, coda Sentinel AI e Vault Proof', badge: 'FORUM' },
-  { to: '/admin/shop', title: 'Shop, DKP ADS & Library', desc: 'Campagne sponsor, licenze API e affiliazione Amazon', badge: 'REVENUE' },
-  { to: '/admin/jobs', title: 'Tech Jobs Hub', desc: 'Annunci remote/hybrid e importazione crawler', badge: 'CAREERS' },
-  { to: '/admin/bounties', title: 'Security & Code Bounties', desc: 'Reward pool EUR/XP e validazioni Pull Request', badge: 'ESCROW' },
-  { to: '/admin/users', title: 'Utenti & RBAC', desc: 'Ruoli Admin/Moderator/Builder, XP e moderazione account', badge: 'IAM' },
-  { to: '/admin/diagnostic', title: 'Kernel Diagnostic', desc: 'Latenza Neon PostgreSQL, OpenRouter AI e Vault SHA-256', badge: 'HEALTH' },
-  { to: '/admin/seo', title: 'SEO & Sitemap Control', desc: 'Meta tag globali, OpenGraph e indicizzazione motori', badge: 'INDEX' }
+// 4 CARD HERO PRINCIPALI (Allineate alle 4 Hero Card della Home)
+const primaryHeroCards = [
+  {
+    to: '/admin/sentinels',
+    tag: 'SHIELD',
+    badge: 'KNOWLEDGE DEPENDABOT',
+    badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
+    title: 'Sentinel DocKeeper & ArchGuard',
+    desc: 'Parser semantico su code block, dipendenze obsolete, pattern architetturali e auto-commento DB'
+  },
+  {
+    to: '/admin/nodes',
+    tag: 'FORUM',
+    badge: 'DKP TALKS & VAULT',
+    badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
+    title: 'Gestione Nodi & Thread',
+    desc: 'Albero gerarchico DKP Talks, moderazione thread e notarizzazione SHA-256 on-chain'
+  },
+  {
+    to: '/admin/blog',
+    tag: 'CMS',
+    badge: 'VAULT VERIFIED',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
+    title: 'Blog & Editorial CMS',
+    desc: 'Pubblicazione articoli tecnici, verifica crittografica e audit automatico Sentinel'
+  },
+  {
+    to: '/admin/crawler',
+    tag: 'AI',
+    badge: 'LIVE INGESTION',
+    badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
+    title: 'DKP Crawler & News AI',
+    desc: 'Pipeline autonoma HackerNews, GitHub, ArXiv e scoring semantico Trinity AI'
+  }
+]
+
+// MODULI OPERATIVI SECONDARI CON BADGE CROMATICI
+const operationalModules = [
+  {
+    to: '/nodes/n/blockchain-vault',
+    title: 'Blockchain Vault Explorer',
+    desc: 'Registro pubblico SHA-256 unificato per Editorial Blog, Forum Thread e Tool',
+    badge: 'LEDGER',
+    badgeClass: 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'
+  },
+  {
+    to: '/admin/api-gateway',
+    title: 'API Gateway & Keys',
+    desc: 'Chiavi Bearer, rate-limit e telemetria endpoint v2.6 Pure SQL',
+    badge: 'CORE',
+    badgeClass: 'bg-cyan-500/15 border-cyan-500/35 text-cyan-300'
+  },
+  {
+    to: '/admin/users',
+    title: 'Utenti & RBAC Matrix',
+    desc: 'Ruoli Admin, Builder, Sentinel DocKeeper/ArchGuard e gestione XP',
+    badge: 'IAM',
+    badgeClass: 'bg-violet-500/15 border-violet-500/35 text-violet-300'
+  },
+  {
+    to: '/admin/mail',
+    title: 'Mail Center Webmail',
+    desc: 'Caselle Cloudflare & invio transazionale Brevo v3',
+    badge: 'SMTP',
+    badgeClass: 'bg-sky-500/15 border-sky-500/35 text-sky-300'
+  },
+  {
+    to: '/admin/newsletter',
+    title: 'Newsletter & Broadcast',
+    desc: 'Audience Double Opt-In e campagne HTML automatizzate',
+    badge: 'BREVO',
+    badgeClass: 'bg-amber-500/15 border-amber-500/35 text-amber-300'
+  },
+  {
+    to: '/admin/autoresponder',
+    title: 'Autoresponder Engine',
+    desc: 'Regole euristiche e risposte automatiche SMTP',
+    badge: 'BOT',
+    badgeClass: 'bg-indigo-500/15 border-indigo-500/35 text-indigo-300'
+  },
+  {
+    to: '/admin/shop',
+    title: 'Shop, DKP ADS & Library',
+    desc: 'Campagne sponsor, licenze API e affiliazione Amazon',
+    badge: 'REVENUE',
+    badgeClass: 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300'
+  },
+  {
+    to: '/admin/jobs',
+    title: 'Tech Jobs Hub',
+    desc: 'Annunci remote/hybrid e importazione crawler',
+    badge: 'CAREERS',
+    badgeClass: 'bg-cyan-500/15 border-cyan-500/35 text-cyan-300'
+  },
+  {
+    to: '/admin/bounties',
+    title: 'Security & Code Bounties',
+    desc: 'Reward pool EUR/XP e validazioni Pull Request',
+    badge: 'ESCROW',
+    badgeClass: 'bg-rose-500/15 border-rose-500/35 text-rose-300'
+  },
+  {
+    to: '/admin/diagnostic',
+    title: 'Kernel Diagnostic',
+    desc: 'Latenza Neon PostgreSQL, OpenRouter AI e Vault SHA-256',
+    badge: 'HEALTH',
+    badgeClass: 'bg-teal-500/15 border-teal-500/35 text-teal-300'
+  },
+  {
+    to: '/admin/seo',
+    title: 'SEO & Sitemap Control',
+    desc: 'Meta tag globali, OpenGraph e indicizzazione motori',
+    badge: 'INDEX',
+    badgeClass: 'bg-amber-500/15 border-amber-500/35 text-amber-300'
+  }
 ]
 
 async function loadOverview() {
   isLoading.value = true
   try {
-    const [diagRes, nodesRes, mailRes, subRes, bountiesRes, usersRes]: any[] = await Promise.all([
+    const [diagRes, nodesRes, mailRes, subRes, bountiesRes, usersRes, vaultRes, depRes]: any[] = await Promise.all([
       $fetch(`/api/admin/diagnostic?_t=${Date.now()}`).catch(() => null),
       $fetch('/api/admin/nodes').catch(() => null),
       $fetch('/api/mail').catch(() => null),
       $fetch('/api/newsletter/subscribers').catch(() => null),
       $fetch('/api/admin/bounties').catch(() => null),
-      $fetch('/api/admin/users').catch(() => null)
+      $fetch('/api/admin/users').catch(() => null),
+      $fetch('/api/vault/ledger?limit=5').catch(() => null),
+      $fetch('/api/admin/dependabot').catch(() => null)
     ])
 
     if (diagRes) {
@@ -98,6 +204,9 @@ async function loadOverview() {
       ? bountiesRes.data.filter((b: any) => b.status === 'OPEN').length
       : 0
     stats.value.usersTotal = Array.isArray(usersRes?.data) ? usersRes.data.length : 0
+    stats.value.vaultTotal = Number(vaultRes?.counts?.all ?? 0)
+    stats.value.dependabotScans = Number(depRes?.totals?.scansTotal ?? 0)
+    stats.value.dependabotComments = Number(depRes?.totals?.autoCommentsPublished ?? 0)
   } finally {
     isLoading.value = false
   }
@@ -109,28 +218,63 @@ onMounted(loadOverview)
 <template>
   <DkpAdminShell
     title="DKP Master Control Center"
-    subtitle="Cruscotto operativo unificato v2.6-PURE-SQL su Neon PostgreSQL, Cloudflare Edge, Brevo v3 & Sentinel AI."
-    badge="MASTER KERNEL OVERVIEW"
+    subtitle="Notarizzazione crittografica SHA-256, Knowledge Dependabot (DocKeeper + ArchGuard) e telemetria Pure SQL su Neon PostgreSQL."
+    badge="DEVKERNELPULSE PRO V2.6 • MASTER KERNEL OVERVIEW"
     seo-title="DKP Admin Dashboard Main v2.6 — DevKernelPulse"
   >
     <template #actions>
+      <NuxtLink
+        to="/admin/sentinels"
+        class="px-4 py-2.5 rounded-xl bg-violet-500/20 border border-violet-400/50 text-violet-200 hover:bg-violet-500/30 font-bold no-underline transition-colors"
+      >
+        Sentinel Dependabot ({{ stats.dependabotScans }})
+      </NuxtLink>
       <button
         type="button"
         @click="loadOverview"
         :disabled="isLoading"
-        class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold border-none cursor-pointer"
+        class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:opacity-95 text-slate-950 font-extrabold border-none cursor-pointer transition-opacity"
       >
-         Sincronizza Telemetria
+        {{ isLoading ? 'Sincronizzazione...' : 'Sincronizza Telemetria' }}
       </button>
     </template>
 
-    <!-- 1. TELEMETRIE DEL SERVER & SITO (POSIZIONATE SOPRA LE KPI DEI CONTENUTI) -->
+    <!-- 1. 4 HERO CARD PRINCIPALI (Stile identico alla Home Page) -->
+    <section aria-label="Primary Control Pillars" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <NuxtLink
+        v-for="card in primaryHeroCards"
+        :key="card.to"
+        :to="card.to"
+        class="bg-dkp-card/95 border border-dkp-border hover:border-cyan-400/60 rounded-2xl p-5 no-underline transition-all card-glow group flex flex-col justify-between gap-4"
+      >
+        <div class="flex items-center justify-between font-mono">
+          <span class="px-2.5 py-1 rounded-lg bg-[#050914] border border-slate-800 text-xs font-extrabold text-white">
+            {{ card.tag }}
+          </span>
+          <span :class="['text-[10px] font-bold px-2.5 py-0.5 rounded-md border uppercase', card.badgeClass]">
+            {{ card.badge }}
+          </span>
+        </div>
+
+        <div>
+          <h2 class="text-base font-bold text-white group-hover:text-dkp-accent transition-colors flex items-center justify-between m-0 mb-1.5">
+            <span>{{ card.title }}</span>
+            <span class="text-slate-400 group-hover:text-dkp-accent transition-transform group-hover:translate-x-1">&rarr;</span>
+          </h2>
+          <p class="text-xs text-slate-300 leading-relaxed m-0">
+            {{ card.desc }}
+          </p>
+        </div>
+      </NuxtLink>
+    </section>
+
+    <!-- 2. TELEMETRIA INFRASTRUTTURA, VAULT & SENTINEL DEPENDABOT -->
     <section aria-label="Server & Infrastructure Telemetry" class="bg-dkp-card/95 border border-cyan-500/40 rounded-2xl p-4 sm:p-5 card-glow font-mono space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-dkp-border/80 text-xs">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
           <span class="font-extrabold text-cyan-400 uppercase tracking-wider">
-            SERVER &amp; EDGE INFRASTRUCTURE TELEMETRY
+            SERVER, VAULT &amp; SENTINEL NETWORK TELEMETRY
           </span>
         </div>
         <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-300">
@@ -151,44 +295,44 @@ onMounted(loadOverview)
           <div class="text-[10px] text-slate-400">Driver: Drizzle Pure-SQL Pool</div>
         </div>
 
-        <!-- Server Memory & CPU -->
-        <div class="bg-[#030712] border border-sky-500/35 rounded-xl p-3.5 flex flex-col justify-between gap-1">
+        <!-- Sentinel Knowledge Dependabot -->
+        <div class="bg-[#030712] border border-violet-500/35 rounded-xl p-3.5 flex flex-col justify-between gap-1">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-extrabold text-sky-400 uppercase">SERVER RAM &amp; LOAD</span>
-            <span class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 text-[10px] font-bold">RSS {{ serverTelemetry.rssMb }} MB</span>
+            <span class="text-[10px] font-extrabold text-violet-400 uppercase">KNOWLEDGE DEPENDABOT</span>
+            <span class="px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 text-[10px] font-bold">ACTIVE</span>
           </div>
-          <div class="text-base font-extrabold text-white">Heap {{ serverTelemetry.heapUsedMb }} / {{ serverTelemetry.heapTotalMb }} MB</div>
-          <div class="text-[10px] text-slate-400">Load Avg: {{ serverTelemetry.cpuLoad }} &bull; {{ serverTelemetry.platform }}</div>
+          <div class="text-base font-extrabold text-white">{{ stats.dependabotScans }} Scan &bull; {{ stats.dependabotComments }} Auto-Reply</div>
+          <div class="text-[10px] text-slate-400">DocKeeper + ArchGuard RBAC</div>
         </div>
 
-        <!-- Edge Security & Sentinel -->
-        <div class="bg-[#030712] border border-purple-500/35 rounded-xl p-3.5 flex flex-col justify-between gap-1">
+        <!-- Blockchain Vault SHA-256 -->
+        <div class="bg-[#030712] border border-cyan-500/35 rounded-xl p-3.5 flex flex-col justify-between gap-1">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-extrabold text-purple-400 uppercase">GCP ARMOR &amp; SENTINEL</span>
-            <span class="px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 text-[10px] font-bold">SHIELD ON</span>
+            <span class="text-[10px] font-extrabold text-cyan-400 uppercase">SHA-256 VAULT LEDGER</span>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 text-[10px] font-bold">VERIFIED</span>
           </div>
-          <div class="text-base font-extrabold text-white">WAF L7 + SAST Strict</div>
-          <div class="text-[10px] text-slate-400">Vault Ledger SHA-256 Sincronizzato</div>
+          <div class="text-base font-extrabold text-white">{{ stats.vaultTotal }} Certificati On-Chain</div>
+          <div class="text-[10px] text-slate-400">Blog, Forum Threads &amp; Tools</div>
         </div>
 
-        <!-- Connettori Esterni -->
+        <!-- Server Memory & Connettori -->
         <div class="bg-[#030712] border border-amber-500/35 rounded-xl p-3.5 flex flex-col justify-between gap-1">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-extrabold text-amber-400 uppercase">EXTERNAL CONNECTORS</span>
-            <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px] font-bold">LIVE</span>
+            <span class="text-[10px] font-extrabold text-amber-400 uppercase">RUNTIME &amp; CONNECTORS</span>
+            <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px] font-bold">RSS {{ serverTelemetry.rssMb }} MB</span>
           </div>
           <div class="flex items-center gap-2 text-[11px] font-bold text-white mt-0.5">
             <span :class="serverTelemetry.hasBrevo ? 'text-emerald-400' : 'text-amber-300'">Brevo</span> &bull;
             <span :class="serverTelemetry.hasOpenRouter ? 'text-emerald-400' : 'text-amber-300'">OpenRouter</span> &bull;
             <span :class="serverTelemetry.hasStripe ? 'text-emerald-400' : 'text-amber-300'">Stripe</span>
           </div>
-          <div class="text-[10px] text-slate-400">API Gateway &amp; Webhooks Attivi</div>
+          <div class="text-[10px] text-slate-400">Heap {{ serverTelemetry.heapUsedMb }}/{{ serverTelemetry.heapTotalMb }} MB</div>
         </div>
       </div>
     </section>
 
-    <!-- 2. KPI CONTENUTI DATABASE -->
-    <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 font-mono">
+    <!-- 3. KPI CONTENUTI DATABASE (8 METRICHE) -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 font-mono">
       <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-4 card-glow">
         <div class="text-[10px] text-cyan-400 font-bold uppercase">STORIES</div>
         <div class="text-2xl font-extrabold text-white mt-1">{{ stats.stories }}</div>
@@ -202,8 +346,12 @@ onMounted(loadOverview)
         <div class="text-2xl font-extrabold text-violet-300 mt-1">{{ stats.threads }}</div>
       </div>
       <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-4 card-glow">
-        <div class="text-[10px] text-emerald-400 font-bold uppercase">MAIL UNREAD</div>
-        <div class="text-2xl font-extrabold text-emerald-400 mt-1">{{ stats.mailsUnread }}</div>
+        <div class="text-[10px] text-emerald-400 font-bold uppercase">VAULT PROOFS</div>
+        <div class="text-2xl font-extrabold text-emerald-400 mt-1">{{ stats.vaultTotal }}</div>
+      </div>
+      <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-4 card-glow">
+        <div class="text-[10px] text-emerald-300 font-bold uppercase">MAIL UNREAD</div>
+        <div class="text-2xl font-extrabold text-emerald-300 mt-1">{{ stats.mailsUnread }}</div>
       </div>
       <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-4 card-glow">
         <div class="text-[10px] text-amber-400 font-bold uppercase">NEWSLETTER</div>
@@ -219,31 +367,40 @@ onMounted(loadOverview)
       </div>
     </section>
 
-    <!-- 3. GRIGLIA MODULI OPERATIVI -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <NuxtLink
-        v-for="mod in quickModules"
-        :key="mod.to"
-        :to="mod.to"
-        class="bg-dkp-card/95 border border-dkp-border hover:border-cyan-400/60 rounded-2xl p-5 card-glow flex flex-col justify-between gap-3 no-underline transition-all group"
-      >
-        <div class="flex items-center justify-between font-mono">
-          <span class="px-2.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/35 text-cyan-300 text-[10px] font-extrabold">
-            {{ mod.badge }}
-          </span>
-          <span class="text-xs text-slate-400 group-hover:text-emerald-400 font-bold transition-colors">Apri &rarr;</span>
-        </div>
-        <div>
-          <h2 class="text-white font-bold text-base m-0 mb-1 group-hover:text-cyan-300 transition-colors">
-            {{ mod.title }}
-          </h2>
-          <p class="text-slate-400 text-xs m-0 leading-relaxed">
-            {{ mod.desc }}
-          </p>
-        </div>
-      </NuxtLink>
+    <!-- 4. TUTTI I MODULI OPERATIVI & SERVIZI KERNEL -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between font-mono text-xs px-1">
+        <span class="text-slate-400 uppercase tracking-wider font-bold">MODULI OPERATIVI &amp; SERVIZI KERNEL</span>
+        <span class="text-cyan-400">{{ operationalModules.length }} Moduli Attivi</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <NuxtLink
+          v-for="mod in operationalModules"
+          :key="mod.to"
+          :to="mod.to"
+          class="bg-dkp-card/95 border border-dkp-border hover:border-cyan-400/60 rounded-2xl p-5 card-glow flex flex-col justify-between gap-3 no-underline transition-all group"
+        >
+          <div class="flex items-center justify-between font-mono">
+            <span :class="['px-2.5 py-0.5 rounded border text-[10px] font-extrabold uppercase', mod.badgeClass]">
+              {{ mod.badge }}
+            </span>
+            <span class="text-xs text-slate-400 group-hover:text-dkp-accent font-bold transition-transform group-hover:translate-x-1">
+              Apri &rarr;
+            </span>
+          </div>
+          <div>
+            <h2 class="text-white font-bold text-base m-0 mb-1 group-hover:text-dkp-accent transition-colors">
+              {{ mod.title }}
+            </h2>
+            <p class="text-slate-300 text-xs m-0 leading-relaxed">
+              {{ mod.desc }}
+            </p>
+          </div>
+        </NuxtLink>
+      </div>
     </section>
-  
+
     <DkpLiveUsersTelemetryCard />
   </DkpAdminShell>
 </template>

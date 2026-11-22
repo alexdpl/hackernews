@@ -39,6 +39,7 @@ const composerCategory = ref(props.initialCategory || props.categories[0] || '')
 const newPostNodeId = ref<number | null>(props.initialNodeId || null)
 const newPostTitle = ref('')
 const newPostTags = ref<string[]>([])
+
 const newPostContent = ref('')
 const { detectedLang: sentinelLang, grammarIssues: sentinelIssues, applyGrammarFix: applySentinelFix } = useSentinelGrammar(newPostContent)
 const newPostVaultHash = ref('')
@@ -257,6 +258,16 @@ function insertDivider() {
   applyMarkdown('\n---\n', '', '')
 }
 
+function insertImage() {
+  applyMarkdown('![Descrizione Immagine](', ')')
+}
+
+function insertVideoEmbed() {
+  applyMarkdown('@[video](', ')')
+}
+
+const isZenMode = ref(false)
+
 function insertLink() {
   applyMarkdown('[', '](https://)', 'Testo collegamento')
 }
@@ -414,16 +425,110 @@ async function handlePublish() {
     isSubmitting.value = false
   }
 }
+// Autosave locale anti-perdita dati
+
+const AUTOSAVE_KEY = 'DKP_NODE_EDITOR_AUTOSAVE_V1'
+const autosaveNotice = ref('')
+
+watch(
+  [newPostTitle, newPostContent, newPostTags],
+  () => {
+    if (!import.meta.client || isEditMode.value) return
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+        title: newPostTitle.value,
+        content: newPostContent.value,
+        tags: newPostTags.value,
+        savedAt: Date.now()
+      }))
+    } catch {}
+  },
+  { deep: true }
+)
+
+if (import.meta.client && !isEditMode.value) {
+  try {
+    const rawDraft = localStorage.getItem(AUTOSAVE_KEY)
+    if (rawDraft) {
+      const draft = JSON.parse(rawDraft)
+      if (draft?.content && !newPostContent.value) {
+        newPostContent.value = String(draft.content)
+        if (draft.title && !newPostTitle.value) newPostTitle.value = String(draft.title)
+        if (Array.isArray(draft.tags) && newPostTags.value.length === 0) newPostTags.value = draft.tags
+        autosaveNotice.value = 'Bozza ripristinata automaticamente'
+      }
+    }
+  } catch {}
+}
 </script>
 
 <template>
   <div
     v-if="isOpen"
     class="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
-    @click.self="$emit('close')"
+    
   >
-    <div class="bg-[#090d16] border border-purple-500/40 rounded-2xl w-full max-w-4xl p-6 shadow-2xl flex flex-col gap-4 font-sans my-auto">
-      <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-3">
+    <div
+      :class="
+        isZenMode
+          ? 'fixed inset-0 z-[9999] w-screen h-screen bg-[#050814] flex flex-col overflow-hidden font-sans'
+          : 'bg-[#090d16] border border-purple-500/40 rounded-2xl w-full max-w-4xl p-6 shadow-2xl flex flex-col gap-4 font-sans my-auto'
+      "
+    >
+      <!-- NAVBAR SUPERIORE DEDICATA SOLO ALLO ZEN MODE -->
+      <div
+        v-if="isZenMode"
+        class="shrink-0 bg-[#070b14] border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap"
+      >
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-extrabold">
+            ZEN MODE
+          </span>
+          <span class="text-slate-300 font-mono text-xs font-bold truncate max-w-[220px] sm:max-w-sm">
+            {{ newPostTitle || 'Nuova Discussione DKP Nodes' }}
+          </span>
+          <div class="inline-flex rounded-lg bg-[#030712] p-0.5 border border-slate-800 font-mono text-xs">
+            <button
+              type="button"
+              @click="editorTab = 'write'"
+              :class="editorTab === 'write' ? 'bg-emerald-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-slate-200'"
+              class="px-3 py-1 rounded-md transition cursor-pointer"
+            >
+              Scrivi
+            </button>
+            <button
+              type="button"
+              @click="editorTab = 'preview'"
+              :class="editorTab === 'preview' ? 'bg-cyan-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-slate-200'"
+              class="px-3 py-1 rounded-md transition cursor-pointer"
+            >
+              Anteprima
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[11px] font-mono text-slate-400 hidden sm:inline">
+            {{ newPostContent.length }} caratteri
+          </span>
+          <button
+            type="button"
+            @click="showAiNexus = !showAiNexus"
+            :class="showAiNexus ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
+            class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
+          >
+            &#10024; DKP Ai Nexus&copy;
+          </button>
+          <button
+            type="button"
+            @click="isZenMode = false"
+            class="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono text-xs font-extrabold transition cursor-pointer shadow-lg"
+          >
+            &#8617; Torna all'Editor
+          </button>
+        </div>
+      </div>
+      <div v-if="!isZenMode" class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-3">
         <div class="flex items-center gap-2 flex-wrap">
           <h3 class="font-mono text-sm sm:text-base font-black text-white m-0">
             {{ isEditMode ? 'Modifica Thread DKP Nodes' : 'DKP Talks Rich Editor' }}
@@ -474,7 +579,7 @@ async function handlePublish() {
       </div>
 
       <!-- DKP Ai Nexus© — SENTINELLA PASSIVA GRAMMARLY-STYLE -->
-      <div class="bg-[#050a18] border border-purple-500/35 rounded-xl px-3.5 py-2.5 font-mono text-xs space-y-2">
+      <div v-if="!isZenMode" class="bg-[#050a18] border border-purple-500/35 rounded-xl px-3.5 py-2.5 font-mono text-xs space-y-2">
         <div class="flex items-center justify-between gap-2 flex-wrap">
           <div class="flex items-center gap-2">
             <span class="text-purple-300 font-extrabold">DKP Ai Nexus&copy; &bull; Sentinella Passiva</span>
@@ -512,7 +617,7 @@ async function handlePublish() {
       </div>
 
       <!-- PANNELLO DKP Ai Nexus© -->
-      <div v-if="showAiNexus" class="bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs">
+      <div v-if="showAiNexus" :class="{ 'mx-4 sm:mx-6 mt-2 shrink-0': isZenMode }" class="bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs">
         <div class="flex flex-wrap gap-2">
           <input
             v-model="aiPromptHint"
@@ -552,7 +657,7 @@ async function handlePublish() {
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#030712] p-3.5 rounded-xl border border-slate-800 font-mono text-xs">
+      <template v-if="!isZenMode"><div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#030712] p-3.5 rounded-xl border border-slate-800 font-mono text-xs">
         <div>
           <label class="block text-sky-400 font-bold mb-1 text-[11px]">1. Categoria Principale:</label>
           <select v-model="composerCategory" class="w-full bg-[#030712] border border-slate-700 rounded-xl p-2.5 text-slate-200 outline-none font-sans">
@@ -600,7 +705,7 @@ async function handlePublish() {
         <DkpTagInput v-model="newPostTags"/>
       </div>
 
-      <div class="border border-slate-800 rounded-xl overflow-hidden bg-[#030712]">
+      </template><div :class="isZenMode ? 'flex-1 flex flex-col border-0 rounded-none bg-[#050814] overflow-hidden' : 'border border-slate-800 rounded-xl overflow-hidden bg-[#030712]'">
         <div
           v-if="editorMode === 'advanced'"
           class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[#0b101d] border-b border-slate-800 font-mono"
@@ -630,6 +735,9 @@ async function handlePublish() {
             <button type="button" @click="insertQuote" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs cursor-pointer" title="Citazione">Quote</button>
             <button type="button" @click="insertTable" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs cursor-pointer" title="Tabella Markdown">Table</button>
             <button type="button" @click="insertLink" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs cursor-pointer" title="Link">Link</button>
+            <button type="button" @click="insertImage" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-300 text-xs cursor-pointer" title="Inserisci Immagine">Img</button>
+            <button type="button" @click="insertVideoEmbed" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-purple-300 text-xs cursor-pointer" title="Embed Video @[video](url)">Video</button>
+            <button type="button" @click="isZenMode = !isZenMode" :class="isZenMode ? 'bg-cyan-500 text-slate-950 font-extrabold' : 'bg-slate-900 hover:bg-slate-800 text-cyan-300'" class="px-2 py-1 rounded text-xs cursor-pointer" title="Modalità Zen">Zen</button>
             <button type="button" @click="insertDivider" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs cursor-pointer" title="Separatore ---">---</button>
 
             <select v-model="selectedCodeLang" class="bg-[#030712] text-emerald-400 text-[11px] px-2 py-1 rounded outline-none border border-slate-800">
@@ -677,26 +785,26 @@ async function handlePublish() {
           v-model="newPostContent"
           rows="9"
           placeholder="Scrivi il corpo della discussione in Markdown..."
-          class="w-full bg-transparent p-4 text-slate-100 outline-none font-mono text-xs sm:text-sm leading-relaxed resize-y"
+          :class="isZenMode ? 'flex-1 w-full max-w-5xl mx-auto bg-transparent p-5 sm:p-6 text-slate-100 outline-none font-mono text-sm leading-relaxed resize-none' : 'w-full bg-transparent p-4 text-slate-100 outline-none font-mono text-xs sm:text-sm leading-relaxed resize-y'"
           @keydown.enter="handleEnter"
         ></textarea>
 
         <div
           v-else
           ref="previewBoxRef"
-          class="p-5 min-h-[220px] max-h-[360px] overflow-y-auto text-sm text-slate-200 leading-relaxed dkp-preview-content"
+          :class="isZenMode ? 'flex-1 w-full max-w-5xl mx-auto p-6 overflow-y-auto text-sm text-slate-200 leading-relaxed dkp-preview-content' : 'p-5 min-h-[220px] max-h-[360px] overflow-y-auto text-sm text-slate-200 leading-relaxed dkp-preview-content'"
           v-html="previewHtml"
         ></div>
       </div>
 
-      <div class="font-mono text-xs">
+      <div v-if="!isZenMode" class="font-mono text-xs">
         <label class="block text-slate-400 mb-1">Vault SHA-256 Hash (Opzionale &mdash; auto-generato On-Chain se vuoto):</label>
         <input v-model="newPostVaultHash" type="text" placeholder="Generazione automatica SHA-256 sul Proof-of-Code Vault..." class="w-full bg-[#030712] border border-slate-800 rounded-xl p-2.5 text-slate-200 outline-none" />
       </div>
 
-      <div v-if="formError" role="alert" class="bg-rose-500/15 border border-rose-500/40 text-rose-300 px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold">{{ formError }}</div>
+      <div v-if="formError && !isZenMode" role="alert" class="bg-rose-500/15 border border-rose-500/40 text-rose-300 px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold">{{ formError }}</div>
 
-      <div class="flex justify-between items-center pt-3 border-t border-slate-800 flex-wrap gap-3">
+      <div v-if="!isZenMode" class="flex justify-between items-center pt-3 border-t border-slate-800 flex-wrap gap-3">
         <span class="text-[11px] font-mono text-emerald-400">
           {{ isEditMode ? 'Aggiornamento thread e sincronizzazione Vault' : 'Pubblicando questo post riceverai +25 XP e notarizzazione SHA-256!' }}
         </span>
@@ -778,5 +886,21 @@ mark,
   border-radius: 0.375rem !important;
   padding: 0.08rem 0.38rem !important;
   font-weight: 700 !important;
+}
+.dkp-node-zen {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  max-width: none !important;
+  max-height: none !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  padding: 1.5rem 2.5rem !important;
+  overflow-y: auto !important;
+}
+.dkp-node-zen textarea {
+  min-height: 60vh !important;
 }
 </style>

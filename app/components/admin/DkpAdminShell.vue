@@ -10,9 +10,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  subtitle: 'DKP Kernel v2.6 Pure SQL \u2022 Sentinel Network & BEMYAGENT TTEV',
-  badge: 'v2.6 PURE-SQL',
-  seoTitle: 'Admin Control Panel \u2014 DevKernelPulse',
+  subtitle: 'Cruscotto operativo v2.6 Pure SQL • Sentinel Network & SHA-256 Vault',
+  badge: 'DEVKERNELPULSE PRO V2.6 • PURE SQL & SHA-256 VAULT',
+  seoTitle: 'Admin Control Panel — DevKernelPulse',
   seoDescription: 'Pannello amministrativo DevKernelPulse Pure SQL.'
 })
 
@@ -25,20 +25,21 @@ useDkpSeo({
 const route = useRoute()
 
 const adminNavItems = [
-  { to: '/admin', label: '🏠 Dashboard Main' },
-  { to: '/admin/api-gateway', label: '⚙️ API Gateway' },
-  { to: '/admin/mail', label: '📧 Mail Center' },
-  { to: '/admin/newsletter', label: '📣 Newsletter' },
-  { to: '/admin/autoresponder', label: '📡 Autoresponder' },
-  { to: '/admin/crawler', label: '🤖 Crawler Engine' },
-  { to: '/admin/blog', label: '📝 Gestione Blog' },
-  { to: '/admin/nodes', label: '💬 Gestione Nodi' },
-  { to: '/admin/shop', label: '🛍️ Shop & ADS' },
-  { to: '/admin/jobs', label: '💼 Tech Jobs' },
-  { to: '/admin/bounties', label: '🏆 Bounties' },
-  { to: '/admin/users', label: '👥 Utenti & RBAC' },
-  { to: '/admin/diagnostic', label: '🩺 Diagnostic' },
-  { to: '/admin/seo', label: '🔎 SEO & Sitemap' }
+  { to: '/admin', label: 'Overview Main' },
+  { to: '/admin/sentinels', label: 'Sentinel Bot' },
+  { to: '/admin/nodes', label: 'Nodi & Forum' },
+  { to: '/admin/blog', label: 'Editorial Blog' },
+  { to: '/admin/crawler', label: 'Crawler AI' },
+  { to: '/admin/api-gateway', label: 'API Gateway' },
+  { to: '/admin/mail', label: 'Mail Center' },
+  { to: '/admin/newsletter', label: 'Newsletter' },
+  { to: '/admin/autoresponder', label: 'Autoresponder' },
+  { to: '/admin/shop', label: 'Shop & ADS' },
+  { to: '/admin/jobs', label: 'Tech Jobs' },
+  { to: '/admin/bounties', label: 'Bounties' },
+  { to: '/admin/users', label: 'Utenti & RBAC' },
+  { to: '/admin/diagnostic', label: 'Diagnostic' },
+  { to: '/admin/seo', label: 'SEO & Sitemap' }
 ]
 
 function isNavActive(target: string) {
@@ -53,43 +54,56 @@ function isNavActive(target: string) {
 
 <template>
   <div class="dkp-admin-root bg-dkp-bg text-dkp-text font-display min-h-screen bg-grid-pattern relative selection:bg-dkp-accent selection:text-slate-950">
-    <!-- Background Glow -->
+    <!-- Background Glow stile Home -->
     <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
       <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
       <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl"></div>
     </div>
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6">
-      <!-- NAVBAR ADMIN ORGANIZZATA IN GRIGLIA 2x2 -->
-      <nav aria-label="Admin Navigation" class="bg-dkp-card/95 border border-cyan-500/35 rounded-2xl p-3.5 font-mono text-xs card-glow space-y-2.5">
-        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-dkp-border/80">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
-            <span class="text-[11px] font-extrabold text-cyan-400 tracking-wider uppercase">
-              DKP ADMIN CONTROL CENTER &bull; NAV 2&times;2
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] text-slate-400 hidden sm:inline">v2.6-PURE-SQL</span>
-            <NuxtLink
-              to="/"
-              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:text-white font-bold text-[11px] no-underline transition-colors"
-            >
-              &larr; Sito Live
-            </NuxtLink>
-          </div>
+    <!-- TOP TELEMETRY BAR (Identica per stile a DkpHomeTelemetry) -->
+    <div class="relative z-20 border-b border-dkp-border/80 bg-[#050914]/90 backdrop-blur-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="inline-flex items-center gap-1.5 text-emerald-400 font-extrabold">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+            KERNEL CONTROL PLANE
+          </span>
+          <span class="text-slate-600 hidden sm:inline">|</span>
+          <span class="text-slate-300 hidden sm:inline">ENGINE: <strong class="text-cyan-300">PURE-SQL v2.6</strong></span>
+          <span class="text-slate-600 hidden md:inline">|</span>
+          <span class="text-slate-300 hidden md:inline">SENTINEL: <strong class="text-violet-300">DOCKEEPER + ARCHGUARD</strong></span>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        <div class="flex items-center gap-2">
+          <NuxtLink
+            to="/nodes/n/blockchain-vault"
+            class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/35 text-emerald-300 hover:text-white font-bold no-underline transition-colors"
+          >
+            n/blockchain-vault
+          </NuxtLink>
+          <NuxtLink
+            to="/"
+            class="px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/35 text-cyan-300 hover:text-white font-bold no-underline transition-colors"
+          >
+            &larr; Torna alla Home
+          </NuxtLink>
+        </div>
+      </div>
+    </div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6">
+      <!-- NAVBAR MODULI ADMIN -->
+      <nav aria-label="Admin Navigation" class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-3 font-mono text-xs card-glow">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           <NuxtLink
             v-for="item in adminNavItems"
             :key="item.to"
             :to="item.to"
             :class="[
-              'flex items-center justify-center text-center px-2 py-2 rounded-xl font-bold no-underline transition-all border truncate',
+              'flex items-center justify-center text-center px-2.5 py-2 rounded-xl font-bold no-underline transition-all border truncate',
               isNavActive(item.to)
-                ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.3)]'
-                : 'bg-dkp-bg/90 text-slate-200 hover:text-cyan-400 border-dkp-border hover:border-cyan-400/50'
+                ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 border-cyan-300 font-extrabold shadow-[0_0_15px_rgba(34,211,238,0.25)]'
+                : 'bg-[#050914] text-slate-200 hover:text-dkp-accent border-dkp-border hover:border-cyan-400/50'
             ]"
           >
             {{ item.label }}
@@ -97,24 +111,27 @@ function isNavActive(target: string) {
         </div>
       </nav>
 
-      <!-- HEADER SEZIONE ADMIN -->
-      <header class="bg-dkp-card/95 border border-dkp-border rounded-2xl px-6 py-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 card-glow">
-        <div>
-          <div class="flex flex-wrap items-center gap-2.5 mb-2 font-mono">
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-extrabold uppercase">
-              &#9889; {{ badge }}
-            </span>
+      <!-- HERO HEADER SEZIONE ADMIN (Stile Home Hero) -->
+      <header class="bg-dkp-card/95 border border-dkp-border rounded-2xl px-6 py-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 card-glow">
+        <div class="space-y-2.5">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#050914] border border-dkp-border font-mono text-[11px] text-dkp-accent font-bold">
+            <span class="text-amber-400 leading-none">&#9889;</span>
+            <span>{{ badge }}</span>
             <slot name="status-badges" />
           </div>
-          <h1 class="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white m-0">
-            {{ title }}
+
+          <h1 class="font-display text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight m-0">
+            <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
+              {{ title }}
+            </span>
           </h1>
-          <p class="font-mono text-xs text-slate-300 m-0 mt-1.5">
+
+          <p class="text-slate-300 text-sm sm:text-base max-w-3xl leading-relaxed m-0">
             {{ subtitle }}
           </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5 font-mono text-xs">
+        <div class="flex flex-wrap items-center gap-2.5 font-mono text-xs shrink-0">
           <slot name="actions" />
         </div>
       </header>
@@ -126,7 +143,6 @@ function isNavActive(target: string) {
 </template>
 
 <style>
-/* FORZA TUTTI I FORM, INPUT, SELECT E OPTION IN NERO IN TUTTA LA ADMIN */
 .dkp-admin-root {
   color-scheme: dark;
 }

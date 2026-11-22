@@ -200,3 +200,23 @@ Robots & Privacy: Esclusione stringente delle rotte amministrative /admin/ e deg
 Kernel v2.6-PURE-SQL, governato dai principi di BEMYAGENT.md e dalla rete Sentinel, è il fondamento della nuova era di DevKernelPulse. Lavoriamo con passione, rigore architetturale ed orgoglio per offrire alla community globale di sviluppatori uno strumento solido, ultra-veloce e straordinario da usare ogni giorno.
 
 DevKernelPulse Engineering Team — Code with Pride.
+---
+
+## 11. Aggiornamento Architetturale v2.6.4 — Vault Unificato, Talks Tree & Knowledge Dependabot
+
+### 11.1 DKP Blockchain Vault Ledger Unificato (
+/blockchain-vault)
+- **Endpoint Unificato:** GET /api/vault/ledger e GET /api/vault/verify aggregano in Pure SQL i certificati crittografici SHA-256 provenienti da **Editorial Blog** (log_posts), **Forum Thread** (
+ode_posts) e **Developer Tools** (dkp_vault_ledger).
+- **Integrità della Catena:** Ogni record espone lockNumber, aultHash (64 hex), previousHash e merkleRoot, verificabili pubblicamente tramite il validatore interattivo nella pagina /nodes/n/blockchain-vault.
+
+### 11.2 Albero Gerarchico DKP Talks (/nodes)
+- La navigazione della community adotta una struttura ad **Albero Gerarchico espandibile** (Macro-Categoria -> Nodi -> Sub-Nodi) sincronizzata automaticamente con Neon PostgreSQL tramite GET /api/nodes.
+
+### 11.3 Sentinel Network — Knowledge Dependabot (DocKeeper & ArchGuard)
+- **Ruoli e Permessi Dedicati nel DB:** Definiti nelle tabelle Pure SQL sentinel_role_permissions e sentinel_dependabot_scans e collegati agli account bot sentinel_dockeeper (ole: sentinel_dockeeper) e sentinel_archguard (ole: sentinel_archguard) con blocco esplicito della scrittura sul core DB (can_modify_core_db = FALSE).
+- **Parser Semantico & Auto-Commento:**
+  - **Sentinel DocKeeper:** Scansiona i code block Markdown alla ricerca di dipendenze obsolete, API legacy o runtime EOL e pubblica auto-commenti di suggerimento su Thread Forum (
+ode_comments) e Articoli Blog (log_comments).
+  - **Sentinel ArchGuard:** Verifica pattern architetturali, sicurezza SQL/DOM-XSS, gestione segreti e allineamento alla documentazione ufficiale Nuxt/Nitro/Drizzle.
+- **Control Plane Admin (/admin & /admin/sentinels):** Interfaccia allineata al design system della Home Page per gestire i permessi RBAC su NeonDB, testare snippet in sandbox ed eseguire audit retroattivi.

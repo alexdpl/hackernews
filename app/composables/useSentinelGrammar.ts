@@ -166,15 +166,33 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
     { immediate: true }
   )
 
+  const lastFixMessage = ref<string>('')
+
   function applyGrammarFix(issue: SentinelGrammarIssue) {
-    if (issue.replacement) {
-      contentRef.value = contentRef.value.replace(issue.replacement.find, issue.replacement.replaceWith)
+    if (!issue) return
+    const current = String(contentRef.value || '')
+    let next = current
+
+    if (issue.replacement && issue.replacement.find) {
+      const escapedFind = issue.replacement.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      next = current.replace(new RegExp(escapedFind), issue.replacement.replaceWith)
     } else if (issue.id === 'double-space') {
-      contentRef.value = contentRef.value.replace(/([^\n ]) {2,}([^\s-])/g, '$1 $2')
+      next = current.replace(/([^\n ]) {2,}([^\s-])/g, '$1 $2')
     } else if (issue.id === 'unclosed-fence') {
-      contentRef.value = `${contentRef.value}\n\`\`\`\n`
+      next = `${current.trimEnd()}\n\`\`\`\n`
+    } else if (issue.id === 'unclosed-inline-code') {
+      next = `${current}\``
     }
-    runCheck()
+
+    if (next !== current) {
+      contentRef.value = next
+      lastFixMessage.value = `Applicato: ${issue.rule}`
+      if (timer) clearTimeout(timer)
+      runCheck()
+      setTimeout(() => {
+        lastFixMessage.value = ''
+      }, 2200)
+    }
   }
 
   return {

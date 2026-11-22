@@ -1,3 +1,4 @@
+import { KnowledgeDependabotService } from '~~/server/utils/knowledgeDependabot'
 // server/api/nodes/comments.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
@@ -116,6 +117,17 @@ export default defineEventHandler(async (event) => {
       SET comments_count = COALESCE(comments_count, 0) + 1
       WHERE id = ${numericPostId};
     `).catch(() => {})
+
+    // 2B. Sentinel Network — Knowledge Dependabot su commento con code block
+    if (cleanContent.includes('```')) {
+      void KnowledgeDependabotService.inspectAndAutoComment({
+        entityType: 'forum',
+        entityId: numericPostId,
+        title: `Risposta nel thread #${numericPostId}`,
+        content: cleanContent,
+        authorUsername: String(dbUser.username || '')
+      }).catch(() => null)
+    }
 
     // 3. Reward Gamification (+10 XP)
     const rewardXp = 10

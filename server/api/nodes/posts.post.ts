@@ -1,3 +1,4 @@
+import { KnowledgeDependabotService } from '~~/server/utils/knowledgeDependabot'
 // server/api/nodes/posts.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
@@ -128,6 +129,17 @@ export default defineEventHandler(async (event) => {
     await db.execute(sql`
       UPDATE nodes SET posts_count = COALESCE(posts_count, 0) + 1 WHERE id = ${numericNodeId};
     `).catch(() => {})
+
+    // 2B. Sentinel Network — Knowledge Dependabot (DocKeeper + ArchGuard auto-review)
+    if (newPost?.id) {
+      void KnowledgeDependabotService.inspectAndAutoComment({
+        entityType: 'forum',
+        entityId: Number(newPost.id),
+        title: cleanTitle,
+        content: cleanContent,
+        authorUsername: String(dbUser.username || '')
+      }).catch(() => null)
+    }
 
     // 3. Reward Gamification (+25 XP) per la creazione del thread
     const rewardXp = 25

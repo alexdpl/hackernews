@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import DkpLayout from '~/components/DkpLayout.vue'
 import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
+import DkpVaultLedgerView from '~/components/vault/DkpVaultLedgerView.vue'
 import DkpNodesNavBar from '~/components/nodes/DkpNodesNavBar.vue'
 import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
@@ -97,7 +98,7 @@ watch(slug, () => refresh())
               :to="{ path: '/nodes', query: { group: currentNode.category } }"
               class="text-violet-300 hover:text-cyan-300 font-bold no-underline"
             >
-              {{ currentNode.category }}
+              {{ /dkp\s*ecosystem/i.test(String(currentNode.category || '')) ? 'DKP Talks' : currentNode.category }}
             </NuxtLink>
           </li>
           <li class="text-slate-600">/</li>
@@ -110,11 +111,14 @@ watch(slug, () => refresh())
       <!-- NAVBAR RAPIDA 10 MACRO-NODI -->
       <DkpNodesNavBar :nodes="allNodes" @create-thread="navigateTo('/user/dashboard?tab=content&subtab=nodes&new=1')" />
 
+      <!-- BLOCKCHAIN VAULT LEDGER UNIFICATO (3 SEZIONI FILTRABILI) -->
+      <DkpVaultLedgerView v-if="slug === 'blockchain-vault'" />
+
       <!-- HEADER DEL NODO -->
       <div class="bg-dkp-card/95 border border-violet-500/35 rounded-2xl p-5 card-glow flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div class="font-mono text-xs text-violet-300 font-bold">
-            {{ currentNode.category }} &bull; /nodes/n/{{ currentNode.slug }}
+            {{ /dkp\s*ecosystem/i.test(String(currentNode.category || '')) ? 'DKP Talks' : currentNode.category }} &bull; /nodes/n/{{ currentNode.slug }}
           </div>
           <h1 class="text-xl sm:text-2xl font-extrabold text-white m-0 mt-1">{{ currentNode.name }}</h1>
         </div>

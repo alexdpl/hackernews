@@ -1,3 +1,4 @@
+import { KnowledgeDependabotService } from '~~/server/utils/knowledgeDependabot'
 // server/api/blog/submit.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import crypto from 'node:crypto'
@@ -342,6 +343,17 @@ Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${tot
   } catch (dbErr: any) {
     if (dbErr?.statusCode) throw dbErr
     console.warn('⚠️ [NEON DB PERSISTENCE WARN]:', dbErr?.message)
+  }
+
+  if (savedPostRecord?.id || finalSlug) {
+    void KnowledgeDependabotService.inspectAndAutoComment({
+      entityType: 'blog',
+      entityId: Number(savedPostRecord?.id || 0),
+      entitySlug: String(savedPostRecord?.slug || finalSlug || ''),
+      title: cleanTitle,
+      content: String(body.content || ''),
+      authorUsername: String(body.author || '')
+    }).catch(() => null)
   }
 
   // F. RISPOSTA STRUTTURATA PER L'ADMIN PANEL E LA UI

@@ -244,6 +244,17 @@ function renderInlineBackticksInHtml(html: string): string {
   return working
 }
 
+// Pulizia apici doppi '' / backtick residui nei code inline del blog
+if (typeof document !== 'undefined') {
+  const inlineCodes = document.querySelectorAll('.post-content :not(pre) > code, .dkp-markdown-body :not(pre) > code')
+  inlineCodes.forEach((el) => {
+    const txt = el.textContent || ''
+    if (/^`.*`$/.test(txt)) {
+      el.textContent = txt.replace(/^`+|`+$/g, '')
+    }
+  })
+}
+
 const parsedContent = computed(() => {
   const contentVal = post.value?.content || post.value?.description || ''
   if (!contentVal) return ''

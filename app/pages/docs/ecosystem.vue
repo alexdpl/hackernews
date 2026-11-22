@@ -5,11 +5,11 @@ import DKPAdBanner from '~/components/DKPAdBanner.vue'
 const activeSection = ref('architettura')
 const sections = [
   { id: 'architettura', title: '01. Architettura Pure SQL' },
-  { id: 'ai-nexus', title: '02. DKP Ai Nexus© & Sentinelle' },
-  { id: 'mail-nexus', title: '03. DKP Mail Nexus© 2.6' },
-  { id: 'blockchain-vault', title: '04. DKP Blockchain Vault©' },
-  { id: 'moduli', title: '05. 10 Macro-Nodi & Moduli' },
-  { id: 'cli-toolkit', title: '06. DKP CLI & Pulsebot' },
+  { id: 'ai-nexus', title: '02. Knowledge Dependabot & Sentinelle' },
+  { id: 'mail-nexus', title: '03. DKP Mail Nexus 2.6' },
+  { id: 'blockchain-vault', title: '04. Blockchain Vault Ledger Unificato' },
+  { id: 'moduli', title: '05. Albero Gerarchico DKP Talks' },
+  { id: 'cli-toolkit', title: '06. Admin Control Center & Audit' },
   { id: 'gamification', title: '07. Gamification & XP System' }
 ]
 
@@ -23,7 +23,7 @@ function scrollToSection(id: string) {
 
 useDkpSeo({
   title: 'Ecosystem Docs v2.6-PURE-SQL - DevKernelPulse',
-  description: 'Documentazione tecnica completa sull ecosistema DevKernelPulse v2.6-PURE-SQL: DKP Ai Nexus©, Mail Nexus©, Pulsebot (BEMYAGENT.md) e Blockchain Vault.',
+  description: 'Documentazione tecnica completa sull ecosistema DevKernelPulse v2.6-PURE-SQL: Sentinel DocKeeper, ArchGuard, Blockchain Vault Ledger unificato e Albero Nodi.',
   type: 'website',
   canonicalPath: '/docs/ecosystem'
 })
@@ -32,7 +32,7 @@ useDkpSeo({
 <template>
   <DkpLayout
     title="Docs - Ecosistema & BEMYAGENT"
-    subtitle="Standard v2.6-PURE-SQL, DKP Ai Nexus©, Mail Nexus© e notarizzazione"
+    subtitle="Standard v2.6-PURE-SQL, Knowledge Dependabot, Blockchain Vault unificato e Talks Tree"
     :show-sidebar-ads="true"
   >
     <div class="min-h-screen bg-[#020420] text-slate-100 px-4 py-8 font-sans rounded-2xl">
@@ -68,7 +68,7 @@ useDkpSeo({
               to="/nodes/n/blockchain-vault"
               class="block text-center bg-[#020420] hover:border-emerald-400 text-emerald-400 border border-emerald-500/40 font-mono font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all no-underline"
             >
-              Apri Nodo Vault &rarr;
+              Apri Vault Ledger &rarr;
             </NuxtLink>
             <NuxtLink
               to="/docs/api"
@@ -86,13 +86,13 @@ useDkpSeo({
           <!-- HERO DOCS -->
           <header class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-3 shadow-xl">
             <div class="text-xs font-mono font-semibold text-sky-400">
-              Docs / Ecosistema, DKP Ai Nexus©, Mail Nexus© &amp; Architettura v2.6-PURE-SQL
+              Docs / Ecosistema, Knowledge Dependabot, Vault Unificato &amp; Architettura v2.6-PURE-SQL
             </div>
             <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans m-0">
               DevKernelPulse Knowledge Base
             </h1>
             <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans m-0">
-              Guida architetturale completa a <strong class="text-white">DKP Kernel v2.6-PURE-SQL</strong>: design system unificato (<strong class="text-emerald-400">DKP Sentinel Style</strong>), <strong class="text-purple-400">DKP Ai Nexus©</strong> con Sentinella Passiva, <strong class="text-sky-400">DKP Mail Nexus©</strong> (Resend + Brevo), Sentinelle <code class="text-emerald-400 font-mono">BEMYAGENT.md</code> e <strong class="text-emerald-400">DKP Blockchain Vault©</strong>.
+              Guida architetturale completa a <strong class="text-white">DKP Kernel v2.6-PURE-SQL</strong>: design system unificato tra Home, User Dashboard e Admin Control Center, <strong class="text-purple-400">Sentinel Knowledge Dependabot (DocKeeper + ArchGuard)</strong>, albero gerarchico <strong class="text-sky-400">DKP Talks</strong> e <strong class="text-emerald-400">Blockchain Vault Ledger</strong> unificato.
             </p>
           </header>
 
@@ -102,59 +102,59 @@ useDkpSeo({
               01. Architettura di Sistema DKP v2.6-PURE-SQL
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              <strong class="text-white">DevKernelPulse (DKP)</strong> opera su un motore reattivo Pure SQL ad alte prestazioni alimentato da <strong class="text-emerald-400">Nuxt / Vue 3 + Nitro</strong>, database serverless <strong class="text-sky-400">Neon PostgreSQL</strong> con Drizzle ORM e container stateless su <strong class="text-white">GCP Cloud Run</strong> presidiati da suite E2E Playwright.
+              <strong class="text-white">DevKernelPulse (DKP)</strong> opera su un motore reattivo Pure SQL ad alte prestazioni alimentato da <strong class="text-emerald-400">Nuxt / Vue 3 + Nitro</strong>, database serverless <strong class="text-sky-400">Neon PostgreSQL</strong> con query SQL parametrizzate e container stateless su <strong class="text-white">GCP Cloud Run</strong>.
             </p>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-                <h4 class="text-sm font-bold text-emerald-400 font-sans m-0">DKP Sentinel Style (UX Unificata)</h4>
+                <h4 class="text-sm font-bold text-emerald-400 font-sans m-0">Design System Cosmico Unificato</h4>
                 <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Template visivo condiviso tra Feed, Nodes, Blog e Tools con modalità Dark Cyberpunk e White Sepia e syntax highlighting dinamico via <code class="text-sky-400 font-mono">Prism.js</code>.
+                  Template visivo condiviso tra Home Page, User Dashboard, Admin Master Control Center, Feed, Nodes, Blog e Tools con palette Cyber-Emerald, Cyan e Violet.
                 </p>
               </div>
               <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-                <h4 class="text-sm font-bold text-emerald-400 font-sans m-0">Edge Processing &amp; Zero-Trust Auth</h4>
+                <h4 class="text-sm font-bold text-emerald-400 font-sans m-0">Zero-Trust Auth &amp; RBAC Pure SQL</h4>
                 <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Gateway Nitro H3 con verifica SHA-256 in-flight, rate-limiting atomico e gestione difensiva delle rotte dinamiche SSR.
+                  Gateway Nitro H3 con verifica SHA-256 in-flight, sessioni firmate HMAC e matrice permessi granulare su Neon PostgreSQL sia per gli utenti sia per gli agenti Sentinel.
                 </p>
               </div>
             </div>
           </section>
 
-          <!-- SEZIONE 2: DKP AI NEXUS & SENTINELLE -->
+          <!-- SEZIONE 2: KNOWLEDGE DEPENDABOT & SENTINELLE -->
           <section id="ai-nexus" class="bg-[#090d16] border border-purple-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <h2 class="text-xl font-bold text-white font-sans m-0">
-                02. DKP Ai Nexus© &amp; Sentinelle (BEMYAGENT.md)
+                02. Sentinel Network — Knowledge Dependabot (DocKeeper &amp; ArchGuard)
               </h2>
               <span class="bg-purple-500/15 text-purple-300 border border-purple-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
-                BEMYAGENT.md PROTOCOL
+                PHASE 4 • RBAC &amp; AUTO-COMMENT
               </span>
             </div>
 
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              Il <strong class="text-purple-300">DKP Ai Nexus©</strong> sostituisce i vecchi assistenti frammentati e porta l'intelligenza contestuale direttamente nel flusso di lavoro dello sviluppatore:
+              Oltre alla <strong class="text-purple-300">Sentinella Passiva Grammarly-Style</strong> negli editor, la rete Sentinel integra due agenti autonomi con ruoli e permessi dedicati nel database (<code class="text-sky-400 font-mono">sentinel_role_permissions</code>):
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
-                <div class="text-xs font-mono font-black text-purple-300">Sentinella Passiva Grammarly-Style</div>
+              <div class="bg-[#020420] border border-amber-500/30 rounded-xl p-4 flex flex-col gap-2">
+                <div class="text-xs font-mono font-black text-amber-300">Sentinel DocKeeper (@sentinel_dockeeper)</div>
                 <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Analizza in tempo reale i post nell'editor (Blog e Nodes) rilevando la lingua (IT/EN), segnalando ripetizioni, punteggiatura, blocchi codice non chiusi e offrendo correzioni 1-click.
+                  Parser semantico sui code block di Thread Forum e Articoli Blog: rileva dipendenze obsolete (<code class="text-slate-200">moment</code>, <code class="text-slate-200">request</code>, <code class="text-slate-200">node-fetch</code>, <code class="text-slate-200">lodash</code> CJS, Docker EOL) e pubblica automaticamente un commento tecnico con la migrazione moderna.
                 </p>
               </div>
 
-              <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
-                <div class="text-xs font-mono font-black text-emerald-400">Peer Review nei Commenti</div>
+              <div class="bg-[#020420] border border-violet-500/30 rounded-xl p-4 flex flex-col gap-2">
+                <div class="text-xs font-mono font-black text-violet-300">Sentinel ArchGuard (@sentinel_archguard)</div>
                 <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Le Sentinelle valutano il contesto tecnico delle discussioni, suggeriscono miglioramenti agli snippet e filtrano spam e rumore senza generare falsi positivi sul codice.
+                  Verifica pattern architetturali, sicurezza SQL/DOM-XSS, esposizione segreti, I/O bloccante e allineamento alla documentazione ufficiale Nuxt/Nitro/Drizzle pubblicando suggerimenti mirati.
                 </p>
               </div>
 
-              <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
-                <div class="text-xs font-mono font-black text-sky-400">Pulsebot (Ecosystem Guardian)</div>
+              <div class="bg-[#020420] border border-emerald-500/30 rounded-xl p-4 flex flex-col gap-2">
+                <div class="text-xs font-mono font-black text-emerald-400">Permessi Dedicati nel DB</div>
                 <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Sentinella guardiana abbinata a <code class="text-sky-400 font-mono">BEMYAGENT.md</code> che verifica build warning, sicurezza segreti, integrità endpoint Pure SQL e dipendenze.
+                  Ogni agente dispone di flag granulari su NeonDB (<code class="text-slate-200">can_parse_code_blocks</code>, <code class="text-slate-200">can_auto_comment_threads</code>, <code class="text-slate-200">can_auto_comment_blog</code>) con scrittura sul core DB bloccata (<code class="text-rose-300">can_modify_core_db = FALSE</code>).
                 </p>
               </div>
             </div>
@@ -164,7 +164,7 @@ useDkpSeo({
           <section id="mail-nexus" class="bg-[#090d16] border border-sky-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <h2 class="text-xl font-bold text-white font-sans m-0">
-                03. DKP Mail Nexus© 2.6 (Resend + Brevo Dual-Provider)
+                03. DKP Mail Nexus 2.6 (Resend + Brevo Dual-Provider)
               </h2>
               <span class="bg-sky-500/15 text-sky-300 border border-sky-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
                 ASYNC FAILOVER ENGINE
@@ -172,30 +172,15 @@ useDkpSeo({
             </div>
 
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              Il sottosistema <code class="text-sky-400 font-mono">server/utils/mailNexus.ts</code> separa in modo netto i carichi operativi massimizzando deliverability e quote gratuite:
+              Il sottosistema <code class="text-sky-400 font-mono">server/utils/mailNexus.ts</code> separa i carichi operativi tra <strong class="text-emerald-400">Resend</strong> (alert Sentinel Network, sicurezza, transazionali) e <strong class="text-sky-400">Brevo</strong> (Newsletter Double Opt-In e webhook idempotenti su Neon DB).
             </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-                <h4 class="text-sm font-bold text-emerald-400 font-sans m-0">Canale Resend (Sentinel &amp; Kernel)</h4>
-                <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Gestisce notifiche del <strong>Sentinel Network</strong>, alert di sicurezza, notifiche della <strong>Chat Pulse Nexus</strong> e transazionali critiche, fungendo anche da failover per Brevo.
-                </p>
-              </div>
-              <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 flex flex-col gap-1.5">
-                <h4 class="text-sm font-bold text-sky-400 font-sans m-0">Canale Brevo (Newsletter &amp; Community)</h4>
-                <p class="text-xs text-slate-400 leading-relaxed font-sans m-0">
-                  Gestisce Newsletter con <strong>Double Opt-In</strong>, autoresponder e comunicazioni ordinarie, sincronizzando <code class="text-sky-400 font-mono">hard_bounce</code> e <code class="text-sky-400 font-mono">unsubscribed</code> tramite webhook idempotenti su Neon DB.
-                </p>
-              </div>
-            </div>
           </section>
 
-          <!-- SEZIONE 4: BLOCKCHAIN VAULT -->
+          <!-- SEZIONE 4: BLOCKCHAIN VAULT UNIFICATO -->
           <section id="blockchain-vault" class="bg-[#090d16] border border-emerald-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <h2 class="text-xl font-bold text-white font-sans m-0">
-                04. DKP Blockchain Vault© &amp; Contenuti On-Chain
+                04. DKP Blockchain Vault Ledger Unificato (Blog, Forum &amp; Tools)
               </h2>
               <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
                 DKP-VAULT-MAINNET-v2.6
@@ -203,27 +188,27 @@ useDkpSeo({
             </div>
 
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              Sia le discussioni dei Nodi sia gli articoli del Blog sono sigillati nel ledger <code class="text-sky-400 font-mono">dkp_vault_ledger</code> con hash SHA-256 concatenato (<code class="text-emerald-400 font-mono">Block #N</code>, <code class="text-emerald-400 font-mono">previous_hash</code>, <code class="text-emerald-400 font-mono">merkle_root</code>) verificabile pubblicamente su <NuxtLink to="/nodes/n/blockchain-vault" class="text-emerald-400 underline">n/blockchain-vault</NuxtLink>.
+              L'endpoint <code class="text-sky-400 font-mono">/api/vault/ledger</code> e la vista pubblica <NuxtLink to="/nodes/n/blockchain-vault" class="text-emerald-400 underline">n/blockchain-vault</NuxtLink> aggregano in un unico registro immutabile le notarizzazioni SHA-256 di <strong>Editorial Blog</strong>, <strong>Forum Thread (<code class="text-emerald-300">n/</code>)</strong> e <strong>Developer Tools</strong>, completi di numero blocco, catena <code class="text-emerald-400 font-mono">previous_hash</code>, <code class="text-emerald-400 font-mono">merkle_root</code> e verificatore interattivo di impronte a 64 caratteri.
             </p>
           </section>
 
-          <!-- SEZIONE 5: 10 MACRO-NODI -->
+          <!-- SEZIONE 5: ALBERO GERARCHICO DKP TALKS -->
           <section id="moduli" class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-4 shadow-xl">
             <h2 class="text-xl font-bold text-white pb-3 border-b border-slate-800 font-sans m-0">
-              05. Struttura Gerarchica a 10 Macro-Nodi Semantici
+              05. Albero Gerarchico DKP Talks (Macro-Categorie &rarr; Nodi &rarr; Sub-Nodi)
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              La tassonomia dei forum è stata riordinata su 10 macro-categorie bilanciate per evitare dispersione: <strong>DKP Ecosystem &amp; Core</strong>, <strong>Community &amp; Social</strong>, <strong>Dev, Tech &amp; Architecture</strong>, <strong>AI, LLM &amp; Neural Agents</strong>, <strong>Security, Cyber &amp; Vault</strong>, <strong>Cloud, Infra &amp; Databases</strong>, <strong>Tools, CLI &amp; Analytics</strong>, <strong>Blockchain, Web3 &amp; DeFi</strong>, <strong>Mobile &amp; Cross-Platform</strong> e <strong>Programming Languages &amp; Systems</strong>.
+              L'hub <NuxtLink to="/nodes" class="text-sky-400 underline">/nodes</NuxtLink> organizza le discussioni in un <strong>Albero Gerarchico interattivo</strong> su 10 Macro-Categorie semantiche con espansione/compressione rami, conteggio thread in tempo reale e accesso diretto al nodo speciale <code class="text-emerald-400 font-mono">n/blockchain-vault</code>.
             </p>
           </section>
 
-          <!-- SEZIONE 6: CLI & PULSEBOT -->
+          <!-- SEZIONE 6: ADMIN CONTROL CENTER -->
           <section id="cli-toolkit" class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-4 shadow-xl">
             <h2 class="text-xl font-bold text-white pb-3 border-b border-slate-800 font-sans m-0">
-              06. DKP CLI Toolkit &amp; Audit Ecosystem
+              06. Admin Master Control Center &amp; Console Sentinel
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              Tramite gli script di audit dell'ecosistema (<code class="text-sky-400 font-mono">scripts/audit-ecosystem.mjs</code>) e la suite E2E Playwright, ogni build viene validata prima del rollout su Google Cloud Run verificando SSR, sitemap dinamica e integrità degli endpoint.
+              La dashboard amministrativa (<code class="text-sky-400 font-mono">/admin</code> e <code class="text-sky-400 font-mono">/admin/sentinels</code>) condivide il design system della Home Page e consente di monitorare telemetria NeonDB, certificati Vault, permessi RBAC delle Sentinelle ed eseguire audit retroattivi su Blog e Forum.
             </p>
           </section>
 
@@ -233,7 +218,7 @@ useDkpSeo({
               07. Gamification, XP &amp; Reputation Tier
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              Pubblicare articoli verificati (+150 XP), notarizzare codice nel Vault (+100 XP), aprire discussioni nei Nodi (+50 XP) e contribuire con commenti tecnici (+10 XP) aumenta il livello pubblico, sblocca badge (<em>Top Debater</em>, <em>Kernel Admin</em>) ed espande le quote API.
+              Pubblicare articoli verificati (+150 XP), notarizzare codice nel Vault (+100 XP), aprire discussioni nei Nodi (+25/+50 XP) e contribuire con commenti tecnici (+10 XP) aumenta il livello pubblico, sblocca badge verificati ed espande le quote API.
             </p>
           </section>
 
