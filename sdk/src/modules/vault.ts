@@ -11,7 +11,7 @@ export interface NotarizePayload {
 }
 
 export interface VerifyPayload {
-  entityType?: 'blog' | 'forum' | 'code';
+  entityType?: 'blog' | 'forum' | 'code' | 'sentinel_scan';
   entityId?: number | string;
   slug?: string;
   hash?: string;
@@ -21,7 +21,7 @@ export class VaultModule {
   constructor(private client: DKPClient) {}
 
   async notarize(payload: NotarizePayload) {
-    return this.client.request<any>(`/vault/notarize`, {
+    return this.client.request<any>('/vault/notarize', {
       method: 'POST',
       body: JSON.stringify(payload)
     });
@@ -34,10 +34,14 @@ export class VaultModule {
     if (payload.slug) query.append('slug', payload.slug);
     if (payload.hash) query.append('hash', payload.hash);
 
-    return this.client.request<any>(`/vault/verify?${query.toString()}`);
+    return this.client.request<any>('/vault/verify?' + query.toString());
+  }
+
+  async verifySafetyProof(vaultHash: string) {
+    return this.verify({ entityType: 'sentinel_scan', hash: vaultHash });
   }
 
   async getLedger(limit = 50) {
-    return this.client.request<any>(`/vault/ledger?limit=${limit}`);
+    return this.client.request<any>('/vault/ledger?limit=' + limit);
   }
 }

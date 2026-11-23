@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
 useHead({
   title: 'API Status & Latency ÔÇö DevKernelPulse v2.6-PURE-SQL',
@@ -160,7 +161,7 @@ useDkpSeo({
           </div>
         </div>
       </section>
-
+ <DkpAdsWidget placement="docs" />
     </div>
   </div>
   </DkpLayout>

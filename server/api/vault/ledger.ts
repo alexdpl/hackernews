@@ -316,13 +316,17 @@ export default defineEventHandler(async (event) => {
       seenKeys.add(dedupKey)
 
       const rawTool = String(row.toolType || 'PROOF_OF_CODE').toUpperCase()
-      const routeUrl = rawTool.includes('SCAN')
-        ? '/tools/ai-scanner'
-        : rawTool.includes('CLI')
-          ? '/tools/cli-toolkit'
-          : rawTool.includes('PULSE')
-            ? '/feed'
-            : '/tools/proof-of-code'
+      const routeUrl = rawTool.includes('SENTINEL')
+        ? '/tools/sentinel-scan'
+        : rawTool.includes('OPENUI')
+          ? '/tools/openui-studio'
+          : rawTool.includes('SCAN')
+            ? '/tools/ai-scanner'
+            : rawTool.includes('CLI')
+              ? '/tools/cli-toolkit'
+              : rawTool.includes('PULSE')
+                ? '/feed'
+                : '/tools/proof-of-code'
 
       unified.push({
         uid: `TOOL-${row.id}`,
@@ -343,6 +347,59 @@ export default defineEventHandler(async (event) => {
     }
   } catch {}
 
+  // -----------------------------------------------------------------------
+  // 4. PROOF OF SAFETY ON-CHAIN (dkp_vault_ledger: sentinel_scan / openui_studio)
+  // -----------------------------------------------------------------------
+  try {
+    const safetyRes = await db.execute(sql`
+      SELECT
+        id,
+        entity_type AS "entityType",
+        entity_id AS "entityId",
+        block_number AS "blockNumber",
+        vault_hash AS "vaultHash",
+        merkle_root AS "merkleRoot",
+        notarized_at AS "createdAt"
+      FROM dkp_vault_ledger
+      WHERE entity_type IN ('sentinel_scan', 'openui_studio')
+      ORDER BY id DESC
+      LIMIT 150;
+    `)
+
+    for (const row of extractRows(safetyRes)) {
+      const hash = String(row.vaultHash || '').trim()
+      if (!hash) continue
+      const existsAlready = unified.some((u) => u.hash === hash)
+      if (existsAlready) {
+        const existing = unified.find((u) => u.hash === hash)
+        if (existing) {
+          existing.blockNumber = row.blockNumber ? Number(row.blockNumber) : existing.blockNumber
+          existing.merkleRoot = row.merkleRoot ? String(row.merkleRoot) : existing.merkleRoot
+        }
+        continue
+      }
+
+      const isOpenUi = String(row.entityType) === 'openui_studio'
+      unified.push({
+        uid: (isOpenUi ? 'OPENUI-' : 'SAFETY-') + row.id,
+        category: 'tool',
+        badgeLabel: 'PROOF OF SAFETY',
+        subType: isOpenUi ? 'OPENUI STUDIO SAAS' : 'SENTINEL SCAN SAST',
+        entityId: Number(row.entityId || row.id),
+        title: isOpenUi
+          ? 'OpenUI Studio Proof of Safety #' + row.blockNumber
+          : 'Sentinel Scan Proof of Safety #' + row.blockNumber,
+        author: 'sentinel-ai',
+        hash,
+        blockNumber: row.blockNumber ? Number(row.blockNumber) : null,
+        merkleRoot: row.merkleRoot ? String(row.merkleRoot) : null,
+        nodeSlug: null,
+        routeUrl: isOpenUi ? '/tools/openui-studio' : '/tools/sentinel-scan',
+        status: 'VERIFIED',
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString()
+      })
+    }
+  } catch {}
   // Ordinamento cronologico globale decrescente (created_at DESC)
   unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 

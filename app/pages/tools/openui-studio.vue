@@ -399,14 +399,10 @@ async function notarizeToVault() {
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Chat &amp; Prompt Stream
           </span>
-          <button
-            type="button"
-            @click="notarizeToVault"
-            :disabled="isNotarizing || !lastAiMessage"
-            class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer shadow-sm"
-          >
-            {{ isNotarizing ? 'Notarizzazione...' : 'Salva nel Vault' }}
-          </button>
+          <div class="flex items-center gap-2">
+            <NuxtLink v-if="lastSafetyProof" to="/vault" class="text-[11px] font-mono font-bold text-cyan-300 hover:underline no-underline">Block #{{ lastSafetyProof.blockNumber }} &rarr;</NuxtLink>
+            <button type="button" @click="notarizeToVault" :disabled="isNotarizing || !lastAiMessage" class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer shadow-sm">{{ isNotarizing ? 'Audit SAST & Vault...' : 'Proof of Safety + Vault' }}</button>
+          </div>
         </div>
 
         <div ref="chatScrollRef" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">

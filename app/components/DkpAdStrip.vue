@@ -10,7 +10,7 @@ const props = withDefaults(
   }>(),
   {
     layout: 'horizontal',
-    categoryTag: 'DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT',
+    categoryTag: 'DKP DEV LIBRARY &bull; LIBRI & RISORSE CONSIGLIATE',
     topic: '',
     tags: () => []
   }
@@ -24,12 +24,13 @@ interface VaultBookItem {
   tag: string
   accent: 'amber' | 'emerald' | 'cyan'
   keywords: string[]
+  isAmazon: boolean
 }
 
-function normalizeSafeUrl(rawUrl?: string): string {
+function normalizeBookUrl(rawUrl?: string): string {
   const clean = String(rawUrl || '').trim()
   if (!clean || clean === '#' || /^(javascript|data|vbscript):/i.test(clean)) {
-    return '/nodes/n/blockchain-vault'
+    return '/user/ads'
   }
   if (clean === '/vault' || clean === '/nodes/blockchain-vault') return '/nodes/n/blockchain-vault'
   if (clean === '/api-console') return '/user/dashboard?tab=api'
@@ -41,41 +42,61 @@ const fallbackBooks: VaultBookItem[] = [
     id: 'vault-book-1',
     title: 'Designing Data-Intensive Applications',
     snippet: 'Architetture distribuite, database Pure SQL, replicazione, partitioning e stream processing ad alte prestazioni.',
-    url: '/shop',
+    url: 'https://www.amazon.it/s?k=Designing+Data-Intensive+Applications',
     tag: 'SYSTEMS & SQL',
     accent: 'emerald',
-    keywords: ['sql', 'database', 'postgres', 'neon', 'distributed', 'backend', 'cloud', 'architecture', 'data']
+    keywords: ['sql', 'database', 'postgres', 'neon', 'distributed', 'backend', 'cloud', 'architecture', 'data'],
+    isAmazon: true
   },
   {
     id: 'vault-book-2',
-    title: 'Black Hat Rust & Offensive Security',
-    snippet: 'Crittografia applicata, audit SAST, analisi binaria e difesa attiva delle infrastrutture cloud-native.',
-    url: '/shop',
-    tag: 'SECURITY & VAULT',
-    accent: 'amber',
-    keywords: ['security', 'cyber', 'rust', 'sha-256', 'vault', 'sast', 'xss', 'sqli', 'crypto', 'audit']
+    title: 'Clean Architecture & Domain-Driven Design',
+    snippet: 'Pattern modulari per mantenere sistemi complex-core disaccoppiati, testabili e scalabili nel tempo.',
+    url: 'https://www.amazon.it/s?k=Clean+Architecture+Robert+Martin',
+    tag: 'ARCHITECTURE',
+    accent: 'cyan',
+    keywords: ['clean', 'architecture', 'ddd', 'typescript', 'nuxt', 'vue', 'design', 'pattern', 'code'],
+    isAmazon: true
   },
   {
     id: 'vault-book-3',
-    title: 'Clean Architecture & Domain-Driven Design',
-    snippet: 'Pattern modulari per mantenere sistemi complex-core disaccoppiati, testabili e scalabili nel tempo.',
-    url: '/shop',
-    tag: 'ARCHITECTURE',
-    accent: 'cyan',
-    keywords: ['clean', 'architecture', 'ddd', 'typescript', 'nuxt', 'vue', 'design', 'pattern', 'code']
-  },
-  {
-    id: 'vault-book-4',
     title: 'AI Engineering & LLM Production Systems',
     snippet: 'Structured Outputs, agenti autonomi, RAG, pipeline di inferenza affidabili e sicurezza deterministica in produzione.',
-    url: '/shop',
+    url: 'https://www.amazon.it/s?k=AI+Engineering+Chip+Huyen',
     tag: 'AI & AGENTS',
-    accent: 'emerald',
-    keywords: ['ai', 'llm', 'agent', 'sentinel', 'bemyagent', 'rag', 'ml', 'model', 'prompt']
+    accent: 'amber',
+    keywords: ['ai', 'llm', 'agent', 'sentinel', 'bemyagent', 'rag', 'ml', 'model', 'prompt'],
+    isAmazon: true
   }
 ]
 
-const rawDbAds = ref<VaultBookItem[]>([])
+const { data: activeRes, refresh: refreshBooks } = await useFetch<any>('/api/ads/active', {
+  key: () => 'dkp-affiliate-books-' + props.layout + '-' + (props.topic || 'default'),
+  server: false,
+  lazy: true,
+  default: () => ({ ok: true, ads: [] })
+})
+
+const rawDbAds = computed<VaultBookItem[]>(() => {
+  const rows = activeRes.value?.ads
+  if (!Array.isArray(rows)) return []
+  return rows.map((row: any, idx: number): VaultBookItem => {
+    const url = normalizeBookUrl(row.url || row.targetUrl)
+    const isAmazon = /amazon\.|amzn\./i.test(url)
+    const accents: Array<'emerald' | 'cyan' | 'amber'> = ['emerald', 'cyan', 'amber']
+    return {
+      id: row.id ?? ('db-book-' + idx),
+      title: String(row.title || 'Libro Tecnico Consigliato'),
+      snippet: String(row.snippet || row.tagline || 'Risorsa tecnica selezionata su DevKernelPulse.'),
+      url,
+      tag: String(row.tag || (isAmazon ? 'DEV LIBRARY' : 'PARTNER PICK')).toUpperCase(),
+      accent: accents[idx % accents.length],
+      keywords: Array.isArray(row.keywords) ? row.keywords : [],
+      isAmazon
+    }
+  })
+})
+
 const stripRef = ref<HTMLElement | null>(null)
 const impressionsTracked = ref(false)
 let observer: IntersectionObserver | null = null
@@ -107,189 +128,168 @@ const ads = computed<VaultBookItem[]>(() => {
   return pool.slice(0, 3)
 })
 
-function getCardTheme(accent: VaultBookItem['accent']) {
-  if (accent === 'amber') {
-    return {
-      card: 'border-amber-500/35 hover:border-cyan-400 bg-gradient-to-br from-amber-500/[0.07] via-dkp-bg/95 to-dkp-bg',
-      badge: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
-      title: 'text-amber-300 group-hover:text-cyan-400'
-    }
-  }
+function getCardAccent(accent: VaultBookItem['accent']) {
   if (accent === 'cyan') {
     return {
-      card: 'border-cyan-500/35 hover:border-cyan-400 bg-gradient-to-br from-cyan-500/[0.07] via-dkp-bg/95 to-dkp-bg',
-      badge: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40',
-      title: 'text-cyan-300 group-hover:text-cyan-400'
+      border: 'border-cyan-500/25 hover:border-cyan-400/50',
+      badge: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
+      cta: 'text-cyan-300 hover:text-white'
+    }
+  }
+  if (accent === 'amber') {
+    return {
+      border: 'border-amber-500/25 hover:border-amber-400/50',
+      badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+      cta: 'text-amber-300 hover:text-white'
     }
   }
   return {
-    card: 'border-emerald-500/35 hover:border-cyan-400 bg-gradient-to-br from-emerald-500/[0.07] via-dkp-bg/95 to-dkp-bg',
-    badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40',
-    title: 'text-emerald-400 group-hover:text-cyan-400'
+    border: 'border-emerald-500/25 hover:border-emerald-400/50',
+    badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+    cta: 'text-emerald-300 hover:text-white'
   }
 }
 
-function trackBookEvent(campaignId: string | number, actionType: 'impression' | 'click') {
-  if (!campaignId || String(campaignId).startsWith('vault-book-')) return
-
-  const payload = JSON.stringify({ campaignId, actionType })
+function sendTrack(id: string | number, type: 'impression' | 'click') {
+  const sid = String(id || '')
+  if (!sid || sid.startsWith('vault-book-')) return
+  const payload = JSON.stringify({ campaignId: id, type, actionType: type })
   if (import.meta.client && navigator.sendBeacon) {
     navigator.sendBeacon('/api/ads/track', new Blob([payload], { type: 'application/json' }))
   } else {
-    $fetch('/api/ads/track', {
-      method: 'POST',
-      body: { campaignId, actionType }
-    }).catch(() => null)
+    $fetch('/api/ads/track', { method: 'POST', body: { campaignId: id, type, actionType: type } }).catch(() => null)
   }
 }
 
-onMounted(async () => {
-  try {
-    const res = await $fetch<any>('/api/ads/active').catch(() => null)
-    const list = res?.ads || res?.data || []
-    if (Array.isArray(list) && list.length > 0) {
-      const accents: Array<'emerald' | 'amber' | 'cyan'> = ['emerald', 'amber', 'cyan']
-      rawDbAds.value = list
-        .filter((ad: any) => /amazon\.|amzn\.|book|libri|library/i.test(`${ad.url || ad.targetUrl || ''} ${ad.tag || ''} ${ad.title || ''}`))
-        .map((ad: any, i: number) => {
-          const safeUrl = normalizeSafeUrl(ad.url || ad.targetUrl)
-          return {
-            id: ad.id,
-            title: ad.title,
-            snippet: ad.snippet || ad.tagline || 'Approfondimento tecnico selezionato dal Vault DKP.',
-            url: safeUrl,
-            tag: ad.tag || 'VAULT LIBRARY',
-            accent: accents[i % 3],
-            keywords: String(`${ad.title} ${ad.tag || ''}`).toLowerCase().split(/\s+/)
-          }
-        })
-    }
-  } catch {}
+function handleAdClick(id: string | number) {
+  sendTrack(id, 'click')
+}
 
-  if (import.meta.client && stripRef.value && typeof IntersectionObserver !== 'undefined') {
-    observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting) && !impressionsTracked.value) {
-          impressionsTracked.value = true
-          ads.value.forEach((ad) => trackBookEvent(ad.id, 'impression'))
-          observer?.disconnect()
-        }
-      },
-      { threshold: 0.35 }
-    )
-    observer.observe(stripRef.value)
-  }
+function handleRotate() {
+  impressionsTracked.value = false
+  refreshBooks()
+}
+
+onMounted(() => {
+  if (!import.meta.client || !stripRef.value || typeof IntersectionObserver === 'undefined') return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting) && !impressionsTracked.value) {
+        impressionsTracked.value = true
+        ads.value.forEach((item) => sendTrack(item.id, 'impression'))
+        observer?.disconnect()
+      }
+    },
+    { threshold: 0.35 }
+  )
+  observer.observe(stripRef.value)
 })
 
 onUnmounted(() => {
   observer?.disconnect()
 })
-
-const handleAdClick = (adId: string | number) => {
-  trackBookEvent(adId, 'click')
-}
 </script>
 
 <template>
   <section
     ref="stripRef"
-    aria-label="DKP Ads Network Approfondimenti dal Vault"
-    class="w-full rounded-2xl bg-dkp-card/95 border border-cyan-500/30 p-5 card-glow font-sans"
+    aria-label="DKP Dev Library & Affiliate Picks"
+    class="w-full rounded-2xl bg-dkp-card/95 border border-dkp-border p-4 font-sans"
   >
-    <!-- HEADER IN CELESTE DKP + LINK LEDGER /nodes/n/blockchain-vault -->
-    <div class="flex flex-wrap items-center justify-between gap-2 pb-3.5 mb-4 border-b border-dkp-border font-mono">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0 shadow-[0_0_8px_#22d3ee]"></span>
-        <span class="text-xs font-extrabold uppercase tracking-wider text-cyan-400 truncate">
-          &#128218; <span v-html="categoryTag"></span>
-        </span>
+    <div class="flex items-center justify-between gap-2 pb-3 mb-3.5 border-b border-dkp-border/80 font-mono">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 shrink-0"></span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-cyan-300 truncate" v-html="categoryTag"></span>
       </div>
 
-      <NuxtLink
-        to="/nodes/n/blockchain-vault"
-        class="text-xs font-bold text-cyan-400 hover:text-white no-underline transition-colors shrink-0"
-      >
-        Vault Ledger &rarr;
-      </NuxtLink>
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          title="Aggiorna selezione"
+          @click="handleRotate"
+          class="text-xs text-slate-400 hover:text-white bg-transparent border-none cursor-pointer p-0 transition-colors"
+        >
+          &#8635;
+        </button>
+
+        <NuxtLink
+          to="/user/ads"
+          class="px-2.5 py-1 rounded-lg bg-[#050914] hover:bg-slate-900 border border-dkp-border text-slate-300 hover:text-cyan-300 font-mono text-[11px] font-bold no-underline transition-colors"
+        >
+          I Miei Link
+        </NuxtLink>
+      </div>
     </div>
 
-    <!-- GRIGLIA ORIZZONTALE O VERTICALE (3 CARD COLORATE) -->
     <div
       :class="[
         layout === 'horizontal'
-          ? 'grid grid-cols-1 md:grid-cols-3 gap-4'
+          ? 'grid grid-cols-1 md:grid-cols-3 gap-3.5'
           : 'flex flex-col gap-3'
       ]"
     >
-      <template v-for="ad in ads" :key="ad.id">
-        <!-- Rotta interna SPA -->
-        <NuxtLink
-          v-if="ad.url.startsWith('/')"
-          :to="ad.url"
-          :class="[
-            'border rounded-xl p-4 no-underline transition-all flex flex-col justify-between gap-3 group shadow-md',
-            getCardTheme(ad.accent).card
-          ]"
-          @click="handleAdClick(ad.id)"
-        >
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-2.5 font-mono">
-              <span :class="['text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border', getCardTheme(ad.accent).badge]">
-                {{ ad.tag }}
-              </span>
-              <span class="text-[9px] text-slate-400 uppercase font-bold">Vault Pick</span>
-            </div>
-
-            <h4 :class="['text-sm font-extrabold transition-colors m-0 mb-1.5 leading-snug line-clamp-2', getCardTheme(ad.accent).title]">
-              {{ ad.title }}
-            </h4>
-
-            <p class="text-xs text-slate-300 m-0 leading-relaxed line-clamp-3">
-              {{ ad.snippet }}
-            </p>
+      <article
+        v-for="ad in ads"
+        :key="ad.id"
+        :class="[
+          'rounded-xl bg-[#050914]/90 border p-3.5 transition-all flex flex-col justify-between group',
+          getCardAccent(ad.accent).border
+        ]"
+      >
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-2 font-mono">
+            <span
+              :class="[
+                'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border',
+                getCardAccent(ad.accent).badge
+              ]"
+            >
+              {{ ad.tag }}
+            </span>
+            <span class="text-[9px] text-slate-400 uppercase font-mono">
+              {{ ad.isAmazon ? 'Partner' : 'Vault' }}
+            </span>
           </div>
 
-          <div class="pt-2.5 border-t border-dkp-border/80 flex items-center justify-between font-mono text-[11px] font-bold text-emerald-400 group-hover:text-cyan-400 transition-colors">
+          <h4 class="text-xs sm:text-sm font-bold text-white leading-snug m-0 mb-1 group-hover:text-cyan-300 transition-colors">
+            {{ ad.title }}
+          </h4>
+
+          <p class="text-[11px] sm:text-xs text-slate-400 leading-relaxed m-0 line-clamp-2">
+            {{ ad.snippet }}
+          </p>
+        </div>
+
+        <div class="mt-3 pt-2.5 border-t border-dkp-border/70 font-mono">
+          <NuxtLink
+            v-if="ad.url.startsWith('/')"
+            :to="ad.url"
+            @click="handleAdClick(ad.id)"
+            :class="[
+              'w-full inline-flex items-center justify-between text-[11px] font-bold no-underline transition-colors',
+              getCardAccent(ad.accent).cta
+            ]"
+          >
             <span>Approfondisci</span>
             <span>&rarr;</span>
-          </div>
-        </NuxtLink>
+          </NuxtLink>
 
-        <!-- Link esterno -->
-        <a
-          v-else
-          :href="ad.url"
-          target="_blank"
-          rel="sponsored noopener noreferrer"
-          :class="[
-            'border rounded-xl p-4 no-underline transition-all flex flex-col justify-between gap-3 group shadow-md',
-            getCardTheme(ad.accent).card
-          ]"
-          @click="handleAdClick(ad.id)"
-        >
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-2.5 font-mono">
-              <span :class="['text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border', getCardTheme(ad.accent).badge]">
-                {{ ad.tag }}
-              </span>
-              <span class="text-[9px] text-slate-400 uppercase font-bold">Vault Pick</span>
-            </div>
-
-            <h4 :class="['text-sm font-extrabold transition-colors m-0 mb-1.5 leading-snug line-clamp-2', getCardTheme(ad.accent).title]">
-              {{ ad.title }}
-            </h4>
-
-            <p class="text-xs text-slate-300 m-0 leading-relaxed line-clamp-3">
-              {{ ad.snippet }}
-            </p>
-          </div>
-
-          <div class="pt-2.5 border-t border-dkp-border/80 flex items-center justify-between font-mono text-[11px] font-bold text-emerald-400 group-hover:text-cyan-400 transition-colors">
-            <span>Approfondisci</span>
+          <a
+            v-else
+            :href="ad.url"
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            @click="handleAdClick(ad.id)"
+            :class="[
+              'w-full inline-flex items-center justify-between text-[11px] font-bold no-underline transition-colors',
+              getCardAccent(ad.accent).cta
+            ]"
+          >
+            <span>{{ ad.isAmazon ? 'Vedi su Amazon' : 'Apri Risorsa' }}</span>
             <span>&nearr;</span>
-          </div>
-        </a>
-      </template>
+          </a>
+        </div>
+      </article>
     </div>
   </section>
 </template>

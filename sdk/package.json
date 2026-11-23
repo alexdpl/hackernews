@@ -1,12 +1,19 @@
 {
   "name": "@devkernelpulse/sdk",
-  "version": "1.0.0",
-  "description": "DevKernelPulse SDK: AI Trinity, DKP Blockchain Vault©, Forum/Blog On-Chain & Sentinel SAST",
+  "version": "1.1.0",
+  "description": "DevKernelPulse SDK v1.1: Trinity AI, DKP Blockchain Vault, Sentinel Scan SAST, OpenUI Studio & Proof of Safety",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -17,10 +24,18 @@
     "vault",
     "devkernelpulse",
     "security",
-    "blog",
-    "blockchain",
+    "sast",
+    "sentinel-scan",
+    "openui",
+    "bemyagent",
+    "proof-of-safety",
     "pure-sql"
   ],
+  "homepage": "https://devkernelpulse.org/docs/sdk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devkernelpulse/dkp-sdk.git"
+  },
   "author": "DevKernelPulse Team",
   "license": "MIT",
   "devDependencies": {

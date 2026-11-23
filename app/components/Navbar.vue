@@ -21,6 +21,23 @@ const globalXp = ref(0)
 const globalLevel = ref(1)
 const isXpAnimating = ref(false)
 
+const currentSectionBadge = computed(() => {
+  const p = route.path
+  if (p.startsWith('/tools')) return 'TOOLS'
+  if (p.startsWith('/docs') || p.startsWith('/shop') || p.startsWith('/status') || p.includes('tab=api')) return 'API & SAAS'
+  if (p.startsWith('/submit')) return 'SUBMIT'
+  if (p.startsWith('/nodes') || p.startsWith('/blog') || p.startsWith('/news') || p.startsWith('/feed') || p.startsWith('/ask') || p.startsWith('/show') || p.startsWith('/jobs') || p.startsWith('/newest')) return 'HUB'
+  return ''
+})
+
+const isNewsSectionActive = computed(() => {
+  const p = route.path
+  return p === '/' || p.startsWith('/news') || p.startsWith('/feed') || p.startsWith('/newest') || p.startsWith('/blog') || p.startsWith('/nodes') || p.startsWith('/ask') || p.startsWith('/show') || p.startsWith('/jobs')
+})
+
+const isToolsSectionActive = computed(() => route.path.startsWith('/tools'))
+const isApiSectionActive = computed(() => route.path.startsWith('/docs') || route.path.startsWith('/shop') || route.path.startsWith('/status'))
+const isSubmitSectionActive = computed(() => route.path.startsWith('/submit'))
 function toggleDropdown(name: string) {
   activeDropdown.value = activeDropdown.value === name ? null : name
   if (activeDropdown.value) isXpMenuOpen.value = false
@@ -173,7 +190,8 @@ const newsCategories = [
 ]
 
 const dkpTools = [
-  { name: 'OpenUI Studio AI', description: 'Generatore interfacce e preview live', icon: '🎨', route: '/tools/openui-studio', badge: 'v2.6' },
+    { name: 'Sentinel Scan (SAST)', description: 'Audit CWE & Proof of Safety SHA-256', icon: '🛡️', route: '/tools/sentinel-scan', badge: 'SAAS' },
+  { name: 'OpenUI Studio AI', description: 'Generatore interfacce e preview live', icon: '🎨', route: '/tools/openui-studio', badge: 'SAAS' },
   { name: 'AI Repo Scanner', description: 'Analizza repository GitHub con IA', icon: '🤖', route: '/tools/ai-repo-scanner' },
   { name: 'Terminal Web Shell', description: 'Shell CLI in-browser e comandi SDK', icon: '💻', route: '/tools/terminal' },
   { name: 'AI Code Scanner', description: 'Audit & analisi vulnerabilità SAST', icon: '🔍', route: '/tools/ai-scanner' },
@@ -248,7 +266,8 @@ async function handleLogout() {
             :aria-expanded="activeDropdown === 'news'"
             @click="toggleDropdown('news')"
             class="text-sky-400 hover:text-sky-300 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-            :class="{ 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30': activeDropdown === 'news' }"
+            :aria-current="isNewsSectionActive ? 'page' : undefined"
+            :class="{ 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/40': activeDropdown === 'news' || isNewsSectionActive }"
           >
             <span>☁️</span>
             <span>News &amp; Hub</span>
@@ -285,7 +304,8 @@ async function handleLogout() {
             :aria-expanded="activeDropdown === 'tools'"
             @click="toggleDropdown('tools')"
             class="text-sky-400 hover:text-sky-300 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-            :class="{ 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30': activeDropdown === 'tools' }"
+            :aria-current="isToolsSectionActive ? 'page' : undefined"
+            :class="{ 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/40': activeDropdown === 'tools' || isToolsSectionActive }"
           >
             <span>🛠️</span>
             <span>{{ t('tools') }}</span>
@@ -337,7 +357,8 @@ async function handleLogout() {
             :aria-expanded="activeDropdown === 'api'"
             @click="toggleDropdown('api')"
             class="text-sky-400 hover:text-sky-300 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-            :class="{ 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30': activeDropdown === 'api' }"
+            :aria-current="isApiSectionActive ? 'page' : undefined"
+            :class="{ 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/40': activeDropdown === 'api' || isApiSectionActive }"
           >
             <span>🔌</span>
             <span>DKP API</span>

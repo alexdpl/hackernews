@@ -52,6 +52,19 @@ useDkpSeo({
             Ogni snippet, articolo del Blog e thread dei Nodi viene sigillato con impronta SHA-256 verificabile pubblicamente su <code>n/blockchain-vault</code>.
           </p>
         </div>
+        <div class="bg-dkp-bg border border-emerald-500/35 p-4 rounded-lg space-y-1.5">
+          <h4 class="text-emerald-300 text-sm font-bold m-0">Sentinel Scan, OpenUI Studio &amp; SDK v1.1.0</h4>
+          <p class="text-xs text-dkp-muted m-0 leading-relaxed">
+            Audit SAST + AI con certificazione Proof of Safety SHA-256, generazione UI streaming con workspace <code>BEMYAGENT.md</code> e pacchetti SaaS attivabili via Stripe nello <NuxtLink to="/shop" class="text-emerald-400 underline">Shop DKP</NuxtLink>.
+          </p>
+        </div>
+
+        <div class="bg-dkp-bg border border-purple-500/35 p-4 rounded-lg space-y-1.5">
+          <h4 class="text-purple-300 text-sm font-bold m-0">Circuito DKP Ads (Visualizzazioni, Click, Ibrido)</h4>
+          <p class="text-xs text-dkp-muted m-0 leading-relaxed">
+            Widget orizzontali e verticali nativi con telemetria impression, click e CTR gestibili direttamente in <NuxtLink to="/user/ads" class="text-purple-300 underline">I Miei Link &amp; Ads</NuxtLink>.
+          </p>
+        </div>
       </div>
 
       <div class="flex flex-wrap gap-3 pt-2 font-mono text-xs">

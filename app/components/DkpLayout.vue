@@ -47,8 +47,9 @@ useDkpSeo({
   noindex: props.noindex
 })
 
-const sideSections = [
-  { to: '/', label: '\uD83C\uDFE0 Home Hub' },
+const homeHubLink = { to: '/', label: '\uD83C\uDFE0 Home Hub' }
+
+const newsHubSections = [
   { to: '/news', label: '\uD83E\uDD16 DKP News AI', badge: 'AI' },
   { to: '/feed', label: '\uD83C\uDF0D Latest Tech Feed', badge: 'LIVE' },
   { to: '/newest', label: '\uD83C\uDD95 Newest Stream' },
@@ -56,15 +57,20 @@ const sideSections = [
   { to: '/show', label: '\uD83D\uDE80 Show DKP' },
   { to: '/jobs', label: '\uD83D\uDCBC Tech Jobs' },
   { to: '/nodes', label: '\uD83D\uDCAC DKP Nodes Forum' },
-  { to: '/nodes/n/blockchain-vault', label: '\uD83D\uDD10 n/blockchain-vault', badge: 'SHA-256' },
-  { to: '/blog', label: '\uD83D\uDCDD Editorial Blog' },
-  { to: '/tools', label: '\uD83D\uDEE0\uFE0F Developer Tools' },
+  { to: '/blog', label: '\uD83D\uDCDD Editorial Blog' }
+]
+
+const toolsVaultSections = [
+  { to: '/tools/sentinel-scan', label: '\uD83D\uDEE1\uFE0F Sentinel Scan', badge: 'SAST' },
   { to: '/tools/openui-studio', label: '\uD83C\uDFA8 OpenUI Studio AI', badge: 'v2.6' },
+  { to: '/nodes/n/blockchain-vault', label: '\uD83D\uDD10 Blockchain Vault', badge: 'SHA-256' },
+  { to: '/tools', label: '\uD83D\uDEE0\uFE0F Tutti i DKP Tools' },
   { to: '/tools/ai-repo-scanner', label: '\uD83E\uDD16 AI Repo Scanner' },
   { to: '/tools/terminal', label: '\uD83D\uDCBB Terminal Web Shell' },
   { to: '/tools/ai-scanner', label: '\uD83D\uDD0D AI Code Scanner' },
   { to: '/tools/proof-of-code', label: '\uD83D\uDEE1\uFE0F Proof of Code Vault' },
-  { to: '/tools/cli-toolkit', label: '\u26A1 DKP CLI Toolkit' }
+  { to: '/tools/cli-toolkit', label: '\u26A1 DKP CLI Toolkit' },
+  { to: '/shop', label: '\uD83D\uDCB3 Shop & SaaS Plans' }
 ]
 
 const sentinelAgents = [
@@ -116,27 +122,88 @@ const isActive = (path: string) => computed(() => route.path === path)
               <span>&#129517; Navigazione</span>
               <span class="text-[10px] text-dkp-pass">DKP PRO</span>
             </h3>
-            <ul class="space-y-1 list-none p-0 m-0">
-              <li v-for="sec in sideSections" :key="sec.to">
+            <div class="space-y-2.5">
+              <NuxtLink
+                :to="homeHubLink.to"
+                :class="[
+                  'flex items-center justify-between px-3 py-2 rounded-xl transition-all no-underline text-xs sm:text-sm font-mono',
+                  isActive(homeHubLink.to).value
+                    ? 'bg-cyan-500/15 border border-cyan-400/50 text-dkp-accent font-bold shadow-[0_0_14px_rgba(34,211,238,0.16)]'
+                    : 'text-slate-200 hover:text-white hover:bg-slate-900/60 border border-transparent'
+                ]"
+              >
+                <span>{{ homeHubLink.label }}</span>
+              </NuxtLink>
+
+              <div class="pt-2 border-t border-dkp-border/70">
+                <div class="px-2 pb-1 text-[10px] font-mono font-extrabold uppercase tracking-wider text-sky-400">
+                  Home &amp; News Hub
+                </div>
+                <ul class="space-y-1 list-none p-0 m-0">
+                  <li v-for="sec in newsHubSections" :key="sec.to">
+                    <NuxtLink
+                      :to="sec.to"
+                      :class="[
+                        'flex items-center justify-between px-3 py-2 rounded-xl transition-all no-underline text-xs sm:text-sm font-mono',
+                        isActive(sec.to).value
+                          ? 'bg-cyan-500/15 border border-cyan-400/50 text-dkp-accent font-bold shadow-[0_0_14px_rgba(34,211,238,0.16)]'
+                          : 'text-slate-200 hover:text-white hover:bg-slate-900/60 border border-transparent'
+                      ]"
+                    >
+                      <span>{{ sec.label }}</span>
+                      <span
+                        v-if="sec.badge"
+                        class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-dkp-pass border border-emerald-500/30 font-bold"
+                      >
+                        {{ sec.badge }}
+                      </span>
+                    </NuxtLink>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="pt-2 border-t border-dkp-border/70">
+                <div class="px-2 pb-1 text-[10px] font-mono font-extrabold uppercase tracking-wider text-emerald-400">
+                  DKP Tools &amp; Vault
+                </div>
+                <ul class="space-y-1 list-none p-0 m-0">
+                  <li v-for="sec in toolsVaultSections" :key="sec.to">
+                    <NuxtLink
+                      :to="sec.to"
+                      :class="[
+                        'flex items-center justify-between px-3 py-2 rounded-xl transition-all no-underline text-xs sm:text-sm font-mono',
+                        isActive(sec.to).value
+                          ? 'bg-emerald-500/15 border border-emerald-400/50 text-emerald-300 font-bold shadow-[0_0_14px_rgba(16,185,129,0.16)]'
+                          : 'text-slate-200 hover:text-white hover:bg-slate-900/60 border border-transparent'
+                      ]"
+                    >
+                      <span>{{ sec.label }}</span>
+                      <span
+                        v-if="sec.badge"
+                        class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-dkp-pass border border-emerald-500/30 font-bold"
+                      >
+                        {{ sec.badge }}
+                      </span>
+                    </NuxtLink>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="pt-2.5 border-t border-dkp-border/70">
                 <NuxtLink
-                  :to="sec.to"
+                  to="/submit"
                   :class="[
-                    'flex items-center justify-between px-3 py-2 rounded-xl transition-all no-underline text-xs sm:text-sm font-mono',
-                    isActive(sec.to).value
-                      ? 'bg-cyan-500/15 border border-cyan-400/50 text-dkp-accent font-bold shadow-[0_0_14px_rgba(34,211,238,0.16)]'
-                      : 'text-slate-200 hover:text-white hover:bg-slate-900/60 border border-transparent'
+                    'w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-mono text-xs sm:text-sm font-extrabold no-underline transition-all',
+                    isActive('/submit').value
+                      ? 'bg-emerald-400 text-slate-950 shadow-[0_0_16px_rgba(16,185,129,0.35)]'
+                      : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
                   ]"
                 >
-                  <span>{{ sec.label }}</span>
-                  <span
-                    v-if="sec.badge"
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-dkp-pass border border-emerald-500/30 font-bold"
-                  >
-                    {{ sec.badge }}
-                  </span>
+                  <span>&#9889;</span>
+                  <span>Invia / Submit</span>
                 </NuxtLink>
-              </li>
-            </ul>
+              </div>
+            </div>
           </div>
 
           <!-- BEMYAGENT.md • Sentinel Network Control Card -->

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import DKPAdBanner from '~/components/DKPAdBanner.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const activeSection = ref('architettura')
 const sections = [
@@ -77,7 +77,7 @@ useDkpSeo({
               Documentazione API &rarr;
             </NuxtLink>
           </div>
-          <DKPAdBanner />
+          <DkpAdStrip layout="vertical" />
         </aside>
 
         <!-- CONTENUTO PRINCIPALE -->
@@ -125,10 +125,10 @@ useDkpSeo({
           <section id="ai-nexus" class="bg-[#090d16] border border-purple-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <h2 class="text-xl font-bold text-white font-sans m-0">
-                02. Sentinel Network — Knowledge Dependabot (DocKeeper &amp; ArchGuard)
+                02. Sentinel Network   Knowledge Dependabot (DocKeeper &amp; ArchGuard)
               </h2>
               <span class="bg-purple-500/15 text-purple-300 border border-purple-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
-                PHASE 4 • RBAC &amp; AUTO-COMMENT
+                PHASE 4   RBAC &amp; AUTO-COMMENT
               </span>
             </div>
 
@@ -219,6 +219,21 @@ useDkpSeo({
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
               Pubblicare articoli verificati (+150 XP), notarizzare codice nel Vault (+100 XP), aprire discussioni nei Nodi (+25/+50 XP) e contribuire con commenti tecnici (+10 XP) aumenta il livello pubblico, sblocca badge verificati ed espande le quote API.
+            </p>
+          </section>
+
+          <!-- SEZIONE 8: SDK v1.1.0, SENTINEL SCAN, OPENUI STUDIO & SHOP -->
+          <section id="sdk-shop" class="bg-[#090d16] border border-cyan-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-4 shadow-xl">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+              <h2 class="text-xl font-bold text-white font-sans m-0">
+08. @devkernelpulse/sdk v1.1.0, Sentinel Scan, OpenUI Studio &amp; Shop Stripe
+              </h2>
+              <span class="bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
+                SDK v1.1.0 + STRIPE v2.6
+              </span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
+              L'ecosistema espone i moduli ufficiali di <code class="text-emerald-400 font-mono">@devkernelpulse/sdk v1.1.0</code> (<code class="text-cyan-300">dkp.sentinel</code>, <code class="text-cyan-300">dkp.openui</code>, <code class="text-cyan-300">dkp.vault</code>, <code class="text-cyan-300">dkp.ai</code>, <code class="text-cyan-300">dkp.blog</code>), la certificazione <strong class="text-white">Proof of Safety SHA-256</strong> su <NuxtLink to="/nodes/n/blockchain-vault" class="text-emerald-400 underline">n/blockchain-vault</NuxtLink> e il gateway <NuxtLink to="/shop" class="text-purple-300 underline">DKP Shop &amp; Stripe</NuxtLink> per chiavi SaaS <code class="text-emerald-400 font-mono">dkp_live_...</code>, pacchetti crediti Vault e campagne Ads (Visualizzazioni, Click, Ibrido).
             </p>
           </section>
 

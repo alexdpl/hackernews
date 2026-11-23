@@ -22,6 +22,31 @@ const overallCompletion = computed<number>(() => Number(roadmapRes.value?.comple
 
 const changelogV26 = [
   {
+    area: '@devkernelpulse/sdk v1.1.0 & Sentinel Scan',
+    badge: 'DEPLOYED',
+    items: [
+      'Rilascio @devkernelpulse/sdk v1.1.0 con moduli completi AI, Vault, Blog, Sentinel Scan (SAST + AI) e OpenUI Studio.',
+      'Certificazione crittografica Proof of Safety SHA-256 concatenata sul ledger pubblico n/blockchain-vault con verifica hash/blocco.',
+      'Distinzione chiara tra endpoint pubblici e servizi SaaS autenticati tramite chiave dkp_live_... dalla API Console.'
+    ]
+  },
+  {
+    area: 'OpenUI Studio AI & BEMYAGENT.md',
+    badge: 'SAAS + TTEV',
+    items: [
+      'Streaming Tailwind/HTML in OpenUI Studio con audit automatico Sentinel e sigillo Proof of Safety.',
+      'Integrazione workspace BEMYAGENT.md e telemetria TTEV / Sentinelle accessibile anche via SDK (dkp.openui.bemyAgentWorkspace).'
+    ]
+  },
+  {
+    area: 'DKP Shop, Stripe & Ads Network v2.6',
+    badge: 'MONETIZATION',
+    items: [
+      'Checkout Stripe Checkout + Webhook idempotente con rilascio License Key (DKP-...) e chiavi SaaS per Sentinel, OpenUI + BEMYAGENT e Vault Packs.',
+      'Unificazione circuito Ads su 3 modelli (Visualizzazioni, Click, Ibrido) sincronizzati con la dashboard personale I Miei Link & Ads (/user/ads).'
+    ]
+  },
+  {
     area: 'DKP Ai Nexus© & Editor',
     badge: 'NEW',
     items: [

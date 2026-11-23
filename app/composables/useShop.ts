@@ -1,16 +1,19 @@
 // app/composables/useShop.ts
 import { useState, computed } from '#imports'
 
-export type ShopCategory = 'api_pass' | 'sponsored_ads' | 'vault_pro'
+export type ShopCategory = 'api_pass' | 'vault_pro' | 'sponsored_ads'
+export type BillingCycleType = 'monthly' | 'one_time'
+export type AdCampaignModel = 'IMPRESSIONS' | 'CLICKS' | 'HYBRID'
 
 export interface ShopProduct {
   id: string
   category: ShopCategory
+  adModel?: AdCampaignModel
   title: string
   description: string
   price: number
   xpPrice?: number
-  billingCycle: 'one_time' | 'monthly'
+  billingCycle: BillingCycleType
   version: string
   quotaLabel: string
   features: string[]
@@ -19,96 +22,139 @@ export interface ShopProduct {
   salesCount: number
 }
 
-export function useShop() {
-  const products = useState<ShopProduct[]>('dkp_shop_products_v26', () => [
-    {
-      id: 'api-pro-50k',
-      category: 'api_pass',
-      title: 'DKP API Pass — Developer Pro',
-      description: 'Chiave API dedicata con rate-limit esteso per DKP Tech Feed, Trinity AI Summaries, OpenUI Studio e AI Code Scanner.',
-      price: 19,
-      xpPrice: 2500,
-      billingCycle: 'monthly',
-      version: 'v2.6-PURE-SQL',
-      quotaLabel: '50.000 Richieste API / mese',
-      features: [
-        'Rate-limit 120 req/min su api.devkernelpulse.org',
-        'Accesso completo agli endpoint Trinity AI & Repo Scanner',
-        'Telemetria in tempo reale nella DKP API Console',
-        'Zero cold-start su Neon PostgreSQL Pure SQL'
-      ],
-      badge: 'PIÙ SCELTO',
-      highlighted: true,
-      salesCount: 64
-    },
-    {
-      id: 'api-scale-250k',
-      category: 'api_pass',
-      title: 'DKP API Pass — Scale & Enterprise',
-      description: 'Banda prioritaria per pipeline CI/CD, automazioni DKP CLI e audit continui di sicurezza su repository multipli.',
-      price: 59,
-      xpPrice: 7500,
-      billingCycle: 'monthly',
-      version: 'v2.6-PURE-SQL',
-      quotaLabel: '250.000 Richieste API / mese',
-      features: [
-        'Rate-limit 600 req/min + SLA 99.95%',
-        'Notarizzazione Proof-of-Code Vault illimitata',
-        'Chiavi API multiple con permessi granulari',
-        'Supporto prioritario Direct Kernel Dispatch'
-      ],
-      badge: 'ENTERPRISE',
-      salesCount: 21
-    },
-    {
-      id: 'ads-feed-boost',
-      category: 'sponsored_ads',
-      title: 'DKP Sponsored Ads — Tech Feed & Nodes',
-      description: 'Promuovi il tuo tool dev, prodotto SaaS o repository open-source con banner nativi non invasivi nel Tech Feed e in Node Talks.',
-      price: 39,
-      xpPrice: 4500,
-      billingCycle: 'one_time',
-      version: 'v2.6-PURE-SQL',
-      quotaLabel: '15.000 Impressioni Verificate',
-      features: [
-        'Posizionamento nativo su /news, /feed e /nodes',
-        'Zero tracker esterni (100% conforme Privacy DKP)',
-        'Analytics CTR e click in tempo reale in Gestione Ads',
-        'Approvazione rapida tramite Pulse Sentinel AI'
-      ],
-      badge: 'ADS BOOST',
-      highlighted: true,
-      salesCount: 38
-    },
-    {
-      id: 'ads-launch-takeover',
-      category: 'sponsored_ads',
-      title: 'DKP Launch Partner — Full Ecosystem',
-      description: 'Pacchetto visibilità massima per lanci di prodotto: banner fisso su Editorial Hub, Tech Feed, Newsletter e Show DKP.',
-      price: 99,
-      billingCycle: 'one_time',
-      version: 'v2.6-PURE-SQL',
-      quotaLabel: '50.000 Impressioni + Featured Badge',
-      features: [
-        'Slot in evidenza su DKP Editorial Hub e Show DKP',
-        'Menzione dedicata nel digest settimanale DKP',
-        'Report analitico completo di conversione e traffico',
-        'Gestione campagne self-service da /user/ads'
-      ],
-      badge: 'LAUNCH PRO',
-      salesCount: 14
-    }
-  ])
+export const DKP_SHOP_CATALOG_V26: ShopProduct[] = [
+  {
+    id: 'ads-impressions-15k',
+    category: 'sponsored_ads',
+    adModel: 'IMPRESSIONS',
+    title: 'Campagna Visualizzazioni (15.000 Imp)',
+    description: 'Massima visibilita per visualizzazioni verificate nei widget orizzontali e verticali con telemetria impression in tempo reale.',
+    price: 39,
+    xpPrice: 4000,
+    billingCycle: 'one_time',
+    version: 'v2.6-PURE-SQL',
+    quotaLabel: '15.000 Visualizzazioni',
+    features: [
+      'Rotazione su widget orizzontali e verticali DKP',
+      'Telemetria impressioni attiva in Home e I Miei Link',
+      'Gestione link e stato in /user/ads',
+      'Zero tracker esterni'
+    ],
+    badge: 'VISUALIZZAZIONI',
+    highlighted: false,
+    salesCount: 34
+  },
+  {
+    id: 'ads-clicks-250',
+    category: 'sponsored_ads',
+    adModel: 'CLICKS',
+    title: 'Campagna Click (250 Click Verificati)',
+    description: 'Ottimizzata sul traffico diretto verso il tuo link con tracciamento click e CTR sincronizzato nella dashboard.',
+    price: 49,
+    xpPrice: 5200,
+    billingCycle: 'one_time',
+    version: 'v2.6-PURE-SQL',
+    quotaLabel: '250 Click Verificati',
+    features: [
+      'Focus su click e CTR su link interni o esterni',
+      'Contatori click e CTR in tempo reale su /user/ads',
+      'Attivazione rapida su widget feed, nodi e blog',
+      'Controllo diretto da I Miei Link & Ads'
+    ],
+    badge: 'CLICK',
+    highlighted: false,
+    salesCount: 28
+  },
+  {
+    id: 'ads-hybrid-pack',
+    category: 'sponsored_ads',
+    adModel: 'HYBRID',
+    title: 'Campagna Ibrida (30k Imp + 400 Click)',
+    description: 'Modello ibrido visualizzazioni + click per combinare reach sul network e traffico qualificato verso i tuoi link.',
+    price: 79,
+    xpPrice: 8000,
+    billingCycle: 'one_time',
+    version: 'v2.6-PURE-SQL',
+    quotaLabel: '30.000 Imp + 400 Click',
+    features: [
+      'Doppio tracciamento impression + click + CTR',
+      'Presenza orizzontale e verticale su tutto il network',
+      'Gestione centralizzata nella sezione I Miei Link',
+      'Telemetria unificata Pure SQL'
+    ],
+    badge: 'IBRIDO',
+    highlighted: true,
+    salesCount: 47
+  },
+  {
+    id: 'sentinel-saas-pro',
+    category: 'api_pass',
+    title: 'Sentinel Scan SaaS - Pro',
+    description: 'Chiave API dkp_live_... con quota estesa per Sentinel Scan SAST + AI audit e certificazione Proof of Safety SHA-256.',
+    price: 19,
+    xpPrice: 2500,
+    billingCycle: 'monthly',
+    version: 'v2.6-PURE-SQL',
+    quotaLabel: '50.000 Scan / mese',
+    features: [
+      'Chiave API dkp_live_... per Sentinel Scan',
+      'Proof of Safety SHA-256 su n/blockchain-vault',
+      'Moduli SaaS di @devkernelpulse/sdk v1.1.0',
+      'Telemetria in tempo reale nella API Console'
+    ],
+    badge: 'SENTINEL SAAS',
+    highlighted: false,
+    salesCount: 64
+  },
+  {
+    id: 'openui-bemyagent-saas',
+    category: 'api_pass',
+    title: 'OpenUI Studio + BEMYAGENT SaaS',
+    description: 'Generazione UI/Tailwind streaming in OpenUI Studio, audit SAST e workspace BEMYAGENT.md con telemetria TTEV.',
+    price: 39,
+    xpPrice: 5000,
+    billingCycle: 'monthly',
+    version: 'v2.6-PURE-SQL',
+    quotaLabel: '250.000 Req + BEMYAGENT',
+    features: [
+      'OpenUI Studio + SDK dkp.openui.*',
+      'Workspace BEMYAGENT.md e tracce TTEV',
+      'Proof of Safety SHA-256 automatico',
+      'Quota estesa Pure SQL e CI/CD'
+    ],
+    badge: 'OPENUI + BEMYAGENT',
+    highlighted: false,
+    salesCount: 29
+  },
+  {
+    id: 'vault-safety-pack',
+    category: 'vault_pro',
+    title: 'Proof of Safety Credit Pack',
+    description: 'Crediti una tantum per scansioni Sentinel e notarizzazioni batch SHA-256 senza abbonamento ricorrente.',
+    price: 29,
+    xpPrice: 3500,
+    billingCycle: 'one_time',
+    version: 'v2.6-PURE-SQL',
+    quotaLabel: '25.000 Crediti Audit & Vault',
+    features: [
+      'Crediti extra Sentinel Scan e Vault',
+      'Nessuna scadenza mensile',
+      'Verifica pubblica su n/blockchain-vault',
+      'Compatibile con SDK v1.1.0 e CLI'
+    ],
+    badge: 'VAULT PACK',
+    highlighted: false,
+    salesCount: 42
+  }
+]
 
+export function useShop() {
+  const products = useState<ShopProduct[]>('dkp_shop_products_v26', () => [...DKP_SHOP_CATALOG_V26])
   const loading = useState<boolean>('dkp_shop_loading', () => false)
 
-  const apiPassProducts = computed(() =>
-    products.value.filter(p => p.category === 'api_pass')
-  )
-
-  const adsProducts = computed(() =>
-    products.value.filter(p => p.category === 'sponsored_ads')
-  )
+  const apiPassProducts = computed(() => products.value.filter(p => p.category === 'api_pass'))
+  const vaultProducts = computed(() => products.value.filter(p => p.category === 'vault_pro'))
+  const adsProducts = computed(() => products.value.filter(p => p.category === 'sponsored_ads'))
 
   async function fetchProducts() {
     loading.value = true
@@ -119,7 +165,7 @@ export function useShop() {
         products.value = list
       }
     } catch {
-      // Mantiene il catalogo v2.6-PURE-SQL di default se l'endpoint non è attivo
+      // Mantiene il catalogo v2.6-PURE-SQL di default
     } finally {
       loading.value = false
     }
@@ -128,7 +174,7 @@ export function useShop() {
   function addProduct(product: Omit<ShopProduct, 'id' | 'salesCount'>) {
     products.value.push({
       ...product,
-      id: `dkp-${Date.now()}`,
+      id: 'dkp-' + Date.now(),
       salesCount: 0
     })
   }
@@ -140,6 +186,7 @@ export function useShop() {
   return {
     products,
     apiPassProducts,
+    vaultProducts,
     adsProducts,
     loading,
     fetchProducts,

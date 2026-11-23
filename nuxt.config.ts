@@ -69,6 +69,8 @@ export default defineNuxtConfig({
 
   // 🟢 RUNTIME CONFIGURATION (Server & Public)
   runtimeConfig: {
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     databaseUrl: process.env.DATABASE_URL || '',
     cronSecret: process.env.CRON_SECRET || process.env.NUXT_CRON_SECRET || '',
@@ -80,6 +82,7 @@ export default defineNuxtConfig({
     smtpFrom: process.env.SMTP_FROM || process.env.NUXT_SMTP_FROM || 'Alessandro | DevKernelPulse <alex@devkernelpulse.org>',
 
     public: {
+      stripePublicKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLIC_KEY || '',
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://devkernelpulse.org',
       apiUrl: process.env.NUXT_PUBLIC_API_URL || 'https://api.devkernelpulse.org',
       mailUrl: process.env.NUXT_PUBLIC_MAIL_URL || 'https://mail.devkernelpulse.org'

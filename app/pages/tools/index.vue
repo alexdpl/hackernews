@@ -3,6 +3,7 @@ import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
 import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
 import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useDkpSeo({
   title: 'Developer Tools & Utility - DevKernelPulse Kernel v2.6-PURE-SQL',
@@ -48,6 +49,13 @@ const heroCards = [
 
 const developerToolsCatalog = [
   {
+    to: '/tools/sentinel-scan',
+    tag: 'SENTINEL',
+    badge: 'SAST + VAULT',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
+    title: 'Sentinel Scan & Proof of Safety',
+    desc: 'Audit SAST CWE, rilevamento secret hardcoded e certificazione SHA-256 Proof of Safety via API DKP_live.'
+  },  {
     to: '/tools/proof-of-code',
     tag: 'VAULT',
     badge: 'SHA-256 VAULT',
@@ -240,6 +248,11 @@ const developerToolsCatalog = [
         <DkpRelatedBlogWidget />
         <DkpRelatedNodesWidget />
       </div>
+	  <!-- 3. Circuito 2 (Orizzontale - 3 Libri / Approfondimenti dal Vault) -->
+      <DkpAdStrip
+        layout="horizontal"
+        category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"
+      />
     </DkpLayout>
   </div>
 </template>

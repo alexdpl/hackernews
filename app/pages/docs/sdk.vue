@@ -12,15 +12,15 @@ const sdkMainExample = `import { DKPClient } from '@devkernelpulse/sdk'
 
 // 1. Inizializzazione del client unificato v2.6-PURE-SQL
 const dkp = new DKPClient({
-  apiKey: process.env.DKP_API_KEY, // Inizia con dkp_live_
+  apiKey: process.env.DKP_API_KEY, // Chiave SaaS DKP_live_... o dkp_live_...
   environment: 'production'
 })
 
 // 2. Audit SAST Sentinel + Notarizzazione Vault Pure SQL
 async function secureDeploy() {
-  const audit = await dkp.sentinel.scanCode({ source: 'const key = "secret"' })
+  const scan = await dkp.sentinel.scan({ code: 'const key = "secret"', language: 'typescript', filename: 'auth.ts' })
   
-  if (audit.riskScore > 50) {
+  if (!scan.audit.passed || scan.audit.score < 75) {
     throw new Error('Deploy bloccato da Pulse Sentinel AI v2.6!')
   }
 
@@ -109,7 +109,7 @@ useDkpSeo({
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          Ô£ì´©Å DKP Editorial Hub
+          DKP Editorial Hub
         </NuxtLink>
       </nav>
       
@@ -119,7 +119,7 @@ useDkpSeo({
 
         <div class="inline-flex items-center gap-3 mb-4 flex-wrap justify-center font-mono relative z-10">
           <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 text-xs font-extrabold px-3.5 py-1 rounded-full">
-            v2.6-PURE-SQL Specification
+            @devkernelpulse/sdk v1.1.0 &bull; v2.6-PURE-SQL
           </span>
           <span class="bg-purple-500/15 text-purple-300 border border-purple-500/40 text-xs font-extrabold px-3.5 py-1 rounded-full">
             Sentinel AI v2.6 Active
@@ -141,7 +141,7 @@ useDkpSeo({
             class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-mono font-bold cursor-pointer transition-colors whitespace-nowrap"
             @click="copySnippet('install', npmInstall)"
           >
-            {{ copiedKey === 'install' ? 'Ô£à Copiato' : 'Copia' }}
+            {{ copiedKey === 'install' ? ' Copiato' : 'Copia' }}
           </button>
         </div>
       </header>
@@ -157,7 +157,7 @@ useDkpSeo({
         </div>
 
         <div class="bg-[#090d16] border border-slate-800 p-6 rounded-2xl shadow-lg">
-          <span class="text-3xl mb-3 block">ÔÜí</span>
+          <span class="text-3xl mb-3 block"></span>
           <h3 class="text-white text-lg font-extrabold mb-2">Edge &amp; Serverless Ready</h3>
           <p class="text-slate-400 text-xs sm:text-sm leading-relaxed m-0">
             Zero dipendenze native pesanti: compatibile con Vercel Edge, Cloudflare Workers, Nuxt Nitro e qualsiasi runtime moderno TS/JS.
@@ -178,10 +178,10 @@ useDkpSeo({
         <div class="text-3xl shrink-0"></div>
         <div>
           <h3 class="text-purple-300 text-base sm:text-lg font-extrabold mb-1.5">
-            ÔÜí Protezione Ecosistema: Pulse Sentinel AI v2.6-PURE-SQL
+            Protezione Ecosistema: Pulse Sentinel AI v2.6-PURE-SQL
           </h3>
           <p class="text-slate-300 text-xs sm:text-sm leading-relaxed m-0">
-            Ogni chiamata API, comando CLI e richiesta SDK è monitorata in tempo reale dal nostro <strong class="text-white">Firewall Euristico con analisi SAST/AST</strong> e query Pure SQL parametrizzate. Tentativi di <strong class="text-white">Prompt Injection</strong>, <strong class="text-white">Rate Limit Abuse</strong> o <strong class="text-white">Payload Maliziosi</strong> comportano il <strong class="text-rose-400">BAN PERMANENTE dell'IP</strong> e la revoca immediata delle chiavi API dall'Hub.
+            Ogni chiamata API, comando CLI e richiesta SDK  monitorata in tempo reale dal nostro <strong class="text-white">Firewall Euristico con analisi SAST/AST</strong> e query Pure SQL parametrizzate. Tentativi di <strong class="text-white">Prompt Injection</strong>, <strong class="text-white">Rate Limit Abuse</strong> o <strong class="text-white">Payload Maliziosi</strong> comportano il <strong class="text-rose-400">BAN PERMANENTE dell'IP</strong> e la revoca immediata delle chiavi API dall'Hub.
           </p>
         </div>
       </section>
@@ -218,7 +218,7 @@ useDkpSeo({
             @click="activeLang = 'cli'"
             :class="['px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all', activeLang === 'cli' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
           >
-            ÔÜí CLI Toolkit
+            CLI Toolkit
           </button>
         </div>
 
@@ -241,7 +241,7 @@ useDkpSeo({
             @click="copySnippet('sdk-example', sdkMainExample)"
             class="px-3 py-1.5 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-xs font-mono font-bold text-slate-300 hover:text-emerald-400 rounded-lg cursor-pointer transition-colors"
           >
-            {{ copiedKey === 'sdk-example' ? 'Ô£à Codice Copiato!' : 'Copia Esempio' }}
+            {{ copiedKey === 'sdk-example' ? ' Codice Copiato!' : 'Copia Esempio' }}
           </button>
         </div>
 
@@ -280,7 +280,7 @@ useDkpSeo({
               @click="activeCliCmd = 'blog'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'blog' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              Ô£ì´©Å dkp blog:publish
+              dkp blog:publish
             </button>
             <button
               type="button"
@@ -301,7 +301,7 @@ useDkpSeo({
               @click="activeCliCmd = 'status'"
               :class="['px-3.5 py-2.5 rounded-xl border text-left font-bold text-xs cursor-pointer transition-all', activeCliCmd === 'status' ? 'text-emerald-400 border-emerald-500 bg-emerald-500/10' : 'bg-[#020420] border-slate-800 text-slate-400 hover:border-sky-400 hover:text-sky-400']"
             >
-              ÔÜí dkp status
+              dkp status
             </button>
           </div>
 
@@ -325,7 +325,7 @@ useDkpSeo({
             </div>
 
             <div v-if="activeCliCmd === 'scan'">
-              <h4 class="text-white font-bold text-base mb-1.5">Scansione Vulnerabilità AI in Locale</h4>
+              <h4 class="text-white font-bold text-base mb-1.5">Scansione Vulnerabilit AI in Locale</h4>
               <p class="text-slate-400 text-xs sm:text-sm mb-4 leading-relaxed">Invia il codice sorgente all'engine Pulse Sentinel AI v2.6 per un report SAST/AST immediato:</p>
               <pre class="bg-[#050811] border border-slate-800 p-4 rounded-xl text-emerald-400 font-mono text-xs sm:text-sm m-0 overflow-x-auto"><code>dkp ai scan ./server/api/auth.ts --format json</code></pre>
             </div>
@@ -345,6 +345,63 @@ useDkpSeo({
         </div>
       </section>
 
+      <!-- SERVIZI GRATUITI VS SERVIZI SAAS (SENTINEL SCAN + OPENUI + BEMYAGENT.md) -->
+      <section class="bg-[#090d16] border border-emerald-500/35 rounded-2xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div class="border-b border-slate-800 pb-4">
+          <span class="text-[11px] font-mono font-extrabold uppercase tracking-wider text-emerald-400">
+            Accesso &amp; Chiavi API (dkp_live_...)
+          </span>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white mt-1 mb-2">
+            Servizi Gratuiti vs Servizi SaaS: Sentinel Scan, OpenUI Studio &amp; BEMYAGENT.md
+          </h2>
+          <p class="text-slate-400 text-xs sm:text-sm leading-relaxed m-0">
+            L'SDK espone sia servizi base/pubblici (lettura ledger, verifica hash SHA-256 e audit SAST leggero con quota contenuta) sia i nuovi servizi SaaS dedicati che richiedono una chiave attiva <code class="text-emerald-400 font-mono">dkp_live_...</code> generata dalla tua Dashboard (<NuxtLink to="/user/dashboard?tab=api" class="text-cyan-400 underline">API Console</NuxtLink>).
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="bg-[#020420] border border-slate-800 rounded-2xl p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <strong class="text-white text-sm">Servizi Free / Public</strong>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold">Quota Base</span>
+            </div>
+            <p class="text-slate-400 leading-relaxed m-0">
+              Include <code class="text-cyan-300">dkp.vault.verify()</code>, <code class="text-cyan-300">dkp.vault.verifySafetyProof()</code>, <code class="text-cyan-300">dkp.vault.getLedger()</code>, lettura articoli <code class="text-cyan-300">dkp.blog.getPost()</code> e scansione SAST base con rate limit limitato.
+            </p>
+          </div>
+
+          <div class="bg-[#020420] border border-emerald-500/40 rounded-2xl p-5 space-y-2">
+            <div class="flex items-center justify-between">
+              <strong class="text-emerald-300 text-sm">Servizi SaaS (Chiave dkp_live_...)</strong>
+              <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-mono font-bold">SAAS KEY</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed m-0">
+              Obbligatoria per <code class="text-emerald-300">dkp.sentinel.scan()</code> ad alta quota con Proof of Safety SHA-256, <code class="text-purple-300">dkp.openui.generate()</code>, <code class="text-purple-300">dkp.openui.notarizeProof()</code> e telemetria <code class="text-emerald-300">dkp.openui.bemyAgentWorkspace()</code> (protocollo <code class="text-white">BEMYAGENT.md</code> / TTEV).
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-[#020420] border border-slate-800 rounded-xl p-4 font-mono text-xs text-sky-400 overflow-x-auto">
+          <pre class="m-0 leading-relaxed"><code>// Come usare Sentinel Scan + OpenUI Studio + BEMYAGENT.md con chiave dkp_live_...
+const scan = await dkp.sentinel.scan({
+  code: snippetToAudit,
+  language: 'typescript',
+  filename: 'service.ts',
+  useAi: true
+})
+console.log('Proof of Safety Block:', scan.vaultProof?.blockNumber)
+
+const uiStream = await dkp.openui.generate({
+  model: 'dkp-coder',
+  prompt: 'Crea una card di stato Sentinel con Tailwind CSS'
+})
+
+// Verifica stato protocollo BEMYAGENT.md e tracce TTEV / Sentinelle
+const bemy = await dkp.openui.bemyAgentWorkspace()
+console.log('Protocollo:', bemy.protocol, 'Milestones:', bemy.workMilestones)</code></pre>
+        </div>
+      </section>
+
       <!-- CTA FOOTER -->
       <div class="text-center bg-gradient-to-b from-[#090d16] to-[#020420] border border-slate-800 p-8 sm:p-12 rounded-3xl shadow-xl">
         <h3 class="text-white text-2xl sm:text-3xl font-black mb-3">Pronto per scalare le tue architetture?</h3>
@@ -355,11 +412,12 @@ useDkpSeo({
           <NuxtLink to="/user/dashboard?tab=api" class="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             Genera una API Key DKP
           </NuxtLink>
+          <NuxtLink to="/shop" class="px-6 py-3 bg-purple-500/15 border border-purple-500/40 hover:border-purple-400 text-purple-300 font-extrabold rounded-xl transition-all">Piani SaaS &amp; Crediti Shop</NuxtLink>
           <NuxtLink to="/docs/api" class="px-6 py-3 bg-[#020420] border border-slate-700 hover:border-sky-400 text-sky-400 font-extrabold rounded-xl transition-all">
             API Reference v2.6
           </NuxtLink>
           <NuxtLink to="/docs/cli-automation" class="px-6 py-3 bg-[#020420] border border-slate-700 hover:border-purple-400 text-purple-400 font-extrabold rounded-xl transition-all">
-            ÔÜÖ´©Å Guida CLI Completa
+             Guida CLI Completa
           </NuxtLink>
         </div>
       </div>

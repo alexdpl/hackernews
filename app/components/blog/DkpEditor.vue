@@ -31,6 +31,9 @@ const {
   detectedLang: sentinelLang,
   grammarIssues: sentinelIssues,
   applyGrammarFix: applySentinelFix,
+  applyAllGrammarFixes,
+  runAiGrammarFix,
+  isAiFixing,
   lastFixMessage
 } = useSentinelGrammar(content)
 
@@ -429,7 +432,7 @@ const parsedContent = computed(() => {
     .replace(/@\[video\]\(([^)]+)\)/g, '<' + 'div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen><' + '/iframe><' + '/div>')
     .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1<' + '/mark>')
     .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1<' + '/u>')
-    .replace(/`([^`\n]+)`/g, '<code class="dkp-inline-code">$1<' + '/code>')
+    .replace(/`+([^`\n]+?)`+/g, (_m, c) => '<code class="dkp-inline-code">' + String(c).replace(/^`+|`+$/g, '').trim() + '<' + '/code>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="dkp-bold">$1<' + '/strong>')
     .replace(/\*(.*?)\*/g, '<em class="dkp-italic">$1<' + '/em>')
     .replace(/~~(.*?)~~/g, '<del class="dkp-strike">$1<' + '/del>')
@@ -634,7 +637,7 @@ const parsedContent = computed(() => {
               </span>
             </div>
 
-            <span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
+            <div class="flex items-center gap-2 flex-wrap"><button v-if="sentinelIssues.length > 0" type="button" @click="applyAllGrammarFixes" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 font-extrabold text-[10px] cursor-pointer">Correggi Tutto ({{ sentinelIssues.length }})</button><button type="button" :disabled="isAiFixing" @click="runAiGrammarFix('blog')" class="px-2.5 py-1 rounded-lg bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-[10px] border-none cursor-pointer disabled:opacity-50">{{ isAiFixing ? 'Revisione AI...' : '✨ Correggi Grammatica (Ai Nexus©)' }}</button></div><span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
               &#10003; Sintassi, punteggiatura e Markdown verificati
             </span>
             <span v-else class="text-[11px] text-amber-300 font-bold">

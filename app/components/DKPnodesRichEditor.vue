@@ -41,7 +41,7 @@ const newPostTitle = ref('')
 const newPostTags = ref<string[]>([])
 
 const newPostContent = ref('')
-const { detectedLang: sentinelLang, grammarIssues: sentinelIssues, applyGrammarFix: applySentinelFix } = useSentinelGrammar(newPostContent)
+const { detectedLang: sentinelLang, grammarIssues: sentinelIssues, applyGrammarFix: applySentinelFix, applyAllGrammarFixes, runAiGrammarFix, isAiFixing, lastFixMessage: sentinelFixMsg } = useSentinelGrammar(newPostContent)
 const newPostVaultHash = ref('')
 const newPostIsPinned = ref(false)
 
@@ -53,7 +53,7 @@ const previewBoxRef = ref<HTMLElement | null>(null)
 const isSubmitting = ref(false)
 const formError = ref('')
 
-// DKP Ai Nexus© State (unificato con Blog Editor)
+// DKP Ai Nexus  State (unificato con Blog Editor)
 const showAiNexus = ref(false)
 const aiPromptHint = ref('')
 const isAiLoading = ref(false)
@@ -272,10 +272,10 @@ function insertLink() {
   applyMarkdown('[', '](https://)', 'Testo collegamento')
 }
 
-// DKP Ai Nexus©
+// DKP Ai Nexus 
 async function runNodeAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' | 'seo_optimize' | 'generate_code' | 'tldr_table') {
   isAiLoading.value = true
-  aiFeedback.value = 'DKP Ai Nexus© in esecuzione...'
+  aiFeedback.value = 'DKP Ai Nexus  in esecuzione...'
   prevContentSnapshot.value = newPostContent.value
 
   const el = textareaRef.value
@@ -318,7 +318,7 @@ async function runNodeAiAssist(mode: 'generate_draft' | 'expand' | 'security_aud
       } else if (mode !== 'seo_optimize' && res.result.content) {
         newPostContent.value = res.result.content
       }
-      aiFeedback.value = `Pronto (${res.source || 'DKP Ai Nexus©'})`
+      aiFeedback.value = `Pronto (${res.source || 'DKP Ai Nexus '})`
     }
   } catch (err: any) {
     aiFeedback.value = `Errore AI: ${err?.message || 'Errore'}`
@@ -544,7 +544,7 @@ if (import.meta.client && !isEditMode.value) {
             @click="showAiNexus = !showAiNexus"
             class="px-2.5 py-1 rounded-xl font-bold text-[11px] cursor-pointer border transition-all"
             :class="showAiNexus ? 'bg-purple-500 text-slate-950 border-purple-400' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25'"
-            title="Apri DKP Ai Nexus©"
+            title="Apri DKP Ai Nexus "
           >
             &#10024; DKP Ai Nexus&copy;
           </button>
@@ -578,7 +578,7 @@ if (import.meta.client && !isEditMode.value) {
         </div>
       </div>
 
-      <!-- DKP Ai Nexus© — SENTINELLA PASSIVA GRAMMARLY-STYLE -->
+      <!-- DKP Ai Nexus    SENTINELLA PASSIVA GRAMMARLY-STYLE -->
       <div v-if="!isZenMode" class="bg-[#050a18] border border-purple-500/35 rounded-xl px-3.5 py-2.5 font-mono text-xs space-y-2">
         <div class="flex items-center justify-between gap-2 flex-wrap">
           <div class="flex items-center gap-2">
@@ -587,12 +587,13 @@ if (import.meta.client && !isEditMode.value) {
               LANG: {{ sentinelLang }}
             </span>
           </div>
-          <span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
+          <div class="flex items-center gap-2 flex-wrap"><span v-if="sentinelFixMsg" class="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 text-[10px] font-bold">&#10003; {{ sentinelFixMsg }}</span><button v-if="sentinelIssues.length > 0" type="button" @click="applyAllGrammarFixes" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 font-extrabold text-[10px] cursor-pointer">Correggi Tutto ({{ sentinelIssues.length }})</button><button type="button" :disabled="isAiFixing" @click="runAiGrammarFix('nodes')" class="px-2.5 py-1 rounded-lg bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-[10px] border-none cursor-pointer disabled:opacity-50">{{ isAiFixing ? 'Revisione AI...' : '  Correggi Grammatica (Ai Nexus )' }}</button><span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
             &#10003; Sintassi, punteggiatura e Markdown verificati
           </span>
           <span v-else class="text-[11px] text-amber-300 font-bold">
             {{ sentinelIssues.length }} suggeriment{{ sentinelIssues.length === 1 ? 'o' : 'i' }} in tempo reale
           </span>
+          </div>
         </div>
 
         <div v-if="sentinelIssues.length > 0" class="space-y-1.5">
@@ -616,13 +617,13 @@ if (import.meta.client && !isEditMode.value) {
         </div>
       </div>
 
-      <!-- PANNELLO DKP Ai Nexus© -->
+      <!-- PANNELLO DKP Ai Nexus  -->
       <div v-if="showAiNexus" :class="{ 'mx-4 sm:mx-6 mt-2 shrink-0': isZenMode }" class="bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs">
         <div class="flex flex-wrap gap-2">
           <input
             v-model="aiPromptHint"
             type="text"
-            placeholder="Descrivi il thread o il problema tecnico da analizzare con DKP Ai Nexus©..."
+            placeholder="Descrivi il thread o il problema tecnico da analizzare con DKP Ai Nexus ..."
             class="flex-1 min-w-[220px] bg-[#030712] border border-slate-700 text-white px-3 py-2 rounded-lg outline-none"
           />
           <button
@@ -705,7 +706,8 @@ if (import.meta.client && !isEditMode.value) {
         <DkpTagInput v-model="newPostTags"/>
       </div>
 
-      </template><div :class="isZenMode ? 'flex-1 flex flex-col border-0 rounded-none bg-[#050814] overflow-hidden' : 'border border-slate-800 rounded-xl overflow-hidden bg-[#030712]'">
+      </template>
+      <div :class="isZenMode ? 'flex-1 flex flex-col border-0 rounded-none bg-[#050814] overflow-hidden' : 'border border-slate-800 rounded-xl overflow-hidden bg-[#030712]'">
         <div
           v-if="editorMode === 'advanced'"
           class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-[#0b101d] border-b border-slate-800 font-mono"
@@ -737,7 +739,7 @@ if (import.meta.client && !isEditMode.value) {
             <button type="button" @click="insertLink" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-sky-300 text-xs cursor-pointer" title="Link">Link</button>
             <button type="button" @click="insertImage" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-emerald-300 text-xs cursor-pointer" title="Inserisci Immagine">Img</button>
             <button type="button" @click="insertVideoEmbed" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-purple-300 text-xs cursor-pointer" title="Embed Video @[video](url)">Video</button>
-            <button type="button" @click="isZenMode = !isZenMode" :class="isZenMode ? 'bg-cyan-500 text-slate-950 font-extrabold' : 'bg-slate-900 hover:bg-slate-800 text-cyan-300'" class="px-2 py-1 rounded text-xs cursor-pointer" title="Modalità Zen">Zen</button>
+            <button type="button" @click="isZenMode = !isZenMode" :class="isZenMode ? 'bg-cyan-500 text-slate-950 font-extrabold' : 'bg-slate-900 hover:bg-slate-800 text-cyan-300'" class="px-2 py-1 rounded text-xs cursor-pointer" title="Modalit  Zen">Zen</button>
             <button type="button" @click="insertDivider" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 text-xs cursor-pointer" title="Separatore ---">---</button>
 
             <select v-model="selectedCodeLang" class="bg-[#030712] text-emerald-400 text-[11px] px-2 py-1 rounded outline-none border border-slate-800">
