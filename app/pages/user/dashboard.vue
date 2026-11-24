@@ -581,6 +581,7 @@ const articleForm = ref({
 })
 
 function openNewArticleModal() {
+  if (import.meta.client) { try { localStorage.removeItem('DKP_BLOG_EDITOR_AUTOSAVE_V1') } catch {} }
   const defaultCat = availableCategories.value.length > 0 ? availableCategories.value[0] : null
   articleForm.value = {
     id: null,

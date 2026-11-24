@@ -220,41 +220,59 @@ const readTime = computed(() => {
   return Math.max(1, Math.ceil(words / 200))
 })
 
-// --- NORMALIZZAZIONE INLINE CODE BLOG ---
+// --- NORMALIZZAZIONE INLINE CODE BLOG (ZERO BACKTICK / APICI RESIDUI) ---
+function stripInlineCodeArtifacts(raw: string): string {
+  return String(raw || '')
+    .replace(/&#0*96;|&#x0*60;|&grave;/gi, '`')
+    .replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+$/gi, '')
+    .trim()
+}
+
 function renderInlineBackticksInHtml(html: string): string {
   if (!html) return ''
-  const protectedBlocks: string[] = []
-  let working = html.replace(/<(pre|code)\b[^>]*>[\s\S]*?<\/\1>/gi, (m) => {
-    const idx = protectedBlocks.length
-    protectedBlocks.push(m)
-    return `__DKP_PROTECTED_CODE_${idx}__`
+  const protectedPreBlocks: string[] = []
+  let working = html.replace(/<pre\b[^>]*>[\s\S]*?<\/pre>/gi, (m) => {
+    const idx = protectedPreBlocks.length
+    protectedPreBlocks.push(m)
+    return `__DKP_PROTECTED_PRE_${idx}__`
   })
 
+  working = working.replace(/&#0*96;|&#x0*60;|&grave;/gi, '`')
+
+  working = working.replace(
+    /(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`){0,2}<code\b[^>]*>([\s\S]*?)<\/code>(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`){0,2}/gi,
+    (_m, inner: string) => {
+      const cleanInner = stripInlineCodeArtifacts(inner)
+      if (!cleanInner) return ''
+      return `<code class="dkp-inline-code">${cleanInner}</code>`
+    }
+  )
+
   working = working.replace(/`+([^`\r\n]+?)`+/g, (_m, inner: string) => {
-    const cleanInner = inner.replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+$/gi, '').trim()
+    const cleanInner = stripInlineCodeArtifacts(inner)
     if (!cleanInner) return ''
     return `<code class="dkp-inline-code">${cleanInner}</code>`
   })
 
-  protectedBlocks.forEach((block, idx) => {
-    working = working.replace(new RegExp(`__DKP_PROTECTED_CODE_${idx}__`, 'g'), () => block)
+  protectedPreBlocks.forEach((block, idx) => {
+    working = working.replace(new RegExp(`__DKP_PROTECTED_PRE_${idx}__`, 'g'), () => block)
   })
 
-  working = working.replace(/(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`){0,2}(<code\b[^>]*>)(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)*([^<]*?)(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)*(<\/code>)(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`){0,2}/gi, '$1$2$3')
   return working
 }
 
-// Pulizia apici doppi '' / backtick residui nei code inline del blog
-if (typeof document !== 'undefined') {
-  const inlineCodes = document.querySelectorAll('.post-content :not(pre) > code, .dkp-markdown-body :not(pre) > code')
+function sanitizeInlineCodeQuotesInDom() {
+  if (typeof document === 'undefined') return
+  const root = articleBodyRef.value || document
+  const inlineCodes = root.querySelectorAll('.post-content :not(pre) > code, .dkp-markdown-body :not(pre) > code, :not(pre) > code.dkp-inline-code')
   inlineCodes.forEach((el) => {
     const txt = el.textContent || ''
-    if (/^`.*`$/.test(txt)) {
-      el.textContent = txt.replace(/^`+|`+$/g, '')
+    const cleaned = txt.replace(/^(?:''|`)+|(?:''|`)+$/g, '')
+    if (cleaned !== txt) {
+      el.textContent = cleaned
     }
   })
 }
-
 const parsedContent = computed(() => {
   const contentVal = post.value?.content || post.value?.description || ''
   if (!contentVal) return ''

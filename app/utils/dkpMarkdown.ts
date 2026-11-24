@@ -3,6 +3,12 @@
 const BT = String.fromCharCode(96);
 const FENCE = BT + BT + BT;
 
+function normalizeBacktickEntities(raw: string): string {
+  return String(raw || '')
+    .replace(/&#0*96;|&#x0*60;|&grave;/gi, BT)
+    .replace(/[\u2018\u2019\u2032\u2035]/g, "'");
+}
+
 function escapeHtml(raw: string): string {
   return String(raw || '')
     .replace(/&(?!(?:amp|lt|gt|quot|#39|#x27);)/g, '&amp;')
@@ -14,9 +20,10 @@ function escapeHtml(raw: string): string {
 
 function escapeInlineCodeContent(raw: string): string {
   const leadTick = new RegExp('^' + BT + '+|' + BT + '+$', 'g');
-  const cleaned = String(raw || '')
+  const cleaned = normalizeBacktickEntities(raw)
     .replace(leadTick, '')
-    .replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;)+$/gi, '').replace(leadTick, '')
+    .replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;)+$/gi, '')
+    .replace(leadTick, '')
     .trim();
 
   return cleaned
@@ -79,7 +86,9 @@ export function parseDkpMarkdown(contentVal: string): string {
   try {
     if (!contentVal) return '';
 
-    let rawContent = String(contentVal).replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    let rawContent = normalizeBacktickEntities(String(contentVal))
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r');
     const codeBlocks: string[] = [];
     const inlineCodes: string[] = [];
 
@@ -171,7 +180,7 @@ export function parseDkpMarkdown(contentVal: string): string {
     }
 
     inlineCodes.forEach((snippet, index) => {
-      const wrapQuotes = new RegExp('(?:' + BT + '|&#39;|\'){0,4}__DKP_INLINE_CODE_' + index + '__(?:' + BT + '|&#39;|&apos;|&#x27;|\'){0,4}', 'g');
+      const wrapQuotes = new RegExp('(?:' + BT + '|&#39;|&apos;|&#x27;|\'){0,4}__DKP_INLINE_CODE_' + index + '__(?:' + BT + '|&#39;|&apos;|&#x27;|\'){0,4}', 'g');
       parsedHtml = parsedHtml.replace(wrapQuotes, () => snippet);
     });
 
@@ -182,8 +191,8 @@ export function parseDkpMarkdown(contentVal: string): string {
       );
     });
 
-    const leadCodeQuote = new RegExp('(<code\\b[^>]*>)(?:' + BT + '|&#39;|\')+', 'gi');
-    const trailCodeQuote = new RegExp('(?:' + BT + '|&#39;|\')+(<\\/code>)', 'gi');
+    const leadCodeQuote = new RegExp('(<code\\b[^>]*>)(?:' + BT + '|&#39;|&apos;|&#x27;|\')+', 'gi');
+    const trailCodeQuote = new RegExp('(?:' + BT + '|&#39;|&apos;|&#x27;|\')+(<\\/code>)', 'gi');
 
     return parsedHtml
       .replace(leadCodeQuote, '$1')

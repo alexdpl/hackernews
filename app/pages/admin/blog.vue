@@ -272,6 +272,7 @@ async function deleteSubCategory(cat: BlogCategoryItem, sub: string) {
 // CRUD Articoli con DkpEditor
 function openCreateModal() {
   editingId.value = null
+  if (import.meta.client) { try { localStorage.removeItem('DKP_BLOG_EDITOR_AUTOSAVE_V1') } catch {} }
   const defaultCat = selectedCategory.value !== 'ALL' ? selectedCategory.value : (categoriesTree.value[0]?.name || '')
   const defaultSub = selectedSubCategory.value !== 'ALL' ? selectedSubCategory.value : ''
   editorModel.value = {
@@ -341,6 +342,9 @@ async function savePost() {
       }
     })
     if (res?.success) {
+      if (import.meta.client) { try { localStorage.removeItem('DKP_BLOG_EDITOR_AUTOSAVE_V1') } catch {} }
+      editingId.value = null
+      editorModel.value = { title: '', category: '', subCategory: '', tags: [], summary: '', content: '' }
       showModal.value = false
       feedbackMsg.value = res.message
       await Promise.all([fetchPosts(), fetchCategoriesTree()])
@@ -770,7 +774,7 @@ onMounted(async () => {
             <button type="button" @click="showModal = false" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-300 hover:text-white cursor-pointer">Chiudi</button>
           </div>
 
-          <DkpEditor v-model="editorModel" />
+          <DkpEditor :key="editingId ?? 'new'" v-model="editorModel" />
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#030712] border border-slate-800 rounded-xl p-3.5">
             <div class="space-y-1">

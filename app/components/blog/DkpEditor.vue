@@ -76,18 +76,33 @@ onUnmounted(() => {
   }
 })
 
+let isResettingEditor = false
+
 watch(
   () => props.modelValue,
   (newVal) => {
     if (!newVal) return
-    if ((newVal.title || '') !== title.value) title.value = newVal.title || ''
-    if ((newVal.category || '') !== categoryName.value) categoryName.value = newVal.category || ''
-    if ((newVal.subCategory || '') !== subCategoryName.value) subCategoryName.value = newVal.subCategory || ''
-    if ((newVal.summary || '') !== summary.value) summary.value = newVal.summary || ''
-    if ((newVal.content || '') !== content.value) content.value = newVal.content || ''
-    const nextTags = Array.isArray(newVal.tags) ? newVal.tags : []
+    const nextTitle = newVal.title || ''
+    const nextCategory = newVal.category || ''
+    const nextSubCategory = newVal.subCategory || ''
+    const nextSummary = newVal.summary || ''
+    const nextContent = newVal.content || ''
+    const nextTags = Array.isArray(newVal.tags) ? [...newVal.tags] : []
+
+    if (nextTitle !== title.value) title.value = nextTitle
+    if (nextCategory !== categoryName.value) categoryName.value = nextCategory
+    if (nextSubCategory !== subCategoryName.value) subCategoryName.value = nextSubCategory
+    if (nextSummary !== summary.value) summary.value = nextSummary
+    if (nextContent !== content.value) content.value = nextContent
     if (JSON.stringify(nextTags) !== JSON.stringify(tags.value)) {
-      tags.value = [...nextTags]
+      tags.value = nextTags
+    }
+
+    if (!nextTitle.trim() && !nextContent.trim() && !nextSummary.trim()) {
+      previousContentSnapshot.value = null
+      savedDraftAvailable.value = null
+      autosaveNotice.value = ''
+      activeTab.value = 'write'
     }
   },
   { deep: true }
@@ -107,6 +122,7 @@ function syncToParent() {
 watch(
   [title, categoryName, subCategoryName, tags, summary, content],
   () => {
+    if (isResettingEditor) return
     syncToParent()
     if (!import.meta.client) return
     if (!title.value.trim() && !content.value.trim() && !summary.value.trim()) return
@@ -158,6 +174,7 @@ function restoreSavedDraft() {
 }
 
 function resetEditor(clearStorage = true) {
+  isResettingEditor = true
   title.value = ''
   categoryName.value = ''
   subCategoryName.value = ''
@@ -165,11 +182,16 @@ function resetEditor(clearStorage = true) {
   summary.value = ''
   content.value = ''
   previousContentSnapshot.value = null
+  savedDraftAvailable.value = null
+  autosaveNotice.value = ''
+  activeTab.value = 'write'
   if (textareaRef.value) textareaRef.value.value = ''
-  if (clearStorage) clearSavedDraft()
+  if (clearStorage) {
+    try { localStorage.removeItem(BLOG_AUTOSAVE_KEY) } catch {}
+  }
   syncToParent()
+  isResettingEditor = false
 }
-
 function clearSavedDraft() {
   savedDraftAvailable.value = null
   autosaveNotice.value = ''
