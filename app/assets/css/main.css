@@ -147,3 +147,11 @@ mark,
   color: #38bdf8 !important;
   border-radius: 0.3rem !important;
 }
+
+/* DKP v2.6: Disable Tailwind Typography backtick pseudo-elements on inline code */
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after,
+.dkp-inline-code::before,
+.dkp-inline-code::after {
+  content: none !important;
+}
