@@ -1,20 +1,31 @@
-title = "DevKernelPulse Gitleaks Configuration"
+title = "DevKernelPulse Gitleaks Configuration (v2.6-PURE-SQL)"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Allowlist lockfiles, SQL dumps, test fixtures and example SHA-256 hashes"
+description = "Allowlist lockfiles, example env templates, SQL fixtures, build artifacts and SHA-256 hashes"
 paths = [
   '''pnpm-lock\.yaml''',
+  '''\.env\.example''',
   '''dkp_backup\.sql''',
   '''\.nuxt/.*''',
   '''\.output/.*''',
+  '''dist/.*''',
+  '''sdk/dist/.*''',
   '''tests/.*''',
   '''playwright-report/.*''',
-  '''test-results/.*'''
+  '''test-results/.*''',
+  '''\.bemyagent/.*''',
+  '''server/assets/bemyagent/.*''',
+  '''docs/.*\.md''',
+  '''sdk/README\.md''',
+  '''README\.md'''
 ]
 regexes = [
   '''[a-f0-9]{64}''',
-  '''process\.env\.[A-Z0-9_]+'''
+  '''process\.env\.[A-Z0-9_]+''',
+  '''dkp_live_(?:example|your_api_key|test|placeholder)[a-zA-Z0-9_]*''',
+  '''sk_(?:test|live)_(?:example|placeholder|xxx)[a-zA-Z0-9_]*''',
+  '''whsec_(?:example|placeholder|xxx)[a-zA-Z0-9_]*'''
 ]

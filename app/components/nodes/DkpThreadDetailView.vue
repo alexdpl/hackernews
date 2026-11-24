@@ -6,7 +6,6 @@ import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
 import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import {
-  parseDkpMarkdown,
   cleanNodeLabel,
   buildNodeThreadSlug,
   extractNodeThreadId

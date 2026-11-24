@@ -161,7 +161,7 @@ const { getMainUrl } = useDomain()
             </NuxtLink>
           </li>
           <li>
-            <a href="https://github.com/alexdpl/hackernews" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+            <a href="https://github.com/alexdpl/devkernelpulse" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
               🐙 GitHub Repository ↗
             </a>
           </li>

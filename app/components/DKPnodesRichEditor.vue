@@ -2,7 +2,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
-import { parseDkpMarkdown, cleanNodeLabel } from '~/composables/useDkpNodes'
+import { cleanNodeLabel } from '~/composables/useDkpNodes'
+import { parseDkpMarkdown } from '~/utils/dkpMarkdown'
 import { useSentinelGrammar } from '~/composables/useSentinelGrammar'
 import { useDynamicPrism } from '~/composables/useDynamicPrism'
 

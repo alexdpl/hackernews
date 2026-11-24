@@ -16,7 +16,7 @@ function escapeInlineCodeContent(raw: string): string {
   const leadTick = new RegExp('^' + BT + '+|' + BT + '+$', 'g');
   const cleaned = String(raw || '')
     .replace(leadTick, '')
-    .replace(/^''+|''+$/g, '')
+    .replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;)+$/gi, '').replace(leadTick, '')
     .trim();
 
   return cleaned
@@ -171,7 +171,7 @@ export function parseDkpMarkdown(contentVal: string): string {
     }
 
     inlineCodes.forEach((snippet, index) => {
-      const wrapQuotes = new RegExp('(?:' + BT + '|&#39;|\'){0,2}__DKP_INLINE_CODE_' + index + '__(?:' + BT + '|&#39;|\'){0,2}', 'g');
+      const wrapQuotes = new RegExp('(?:' + BT + '|&#39;|\'){0,4}__DKP_INLINE_CODE_' + index + '__(?:' + BT + '|&#39;|&apos;|&#x27;|\'){0,4}', 'g');
       parsedHtml = parsedHtml.replace(wrapQuotes, () => snippet);
     });
 

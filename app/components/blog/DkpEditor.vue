@@ -135,16 +135,7 @@ if (import.meta.client) {
     if (rawDraft) {
       const parsed = JSON.parse(rawDraft)
       if (parsed && (parsed.content || parsed.title)) {
-        if (!title.value.trim() && !content.value.trim()) {
-          title.value = String(parsed.title || '')
-          categoryName.value = String(parsed.category || '')
-          subCategoryName.value = String(parsed.subCategory || '')
-          tags.value = Array.isArray(parsed.tags) ? parsed.tags : []
-          summary.value = String(parsed.summary || '')
-          content.value = String(parsed.content || '')
-          autosaveNotice.value = 'Bozza ripristinata automaticamente'
-          syncToParent()
-        } else if (parsed.content !== content.value) {
+        if (parsed.content !== content.value || parsed.title !== title.value) {
           savedDraftAvailable.value = parsed
         }
       }
@@ -163,6 +154,19 @@ function restoreSavedDraft() {
   content.value = d.content || ''
   savedDraftAvailable.value = null
   autosaveNotice.value = 'Bozza locale ripristinata'
+  syncToParent()
+}
+
+function resetEditor(clearStorage = true) {
+  title.value = ''
+  categoryName.value = ''
+  subCategoryName.value = ''
+  tags.value = []
+  summary.value = ''
+  content.value = ''
+  previousContentSnapshot.value = null
+  if (textareaRef.value) textareaRef.value.value = ''
+  if (clearStorage) clearSavedDraft()
   syncToParent()
 }
 
@@ -432,7 +436,7 @@ const parsedContent = computed(() => {
     .replace(/@\[video\]\(([^)]+)\)/g, '<' + 'div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen><' + '/iframe><' + '/div>')
     .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1<' + '/mark>')
     .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1<' + '/u>')
-    .replace(/`+([^`\n]+?)`+/g, (_m, c) => '<code class="dkp-inline-code">' + String(c).replace(/^`+|`+$/g, '').trim() + '<' + '/code>')
+    .replace(/`+([^`\n]+?)`+/g, (_m, c) => '<code class="dkp-inline-code">' + String(c).replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+$/gi, '').trim() + '<' + '/code>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="dkp-bold">$1<' + '/strong>')
     .replace(/\*(.*?)\*/g, '<em class="dkp-italic">$1<' + '/em>')
     .replace(/~~(.*?)~~/g, '<del class="dkp-strike">$1<' + '/del>')
@@ -527,7 +531,7 @@ const parsedContent = computed(() => {
           </span>
           <button
             type="button"
-            @click="showAiBar = !showAiBar"
+            @click="resetEditor(true)" class="px-3 py-1.5 rounded-xl border bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 font-bold font-mono text-xs transition cursor-pointer" title="Pulisci editor">+ Nuovo</button><button type="button" @click="showAiBar = !showAiBar"
             :class="showAiBar ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
             class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
           >
@@ -574,7 +578,7 @@ const parsedContent = computed(() => {
         <div class="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            @click="showAiBar = !showAiBar"
+            @click="resetEditor(true)" class="px-3 py-1.5 rounded-xl border bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 font-bold font-mono text-xs transition cursor-pointer" title="Pulisci editor">+ Nuovo</button><button type="button" @click="showAiBar = !showAiBar"
             :class="showAiBar ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
             class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
             title="Apri DKP Ai Nexus"

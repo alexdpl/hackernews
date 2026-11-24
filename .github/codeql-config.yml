@@ -1,0 +1,15 @@
+name: "DevKernelPulse CodeQL Security Config (v2.6-PURE-SQL)"
+
+paths-ignore:
+  - '.nuxt/**'
+  - '.output/**'
+  - 'node_modules/**'
+  - 'dist/**'
+  - 'sdk/dist/**'
+  - 'playwright-report/**'
+  - 'test-results/**'
+  - '.bemyagent/**'
+  - 'server/assets/bemyagent/**'
+
+queries:
+  - uses: security-extended

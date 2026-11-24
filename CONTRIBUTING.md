@@ -1,53 +1,9 @@
-# 🤝 Guida alla Contribuzione - DevKernelPulse
+# Guida alla Contribuzione — DevKernelPulse (DKP Kernel v2.6-PURE-SQL)
 
-Benvenuto a bordo! Apprezziamo il tuo interesse nel migliorare l'ecosistema DKP v2.5-GOLD. Per mantenere il codice pulito e l'architettura stabile, ti chiediamo di seguire queste linee guida.
-
-## 🚀 Setup Locale
-1. Clona il repository: `git clone git@github.com:alexdpl/hackernews.git`
-2. Installa le dipendenze: `pnpm install`
-3. Avvia l'ambiente dev: `pnpm dev`
-
-## 💻 Setup Locale del Progetto 
-
-1. **Clona il repository via SSH:**
-   'bash'
-   git clone git@github.com:alexdpl/hackernews.git
-   cd hackernews
-
-## 🌿 Regole per i Branch
-Crea sempre un branch separato partendo da `main`:
-- Nuove feature: `feat/nome-feature` (es. `feat/ai-scanner`)
-- Bug fix: `fix/nome-bug` (es. `fix/session-cookie`)
-- Documentazione: `docs/nome-doc`
-
-## 💬 Convenzioni per i Commit (Conventional Commits)
-Usa messaggi chiari e descrittivi:
-- `feat(modulo): aggiunta nuova funzionalità`
-- `fix(auth): risolto problema di login`
-- `chore: aggiornamento dipendenze`
-
-## 🧪 Esecuzione dei Test
-Prima di inviare una Pull Request, assicurati che tutti i test passino con successo:
-- **Unit & Nuxt Tests:** `pnpm exec vitest run`
-- **End-to-End Tests:** `pnpm exec playwright test`
-
-## 🔄 Regole per la Pull Request (PR)
-1. Assicurati che il codice passi la validazione della CI (GitHub Actions).
-2. Non includere file `.env` o chiavi API.
-3. Compila la descrizione della PR spiegando *cosa* hai fatto e *perché*.
-4. Richiedi la review a un Core Maintainer (@alexdpl).
-
-## 📐 Standard di Codice
-- Utilizza TypeScript Strict.
-- Segui la convenzione Conventional Commits per i messaggi di commit (`feat:`, `fix:`, `docs:`).
-
-### 🛠️ Esegui il commit e spingi su GitHub
-
-Esegui questi comandi nel terminale locale per aggiungere il file ed elevare subito lo score di documentazione:
-
-```bash
-git add CONTRIBUTING.md
-git commit -m "docs: add comprehensive CONTRIBUTING.md guidelines"
-git push origin main
-
-Grazie per il tuo contributo all'Ecosistema DKP! 🔥
+1. **Setup Locale**: clona `https://github.com/alexdpl/devkernelpulse`, esegui `pnpm install` e avvia `pnpm dev`.
+2. **Standard Architetturali**: usa TypeScript strict, query Pure SQL parametrizzate su Neon PostgreSQL (zero endpoint `/api/v2.5/`) e Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`).
+3. **Quality Gates prima della PR**:
+   - `pnpm run build`
+   - `pnpm run build:sdk`
+   - `pnpm exec vitest run --passWithNoTests`
+   - `pnpm audit --prod --audit-level=high`

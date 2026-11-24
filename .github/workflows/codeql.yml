@@ -1,4 +1,4 @@
-name: "🛡️ DKP CodeQL Security Analysis"
+name: "DKP CodeQL Security Analysis"
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   analyze:
-    name: Scansione Sicurezza CodeQL (${{ matrix.language }})
+    name: CodeQL Security Analysis (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -34,15 +34,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          queries: security-extended
-          paths-ignore:
-            - '.nuxt/**'
-            - '.output/**'
-            - 'node_modules/**'
-            - 'playwright-report/**'
+          config-file: ./.github/codeql-config.yml
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
-        

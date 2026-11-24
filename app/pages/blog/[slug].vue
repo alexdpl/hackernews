@@ -231,7 +231,7 @@ function renderInlineBackticksInHtml(html: string): string {
   })
 
   working = working.replace(/`+([^`\r\n]+?)`+/g, (_m, inner: string) => {
-    const cleanInner = inner.replace(/^`+|`+$/g, '').trim()
+    const cleanInner = inner.replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+$/gi, '').trim()
     if (!cleanInner) return ''
     return `<code class="dkp-inline-code">${cleanInner}</code>`
   })
@@ -240,7 +240,7 @@ function renderInlineBackticksInHtml(html: string): string {
     working = working.replace(new RegExp(`__DKP_PROTECTED_CODE_${idx}__`, 'g'), () => block)
   })
 
-  working = working.replace(/(<code\b[^>]*>)`+([^<]*?)`+(<\/code>)/gi, '$1$2$3')
+  working = working.replace(/(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`){0,2}(<code\b[^>]*>)(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)*([^<]*?)(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)*(<\/code>)(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`){0,2}/gi, '$1$2$3')
   return working
 }
 
@@ -859,7 +859,7 @@ function handleLike() {
 .prose th, .post-content th, :deep(.dkp-table th) { @apply bg-[#0d1322] text-emerald-400 font-bold p-3 border border-slate-800 text-xs uppercase tracking-wider; }
 .prose td, .post-content td, :deep(.dkp-table td) { @apply p-3 text-slate-300 border border-slate-800 text-sm; }
 
-.prose code::before, .prose code::after { content: "" !important; }
+:deep(.prose code)::before, :deep(.prose code)::after, :deep(.post-content code)::before, :deep(.post-content code)::after, :deep(.dkp-preview-content code)::before, :deep(.dkp-preview-content code)::after, :deep(.dkp-inline-code)::before, :deep(.dkp-inline-code)::after { content: none !important; }
 
 :deep(.dkp-code-wrapper) {
   background: #0d1117;
