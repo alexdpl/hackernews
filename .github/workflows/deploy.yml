@@ -1,4 +1,4 @@
-name: ☁️ Deploy to Google Cloud Run (v2.6-PURE-SQL)
+name: Deploy to Google Cloud Run (v2.6-PURE-SQL)
 
 on:
   workflow_run:
@@ -19,57 +19,56 @@ permissions:
 
 env:
   PROJECT_ID: project-42be4553-a7a8-477b-80d
-  REGION: europe-west1
-  REPOSITORY: dkp-repo
-  IMAGE_NAME: dkp-kernel
-  SERVICE_NAME: devkernelpulse-api
+  REGION: europe-west4
+  IMAGE_PATH: gcr.io/project-42be4553-a7a8-477b-80d/devkernelpulse
+  SERVICE_NAME: devkernelpulse
   WORKLOAD_IDENTITY_PROVIDER: projects/920309951767/locations/global/workloadIdentityPools/github-pool/providers/github-provider
   SERVICE_ACCOUNT: github-actions-sa@project-42be4553-a7a8-477b-80d.iam.gserviceaccount.com
 
 jobs:
   build-and-deploy:
-    name: 🚀 Build Container & Rollout Cloud Run
+    name: Build Container & Rollout Cloud Run
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: 📥 Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: 🔐 Authenticate to GCP via WIF
+      - name: Authenticate to GCP via WIF
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.SERVICE_ACCOUNT }}
 
-      - name: ☁️ Set up Cloud SDK
+      - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: 🐳 Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🔑 Configure Docker for Artifact Registry
+      - name: Configure Docker for GCR
         run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+          gcloud auth configure-docker gcr.io --quiet
 
-      - name: 🏗️ Build and Push Docker Image (Cached)
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha || github.sha }}
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_PATH }}:${{ github.event.workflow_run.head_sha || github.sha }}
+            ${{ env.IMAGE_PATH }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: 🚀 Deploy to Cloud Run (Native v2.6)
+      - name: Deploy to Cloud Run (Native v2.6-PURE-SQL)
         id: deploy
         run: |
           SHA_TAG="${{ github.event.workflow_run.head_sha || github.sha }}"
           gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${SHA_TAG} \
+            --image=${{ env.IMAGE_PATH }}:${SHA_TAG} \
             --region=${{ env.REGION }} \
             --platform=managed \
             --labels=kernel=v2-6-pure-sql \
@@ -78,8 +77,8 @@ jobs:
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format='value(status.url)')
           echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
 
-      - name: 🩺 Post-Deploy Live Health Verification
+      - name: Post-Deploy Live Health Verification
         run: |
           echo "Verifica servizio live su: ${{ steps.deploy.outputs.service_url }}"
           curl -fsSL --retry 3 --retry-delay 3 "${{ steps.deploy.outputs.service_url }}/" >/dev/null
-          echo "✅ Cloud Run Revision v2.6-PURE-SQL attiva e funzionante!"
+          echo "Cloud Run Revision v2.6-PURE-SQL attiva e funzionante!"
