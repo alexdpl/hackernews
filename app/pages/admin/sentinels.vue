@@ -20,6 +20,7 @@ const totals = ref({
 const statusBanner = ref<{ ok: boolean; text: string } | null>(null)
 const savingRole = ref('')
 const isBatchRunning = ref(false)
+const isSendingReport = ref(false)
 
 // Sandbox & Target Scanner
 const scanMode = ref<'snippet' | 'forum' | 'blog'>('snippet')
@@ -120,6 +121,29 @@ async function runBatchAudit() {
   }
 }
 
+async function sendSentinelMailReport() {
+  isSendingReport.value = true
+  statusBanner.value = null
+  try {
+    const res: any = await $fetch('/api/admin/sentinels', {
+      method: 'POST',
+      body: { action: 'run_sweep' }
+    })
+    statusBanner.value = {
+      ok: Boolean(res?.success),
+      text: res?.message || 'Report Sentinel inviato nella casella Admin Mail.'
+    }
+    await loadDependabotData()
+  } catch (err: any) {
+    statusBanner.value = {
+      ok: false,
+      text: err?.data?.statusMessage || 'Errore invio report Sentinel in Admin Mail.'
+    }
+  } finally {
+    isSendingReport.value = false
+  }
+}
+
 onMounted(loadDependabotData)
 </script>
 
@@ -130,6 +154,14 @@ onMounted(loadDependabotData)
     badge="PHASE 4 • RBAC & AUTO-COMMENT"
   >
     <template #actions>
+      <button
+        type="button"
+        @click="sendSentinelMailReport"
+        :disabled="isSendingReport"
+        class="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/60 text-cyan-200 font-extrabold cursor-pointer disabled:opacity-50"
+      >
+        {{ isSendingReport ? 'Invio Report...' : '&#128231; Invia Report Sentinel in Mail' }}
+      </button>
       <button
         type="button"
         @click="runBatchAudit"

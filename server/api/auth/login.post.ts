@@ -144,12 +144,7 @@ export default defineEventHandler(async (event) => {
     }
 	
 	if (!dbUser && !matchedAdminSecret) {
-      console.warn('[AUTH 401 DEBUG - NO USER]', {
-        identifier,
-        isFounderIdentifier,
-        adminSecretLen: configuredAdminSecret.length,
-        inputPasswordLen: password.length
-      })
+      console.warn('[AUTH 401 - INVALID CREDENTIALS]', { identifier, isFounderIdentifier })
       throw createError({
         statusCode: 401,
         statusMessage: 'Credenziali non valide.'

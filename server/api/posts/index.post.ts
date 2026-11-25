@@ -1,4 +1,4 @@
-﻿// server/api/posts/index.post.ts
+// server/api/posts/index.post.ts
 import { neon } from '@neondatabase/serverless'
 import { runSentinelPipeline } from '~~/server/utils/sentinelNetwork'
 

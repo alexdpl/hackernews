@@ -492,11 +492,71 @@ onMounted(() => {
   }, 500)
   if (post.value?.id || slug.value) {
     loadOnChainBlogProof(true)
+    void loadBlogComments()
   }
 })
 
 onUnmounted(() => {
   clearTimeout(toastTimer)
+})
+
+const { user: currentUser } = useAuthCore()
+const blogComments = ref<any[]>([])
+const isLoadingComments = ref(false)
+const newCommentText = ref('')
+const commentGuestAuthor = ref('')
+const isSubmittingComment = ref(false)
+const SENTINEL_BOT_NAMES = new Set(['sentinel_ai', 'guardian_bot', 'snippet_master', 'security_watch', 'sentinel_dockeeper', 'sentinel_archguard'])
+
+async function loadBlogComments() {
+  const targetSlug = resolvedSlug.value
+  if (!targetSlug) return
+  isLoadingComments.value = true
+  try {
+    const res: any = await $fetch('/api/blog/comments', {
+      query: { slug: targetSlug }
+    }).catch(() => null)
+    blogComments.value = Array.isArray(res?.comments) ? res.comments : []
+  } finally {
+    isLoadingComments.value = false
+  }
+}
+
+async function submitBlogComment() {
+  const text = newCommentText.value.trim()
+  const targetSlug = resolvedSlug.value
+  if (!text || !targetSlug || isSubmittingComment.value) return
+  isSubmittingComment.value = true
+  try {
+    const authorName =
+      currentUser.value?.username ||
+      commentGuestAuthor.value.trim() ||
+      'community_dev'
+    const res: any = await $fetch('/api/blog/comments', {
+      method: 'POST',
+      body: {
+        blogSlug: targetSlug,
+        content: text,
+        author: authorName,
+        userId: currentUser.value?.id || 1
+      }
+    })
+    if (res?.success) {
+      newCommentText.value = ''
+      await loadBlogComments()
+      showNotification(res.message || 'Commento pubblicato! +10 XP')
+    }
+  } catch (err: any) {
+    showNotification(err?.data?.statusMessage || 'Errore durante la pubblicazione del commento.')
+  } finally {
+    isSubmittingComment.value = false
+  }
+}
+
+watch(resolvedSlug, () => {
+  if (import.meta.client) {
+    void loadBlogComments()
+  }
 })
 
 function handleLike() {
@@ -794,46 +854,154 @@ function handleLike() {
             </div>
           </div>
 
-          <!-- FOOTER KARMA / LIKE -->
-          <div class="article-actions-footer bg-[#020420] border border-slate-800 rounded-xl p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10 mb-6">
-            <div class="flex flex-col gap-1 items-center sm:items-start text-center sm:text-left w-full sm:w-auto">
-              <button
-                type="button"
-                @click="handleLike"
-                :disabled="hasLiked"
-                :class="[
-                  'border-none px-6 py-3 rounded-lg font-bold text-lg flex items-center justify-center gap-3 transition-all w-full sm:w-auto',
-                  hasLiked
-                    ? 'bg-emerald-500/80 text-slate-950 cursor-default'
-                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer transform hover:-translate-y-1 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                ]"
-              >
-                🔥 {{ hasLiked ? 'Kernel Acceso' : 'Accendi Kernel' }}
-                <span class="bg-[#020420] text-emerald-400 px-3 py-1 rounded text-sm shadow-inner">{{ post.likes || 0 }}</span>
-              </button>
-              <span class="text-slate-400 text-xs mt-1">Premi per premiare questo articolo con Karma!</span>
-            </div>
-          </div>
-
-          <!-- SEZIONE CONDIVISIONE ARTICOLO -->
-          <div class="share-horizontal-card bg-[#020420] border border-slate-800 rounded-xl p-6 relative z-10 mb-10 shadow-lg">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div class="flex items-center gap-3 text-center md:text-left">
-                <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl font-bold shrink-0">
-                  🚀
+          <!-- SEZIONE COMMENTI ARTICOLO BLOG -->
+          <section id="blog-comments" class="bg-[#020420] border border-slate-800 rounded-2xl p-6 relative z-10 mb-6 shadow-lg font-mono">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-800">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center text-emerald-400 text-lg font-bold shrink-0">
+                  &#128172;
                 </div>
                 <div>
-                  <h4 class="text-white font-extrabold text-base m-0">Condividi articolo</h4>
-                  <p class="text-slate-400 text-xs m-0">Diffondi la conoscenza nell'ecosistema Dev</p>
+                  <h3 class="text-white font-extrabold text-base m-0 flex items-center gap-2">
+                    <span>Commenti &amp; Peer Review</span>
+                    <span class="px-2 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 text-xs font-extrabold">
+                      {{ blogComments.length }}
+                    </span>
+                  </h3>
+                  <p class="text-slate-400 text-xs m-0 mt-0.5">
+                    Partecipa alla discussione tecnica sull'articolo (+10 XP per contributo)
+                  </p>
                 </div>
               </div>
 
-              <div class="w-full md:w-auto flex justify-center">
+              <button
+                type="button"
+                @click="loadBlogComments"
+                class="px-4 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/50 text-cyan-200 font-mono text-xs font-extrabold cursor-pointer transition-colors"
+              >
+                &#8635; Aggiorna
+              </button>
+            </div>
+
+            <!-- Form Nuovo Commento -->
+            <form @submit.prevent="submitBlogComment" class="space-y-3 mb-6">
+              <div v-if="!currentUser" class="flex flex-col sm:flex-row gap-2">
+                <input
+                  v-model="commentGuestAuthor"
+                  type="text"
+                  maxlength="40"
+                  placeholder="Il tuo handle dev (es. rust_architect)..."
+                  class="flex-1 bg-[#090d16] border border-slate-700 focus:border-cyan-400 rounded-xl px-3.5 py-2 text-xs text-slate-100 outline-none"
+                />
+              </div>
+
+              <textarea
+                v-model="newCommentText"
+                rows="3"
+                required
+                placeholder="Scrivi un commento tecnico, un benchmark o un feedback sull'articolo..."
+                class="w-full bg-[#090d16] border border-slate-700 focus:border-emerald-400 rounded-xl p-3.5 text-xs sm:text-sm text-slate-100 outline-none resize-y leading-relaxed"
+              ></textarea>
+
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <span class="text-[11px] text-slate-400">
+                  Pubblichi come <strong class="text-emerald-400">@{{ currentUser?.username || commentGuestAuthor.trim() || 'community_dev' }}</strong>
+                </span>
+                <button
+                  type="submit"
+                  :disabled="isSubmittingComment || !newCommentText.trim()"
+                  class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-mono text-xs font-extrabold cursor-pointer transition-colors"
+                >
+                  {{ isSubmittingComment ? 'Pubblicazione...' : 'Pubblica Commento (+10 XP)' }}
+                </button>
+              </div>
+            </form>
+
+            <!-- Lista Commenti -->
+            <div v-if="isLoadingComments" class="py-6 text-center text-xs text-slate-400 animate-pulse">
+              Caricamento commenti dal ledger...
+            </div>
+
+            <div v-else-if="blogComments.length === 0" class="bg-[#090d16] border border-slate-800/80 rounded-xl p-5 text-center text-xs text-slate-400">
+              Nessun commento ancora presente. Lascia il primo contributo tecnico qui sopra!
+            </div>
+
+            <div v-else class="space-y-3">
+              <article
+                v-for="c in blogComments"
+                :key="c.id"
+                :class="[
+                  'rounded-xl p-4 border transition-colors',
+                  SENTINEL_BOT_NAMES.has(String(c.author || '').toLowerCase())
+                    ? 'bg-cyan-950/20 border-cyan-500/40'
+                    : 'bg-[#090d16] border-slate-800'
+                ]"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 text-xs font-extrabold flex items-center justify-center">
+                      {{ (String(c.author || 'D')[0] || 'D').toUpperCase() }}
+                    </span>
+                    <NuxtLink
+                      :to="`/user/${encodeURIComponent(c.author || 'community_dev')}`"
+                      class="text-xs font-extrabold text-cyan-300 hover:text-emerald-300 no-underline"
+                    >
+                      @{{ c.author || 'community_dev' }}
+                    </NuxtLink>
+                    <span
+                      v-if="SENTINEL_BOT_NAMES.has(String(c.author || '').toLowerCase())"
+                      class="px-2 py-0.5 rounded bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 text-[10px] font-extrabold"
+                    >
+                      BOT // SENTINEL
+                    </span>
+                  </div>
+                  <span class="text-[11px] text-slate-500">
+                    {{ c.createdAt ? new Date(c.createdAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }) : 'Recente' }}
+                  </span>
+                </div>
+                <p class="text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap m-0">
+                  {{ c.content }}
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <!-- SEZIONE CONDIVISIONE ARTICOLO + KARMA (SUBITO SOTTO I COMMENTI) -->
+          <div class="share-horizontal-card bg-[#020420] border border-slate-800 rounded-2xl p-6 relative z-10 mb-10 shadow-lg">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl font-bold shrink-0">
+                  &#128640;
+                </div>
+                <div>
+                  <h4 class="text-white font-extrabold text-base m-0">Condividi &amp; Premia con Karma</h4>
+                  <p class="text-slate-400 text-xs m-0 mt-0.5">Diffondi l'articolo nel network o accendi il Kernel (+1 Karma)</p>
+                </div>
+              </div>
+
+              <div class="w-full lg:w-auto">
                 <SocialShare
                   :title="post?.title || 'DevKernelPulse Blog'"
                   :url="currentUrl"
                   :horizontal="true"
-                />
+                >
+                  <button
+                    type="button"
+                    @click="handleLike"
+                    :disabled="hasLiked"
+                    :class="[
+                      'px-4 py-2 rounded-xl font-mono text-xs font-extrabold inline-flex items-center gap-2 transition-colors border',
+                      hasLiked
+                        ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300 cursor-default'
+                        : 'bg-emerald-500 hover:bg-emerald-400 border-emerald-400 text-slate-950 cursor-pointer'
+                    ]"
+                  >
+                    <span>&#128293; {{ hasLiked ? 'Kernel Acceso' : 'Accendi Kernel' }}</span>
+                    <span class="px-2 py-0.5 rounded-lg bg-[#020420] text-emerald-400 text-[11px] font-extrabold">
+                      {{ optimisticLikes ?? post.likes ?? 0 }}
+                    </span>
+                  </button>
+                </SocialShare>
               </div>
             </div>
           </div>

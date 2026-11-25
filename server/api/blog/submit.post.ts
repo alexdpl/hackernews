@@ -223,7 +223,7 @@ Risultato scansione statica locale: ${staticSastStatus} (Problemi trovati: ${tot
         : ['DKP', 'Vault', 'Sentinel']
 
       const tagsSqlExpr = isPgArray
-        ? sql`${`{${cleanTags.map((t) => `"${t.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',')}}`}::text[]`
+        ? (cleanTags.length > 0 ? sql`ARRAY[${sql.join(cleanTags.map((t) => sql`${t}`), sql`, `)}]::text[]` : sql`ARRAY[]::text[]`)
         : isJsonb
           ? sql`${JSON.stringify(cleanTags)}::jsonb`
           : sql`${JSON.stringify(cleanTags)}`

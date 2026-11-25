@@ -2,14 +2,31 @@
 import { computed, onMounted } from 'vue'
 
 const { data: blogRes, pending, refresh } = await useFetch<any>('/api/blog/posts', {
-  query: { limit: 5 },
+  query: { limit: 15 },
   default: () => ({ data: [] })
 })
 
 const articles = computed<any[]>(() => {
   const raw = blogRes.value
   const list = raw?.data || raw?.posts || raw?.articles || (Array.isArray(raw) ? raw : [])
-  return list.slice(0, 5)
+  const seenSlugs = new Set<string>()
+  const seenTitles = new Set<string>()
+  const unique: any[] = []
+
+  for (const item of list) {
+    if (!item) continue
+    const normSlug = String(item.slug || '').trim().toLowerCase()
+    const normTitle = String(item.title || '').trim().toLowerCase().replace(/\s+/g, ' ')
+    if ((normSlug && seenSlugs.has(normSlug)) || (normTitle && seenTitles.has(normTitle))) {
+      continue
+    }
+    if (normSlug) seenSlugs.add(normSlug)
+    if (normTitle) seenTitles.add(normTitle)
+    unique.push(item)
+    if (unique.length >= 5) break
+  }
+
+  return unique
 })
 
 onMounted(() => {
@@ -30,11 +47,11 @@ onMounted(() => {
         <button
           type="button"
           @click="() => refresh()"
-          class="text-xs text-amber-400 hover:text-cyan-400 bg-dkp-bg border border-amber-500/35 hover:border-cyan-400/60 px-2.5 py-1 rounded-lg cursor-pointer transition-colors font-bold"
+          class="text-xs text-amber-400 hover:text-cyan-400 bg-dkp-bg border border-amber-500/35 hover:border-cyan-400/60 px-2.5 py-1 rounded-xl cursor-pointer transition-colors font-extrabold"
         >
           &#8635;
         </button>
-        <NuxtLink to="/blog" class="text-xs text-amber-400 hover:text-cyan-400 no-underline font-bold transition-colors">
+        <NuxtLink to="/blog" class="text-xs text-amber-400 hover:text-cyan-400 no-underline font-extrabold transition-colors">
           Tutti &rarr;
         </NuxtLink>
       </div>
@@ -51,7 +68,7 @@ onMounted(() => {
     <div v-else class="space-y-3">
       <article
         v-for="art in articles"
-        :key="art.id"
+        :key="art.slug || art.id"
         class="bg-gradient-to-r from-amber-500/[0.06] via-dkp-bg/95 to-dkp-bg border border-amber-500/25 hover:border-cyan-400/60 rounded-xl p-3.5 transition-all group"
       >
         <NuxtLink
