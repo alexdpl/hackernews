@@ -155,9 +155,7 @@ watch(activeTab, () => refresh())
       <!-- 3 METRICHE KPI -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
         <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-2xl shrink-0">
-            
-          </div>
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-2xl shrink-0">&#129302;</div>
           <div>
             <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">Trinity AI</div>
             <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">SINTESI &amp; TRADUZIONE REALTIME</div>
@@ -165,9 +163,7 @@ watch(activeTab, () => refresh())
         </div>
 
         <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-400/35 flex items-center justify-center text-2xl shrink-0">
-            
-          </div>
+          <div class="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-400/35 flex items-center justify-center text-2xl shrink-0">&#128737;&#65039;</div>
           <div>
             <div class="text-2xl sm:text-3xl font-extrabold text-white font-mono">SAST 100%</div>
             <div class="text-[11px] font-mono text-slate-300 uppercase tracking-wider">FILTRO ANTI-PHISHING SENTINEL</div>
@@ -175,9 +171,7 @@ watch(activeTab, () => refresh())
         </div>
 
         <div class="bg-dkp-card/95 border border-dkp-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center text-2xl shrink-0">
-            
-          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center text-2xl shrink-0">&#9889;</div>
           <div>
             <div class="flex items-center gap-2">
               <span class="text-2xl sm:text-3xl font-extrabold text-white font-mono">Pure SQL</span>
