@@ -17,45 +17,72 @@ export default defineNuxtConfig({
 
   // 🟢 ROUTE RULES: Gestione Caching ed Isolamento API Nitro Engine
   routeRules: {
+    // Asset statici immutabili con hash di build
+    '/_nuxt/**': {
+      headers: {
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'CDN-Cache-Control': 'max-age=31536000, immutable'
+      }
+    },
     // Pannello Admin & Webmail: Nessuna cache Edge, nessuna interferenza SSR
     '/admin/**': {
       ssr: false,
-      cache: false
+      cache: false,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'CDN-Cache-Control': 'no-store'
+      }
     },
-    // API Amministrative & Mail Subdomain: Nessuna cache, CORS abilitato
+    // API Amministrative, Cron, Sentinel & Mail: Nessuna cache
     '/api/admin/**': {
       cache: false,
-      cors: true
+      cors: true,
+      headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' }
+    },
+    '/api/sentinel/**': {
+      cache: false,
+      cors: true,
+      headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' }
     },
     '/api/mail/**': {
       cache: false,
-      cors: true
+      cors: true,
+      headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' }
     },
     '/api/newsletter/**': {
       cache: false,
-      cors: true
+      cors: true,
+      headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' }
     },
     '/api/autoresponder/**': {
       cache: false,
-      cors: true
+      cors: true,
+      headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' }
     },
-    // API Notizie / Cron: Zero cache, CORS abilitato
     '/api/news/**': {
       cache: false,
-      cors: true
+      cors: true,
+      headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' }
     },
-    // API Notizie pubblico: Cache Edge di 5 min con Stale-While-Revalidate su CDN
+    // API Notizie pubblico: Cache Edge breve (60s) con Stale-While-Revalidate
     '/api/news': {
       headers: {
-        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400',
-        'CDN-Cache-Control': 'max-age=300, stale-while-revalidate=86400'
+        'Cache-Control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 'max-age=60, stale-while-revalidate=300'
       }
     },
-    // API Blog: Cache Edge 1h
+    // API Blog: Cache Edge allineata (2 min) per aggiornamenti rapidi post/commenti/karma
     '/api/blog/**': {
       headers: {
-        'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400',
-        'CDN-Cache-Control': 'max-age=3600, stale-while-revalidate=86400'
+        'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
+        'CDN-Cache-Control': 'max-age=120, stale-while-revalidate=600'
+      }
+    },
+    // Pagine HTML SSR: evita cache Edge obsoleta dopo i deploy
+    '/**': {
+      headers: {
+        'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+        'CDN-Cache-Control': 'max-age=60, stale-while-revalidate=300'
       }
     }
   },

@@ -86,6 +86,21 @@ jobs:
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --region=${{ env.REGION }} --format='value(status.url)')
           echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
 
+      - name: Purge Cloudflare Cache (Sync Post-Deploy)
+        env:
+          CF_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CF_ZONE_ID" ] && [ -n "$CF_API_TOKEN" ]; then
+            curl -fsSL -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{"purge_everything":true}' >/dev/null
+            echo "Cloudflare cache purificata con successo."
+          else
+            echo "CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_TOKEN non impostati: salto purge automatico."
+          fi
+
       - name: Post-Deploy Live Health Verification
         run: |
           echo "Verifica servizio live su: ${{ steps.deploy.outputs.service_url }}"
