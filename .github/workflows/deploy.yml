@@ -16,6 +16,7 @@ concurrency:
 permissions:
   id-token: write
   contents: read
+  deployments: write
 
 env:
   PROJECT_ID: project-42be4553-a7a8-477b-80d
@@ -30,6 +31,9 @@ jobs:
     name: Build Container & Rollout Cloud Run
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: production
+      url: https://devkernelpulse.org
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -85,5 +89,5 @@ jobs:
       - name: Post-Deploy Live Health Verification
         run: |
           echo "Verifica servizio live su: ${{ steps.deploy.outputs.service_url }}"
-          curl -fsSL --retry 3 --retry-delay 3 "${{ steps.deploy.outputs.service_url }}/" >/dev/null
+          curl -fsSL --retry 3 --retry-delay 3 "https://devkernelpulse.org/" >/dev/null
           echo "Cloud Run Revision v2.6-PURE-SQL attiva e funzionante!"

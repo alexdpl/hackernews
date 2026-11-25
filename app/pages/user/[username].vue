@@ -159,7 +159,7 @@ const socialLinks = computed(() => {
     {
       key: 'repository',
       label: 'Repository',
-      url: userData.value.repositoryUrl || (isAdmin.value ? 'https://github.com/alexdpl/hackernews' : ''),
+      url: userData.value.repositoryUrl || (isAdmin.value ? 'https://github.com/alexdpl/devkernelpulse' : ''),
       accent: 'border-violet-500/40 hover:border-violet-400 text-violet-200'
     }
   ]

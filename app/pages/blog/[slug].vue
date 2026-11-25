@@ -467,21 +467,29 @@ watch(
 async function applyDynamicPrism() {
   if (!import.meta.client) return
   await nextTick()
+  sanitizeInlineCodeQuotesInDom()
   const mdLangs = extractLanguagesFromMarkdown(post.value?.content || post.value?.description || '')
   if (mdLangs.length > 0) {
     await ensurePrismLanguages(mdLangs)
   }
   await highlightDomElement(articleBodyRef.value || document)
+  sanitizeInlineCodeQuotesInDom()
 }
 
 watch(parsedContent, () => {
+  sanitizeInlineCodeQuotesInDom()
   void applyDynamicPrism()
 })
 
 onMounted(() => {
+  sanitizeInlineCodeQuotesInDom()
   setTimeout(() => {
+    sanitizeInlineCodeQuotesInDom()
     void applyDynamicPrism()
   }, 120)
+  setTimeout(() => {
+    sanitizeInlineCodeQuotesInDom()
+  }, 500)
   if (post.value?.id || slug.value) {
     loadOnChainBlogProof(true)
   }

@@ -1,3 +1,5 @@
+![DevKernelPulse v2.6-PURE-SQL](docs/cover-dkp-v.2.6/cover.svg)
+
 # DevKernelPulse — DKP Kernel v2.6-PURE-SQL
 
 **DevKernelPulse** ([https://devkernelpulse.org](https://devkernelpulse.org)) is an engineering community platform, editorial hub, and SaaS ecosystem running on **DKP Kernel v2.6-PURE-SQL** on **Google Cloud Run** (\europe-west4\) and **Neon PostgreSQL (Pure SQL)**.

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#030712"/>
+      <stop offset="50%" stop-color="#090d16"/>
+      <stop offset="100%" stop-color="#04151f"/>
+    </linearGradient>
+    <linearGradient id="accentLine" x1="80" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="1" stroke-opacity="0.45"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bgGrad)"/>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+  <rect x="44" y="44" width="1192" height="552" rx="24" fill="#090d16" fill-opacity="0.88" stroke="#1e293b" stroke-width="2"/>
+  <rect x="44" y="44" width="1192" height="6" rx="3" fill="url(#accentLine)"/>
+
+  <!-- Top Status Pill -->
+  <rect x="88" y="92" width="330" height="36" rx="18" fill="#10b981" fill-opacity="0.14" stroke="#10b981" stroke-opacity="0.45"/>
+  <circle cx="112" cy="110" r="6" fill="#10b981"/>
+  <text x="130" y="115" fill="#6ee7b7" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">DKP KERNEL v2.6-PURE-SQL • LIVE</text>
+
+  <!-- Main Title -->
+  <text x="88" y="210" fill="#f8fafc" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="64" font-weight="800" letter-spacing="-1.5">DevKernelPulse</text>
+  <text x="88" y="268" fill="#38bdf8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="700">AI-Native Developer Community, SAST Vault &amp; Proof-of-Code Ledger</text>
+
+  <!-- Description -->
+  <text x="88" y="330" fill="#94a3b8" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="21">Architettura Nuxt 4 + Neon PostgreSQL Pure SQL su Google Cloud Run (europe-west4).</text>
+  <text x="88" y="362" fill="#94a3b8" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="21">Notarizzazione crittografica SHA-256, Pulse Sentinel SAST e Trinity AI Newsroom.</text>
+
+  <!-- Feature Badges -->
+  <rect x="88" y="418" width="248" height="54" rx="12" fill="#0f172a" stroke="#10b981" stroke-opacity="0.5"/>
+  <text x="110" y="451" fill="#34d399" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">⚡ Neon Pure SQL</text>
+
+  <rect x="356" y="418" width="268" height="54" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.5"/>
+  <text x="378" y="451" fill="#38bdf8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">🛡️ Pulse Sentinel SAST</text>
+
+  <rect x="644" y="418" width="268" height="54" rx="12" fill="#0f172a" stroke="#f59e0b" stroke-opacity="0.5"/>
+  <text x="666" y="451" fill="#fbbf24" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">🔐 SHA-256 Vault Proof</text>
+
+  <rect x="932" y="418" width="256" height="54" rx="12" fill="#0f172a" stroke="#a78bfa" stroke-opacity="0.5"/>
+  <text x="954" y="451" fill="#c4b5fd" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">☁️ Cloud Run West4</text>
+
+  <!-- Footer -->
+  <line x1="88" y1="518" x2="1192" y2="518" stroke="#1e293b" stroke-width="1.5"/>
+  <text x="88" y="558" fill="#e2e8f0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700">https://devkernelpulse.org</text>
+  <text x="860" y="558" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">github.com/alexdpl/devkernelpulse</text>
+</svg>
