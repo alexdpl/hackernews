@@ -213,7 +213,7 @@ export default defineEventHandler(async (event) => {
     const finalStack = stack ? String(stack).trim() : null
 
     const tagsSqlExpr = isPgArray
-      ? sql`${`{${cleanTags.map((t) => `"${t.replace(/"/g, '\\"')}"`).join(',')}}`}::text[]`
+      ? sql`${`{${cleanTags.map((t) => `"${t.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`).join(',')}}`}::text[]`
       : isJsonb
         ? sql`${JSON.stringify(cleanTags)}::jsonb`
         : sql`${JSON.stringify(cleanTags)}`
