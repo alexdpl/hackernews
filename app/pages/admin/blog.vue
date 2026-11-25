@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import DkpAdminShell from '~/components/admin/DkpAdminShell.vue'
 import DkpEditor from '~/components/blog/DkpEditor.vue'
+import { parseDkpMarkdown } from '~/utils/dkpMarkdown'
 import { highlightCodeDynamic, prismRegistryVersion } from '~/composables/useDynamicPrism'
 
 definePageMeta({
@@ -121,21 +122,7 @@ const renderedPreviewHtml = computed(() => {
   void prismRegistryVersion.value
   const raw = previewPost.value?.content || ''
   if (!raw) return '<p class="text-slate-400">Nessun contenuto presente.</p>'
-
-  let html = raw.replace(/```([a-zA-Z0-9_+#.-]*)\r?\n([\s\S]*?)```/g, (_, lang, code) => {
-    const cleanLang = (lang || 'text').trim().toLowerCase()
-    const highlighted = highlightCodeDynamic(code, cleanLang)
-    return `<pre class="bg-[#080c14] border border-slate-800 rounded-xl p-4 overflow-x-auto my-3"><code class="language-${cleanLang}">${highlighted}</code></pre>`
-  })
-
-  html = html
-    .replace(/^# (.*)$/gm, '<h1 class="text-2xl font-black text-white mt-4 mb-2">$1</h1>')
-    .replace(/^## (.*)$/gm, '<h2 class="text-xl font-bold text-cyan-300 mt-4 mb-2">$1</h2>')
-    .replace(/^### (.*)$/gm, '<h3 class="text-base font-bold text-emerald-400 mt-3 mb-1">$1</h3>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-extrabold">$1</strong>')
-    .replace(/==(.*?)==/g, '<mark class="bg-emerald-500/25 text-white px-1 rounded">$1</mark>')
-
-  return html
+  return parseDkpMarkdown(raw)
 })
 
 async function fetchCategoriesTree() {

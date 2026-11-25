@@ -4,6 +4,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import DkpTagInput from '~/components/blog/DkpTagInput.vue'
 import { useSentinelGrammar } from '~/composables/useSentinelGrammar'
 import { highlightCodeDynamic, prismRegistryVersion } from '~/composables/useDynamicPrism'
+import { parseDkpMarkdown } from '~/utils/dkpMarkdown'
 
 useCodeCopy()
 
@@ -409,100 +410,20 @@ function undoLastAiAction() {
 
 const parsedContent = computed(() => {
   void prismRegistryVersion.value
-
   if (!content.value) {
-    return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...' + '<' + '/p>'
+    return '<p class="preview-empty">Inizia a scrivere per vedere la preview in tempo reale...</p>'
   }
-
-  let rawContent = content.value
-  const codeBlocks: string[] = []
-
-  rawContent = rawContent.replace(/```([a-zA-Z0-9_+#.-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
-    const index = codeBlocks.length
-    const cleanLang = lang ? lang.trim().toLowerCase() : ''
-    const languageClass = cleanLang ? `language-${cleanLang}` : 'language-none'
-    const languageLabel = cleanLang
-      ? `<` + `div class="dkp-code-header"><span>${cleanLang}<` + `/span><button class="dkp-copy-btn" type="button">Copia<` + `/button><` + `/div>`
-      : ''
-
-    const highlightedCode = highlightCodeDynamic(code, cleanLang)
-
-    codeBlocks.push(
-      `<` + `div class="dkp-code-wrapper">${languageLabel}<pre class="dkp-code-block ${languageClass}"><code class="${languageClass}">${highlightedCode}<` + `/code><` + `/pre><` + `/div>`
-    )
-
-    return `__DKP_CODE_BLOCK_${index}__`
+  const baseHtml = parseDkpMarkdown(content.value)
+  return baseHtml.replace(/<code id="([^"]+)" class="language-([a-z0-9_+#.-]+)">([\s\S]*?)<\/code>/gi, (_m, id, lang, escapedCode) => {
+    const decoded = String(escapedCode)
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+    const highlighted = highlightCodeDynamic(decoded, lang)
+    return `<code id="${id}" class="language-${lang}">${highlighted}</code>`
   })
-
-  let html = rawContent
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  html = html.replace(/&lt;div class='dkp-custom-html'&gt;/g, '<' + "div class='dkp-custom-html'>")
-  html = html.replace(/&lt;\/div&gt;/g, '<' + '/div>')
-
-  html = html.replace(/^\|(.+)\|$/gm, (match, p1) => {
-    const cells = p1.split('|').map((c: string) => c.trim())
-    if (cells.every((c: string) => /^:?-+:?$/.test(c))) return ''
-    const rowHtml = cells.map((c: string) => `<td>${c}<` + `/td>`).join('')
-    return `<tr>${rowHtml}<` + `/tr>`
-  })
-  html = html.replace(new RegExp('(<tr>.*?<\\/tr>[\\s\\n\\r]*)+', 'g'), (match) => {
-    const cleanRows = match.replace(/[\n\r]+/g, '')
-    return `<` + `div class="dkp-table-wrapper"><table class="dkp-table"><tbody>${cleanRows}<` + `/tbody><` + `/table><` + `/div>`
-  })
-
-  html = html
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="dkp-img" loading="lazy" />')
-    .replace(/@\[video\]\(([^)]+)\)/g, '<' + 'div class="dkp-video-wrapper"><iframe src="$1" frameborder="0" allowfullscreen><' + '/iframe><' + '/div>')
-    .replace(/==(.*?)==/g, '<mark class="dkp-highlight">$1<' + '/mark>')
-    .replace(/\+\+(.*?)\+\+/g, '<u class="dkp-underline">$1<' + '/u>')
-    .replace(/`+([^`\n]+?)`+/g, (_m, c) => '<code class="dkp-inline-code">' + String(c).replace(/^(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+|(?:''|&#39;&#39;|&apos;&apos;|&#x27;&#x27;|`)+$/gi, '').trim() + '<' + '/code>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="dkp-bold">$1<' + '/strong>')
-    .replace(/\*(.*?)\*/g, '<em class="dkp-italic">$1<' + '/em>')
-    .replace(/~~(.*?)~~/g, '<del class="dkp-strike">$1<' + '/del>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="dkp-link" target="_blank">$1<' + '/a>')
-
-  html = html
-    .replace(/^# (.*?)\r?$/gm, '<h1 class="dkp-h1">$1<' + '/h1>')
-    .replace(/^## (.*?)\r?$/gm, '<h2 class="dkp-h2">$1<' + '/h2>')
-    .replace(/^### (.*?)\r?$/gm, '<h3 class="dkp-h3">$1<' + '/h3>')
-    .replace(/^&gt; (.*?)\r?$/gm, '<blockquote class="dkp-quote">$1<' + '/blockquote>')
-    .replace(/^---$/gm, '<hr class="dkp-hr" />')
-
-  html = html.replace(/^(\s{2,}|\t+)-\s+(.*?)\r?$/gm, '<ul class="dkp-sub-list"><li class="dkp-li-nested">$2<' + '/li><' + '/ul>')
-  html = html.replace(/^(\s{2,}|\t+)[0-9]+\.\s+(.*?)\r?$/gm, '<ol class="dkp-sub-list"><li class="dkp-li-nested dkp-li-num">$2<' + '/li><' + '/ol>')
-  html = html.replace(/^ {0,1}-\s+(.*?)\r?$/gm, '<ul class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ul>')
-  html = html.replace(/^ {0,1}[0-9]+\.\s+(.*?)\r?$/gm, '<ol class="dkp-main-list"><li class="dkp-li-main">$1<' + '/li><' + '/ol>')
-
-  const lines = html.split(/\r?\n/)
-  let parsedHtml = ''
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const trimmed = line.trim()
-
-    if (trimmed.includes('__DKP_CODE_BLOCK_')) {
-      parsedHtml += line + '\n'
-    } else if (/^<(h[1-6]|pre|div|table|ul|ol|blockquote|hr|li|img)/.test(trimmed) || /^<\/(div|table|ul|ol|blockquote)>/.test(trimmed)) {
-      parsedHtml += line + '\n'
-    } else if (trimmed === '') {
-      parsedHtml += '<br />\n'
-    } else {
-      parsedHtml += line + (i < lines.length - 1 ? '<br />' : '')
-    }
-  }
-
-  codeBlocks.forEach((block, index) => {
-    parsedHtml = parsedHtml.replace(new RegExp(`__DKP_CODE_BLOCK_${index}__(?:<br \\/>)?`, 'g'), () => block)
-  })
-
-  parsedHtml = parsedHtml
-    .replace(new RegExp('(<\\/h[1-6]>)<br \\/>', 'g'), '$1')
-    .replace(new RegExp('(<\\/div>)<br \\/>', 'g'), '$1')
-
-  return parsedHtml
 })
 </script>
 

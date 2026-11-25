@@ -94,7 +94,7 @@ export function parseDkpMarkdown(contentVal: string): string {
 
     const pushInlineCode = (rawCode: string): string => {
       const index = inlineCodes.length;
-      inlineCodes.push('<code class="dkp-inline-code">' + escapeInlineCodeContent(rawCode) + '</code>');
+      inlineCodes.push('<code class="dkp-inline-code not-prose">' + escapeInlineCodeContent(rawCode) + '</code>');
       return '__DKP_INLINE_CODE_' + index + '__';
     };
 
