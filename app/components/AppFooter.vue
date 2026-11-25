@@ -93,6 +93,11 @@ const { getMainUrl } = useDomain()
               🛠️ Panoramica DKP Tools
             </NuxtLink>
           </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/tools/sentinel-scan')" external class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              🛡 Sentinel Scan (SAST)
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink :to="getMainUrl('/tools/openui-studio')" external class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
               🎨 OpenUI Studio AI
