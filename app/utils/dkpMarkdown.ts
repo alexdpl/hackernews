@@ -32,11 +32,16 @@ function escapeInlineCodeContent(raw: string): string {
     .replace(/>/g, '&gt;');
 }
 
+const SAFE_URL_ENTITY_MAP: Record<string, string> = {
+  '&amp;': '&',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&#x27;': "'"
+};
+
 export function safeUrl(raw: string): string {
   const normalized = String(raw || '')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    .replace(/&(?:amp|quot|#39|#x27);/gi, (entity) => SAFE_URL_ENTITY_MAP[entity.toLowerCase()] || entity)
     .trim();
 
   if (!normalized || /[\u0000-\u001F\u007F\s]/.test(normalized)) {

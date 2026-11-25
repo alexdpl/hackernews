@@ -48,18 +48,7 @@ async function verifyPasswordAndUpgrade(
     }
   }
 
-  // 2. Formato legacy SHA-256 esadecimale (64 char)
-  if (/^[a-f0-9]{64}$/i.test(storedHash)) {
-    const sha256Hex = crypto.createHash('sha256').update(plainPassword).digest('hex')
-    if (safeStringEqual(sha256Hex, storedHash.toLowerCase())) {
-      const upgraded = hashPasswordScrypt(plainPassword)
-      await db.execute(sql`
-        UPDATE users SET password_hash = ${upgraded} WHERE id = ${userId};
-      `).catch(() => {})
-      return true
-    }
-    return false
-  }
+
 
   // 3. Formato legacy plaintext -> verifica constant-time + migrazione a scrypt
   if (safeStringEqual(plainPassword, storedHash)) {

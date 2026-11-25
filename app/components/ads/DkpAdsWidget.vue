@@ -80,7 +80,8 @@ function sanitizeTarget(rawUrl: string): { url: string; isInternal: boolean } {
   if (/^https?:\/\//i.test(clean)) {
     try {
       const parsed = new URL(clean)
-      if (parsed.hostname.endsWith('devkernelpulse.org')) {
+      const host = parsed.hostname.toLowerCase()
+      if (host === 'devkernelpulse.org' || host.endsWith('.devkernelpulse.org')) {
         return { url: (parsed.pathname + parsed.search + parsed.hash) || '/user/ads', isInternal: true }
       }
       return { url: parsed.toString(), isInternal: false }

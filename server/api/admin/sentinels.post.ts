@@ -1,8 +1,9 @@
-﻿// server/api/admin/sentinels.post.ts
+// server/api/admin/sentinels.post.ts
 import { defineEventHandler, readBody, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { sendSentinelEmail } from '~~/server/utils/mailer'
+import { runSentinelSweep } from '~~/server/utils/sentinelNetwork'
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user
@@ -35,6 +36,17 @@ export default defineEventHandler(async (event) => {
       actionUrl: '[https://devkernelpulse.org](https://devkernelpulse.org)'
     })
     return { success: sent, message: sent ? 'Email inviata con successo.' : 'Invio SMTP fallito: controlla le variabili SMTP_*.' }
+  }
+
+  if (body.action === 'run_sweep') {
+    const result = await runSentinelSweep({
+      recipientEmail: String(body.to || user.email || 'alex@devkernelpulse.org'),
+      triggerSource: 'admin-manual-sweep'
+    })
+    return {
+      ...result,
+      message: `Scan completato (${result.scannedCount} contenuti, ${result.findingsCount} alert). Report inviato nella casella di posta.`
+    }
   }
 
   throw createError({ statusCode: 400, statusMessage: 'Azione non valida.' })

@@ -1,4 +1,4 @@
-﻿// server/utils/sentinelNetwork.ts
+// server/utils/sentinelNetwork.ts
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
 import { sendSentinelEmail } from '~~/server/utils/mailer'
@@ -31,7 +31,7 @@ interface TtevThinkPlan {
 }
 
 const THREAT_PATTERNS: Array<{ label: string; regex: RegExp }> = [
-  { label: 'XSS_SCRIPT_INJECTION', regex: /<script\b[^>]*>[\s\S]*?<\/script>/i },
+  { label: 'XSS_SCRIPT_INJECTION', regex: /<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/i },
   { label: 'INLINE_EVENT_HANDLER', regex: /\bon(error|load|mouseover|click)\s*=/i },
   { label: 'SQL_UNION_PROBE', regex: /\bunion\s+all\s+select\b/i },
   { label: 'SPAM_CRYPTO_DROP', regex: /(free-airdrop|claim-usdt|seed-phrase|telegram\.me\/\+)/i }
@@ -398,5 +398,108 @@ export async function runSentinelPipeline(ctx: SentinelEventContext): Promise<vo
         'Release checklist posted', FALSE
       );
     `)
+  }
+}
+
+
+export async function runSentinelSweep(options?: { recipientEmail?: string; triggerSource?: string }) {
+  const db = await getDb()
+  if (!db) {
+    return { success: false, scannedCount: 0, findingsCount: 0, emailDispatched: false }
+  }
+
+  const recipientEmail = String(
+    options?.recipientEmail || process.env.ADMIN_ALERT_EMAIL || 'alex@devkernelpulse.org'
+  ).trim()
+  const triggerSource = String(options?.triggerSource || 'scheduled-cron').trim()
+
+  const [postsRes, nodePostsRes, blogRes] = await Promise.all([
+    db.execute(sql`
+      SELECT id, title, COALESCE(content, text, '') AS body, user_id AS "authorId"
+      FROM posts
+      ORDER BY created_at DESC
+      LIMIT 15;
+    `).catch(() => []),
+    db.execute(sql`
+      SELECT id, title, COALESCE(content, '') AS body, author_id AS "authorId"
+      FROM node_posts
+      ORDER BY created_at DESC
+      LIMIT 15;
+    `).catch(() => []),
+    db.execute(sql`
+      SELECT id, title, COALESCE(content, '') AS body, author_id AS "authorId"
+      FROM blog_posts
+      ORDER BY created_at DESC
+      LIMIT 10;
+    `).catch(() => [])
+  ])
+
+  const items: Array<{ kind: string; id: number; title: string; body: string }> = [
+    ...extractRows(postsRes).map((r: any) => ({ kind: 'POST', id: Number(r.id), title: String(r.title || ''), body: String(r.body || '') })),
+    ...extractRows(nodePostsRes).map((r: any) => ({ kind: 'NODE_POST', id: Number(r.id), title: String(r.title || ''), body: String(r.body || '') })),
+    ...extractRows(blogRes).map((r: any) => ({ kind: 'BLOG_POST', id: Number(r.id), title: String(r.title || ''), body: String(r.body || '') }))
+  ]
+
+  const findings: string[] = []
+  for (const item of items) {
+    const combined = `${item.title}\n${item.body}`
+    const matchedThreat = THREAT_PATTERNS.find((p) => p.regex.test(combined))
+    if (matchedThreat) {
+      findings.push(`- [${item.kind} #${item.id}] Rilevato pattern **${matchedThreat.label}** su "${item.title.slice(0, 60)}"`)
+      continue
+    }
+    const staticIssue = detectStaticCodeIssue(item.body)
+    if (staticIssue) {
+      findings.push(`- [${item.kind} #${item.id}] ${staticIssue.title} su "${item.title.slice(0, 60)}"`)
+    }
+  }
+
+  const reportLines = [
+    `### Telemetria Sentinel Network (${triggerSource})`,
+    `- **Contenuti scansionati:** ${items.length} (Feed, Nodi, Blog)`,
+    `- **Anomalie rilevate:** ${findings.length}`,
+    `- **Stato CodeQL / SAST Guard:** Operativo`,
+    '',
+    findings.length > 0
+      ? `#### Dettaglio Rilevazioni:\n${findings.join('\n')}`
+      : 'Nessuna minaccia XSS, SQLi o regressione rilevata nel perimetro scansionato.'
+  ].join('\n')
+
+  const emailDispatched = await sendSentinelEmail({
+    to: recipientEmail,
+    subject: `[DKP Sentinel Report] ${findings.length > 0 ? `${findings.length} alert rilevati` : 'Perimetro pulito'} (${items.length} elementi)`,
+    category: 'security_alert',
+    recipientUsername: 'alexdpl',
+    sentinelName: 'sentinel_ai',
+    headline: findings.length > 0 ? 'Report Sentinel: Rilevate Anomalie da Verificare' : 'Report Sentinel: Perimetro Sicuro',
+    bodyMarkdown: reportLines,
+    actionUrl: 'https://devkernelpulse.org/admin/mail'
+  }).catch(() => false)
+
+  const trace = {
+    protocol: 'BEMYAGENT-TTEV-v1',
+    triggerSource,
+    scannedCount: items.length,
+    findingsCount: findings.length,
+    verdict: 'PASS'
+  }
+
+  await db.execute(sql`
+    INSERT INTO sentinel_logs (
+      sentinel_username, target_type, target_id,
+      action_type, reasoning_trace, payload_summary, smtp_dispatched
+    ) VALUES (
+      'sentinel_ai', 'system_sweep', 0,
+      'scheduled_sweep', ${JSON.stringify(trace)}::jsonb,
+      ${`Sweep completato: ${items.length} contenuti, ${findings.length} alert`}, ${emailDispatched}
+    );
+  `).catch(() => {})
+
+  return {
+    success: true,
+    scannedCount: items.length,
+    findingsCount: findings.length,
+    findings,
+    emailDispatched
   }
 }

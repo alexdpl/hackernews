@@ -1,0 +1,21 @@
+name: 🛡️ DKP Sentinel Sweep & Mail Report
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sentinel-sweep:
+    name: Trigger Live Sentinel Scan & Inbox Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Sentinel Sweep on Production
+        run: |
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "CRON_SECRET non configurato nei repository secrets"
+            exit 1
+          fi
+          curl -fsSL \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://devkernelpulse.org/api/sentinel/cron"

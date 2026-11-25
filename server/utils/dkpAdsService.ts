@@ -155,7 +155,8 @@ export function resolveSafeAdUrl(rawUrl: string): { url: string; isInternal: boo
   if (/^https?:\/\//i.test(trimmed)) {
     try {
       const parsed = new URL(trimmed)
-      if (parsed.hostname.endsWith('devkernelpulse.org')) {
+      const host = parsed.hostname.toLowerCase()
+      if (host === 'devkernelpulse.org' || host.endsWith('.devkernelpulse.org')) {
         const internalPath = `${parsed.pathname}${parsed.search}${parsed.hash}` || '/nodes'
         return resolveSafeAdUrl(internalPath)
       }
@@ -595,7 +596,11 @@ export class DkpAdsService {
     const safeLink = resolveSafeAdUrl(payload.targetUrl)
     const id = `ads_${crypto.randomBytes(6).toString('hex')}`
     const apiKeyHash = payload.apiKey
-      ? crypto.createHash('sha256').update(payload.apiKey).digest('hex')
+      ? (() => {
+          const salt = crypto.randomBytes(16).toString('hex')
+          const derived = crypto.scryptSync(String(payload.apiKey), salt, 32).toString('hex')
+          return `${salt}:${derived}`
+        })()
       : null
 
     const cleanTitle = String(payload.title).trim().slice(0, 160)

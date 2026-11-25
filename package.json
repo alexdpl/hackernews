@@ -60,14 +60,26 @@
                 },
     "overrides":  {
                       "braces":  "patch:braces@3.0.3#./patches/braces@3.0.3.patch",
-                      "postcss-selector-parser":  "\u003e=7.1.6",
                       "node-forge":  "\u003e=1.4.1",
-                      "undici":  "\u003e=7.30.1"
+                      "undici":  "\u003e=7.30.1",
+                      "glob":  "\u003e=14.0.2",
+                      "minimatch":  "\u003e=11.0.1",
+                      "esbuild":  "\u003e=0.25.0",
+                      "postcss-selector-parser":  "\u003e=7.1.6"
                   },
     "pnpm":  {
                  "onlyBuiltDependencies":  [
                                                "esbuild",
                                                "puppeteer"
-                                           ]
+                                           ],
+                 "overrides":  {
+                                   "braces":  "patch:braces@3.0.3#./patches/braces@3.0.3.patch",
+                                   "postcss-selector-parser":  "\u003e=7.1.6",
+                                   "node-forge":  "\u003e=1.4.1",
+                                   "undici":  "\u003e=7.30.1",
+                                   "glob":  "\u003e=14.0.2",
+                                   "minimatch":  "\u003e=11.0.1",
+                                   "esbuild":  "\u003e=0.25.0"
+                               }
              }
 }

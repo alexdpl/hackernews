@@ -36,12 +36,7 @@ function verifyStoredPassword(plainPassword: string, storedHash: string): boolea
     }
   }
 
-  if (/^[a-f0-9]{64}$/i.test(storedHash)) {
-    const sha256Hex = crypto.createHash('sha256').update(plainPassword).digest('hex')
-    return safeStringEqual(sha256Hex, storedHash.toLowerCase())
-  }
-
-  return safeStringEqual(plainPassword, storedHash)
+  return false
 }
 
 export default defineEventHandler(async (event) => {
