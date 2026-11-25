@@ -1,4 +1,4 @@
-![DevKernelPulse v2.6-PURE-SQL](docs/cover-dkp-v.2.6/cover-dkp-v2.6.svg)
+![DevKernelPulse v2.6-PURE-SQL](docs/cover-dkp-v.2.6/cover.svg)
 
 # DevKernelPulse — DKP Kernel v2.6-PURE-SQL
 
