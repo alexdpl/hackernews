@@ -212,18 +212,12 @@ const { getMainUrl } = useDomain()
 
     </div>
 
-    <!-- BOTTOM BAR WITH COPYRIGHT & NEXUS PILL -->
-    <div class="border-t border-slate-800/80 mt-12 py-5 bg-[#010214]">
-      <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <p class="text-xs text-slate-500 text-center sm:text-left m-0">
+    <!-- BOTTOM BAR WITH CENTERED COPYRIGHT -->
+    <div class="border-t border-slate-800/80 mt-12 py-6 bg-[#010214]">
+      <div class="max-w-7xl mx-auto px-6 sm:px-32 flex justify-center items-center">
+        <p class="text-xs text-slate-500 text-center leading-relaxed m-0">
           © {{ currentYear }} <span class="text-emerald-400 font-bold">DevKernelPulse</span> — Built with ❤️ by Alessandro De Paola &amp; Gemini AI. Tutti i diritti riservati.
         </p>
-
-        <div class="flex items-center gap-2 bg-[#090d16] border border-emerald-500/40 px-3.5 py-1.5 rounded-full shadow-[0_0_12px_rgba(0,220,130,0.15)]">
-          <span class="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_#00dc82]"></span>
-          <span class="text-white font-extrabold text-xs">⚡ Pulse Nexus &amp; Sentinel</span>
-          <span class="text-emerald-400 font-mono text-[11px] font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">v2.6-PURE-SQL</span>
-        </div>
       </div>
     </div>
   </footer>

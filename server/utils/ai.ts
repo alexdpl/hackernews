@@ -1,11 +1,11 @@
 // server/utils/ai.ts
 
 export const AI_MODELS = {
-  SENTINEL: 'google/gemini-2.0-flash-exp:free',
-  MODERATOR: 'google/gemini-2.0-flash-exp:free',
-  TRINITY: 'dots-studio/dots-3-note-preview:free',
-  FLASH: 'google/gemini-2.0-flash-exp:free',
-  CODER: 'dots-studio/dots-3-note-preview:free',
+  SENTINEL: 'nvidia/nemotron-3.5-lightning:free',
+  MODERATOR: 'google/gemma-4-26b-a4b-it:free',
+  TRINITY: 'google/gemma-4-31b-it:free',
+  FLASH: 'nvidia/nemotron-3.5-lightning:free',
+  CODER: 'google/gemma-4-31b-it:free',
   PRO: 'nvidia/nemotron-3-ultra-550b-a55b:free'
 } as const
 
@@ -28,9 +28,9 @@ interface CallAiOptions {
 
 export async function callOpenRouterAI(options: CallAiOptions) {
   const config = useRuntimeConfig()
-  
-  const apiKey = process.env.OPENROUTER_API_KEY || 
-                 process.env.PROVIDER_API_KEY || 
+
+  const apiKey = process.env.OPENROUTER_API_KEY ||
+                 process.env.PROVIDER_API_KEY ||
                  config.openrouterApiKey
 
   if (!apiKey) {
@@ -46,11 +46,11 @@ export async function callOpenRouterAI(options: CallAiOptions) {
   }
   messages.push({ role: 'user', content: options.prompt })
 
-  const response = await $fetch<any>('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await $fetch<any>('[https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions)', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://devkernelpulse.org',
+      'HTTP-Referer': '[https://devkernelpulse.org](https://devkernelpulse.org)',
       'X-Title': 'DevKernelPulse Sentinel & Services',
       'Content-Type': 'application/json'
     },
@@ -58,7 +58,7 @@ export async function callOpenRouterAI(options: CallAiOptions) {
       model: resolvedModel,
       messages,
       temperature: options.temperature ?? 0.3,
-      max_tokens: options.maxTokens ?? 1000
+      max_tokens: options.maxTokens ?? 4096
     }
   })
 

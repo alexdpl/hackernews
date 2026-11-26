@@ -20,7 +20,7 @@ const systemPrompt = ref(
   'Sei il Kernel Architect di DevKernelPulse v2.6-PURE-SQL ed esperto di OpenUI. Quando scrivi codice HTML o interfacce utente, avvolgile sempre in un blocco ```html ... ``` completo di Tailwind CSS in modo che possano essere renderizzate in tempo reale.'
 )
 const temperature = ref(0.7)
-const maxTokens = ref(2048)
+const maxTokens = ref(8192)
 const activeTab = ref<'preview' | 'code' | 'ttev'>('preview')
 const chatScrollRef = ref<HTMLElement | null>(null)
 const isCodeCopied = ref(false)
@@ -120,6 +120,13 @@ const stopSignal = ref(false)
 function stop() {
   stopSignal.value = true
   isLoading.value = false
+}
+
+function clearChat() {
+  stopSignal.value = true
+  isLoading.value = false
+  messages.value = []
+  triggerToast('Stream chat pulito: pronto per una nuova query!')
 }
 
 function applyPreset(presetPrompt: string) {
@@ -291,7 +298,7 @@ async function notarizeToVault() {
 </script>
 
 <template>
-  <DkpToolsSectionsNav />
+  <ToolsDkpToolsSectionsNav />
   <div class="max-w-[1600px] mx-auto my-6 px-4 font-sans text-slate-100 min-h-[calc(100vh-100px)] lg:h-[calc(100vh-100px)] flex flex-col">
     <!-- TOAST -->
     <Transition name="fade">
@@ -338,7 +345,7 @@ async function notarizeToVault() {
           <input
             v-model="dkpApiKey"
             type="password"
-            placeholder="dkp_live_..."
+            autocomplete="new-password" name="dkp-gateway-token" placeholder="dkp_live_..."
             class="bg-slate-950 border border-slate-700/80 text-white p-3 rounded-xl text-xs sm:text-sm focus:border-emerald-400 outline-none font-mono shadow-inner placeholder:text-slate-600"
           />
         </div>
@@ -363,7 +370,7 @@ async function notarizeToVault() {
           </div>
           <div class="flex flex-col gap-1">
             <label class="text-xs font-bold text-slate-400">Max Tokens</label>
-            <input v-model.number="maxTokens" type="number" step="128" min="256" max="4096" class="bg-slate-950 border border-slate-700/80 text-white p-2.5 rounded-xl font-mono text-xs focus:border-purple-400 outline-none shadow-inner" />
+            <input v-model.number="maxTokens" type="number" step="128" min="256" max="32768" class="bg-slate-950 border border-slate-700/80 text-white p-2.5 rounded-xl font-mono text-xs focus:border-purple-400 outline-none shadow-inner" />
           </div>
         </div>
 
@@ -401,7 +408,7 @@ async function notarizeToVault() {
           </span>
           <div class="flex items-center gap-2">
             <NuxtLink v-if="lastSafetyProof" to="/vault" class="text-[11px] font-mono font-bold text-cyan-300 hover:underline no-underline">Block #{{ lastSafetyProof.blockNumber }} &rarr;</NuxtLink>
-            <button type="button" @click="notarizeToVault" :disabled="isNotarizing || !lastAiMessage" class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer shadow-sm">{{ isNotarizing ? 'Audit SAST & Vault...' : 'Proof of Safety + Vault' }}</button>
+            <button v-if="messages.length > 0" type="button" @click="clearChat" class="bg-slate-950 border border-slate-700 text-slate-300 px-2.5 py-1.5 text-xs font-bold rounded-xl hover:border-purple-500/50 hover:text-purple-300 transition-colors cursor-pointer">Nuova Chat</button><button type="button" @click="notarizeToVault" :disabled="isNotarizing || !lastAiMessage" class="bg-slate-950 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer shadow-sm">{{ isNotarizing ? 'Audit SAST & Vault...' : 'Proof of Safety + Vault' }}</button>
           </div>
         </div>
 

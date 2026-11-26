@@ -3,18 +3,54 @@ import { createOpenAI } from '@ai-sdk/openai'
 
 let consecutiveErrorsOpenRouter = 0
 let consecutiveErrorsOpenAI = 0
-const MAX_ERRORS = 3
-const CIRCUIT_COOLDOWN_MS = 60000
+const MAX_ERRORS = 4
+const CIRCUIT_COOLDOWN_MS = 30000
 let openRouterCircuitOpenUntil = 0
 let openAICircuitOpenUntil = 0
 
-const PROVIDER_TIMEOUT_MS = 15000
+const PROVIDER_TIMEOUT_MS = 45000
+
+let cachedFreeModelIds: Set<string> | null = null
+let cachedFreeModelsFetchedAt = 0
+const FREE_MODELS_CACHE_TTL_MS = 10 * 60 * 1000
+
+async function getLiveOpenRouterFreeModels(baseURL: string): Promise<Set<string>> {
+  const now = Date.now()
+  if (cachedFreeModelIds && now - cachedFreeModelsFetchedAt < FREE_MODELS_CACHE_TTL_MS) {
+    return cachedFreeModelIds
+  }
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5000)
+    const cleanBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL
+    const res = await fetch(`${cleanBase}/models`, { signal: controller.signal })
+    clearTimeout(timer)
+    if (res.ok) {
+      const json: any = await res.json()
+      const ids = new Set<string>(
+        (json?.data || [])
+          .map((m: any) => String(m?.id || ''))
+          .filter((id: string) => id.endsWith(':free'))
+      )
+      if (ids.size > 0) {
+        cachedFreeModelIds = ids
+        cachedFreeModelsFetchedAt = now
+        return ids
+      }
+    }
+  } catch (err: any) {
+    console.warn('[AI Router] Auto-discovery modelli :free saltato:', err?.message || err)
+  }
+  return cachedFreeModelIds || new Set<string>()
+}
 
 export function getSmartAIProvider() {
   let config: any = {}
   try {
     config = useRuntimeConfig()
   } catch {}
+
+  const baseURL = (process.env.PROVIDER_BASE_URL || 'https://openrouter.ai/api/v1').trim()
 
   const openRouterKey = (
     process.env.OPENROUTER_API_KEY ||
@@ -32,10 +68,10 @@ export function getSmartAIProvider() {
   const openRouterClient = openRouterKey
     ? createOpenAI({
         apiKey: openRouterKey,
-        baseURL: process.env.PROVIDER_BASE_URL || 'https://openrouter.ai/api/v1',
+        baseURL,
         headers: {
           'HTTP-Referer': 'https://devkernelpulse.org',
-          'X-Title': 'DevKernelPulse'
+          'X-Title': 'DevKernelPulse Trinity Engine'
         }
       })
     : null
@@ -46,24 +82,40 @@ export function getSmartAIProvider() {
       })
     : null
 
- const getModelNames = (dkpModel: string) => {
+  const getCandidateList = (dkpModel: string): string[] => {
     switch (dkpModel) {
       case 'dkp-coder':
-        return {
-          primary: 'cohere/north-mini-code:free',
-          fallback: 'dots-studio/dots-3-note-preview:free'
-        }
+        return [
+          'nvidia/nemotron-3.5-super-vl:free',
+          'nvidia/nemotron-3.5-lightning:free',
+          'nvidia/nemotron-3-ultra-550b-a55b:free',
+          'openrouter/free'
+        ]
       case 'dkp-pro':
-        return {
-          primary: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-          fallback: 'dots-studio/dots-3-note-preview:free'
-        }
+        return [
+          'nvidia/nemotron-3-ultra-550b-a55b:free',
+          'nvidia/nemotron-3.5-super-vl:free',
+          'google/gemma-4-31b-it:free',
+          'nvidia/nemotron-3.5-lightning:free',
+          'openrouter/free'
+        ]
       case 'dkp-flash':
       default:
-        return {
-          primary: 'dots-studio/dots-3-note-preview:free',
-          fallback: 'nvidia/nemotron-3-ultra-550b-a55b:free'
-        }
+        return [
+          'nvidia/nemotron-3.5-lightning:free',
+          'google/gemma-4-26b-a4b-it:free',
+          'google/gemma-4-31b-it:free',
+          'nvidia/nemotron-3-ultra-550b-a55b:free',
+          'openrouter/free'
+        ]
+    }
+  }
+
+  const getModelNames = (dkpModel: string) => {
+    const list = getCandidateList(dkpModel)
+    return {
+      primary: list[0],
+      fallback: list[1]
     }
   }
 
@@ -73,9 +125,7 @@ export function getSmartAIProvider() {
     getModelNames,
 
     async executeWithFallback(executeStream: (client: any, modelName: string) => Promise<any>, dkpModel: string) {
-      const { primary, fallback } = getModelNames(dkpModel)
       const now = Date.now()
-
       const tryOpenRouterFirst = openRouterClient && now > openRouterCircuitOpenUntil
       const tryOpenAIFirst = openAIClient && now > openAICircuitOpenUntil && !tryOpenRouterFirst
 
@@ -83,22 +133,21 @@ export function getSmartAIProvider() {
         throw new Error('Chiave provider AI mancante (OPENROUTER_API_KEY / PROVIDER_API_KEY) o circuit breaker aperto.')
       }
 
-      // Wrapper che forza .chat(model) su /v1/chat/completions invece di /v1/responses
       const chatClientAdapter = (rawClient: any) => (modelId: string) => rawClient.chat(modelId)
 
-      const executeWithTimeout = async (rawClient: any, model: string, isPrimary: boolean) => {
+      const executeWithTimeout = async (rawClient: any, model: string, isOpenRouter: boolean) => {
         const adaptedClient = chatClientAdapter(rawClient)
         return Promise.race([
           executeStream(adaptedClient, model),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), PROVIDER_TIMEOUT_MS))
+          new Promise((_, reject) => setTimeout(() => reject(new Error(`TIMEOUT (${model})`)), PROVIDER_TIMEOUT_MS))
         ])
           .then((res) => {
-            if (isPrimary) consecutiveErrorsOpenRouter = 0
+            if (isOpenRouter) consecutiveErrorsOpenRouter = 0
             else consecutiveErrorsOpenAI = 0
             return res
           })
           .catch((err: any) => {
-            if (isPrimary) {
+            if (isOpenRouter) {
               consecutiveErrorsOpenRouter++
               if (consecutiveErrorsOpenRouter >= MAX_ERRORS) {
                 openRouterCircuitOpenUntil = Date.now() + CIRCUIT_COOLDOWN_MS
@@ -114,19 +163,37 @@ export function getSmartAIProvider() {
       }
 
       if (tryOpenRouterFirst) {
-        try {
-          return await executeWithTimeout(openRouterClient, primary, true)
-        } catch (e: any) {
-          console.warn(`[AI Router] Primary (${primary}) fallito: ${e.message}. Tento fallback (${fallback})...`)
-          try {
-            return await executeWithTimeout(openRouterClient, fallback, true)
-          } catch (e2: any) {
-            if (openAIClient && now > openAICircuitOpenUntil) {
-              return await executeWithTimeout(openAIClient, 'gpt-4o-mini', false)
+        const liveFreeSet = await getLiveOpenRouterFreeModels(baseURL)
+        const rawCandidates = getCandidateList(dkpModel)
+        const verifiedCandidates = liveFreeSet.size > 0
+          ? rawCandidates.filter(m => m === 'openrouter/free' || liveFreeSet.has(m))
+          : rawCandidates
+
+        if (liveFreeSet.size > 0) {
+          for (const id of liveFreeSet) {
+            if (!verifiedCandidates.includes(id) && verifiedCandidates.length < 6) {
+              verifiedCandidates.push(id)
             }
-            throw new Error(`Provider AI non raggiungibile: ${e2?.message || e?.message}`)
           }
         }
+
+        const modelsToTry = verifiedCandidates.length > 0 ? verifiedCandidates : rawCandidates
+        let lastError: any = null
+
+        for (const candidateModel of modelsToTry) {
+          try {
+            return await executeWithTimeout(openRouterClient, candidateModel, true)
+          } catch (err: any) {
+            lastError = err
+            console.warn(`[AI Router] Modello ${candidateModel} fallito per ${dkpModel}: ${err?.message || err}. Passo al successivo...`)
+          }
+        }
+
+        if (openAIClient && now > openAICircuitOpenUntil) {
+          return await executeWithTimeout(openAIClient, 'gpt-4o-mini', false)
+        }
+
+        throw new Error(`Nessun modello free disponibile al momento per ${dkpModel}: ${lastError?.message || 'Errore upstream'}`)
       }
 
       if (tryOpenAIFirst) {
