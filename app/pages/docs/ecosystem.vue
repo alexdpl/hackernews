@@ -5,12 +5,13 @@ import DkpAdStrip from '~/components/DkpAdStrip.vue'
 const activeSection = ref('architettura')
 const sections = [
   { id: 'architettura', title: '01. Architettura Pure SQL' },
-  { id: 'ai-nexus', title: '02. Knowledge Dependabot & Sentinelle' },
+  { id: 'ai-nexus', title: '02. Sentinel & Safe-Diff AI' },
   { id: 'mail-nexus', title: '03. DKP Mail Nexus 2.6' },
-  { id: 'blockchain-vault', title: '04. Blockchain Vault Ledger Unificato' },
-  { id: 'moduli', title: '05. Albero Gerarchico DKP Talks' },
+  { id: 'blockchain-vault', title: '04. Blockchain Vault Ledger' },
+  { id: 'moduli', title: '05. Albero Gerarchico Nodi' },
   { id: 'cli-toolkit', title: '06. Admin Control Center & Audit' },
-  { id: 'gamification', title: '07. Gamification & XP System' }
+  { id: 'gamification', title: '07. Gamification & XP System' },
+  { id: 'sdk-shop', title: '08. SDK v1.1.0, OpenUI & Shop' }
 ]
 
 function scrollToSection(id: string) {
@@ -23,7 +24,7 @@ function scrollToSection(id: string) {
 
 useDkpSeo({
   title: 'Ecosystem Docs v2.6-PURE-SQL - DevKernelPulse',
-  description: 'Documentazione tecnica completa sull ecosistema DevKernelPulse v2.6-PURE-SQL: Sentinel DocKeeper, ArchGuard, Blockchain Vault Ledger unificato e Albero Nodi.',
+  description: 'Documentazione tecnica completa sull\'ecosistema DevKernelPulse v2.6-PURE-SQL: Sentinel DocKeeper, ArchGuard, DKP Ai Nexus Safe-Diff, Blockchain Vault Ledger e Albero Nodi Gerarchico.',
   type: 'website',
   canonicalPath: '/docs/ecosystem'
 })
@@ -92,7 +93,7 @@ useDkpSeo({
               DevKernelPulse Knowledge Base
             </h1>
             <p class="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans m-0">
-              Guida architetturale completa a <strong class="text-white">DKP Kernel v2.6-PURE-SQL</strong>: design system unificato tra Home, User Dashboard e Admin Control Center, <strong class="text-purple-400">Sentinel Knowledge Dependabot (DocKeeper + ArchGuard)</strong>, albero gerarchico <strong class="text-sky-400">DKP Talks</strong> e <strong class="text-emerald-400">Blockchain Vault Ledger</strong> unificato.
+              Guida architetturale completa a <strong class="text-white">DKP Kernel v2.6-PURE-SQL</strong>: design system unificato tra Home, User Dashboard e Admin Control Center, <strong class="text-purple-400">DKP Ai Nexus© Safe-Diff Engine</strong>, <strong class="text-sky-400">Albero Gerarchico Nodi &amp; Sub-Nodi</strong> e <strong class="text-emerald-400">Blockchain Vault Ledger</strong> unificato.
             </p>
           </header>
 
@@ -121,19 +122,19 @@ useDkpSeo({
             </div>
           </section>
 
-          <!-- SEZIONE 2: KNOWLEDGE DEPENDABOT & SENTINELLE -->
+          <!-- SEZIONE 2: KNOWLEDGE DEPENDABOT & SAFE-DIFF AI -->
           <section id="ai-nexus" class="bg-[#090d16] border border-purple-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-5 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <h2 class="text-xl font-bold text-white font-sans m-0">
-                02. Sentinel Network   Knowledge Dependabot (DocKeeper &amp; ArchGuard)
+                02. Sentinel Network, Knowledge Dependabot &amp; DKP Ai Nexus© Safe-Diff
               </h2>
               <span class="bg-purple-500/15 text-purple-300 border border-purple-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
-                PHASE 4   RBAC &amp; AUTO-COMMENT
+                SAFE-DIFF + RBAC
               </span>
             </div>
 
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              Oltre alla <strong class="text-purple-300">Sentinella Passiva Grammarly-Style</strong> negli editor, la rete Sentinel integra due agenti autonomi con ruoli e permessi dedicati nel database (<code class="text-sky-400 font-mono">sentinel_role_permissions</code>):
+              Negli editor editoriali e DKP Talks, <strong class="text-purple-300">DKP Ai Nexus©</strong> utilizza un motore di diffing testuale granulare (<code class="text-sky-400 font-mono">applySafeGrammarDiffPatch</code>) con protezione strutturale su blocchi codice, tabelle, liste e link, affiancato da uno stack <code class="text-emerald-400 font-mono">Ctrl+Z / Ctrl+Y</code> deterministico. Parallelamente, gli agenti autonomi presidiano la qualità dei contenuti:
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -195,10 +196,10 @@ useDkpSeo({
           <!-- SEZIONE 5: ALBERO GERARCHICO DKP TALKS -->
           <section id="moduli" class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 flex flex-col gap-4 shadow-xl">
             <h2 class="text-xl font-bold text-white pb-3 border-b border-slate-800 font-sans m-0">
-              05. Albero Gerarchico DKP Talks (Macro-Categorie &rarr; Nodi &rarr; Sub-Nodi)
+              05. Albero Gerarchico DKP Talks (Macro-Categorie &rarr; Nodi Root &rarr; Sub-Nodi)
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              L'hub <NuxtLink to="/nodes" class="text-sky-400 underline">/nodes</NuxtLink> organizza le discussioni in un <strong>Albero Gerarchico interattivo</strong> su 10 Macro-Categorie semantiche con espansione/compressione rami, conteggio thread in tempo reale e accesso diretto al nodo speciale <code class="text-emerald-400 font-mono">n/blockchain-vault</code>.
+              L'hub <NuxtLink to="/nodes" class="text-sky-400 underline">/nodes</NuxtLink> e l'API <code class="text-sky-400 font-mono">/api/nodes/tree</code> organizzano le discussioni in un <strong>Albero Gerarchico padre-figlio</strong> sincronizzato in tempo reale con <code class="text-emerald-400 font-mono">/admin/nodes</code>, dotato di controllo anti-ciclo su PostgreSQL, riallineamento semantico automatico su 10 Macro-Domini e accesso diretto a <code class="text-emerald-400 font-mono">n/blockchain-vault</code>.
             </p>
           </section>
 
@@ -208,7 +209,7 @@ useDkpSeo({
               06. Admin Master Control Center &amp; Console Sentinel
             </h2>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans m-0">
-              La dashboard amministrativa (<code class="text-sky-400 font-mono">/admin</code> e <code class="text-sky-400 font-mono">/admin/sentinels</code>) condivide il design system della Home Page e consente di monitorare telemetria NeonDB, certificati Vault, permessi RBAC delle Sentinelle ed eseguire audit retroattivi su Blog e Forum.
+              La dashboard amministrativa (<code class="text-sky-400 font-mono">/admin</code>, <code class="text-sky-400 font-mono">/admin/nodes</code> e <code class="text-sky-400 font-mono">/admin/sentinels</code>) condivide il design system della Home Page e consente di gestire l'albero gerarchico dei nodi via Accordion, monitorare telemetria NeonDB, certificati Vault, permessi RBAC delle Sentinelle ed eseguire audit retroattivi su Blog e Forum.
             </p>
           </section>
 
@@ -226,7 +227,7 @@ useDkpSeo({
           <section id="sdk-shop" class="bg-[#090d16] border border-cyan-500/35 rounded-2xl p-6 sm:p-8 flex flex-col gap-4 shadow-xl">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <h2 class="text-xl font-bold text-white font-sans m-0">
-08. @devkernelpulse/sdk v1.1.0, Sentinel Scan, OpenUI Studio &amp; Shop Stripe
+                08. @devkernelpulse/sdk v1.1.0, Sentinel Scan, OpenUI Studio &amp; Shop Stripe
               </h2>
               <span class="bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 font-mono text-[10px] font-black px-2.5 py-1 rounded-full">
                 SDK v1.1.0 + STRIPE v2.6

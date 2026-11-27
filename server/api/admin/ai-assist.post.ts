@@ -1,44 +1,53 @@
 import { defineEventHandler, readBody } from 'h3';
+import { generateText } from 'ai';
+import { getSmartAIProvider } from '~~/server/utils/aiRouter';
 
 const BT = String.fromCharCode(96);
 const FENCE = BT + BT + BT;
 
-function shieldMarkdownCode(raw: string): {
+function shieldMarkdownStructure(raw: string): {
   shielded: string;
   restore: (text: string) => string;
 } {
-  const blocks: string[] = [];
-  const fenceRegex = new RegExp(FENCE + '[\\s\\S]*?' + FENCE, 'g');
-  const inlineRegex = new RegExp(BT + '[^' + BT + '\\n]+' + BT, 'g');
+  const tokens: string[] = [];
+  const pushToken = (match: string, tag: string) => {
+    const idx = tokens.length;
+    tokens.push(match);
+    return `__DKP_${tag}_${idx}__`;
+  };
 
-  let working = String(raw || '').replace(fenceRegex, (m) => {
-    const idx = blocks.length;
-    blocks.push(m);
-    return '__DKP_AI_FENCE_' + idx + '__';
-  });
+  let working = String(raw || '');
 
-  working = working.replace(inlineRegex, (m) => {
-    const idx = blocks.length;
-    blocks.push(m);
-    return '__DKP_AI_INLINE_' + idx + '__';
-  });
+  // 1. Fenced code blocks
+  working = working.replace(new RegExp(FENCE + '[\\s\\S]*?' + FENCE, 'g'), (m) => pushToken(m, 'FENCE'));
+  // 2. Inline code
+  working = working.replace(new RegExp(BT + '[^' + BT + '\\r\\n]+' + BT, 'g'), (m) => pushToken(m, 'CODE'));
+  // 3. Video embeds, images, links
+  working = working.replace(/@\[video\]\([^)]+\)/gi, (m) => pushToken(m, 'MEDIA'));
+  working = working.replace(/!\[[^\]]*\]\([^)]+\)/g, (m) => pushToken(m, 'IMG'));
+  working = working.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m) => pushToken(m, 'LINK'));
+  // 4. Table lines
+  working = working.replace(/^\|.+\|$/gm, (m) => pushToken(m, 'TBL'));
+  // 5. Markdown structural prefixes (headings, blockquotes, ordered/unordered lists)
+  working = working.replace(/^(\s*(?:#{1,6}\s+|>\s+|(?:\d+\.|[-*])\s+))/gm, (m) => pushToken(m, 'PFX'));
+  // 6. Inline Markdown delimiters
+  working = working.replace(/(\*\*|\+\+|~~|==|\*)/g, (m) => pushToken(m, 'DELIM'));
 
   return {
     shielded: working,
     restore: (text: string) => {
       let out = text;
-      blocks.forEach((b, idx) => {
-        out = out
-          .replace('__DKP_AI_FENCE_' + idx + '__', () => b)
-          .replace('__DKP_AI_INLINE_' + idx + '__', () => b);
-      });
+      for (let idx = tokens.length - 1; idx >= 0; idx--) {
+        const pattern = new RegExp(`__DKP_(?:FENCE|CODE|MEDIA|IMG|LINK|TBL|PFX|DELIM)_${idx}__`, 'g');
+        out = out.replace(pattern, () => tokens[idx]);
+      }
       return out;
     }
   };
 }
 
 function deterministicGrammarPolish(raw: string): string {
-  const { shielded, restore } = shieldMarkdownCode(raw);
+  const { shielded, restore } = shieldMarkdownStructure(raw);
   const polished = shielded
     .replace(/\b([\p{L}]{2,})\s+\1\b/giu, '$1')
     .replace(/([^\n ]) {2,}([^\s-])/g, '$1 $2')
@@ -56,7 +65,7 @@ export default defineEventHandler(async (event) => {
   const category = String(body?.category || 'Architecture').trim();
   const subCategory = String(body?.subCategory || '').trim();
   const summary = String(body?.summary || '').trim();
-  const content = String(body?.content || '').trim();
+  const content = String(body?.content || '');
   const selectedText = String(body?.selectedText || '').trim();
   const promptHint = String(body?.promptHint || '').trim();
   const codeLang = String(body?.codeLang || 'typescript').trim().toLowerCase();
@@ -66,10 +75,10 @@ export default defineEventHandler(async (event) => {
     ? 'Ottimizzazione Query Pure SQL e Architettura Zero-Trust'
     : 'Architettura Serverless Pure SQL v2.6 e Difesa Attiva SAST');
 
-  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const aiRouter = getSmartAIProvider();
 
   if (mode === 'grammar_fix') {
-    if (!content) {
+    if (!content.trim()) {
       return {
         success: true,
         source: 'dkp-sentinel-grammar',
@@ -77,68 +86,75 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    if (openRouterKey) {
-      try {
-        const { shielded, restore } = shieldMarkdownCode(content);
-        const aiRes: any = await $fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer ' + openRouterKey,
-            'Content-Type': 'application/json'
-          },
-          body: {
-            model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
-            response_format: { type: 'json_object' },
-            messages: [
-              {
-                role: 'system',
-                content: 'Sei un Technical Copy Editor per DevKernelPulse. Correggi esclusivamente grammatica, ortografia, accenti e punteggiatura nel testo ricevuto, mantenendo intatti tutti i segnaposto __DKP_AI_FENCE_N__ e __DKP_AI_INLINE_N__, i titoli Markdown e la struttura. Rispondi in JSON con chiave "content".'
-              },
-              { role: 'user', content: shielded.slice(0, 8000) }
-            ],
-            temperature: 0.15
-          }
-        });
-        const rawText = aiRes?.choices?.[0]?.message?.content;
-        if (rawText) {
-          const parsed = JSON.parse(rawText);
-          if (parsed?.content) {
-            return {
-              success: true,
-              source: 'dkp-ai-nexus',
-              result: {
-                title,
-                summary,
-                tags: [],
-                content: restore(String(parsed.content)),
-                insertSnippet: ''
-              }
-            };
-          }
+    try {
+      const { shielded, restore } = shieldMarkdownStructure(content);
+      // Suddivide in blocchi per paragrafo se molto lungo senza MAI troncare nulla
+      const paragraphs = shielded.split(/\n{2,}/);
+      const chunks: string[] = [];
+      let currentChunk = '';
+      for (const p of paragraphs) {
+        if ((currentChunk.length + p.length + 2) > 9000 && currentChunk) {
+          chunks.push(currentChunk);
+          currentChunk = p;
+        } else {
+          currentChunk = currentChunk ? `${currentChunk}\n\n${p}` : p;
         }
-      } catch {
-        /* Fallback deterministico */
       }
-    }
+      if (currentChunk) chunks.push(currentChunk);
 
-    return {
-      success: true,
-      source: 'dkp-sentinel-grammar',
-      result: {
-        title,
-        summary,
-        tags: [],
-        content: deterministicGrammarPolish(content),
-        insertSnippet: ''
+      const correctedChunks: string[] = [];
+      for (const chunk of chunks) {
+        const corrected = await aiRouter.executeWithFallback(async (client, modelName) => {
+          const { text } = await generateText({
+            model: client(modelName),
+            system: [
+              'Sei un Technical Copy Editor conservativo per DevKernelPulse.',
+              'Correggi SOLO refusi ortografici, accenti, concordanze grammaticali e punteggiatura nella prosa.',
+              'REGOLE ASSOLUTE: NON riassumere, NON riscrivere frasi intere, NON eliminare alcuna riga o parola, e lascia 100% intatti tutti i segnaposto __DKP_*_N__ esattamente dove si trovano.',
+              'Restituisci esclusivamente il testo corretto senza commenti o blocchi markdown esterni.'
+            ].join(' '),
+            prompt: chunk,
+            temperature: 0.1,
+            maxRetries: 0
+          });
+          if (!text || !text.trim()) throw new Error('Risposta vuota');
+          return text;
+        }, 'dkp-flash');
+        correctedChunks.push(corrected);
       }
-    };
+
+      const restoredContent = restore(correctedChunks.join('\n\n'));
+      return {
+        success: true,
+        source: 'dkp-ai-nexus-trinity',
+        result: {
+          title,
+          summary,
+          tags: [],
+          content: restoredContent,
+          insertSnippet: ''
+        }
+      };
+    } catch {
+      return {
+        success: true,
+        source: 'dkp-sentinel-grammar',
+        result: {
+          title,
+          summary,
+          tags: [],
+          content: deterministicGrammarPolish(content),
+          insertSnippet: ''
+        }
+      };
+    }
   }
 
-  if (openRouterKey) {
-    try {
+  try {
+    const aiParsed = await aiRouter.executeWithFallback(async (client, modelName) => {
       const systemPrompt = [
         'Sei un Principal Software Architect e Technical Editor senior per DevKernelPulse (DKP).',
-        'Rispondi esclusivamente in formato JSON valido con le chiavi: "title", "summary", "tags" (array di stringhe), "content" (Markdown ricco con blocchi codice, tabelle, liste puntate e ==highlight==), "insertSnippet" (stringa Markdown opzionale da inserire al cursore).',
+        'Rispondi esclusivamente con un oggetto JSON valido (senza markdown fence esterni) avente le chiavi: "title", "summary", "tags" (array di stringhe), "content" (Markdown ricco con blocchi codice, tabelle, liste puntate e ==highlight==), "insertSnippet" (stringa Markdown opzionale da inserire al cursore).',
         'Scrivi in italiano tecnico chiaro, autorevole e concreto, senza frasi riempitive.'
       ].join(' ');
 
@@ -153,44 +169,37 @@ export default defineEventHandler(async (event) => {
         subCategory,
         currentSummary: summary,
         selectedText,
-        currentContent: content.slice(0, 4000)
+        currentContent: content.slice(0, 12000)
       });
 
-      const aiRes: any = await $fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + openRouterKey,
-          'Content-Type': 'application/json'
-        },
-        body: {
-          model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.45
+      const { text } = await generateText({
+        model: client(modelName),
+        system: systemPrompt,
+        prompt: userPrompt,
+        temperature: 0.4,
+        maxRetries: 0
+      });
+
+      const jsonMatch = String(text || '').match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('JSON non valido');
+      return JSON.parse(jsonMatch[0]);
+    }, 'dkp-coder');
+
+    if (aiParsed) {
+      return {
+        success: true,
+        source: 'trinity-ai-engine',
+        result: {
+          title: aiParsed.title || title || topic,
+          summary: aiParsed.summary || summary,
+          tags: Array.isArray(aiParsed.tags) ? aiParsed.tags : [],
+          content: aiParsed.content || content,
+          insertSnippet: aiParsed.insertSnippet || ''
         }
-      });
-
-      const rawText = aiRes?.choices?.[0]?.message?.content;
-      if (rawText) {
-        const parsed = JSON.parse(rawText);
-        return {
-          success: true,
-          source: 'openrouter-ai',
-          result: {
-            title: parsed.title || title || topic,
-            summary: parsed.summary || summary,
-            tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-            content: parsed.content || content,
-            insertSnippet: parsed.insertSnippet || ''
-          }
-        };
-      }
-    } catch {
-      /* Fallback deterministico */
+      };
     }
+  } catch {
+    /* Fallback deterministico */
   }
 
   const cleanTags = Array.from(new Set([
@@ -240,33 +249,6 @@ export default defineEventHandler(async (event) => {
         'GROUP BY n.id, n.slug',
         'ORDER BY total_threads DESC',
         'LIMIT 20;',
-        FENCE
-      ].join('\n'),
-      rust: [
-        FENCE + 'rust',
-        'use sha2::{Digest, Sha256};',
-        '',
-        'pub fn compute_vault_proof(artifact: &[u8]) -> String {',
-        '    let mut hasher = Sha256::new();',
-        '    hasher.update(artifact);',
-        '    format!("{:x}", hasher.finalize())',
-        '}',
-        FENCE
-      ].join('\n'),
-      python: [
-        FENCE + 'python',
-        'import hashlib',
-        'from dataclasses import dataclass',
-        '',
-        '@dataclass(frozen=True)',
-        'class SentinelReport:',
-        '    artifact: str',
-        '    sha256: str',
-        '    passed: bool',
-        '',
-        'def audit_payload(data: bytes) -> SentinelReport:',
-        '    digest = hashlib.sha256(data).hexdigest()',
-        '    return SentinelReport(artifact="dkp-core", sha256=digest, passed=len(digest) == 64)',
         FENCE
       ].join('\n')
     };

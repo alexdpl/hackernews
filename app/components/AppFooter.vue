@@ -73,7 +73,7 @@ const { getMainUrl } = useDomain()
           </li>
           <li>
             <NuxtLink :to="getMainUrl('/shop')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              🛍️ DKP Shop &amp; API Pass
+              💳 DKP Shop &amp; SaaS Plans
             </NuxtLink>
           </li>
           <li>

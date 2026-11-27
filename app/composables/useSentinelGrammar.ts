@@ -1,5 +1,6 @@
 // app/composables/useSentinelGrammar.ts
 import { ref, watch, type Ref } from 'vue'
+import { applySafeGrammarDiffPatch } from '~/utils/dkpSafeDiffPatch'
 
 export interface SentinelGrammarIssue {
   id: string
@@ -32,12 +33,10 @@ export function analyzeTextWithSentinel(rawText: string): {
     return { lang, issues }
   }
 
-  // Isola blocchi di codice fenced e inline per analizzare solo la prosa
   const proseOnly = text
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`[^`\n]+`/g, ' ')
 
-  // 1. Tutte le parole consecutive duplicate (es. "il il", "the the")
   const dupRegex = /\b([\p{L}]{2,})\s+\1\b/giu
   let dupMatch: RegExpExecArray | null
   let dupIdx = 0
@@ -57,7 +56,6 @@ export function analyzeTextWithSentinel(rawText: string): {
     })
   }
 
-  // 2. Doppi spazi nella prosa
   if (/[^\n ] {2,}[^\s-]/.test(proseOnly)) {
     issues.push({
       id: 'double-space',
@@ -70,7 +68,6 @@ export function analyzeTextWithSentinel(rawText: string): {
     })
   }
 
-  // 3. Spazio mancante dopo virgola, punto e virgola o due punti
   const punctRegex = /([\p{L}]{3,})([,;:])([\p{L}]{3,})/gu
   let punctMatch: RegExpExecArray | null
   let punctIdx = 0
@@ -90,7 +87,6 @@ export function analyzeTextWithSentinel(rawText: string): {
     })
   }
 
-  // 4. Blocchi codice ``` non chiusi
   const fenceCount = (text.match(/```/g) || []).length
   if (fenceCount % 2 !== 0) {
     issues.push({
@@ -104,7 +100,6 @@ export function analyzeTextWithSentinel(rawText: string): {
     })
   }
 
-  // 5. Backtick inline ` spaiati sulla singola riga
   const withoutFences = text.replace(/```[\s\S]*?```/g, '')
   const lines = withoutFences.split(/\r?\n/)
   const brokenLine = lines.find((line) => ((line.match(/`/g) || []).length % 2 !== 0))
@@ -120,7 +115,6 @@ export function analyzeTextWithSentinel(rawText: string): {
     })
   }
 
-  // 6. Blocco codice senza linguaggio specificato per Prism.js
   if (/```[ \t]*\r?\n/.test(text)) {
     issues.push({
       id: 'missing-code-lang',
@@ -133,7 +127,6 @@ export function analyzeTextWithSentinel(rawText: string): {
     })
   }
 
-  // 7. Periodi molto lunghi (> 45 parole)
   const sentences = proseOnly.split(/[.!?]+\s+/)
   const longSentence = sentences.find((s) => s.trim().split(/\s+/).length > 45)
   if (longSentence) {
@@ -149,6 +142,20 @@ export function analyzeTextWithSentinel(rawText: string): {
   }
 
   return { lang, issues }
+}
+
+function transformProseOnly(raw: string, fn: (prose: string) => string): string {
+  const shielded: string[] = []
+  let working = raw.replace(/```[\s\S]*?```|`[^`\n]+`|\[[^\]]+\]\([^)]+\)|!\[[^\]]*\]\([^)]+\)/g, (m) => {
+    const idx = shielded.length
+    shielded.push(m)
+    return `__DKP_PROSE_SHIELD_${idx}__`
+  })
+  working = fn(working)
+  shielded.forEach((orig, idx) => {
+    working = working.replace(`__DKP_PROSE_SHIELD_${idx}__`, () => orig)
+  })
+  return working
 }
 
 function fixLineUnmatchedBackticks(raw: string): string {
@@ -176,7 +183,10 @@ function fixLineUnmatchedBackticks(raw: string): string {
   return working
 }
 
-export function useSentinelGrammar(contentRef: Ref<string>) {
+export function useSentinelGrammar(
+  contentRef: Ref<string>,
+  onBeforeProgrammaticEdit?: (prevContent: string) => void
+) {
   const detectedLang = ref<'it' | 'en'>('it')
   const grammarIssues = ref<SentinelGrammarIssue[]>([])
   const lastFixMessage = ref<string>('')
@@ -202,16 +212,20 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
     lastFixMessage.value = msg
     setTimeout(() => {
       lastFixMessage.value = ''
-    }, 2800)
+    }, 3400)
   }
 
   function applySingleTransformation(current: string, issue: SentinelGrammarIssue): string {
     if (issue.replacement && issue.replacement.find) {
       const escapedFind = issue.replacement.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      return current.replace(new RegExp(escapedFind, 'g'), issue.replacement.replaceWith)
+      return transformProseOnly(current, (prose) =>
+        prose.replace(new RegExp(escapedFind, 'g'), issue.replacement!.replaceWith)
+      )
     }
     if (issue.id === 'double-space') {
-      return current.replace(/([^\n ]) {2,}([^\s-])/g, '$1 $2')
+      return transformProseOnly(current, (prose) =>
+        prose.replace(/([^\n ]) {2,}([^\s-])/g, '$1 $2')
+      )
     }
     if (issue.id === 'unclosed-fence') {
       return `${current.trimEnd()}\n\`\`\`\n`
@@ -227,6 +241,7 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
     const current = String(contentRef.value || '')
     const next = applySingleTransformation(current, issue)
     if (next !== current) {
+      onBeforeProgrammaticEdit?.(current)
       contentRef.value = next
       if (timer) clearTimeout(timer)
       runCheck()
@@ -234,8 +249,9 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
     }
   }
 
-  function applyAllGrammarFixes(): number {
-    let working = String(contentRef.value || '')
+  function applyAllGrammarFixes(pushSnapshot = true): number {
+    const initial = String(contentRef.value || '')
+    let working = initial
     let appliedCount = 0
     for (const issue of grammarIssues.value) {
       const updated = applySingleTransformation(working, issue)
@@ -245,6 +261,7 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
       }
     }
     if (appliedCount > 0) {
+      if (pushSnapshot) onBeforeProgrammaticEdit?.(initial)
       contentRef.value = working
       if (timer) clearTimeout(timer)
       runCheck()
@@ -254,15 +271,19 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
   }
 
   async function runAiGrammarFix(context: 'blog' | 'nodes' = 'blog') {
-    const raw = String(contentRef.value || '')
-    if (!raw.trim()) {
+    const originalBeforeRun = String(contentRef.value || '')
+    if (!originalBeforeRun.trim()) {
       showBanner('Scrivi prima del testo da revisionare')
       return
     }
 
+    // Salva snapshot integrale nell'Undo Stack PRIMA di qualsiasi modifica
+    onBeforeProgrammaticEdit?.(originalBeforeRun)
     isAiFixing.value = true
-    // 1. Applica subito le correzioni locali istantanee
-    applyAllGrammarFixes()
+
+    // 1. Applica correzioni locali sicure solo sulla prosa
+    applyAllGrammarFixes(false)
+    const baselineForDiff = String(contentRef.value || '')
 
     try {
       const res: any = await $fetch('/api/admin/ai-assist', {
@@ -270,15 +291,21 @@ export function useSentinelGrammar(contentRef: Ref<string>) {
         body: {
           mode: 'grammar_fix',
           context,
-          content: contentRef.value
+          content: baselineForDiff
         }
       })
 
-      if (res?.success && res.result?.content && res.result.content !== contentRef.value) {
-        contentRef.value = res.result.content
-        if (timer) clearTimeout(timer)
-        runCheck()
-        showBanner(`Revisione DKP Ai Nexus© completata (${res.source || 'Sentinel'})`)
+      if (res?.success && res.result?.content && res.result.content !== baselineForDiff) {
+        // 2. Applica SOLO diff testuali granulari (LCS word-diff) preservando formattazione e struttura
+        const diffResult = applySafeGrammarDiffPatch(baselineForDiff, String(res.result.content))
+        if (diffResult.patchedText !== baselineForDiff) {
+          contentRef.value = diffResult.patchedText
+          if (timer) clearTimeout(timer)
+          runCheck()
+          showBanner(`DKP Ai Nexus©: ${diffResult.summary}`)
+        } else {
+          showBanner('Prosa e formattazione già ottimali')
+        }
       } else {
         showBanner('Prosa e sintassi già ottimali')
       }

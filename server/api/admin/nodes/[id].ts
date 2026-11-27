@@ -2,6 +2,7 @@
 import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { sql } from 'drizzle-orm'
 import { getDb } from '~~/server/utils/db'
+import { cleanNodeName, cleanNodeSlug, wouldCreateNodeCycle } from '~~/server/utils/nodesTreeService'
 
 function normalizeParentId(raw: unknown): number | null {
   if (raw === null || raw === undefined || raw === '' || raw === 'null' || raw === 'root') {
@@ -21,7 +22,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'ID Nodo non valido.' })
   }
 
-  // PUT / PATCH: Aggiornamento Nodo e Gerarchia Padre/Figlio
   if (method === 'PUT' || method === 'PATCH') {
     const body = await readBody(event)
     const { name, slug, description, icon, color, isPrivate, category } = body
@@ -31,20 +31,19 @@ export default defineEventHandler(async (event) => {
       ? normalizeParentId(body.parentId !== undefined ? body.parentId : body.parent_id)
       : null
 
-    if (parentId === nodeId) {
-      throw createError({ statusCode: 400, statusMessage: 'Un nodo non può essere padre di se stesso.' })
+    if (hasExplicitParent && await wouldCreateNodeCycle(db, nodeId, parentId)) {
+      throw createError({ statusCode: 400, statusMessage: 'Gerarchia non valida: rilevato ciclo padre-figlio.' })
     }
 
-    const cleanSlug = slug
-      ? String(slug).trim().toLowerCase().replace(/^(n\/)+/i, '').replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')
-      : null
+    const cleanName = name !== undefined ? cleanNodeName(name) : ''
+    const cleanSlug = slug !== undefined ? cleanNodeSlug(slug || cleanName) : ''
 
     try {
       const result: any = await db.execute(sql`
         UPDATE nodes
-        SET 
-          name = COALESCE(NULLIF(${String(name || '').trim()}, ''), name),
-          slug = COALESCE(NULLIF(${cleanSlug || ''}, ''), slug),
+        SET
+          name = COALESCE(NULLIF(${cleanName}, ''), name),
+          slug = COALESCE(NULLIF(${cleanSlug}, ''), slug),
           description = COALESCE(${description ?? null}, description),
           icon = COALESCE(NULLIF(${String(icon || '').trim()}, ''), icon),
           color = COALESCE(NULLIF(${String(color || '').trim()}, ''), color),
@@ -64,10 +63,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // DELETE: Eliminazione Nodo (promuove eventuali sottonodi a Root prima di eliminare)
   if (method === 'DELETE') {
     try {
-      await db.execute(sql`UPDATE nodes SET parent_id = NULL WHERE parent_id = ${nodeId}`)
+      // Promuove eventuali sottonodi figli al genitore superiore (o Root) prima di eliminare
+      const currentRes: any = await db.execute(sql`SELECT parent_id FROM nodes WHERE id = ${nodeId} LIMIT 1`)
+      const currentParentId = (Array.isArray(currentRes) ? currentRes : (currentRes?.rows || []))[0]?.parent_id ?? null
+
+      await db.execute(sql`UPDATE nodes SET parent_id = ${currentParentId} WHERE parent_id = ${nodeId}`)
       await db.execute(sql`DELETE FROM nodes WHERE id = ${nodeId}`)
       return { success: true, message: 'Nodo eliminato con successo.' }
     } catch (err: any) {

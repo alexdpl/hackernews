@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import DkpLayout from '~/components/DkpLayout.vue'
 import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
 import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import {
   cleanNodeLabel,
@@ -363,10 +364,15 @@ watch(() => props.threadIdOrSlug, async () => {
           </div>
         </div>
       </section>
+        <DkpAdsWidget
+             placement="feedInline"
+              layout="horizontal"
+              :limit="3"
+              :show-advertise-link="true"
+           />
 
       <DkpRelatedBlogWidget />
       <DkpHomeWidget />
-
       <DkpAdStrip
         layout="horizontal"
         category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"

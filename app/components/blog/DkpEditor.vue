@@ -28,6 +28,52 @@ const tags = ref<string[]>(Array.isArray(props.modelValue?.tags) ? [...props.mod
 const summary = ref(props.modelValue?.summary || '')
 const content = ref(props.modelValue?.content || '')
 
+// Undo / Redo Stack Robusto (Ctrl+Z / Ctrl+Y)
+const MAX_UNDO_HISTORY = 60
+const undoStack = ref<string[]>([])
+const redoStack = ref<string[]>([])
+let isApplyingHistory = false
+let lastTypedSnapshotAt = 0
+
+function pushUndoSnapshot(snapshot: string) {
+  if (isApplyingHistory) return
+  const stack = undoStack.value
+  if (stack.length > 0 && stack[stack.length - 1] === snapshot) return
+  stack.push(snapshot)
+  if (stack.length > MAX_UNDO_HISTORY) {
+    stack.shift()
+  }
+  redoStack.value = []
+}
+
+function undoContent() {
+  if (undoStack.value.length === 0) return
+  const previous = undoStack.value.pop()!
+  isApplyingHistory = true
+  redoStack.value.push(content.value)
+  content.value = previous
+  aiStatusMessage.value = '↩ Ripristinata versione precedente (Undo)'
+  syncToParent()
+  setTimeout(() => {
+    isApplyingHistory = false
+    textareaRef.value?.focus()
+  }, 0)
+}
+
+function redoContent() {
+  if (redoStack.value.length === 0) return
+  const next = redoStack.value.pop()!
+  isApplyingHistory = true
+  undoStack.value.push(content.value)
+  content.value = next
+  aiStatusMessage.value = '↪ Ripristinata modifica (Redo)'
+  syncToParent()
+  setTimeout(() => {
+    isApplyingHistory = false
+    textareaRef.value?.focus()
+  }, 0)
+}
+
 const {
   detectedLang: sentinelLang,
   grammarIssues: sentinelIssues,
@@ -36,7 +82,9 @@ const {
   runAiGrammarFix,
   isAiFixing,
   lastFixMessage
-} = useSentinelGrammar(content)
+} = useSentinelGrammar(content, (prevSnapshot) => {
+  pushUndoSnapshot(prevSnapshot)
+})
 
 const activeTab = ref<'write' | 'preview'>('write')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -101,6 +149,8 @@ watch(
 
     if (!nextTitle.trim() && !nextContent.trim() && !nextSummary.trim()) {
       previousContentSnapshot.value = null
+      undoStack.value = []
+      redoStack.value = []
       savedDraftAvailable.value = null
       autosaveNotice.value = ''
       activeTab.value = 'write'
@@ -162,6 +212,7 @@ if (import.meta.client) {
 
 function restoreSavedDraft() {
   if (!savedDraftAvailable.value) return
+  pushUndoSnapshot(content.value)
   const d = savedDraftAvailable.value
   title.value = d.title || ''
   categoryName.value = d.category || ''
@@ -183,6 +234,8 @@ function resetEditor(clearStorage = true) {
   summary.value = ''
   content.value = ''
   previousContentSnapshot.value = null
+  undoStack.value = []
+  redoStack.value = []
   savedDraftAvailable.value = null
   autosaveNotice.value = ''
   activeTab.value = 'write'
@@ -193,6 +246,7 @@ function resetEditor(clearStorage = true) {
   syncToParent()
   isResettingEditor = false
 }
+
 function clearSavedDraft() {
   savedDraftAvailable.value = null
   autosaveNotice.value = ''
@@ -223,6 +277,7 @@ function onCategoryChange() {
 }
 
 function insertFormatting(prefix: string, suffix: string = '', placeholder: string = '') {
+  pushUndoSnapshot(content.value)
   const textarea = textareaRef.value
   if (!textarea) {
     content.value = `${content.value}${prefix}${placeholder}${suffix}`
@@ -255,6 +310,7 @@ function insertList(type: 'bullet' | 'number' | 'sub') {
   const textarea = textareaRef.value
   if (!textarea) return
 
+  pushUndoSnapshot(content.value)
   const start = textarea.selectionStart
   const end = textarea.selectionEnd
   const selectedText = content.value.substring(start, end)
@@ -286,10 +342,37 @@ function insertList(type: 'bullet' | 'number' | 'sub') {
   }, 0)
 }
 
+function handleEditorKeydown(e: KeyboardEvent) {
+  const isMod = e.ctrlKey || e.metaKey
+  if (isMod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    if (undoStack.value.length > 0) {
+      e.preventDefault()
+      undoContent()
+    }
+    return
+  }
+  if (isMod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+    if (redoStack.value.length > 0) {
+      e.preventDefault()
+      redoContent()
+    }
+    return
+  }
+
+  if (!isMod && e.key.length === 1) {
+    const now = Date.now()
+    if (now - lastTypedSnapshotAt > 1200 || e.key === ' ') {
+      pushUndoSnapshot(content.value)
+      lastTypedSnapshotAt = now
+    }
+  }
+}
+
 function handleEnter(e: KeyboardEvent) {
   const textarea = textareaRef.value
   if (!textarea) return
 
+  pushUndoSnapshot(content.value)
   const start = textarea.selectionStart
   const textBeforeCursor = content.value.substring(0, start)
   const lines = textBeforeCursor.split('\n')
@@ -344,6 +427,7 @@ async function runAiAssist(mode: 'generate_draft' | 'expand' | 'security_audit' 
     : ''
 
   previousContentSnapshot.value = content.value
+  pushUndoSnapshot(content.value)
 
   try {
     const res: any = await $fetch('/api/admin/ai-assist', {
@@ -405,6 +489,8 @@ function undoLastAiAction() {
     previousContentSnapshot.value = null
     aiStatusMessage.value = 'Modifica AI annullata.'
     syncToParent()
+  } else {
+    undoContent()
   }
 }
 
@@ -436,7 +522,7 @@ const parsedContent = computed(() => {
           : 'w-full bg-[#070b14] border border-slate-800/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xl'
       "
     >
-      <!-- NAVBAR SUPERIORE DEDICATA SOLO ALLO ZEN MODE (PAGINA INTERA ANTIDISTRAZIONE) -->
+      <!-- NAVBAR SUPERIORE DEDICATA SOLO ALLO ZEN MODE -->
       <div
         v-if="isZenMode"
         class="shrink-0 bg-[#070b14] border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap"
@@ -474,7 +560,32 @@ const parsedContent = computed(() => {
           </span>
           <button
             type="button"
-            @click="resetEditor(true)" class="px-3 py-1.5 rounded-xl border bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 font-bold font-mono text-xs transition cursor-pointer" title="Pulisci editor">+ Nuovo</button><button type="button" @click="showAiBar = !showAiBar"
+            :disabled="undoStack.length === 0"
+            @click="undoContent"
+            class="px-2.5 py-1.5 rounded-xl border bg-slate-900 text-amber-300 border-amber-500/40 hover:bg-amber-500/15 disabled:opacity-40 font-bold font-mono text-xs transition cursor-pointer"
+            title="Annulla ultima modifica (Ctrl+Z)"
+          >
+            &#8617; Undo ({{ undoStack.length }})
+          </button>
+          <button
+            type="button"
+            :disabled="isAiFixing"
+            @click="runAiGrammarFix('blog')"
+            class="px-2.5 py-1.5 rounded-xl border bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold font-mono text-xs transition cursor-pointer disabled:opacity-50"
+          >
+            {{ isAiFixing ? 'Patching...' : '✨ Grammar Safe-Diff' }}
+          </button>
+          <button
+            type="button"
+            @click="resetEditor(true)"
+            class="px-3 py-1.5 rounded-xl border bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 font-bold font-mono text-xs transition cursor-pointer"
+            title="Pulisci editor"
+          >
+            + Nuovo
+          </button>
+          <button
+            type="button"
+            @click="showAiBar = !showAiBar"
             :class="showAiBar ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
             class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
           >
@@ -500,7 +611,7 @@ const parsedContent = computed(() => {
             DKP Blog Rich Editor
           </span>
           <span class="text-emerald-400 font-mono text-xs font-bold">
-            - Rich Editor Avanzato
+            - Safe-Diff &amp; Undo Engine
           </span>
           <span
             v-if="autosaveNotice"
@@ -521,14 +632,39 @@ const parsedContent = computed(() => {
         <div class="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            @click="resetEditor(true)" class="px-3 py-1.5 rounded-xl border bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 font-bold font-mono text-xs transition cursor-pointer" title="Pulisci editor">+ Nuovo</button><button type="button" @click="showAiBar = !showAiBar"
+            :disabled="undoStack.length === 0"
+            @click="undoContent"
+            class="px-2.5 py-1.5 rounded-xl border bg-slate-900 text-amber-300 border-amber-500/40 hover:bg-amber-500/15 disabled:opacity-40 font-bold font-mono text-xs transition cursor-pointer"
+            title="Annulla ultima modifica (Ctrl+Z)"
+          >
+            &#8617; Undo ({{ undoStack.length }})
+          </button>
+          <button
+            type="button"
+            :disabled="redoStack.length === 0"
+            @click="redoContent"
+            class="px-2.5 py-1.5 rounded-xl border bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800 disabled:opacity-40 font-bold font-mono text-xs transition cursor-pointer"
+            title="Ripeti modifica (Ctrl+Y)"
+          >
+            &#8618; Redo
+          </button>
+          <button
+            type="button"
+            @click="resetEditor(true)"
+            class="px-3 py-1.5 rounded-xl border bg-slate-900 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/15 font-bold font-mono text-xs transition cursor-pointer"
+            title="Pulisci editor"
+          >
+            + Nuovo
+          </button>
+          <button
+            type="button"
+            @click="showAiBar = !showAiBar"
             :class="showAiBar ? 'bg-purple-500 text-slate-950 border-purple-400 font-extrabold' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25 font-bold'"
             class="px-3 py-1.5 rounded-xl border font-mono text-xs transition cursor-pointer"
             title="Apri DKP Ai Nexus"
           >
             &#10024; DKP Ai Nexus&copy;
           </button>
-
           <button
             type="button"
             @click="toggleZenMode"
@@ -568,11 +704,11 @@ const parsedContent = computed(() => {
           </div>
         </div>
 
-        <!-- DKP Ai Nexus — SENTINELLA PASSIVA GRAMMARLY-STYLE -->
+        <!-- DKP Ai Nexus — SENTINELLA PASSIVA GRAMMARLY-STYLE (SAFE-DIFF) -->
         <div class="bg-[#050a18] border border-purple-500/35 rounded-xl px-3.5 py-2.5 font-mono text-xs space-y-2">
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            <div class="flex items-center gap-2">
-              <span class="text-purple-300 font-extrabold">DKP Ai Nexus&copy; &bull; Sentinella Passiva</span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-purple-300 font-extrabold">DKP Ai Nexus&copy; &bull; Sentinella Safe-Diff</span>
               <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/35 text-[10px] font-bold uppercase">
                 LANG: {{ sentinelLang }}
               </span>
@@ -584,7 +720,26 @@ const parsedContent = computed(() => {
               </span>
             </div>
 
-            <div class="flex items-center gap-2 flex-wrap"><button v-if="sentinelIssues.length > 0" type="button" @click="applyAllGrammarFixes" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 font-extrabold text-[10px] cursor-pointer">Correggi Tutto ({{ sentinelIssues.length }})</button><button type="button" :disabled="isAiFixing" @click="runAiGrammarFix('blog')" class="px-2.5 py-1 rounded-lg bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-[10px] border-none cursor-pointer disabled:opacity-50">{{ isAiFixing ? 'Revisione AI...' : '✨ Correggi Grammatica (Ai Nexus©)' }}</button></div><span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
+            <div class="flex items-center gap-2 flex-wrap">
+              <button
+                v-if="sentinelIssues.length > 0"
+                type="button"
+                @click="applyAllGrammarFixes(true)"
+                class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 font-extrabold text-[10px] cursor-pointer"
+              >
+                Correggi Tutto ({{ sentinelIssues.length }})
+              </button>
+              <button
+                type="button"
+                :disabled="isAiFixing"
+                @click="runAiGrammarFix('blog')"
+                class="px-2.5 py-1 rounded-lg bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-[10px] border-none cursor-pointer disabled:opacity-50"
+              >
+                {{ isAiFixing ? 'Analisi Diff AI...' : '✨ Correggi Grammatica Safe-Diff (Ai Nexus©)' }}
+              </button>
+            </div>
+
+            <span v-if="sentinelIssues.length === 0" class="text-[11px] text-emerald-400">
               &#10003; Sintassi, punteggiatura e Markdown verificati
             </span>
             <span v-else class="text-[11px] text-amber-300 font-bold">
@@ -693,7 +848,7 @@ const parsedContent = computed(() => {
         </div>
       </template>
 
-      <!-- PANNELLO DKP Ai Nexus (DISPONIBILE SIA IN STANDARD CHE IN ZEN MODE) -->
+      <!-- PANNELLO DKP Ai Nexus -->
       <div
         v-if="showAiBar"
         :class="isZenMode ? 'shrink-0 mx-4 sm:mx-6 mt-2 bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs' : 'bg-[#050a18] border border-purple-500/40 rounded-xl p-3 space-y-2.5 font-mono text-xs'"
@@ -762,12 +917,12 @@ const parsedContent = computed(() => {
             TL;DR &amp; Tabella
           </button>
           <button
-            v-if="previousContentSnapshot !== null"
+            v-if="previousContentSnapshot !== null || undoStack.length > 0"
             type="button"
             @click="undoLastAiAction"
             class="px-2.5 py-1 rounded bg-rose-500/15 border border-rose-500/40 text-rose-300 cursor-pointer"
           >
-            Annulla AI
+            Annulla AI (Ctrl+Z)
           </button>
           <span v-if="aiStatusMessage" class="text-[11px] text-emerald-400 ml-auto">
             {{ aiStatusMessage }}
@@ -775,7 +930,7 @@ const parsedContent = computed(() => {
         </div>
       </div>
 
-      <!-- TOOLBAR STRUMENTI (SEMPRE VISIBILE ANCHE IN ZEN MODE) -->
+      <!-- TOOLBAR STRUMENTI -->
       <div
         :class="isZenMode ? 'shrink-0 bg-[#090e1c] border-b border-slate-800 px-4 sm:px-6 py-2' : 'bg-[#090e1c] border border-slate-800 rounded-xl p-2 space-y-2'"
       >
@@ -874,6 +1029,7 @@ const parsedContent = computed(() => {
           v-model="content"
           rows="16"
           placeholder="Inizia a scrivere il tuo articolo qui (supporta ```qualsiasi-linguaggio con PrismJS dinamico, immagini, @[video](url) e tabelle)..."
+          @keydown="handleEditorKeydown"
           @keydown.enter="handleEnter"
           :class="
             isZenMode
@@ -916,10 +1072,41 @@ const parsedContent = computed(() => {
 :deep(.dkp-hr) { border: 0; border-top: 1px solid #1e293b; margin: 1.2rem 0; }
 :deep(.dkp-img) { max-width: 100%; border-radius: 8px; border: 1px solid #1e293b; margin: 0.85rem 0; }
 
-:deep(ul.dkp-main-list), :deep(ul.dkp-sub-list) { list-style-type: disc; margin: 0.25rem 0; padding-left: 1.5rem; }
-:deep(ol.dkp-main-list), :deep(ol.dkp-sub-list) { list-style-type: decimal; margin: 0.25rem 0; padding-left: 1.5rem; }
-:deep(.dkp-li-main::marker), :deep(.dkp-li-nested::marker) { color: #22d3ee; font-weight: 700; }
-:deep(.dkp-li-main), :deep(.dkp-li-nested) { margin-bottom: 0.35rem; color: #cbd5e1; }
+/* Liste puntate e numerate garantite anche dopo Tailwind Preflight e in Zen Mode */
+:deep(ul.dkp-ul),
+:deep(ul.dkp-main-list),
+:deep(ul.dkp-sub-list),
+:deep(.dkp-preview-content ul) {
+  list-style-type: disc !important;
+  list-style-position: outside !important;
+  margin: 0.55rem 0 !important;
+  padding-left: 1.75rem !important;
+}
+
+:deep(ol.dkp-ol),
+:deep(ol.dkp-main-list),
+:deep(ol.dkp-sub-list),
+:deep(.dkp-preview-content ol) {
+  list-style-type: decimal !important;
+  list-style-position: outside !important;
+  margin: 0.55rem 0 !important;
+  padding-left: 1.75rem !important;
+}
+
+:deep(li.dkp-li),
+:deep(li.dkp-li-ordered),
+:deep(.dkp-li-main),
+:deep(.dkp-li-nested),
+:deep(.dkp-preview-content li) {
+  display: list-item !important;
+  margin-bottom: 0.35rem !important;
+  color: #cbd5e1 !important;
+}
+
+:deep(.dkp-preview-content li::marker) {
+  color: #22d3ee !important;
+  font-weight: 700 !important;
+}
 
 :deep(.dkp-video-wrapper) { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; margin: 1rem 0; border-radius: 8px; border: 1px solid #1e293b; }
 :deep(.dkp-video-wrapper iframe) { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }

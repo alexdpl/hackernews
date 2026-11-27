@@ -6,10 +6,10 @@ import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
 import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
 import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
-import { buildCategoryNodeTree, cleanNodeLabel } from '~/composables/useDkpNodes'
+import { cleanNodeLabel } from '~/composables/useDkpNodes'
 
 useDkpSeo({
-  title: 'DKP Nodes & Talks Hub \u2014 Forum Tecnici & Blockchain Vault | DevKernelPulse',
+  title: 'DKP Nodes & Talks Hub — Forum Tecnici & Blockchain Vault | DevKernelPulse',
   description: 'Esplora i nodi e i sub-nodi tecnici di DevKernelPulse: Core Releases, AI Agents, Pure SQL e notarizzazione SHA-256.',
   type: 'collection',
   canonicalPath: '/nodes'
@@ -18,7 +18,7 @@ useDkpSeo({
 const heroCards = [
   {
     to: '/news',
-    icon: '\uD83C\uDF0D',
+    icon: '🌍',
     badge: 'LIVE STREAM',
     badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
     title: 'DKP Tech Feed',
@@ -26,7 +26,7 @@ const heroCards = [
   },
   {
     to: '/nodes',
-    icon: '\uD83D\uDCAC',
+    icon: '💬',
     badge: 'COMMUNITY',
     badgeClass: 'bg-violet-500/15 text-violet-300 border-violet-500/35',
     title: 'DKP Talks Hub',
@@ -34,7 +34,7 @@ const heroCards = [
   },
   {
     to: '/tools',
-    icon: '\uD83D\uDEE0\uFE0F',
+    icon: '🛠️',
     badge: 'SECURITY & DEV',
     badgeClass: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/35',
     title: 'Developer Tools',
@@ -42,7 +42,7 @@ const heroCards = [
   },
   {
     to: '/blog',
-    icon: '\uD83D\uDCDD',
+    icon: '📝',
     badge: 'VAULT VERIFIED',
     badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
     title: 'DKP Editorial Hub',
@@ -50,28 +50,49 @@ const heroCards = [
   }
 ]
 
-const nodesList = ref<any[]>([])
+const rootTree = ref<any[]>([])
+const flatNodes = ref<any[]>([])
 const recentThreads = ref<any[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 const route = useRoute()
 const selectedNodeGroup = ref(String(route.query.group || 'Tutti'))
 const selectedSubnodeSlug = ref(String(route.query.sub || 'Tutti'))
-watch(() => route.query.group, (g) => { selectedNodeGroup.value = g ? String(g) : 'Tutti'; selectedSubnodeSlug.value = 'Tutti' })
+
+watch(() => route.query.group, (g) => {
+  selectedNodeGroup.value = g ? String(g) : 'Tutti'
+  selectedSubnodeSlug.value = 'Tutti'
+})
+
 const { currentUser } = useAuthCore()
 
-const nodeTree = computed(() => buildCategoryNodeTree(nodesList.value))
+function collectAllDescendants(node: any): any[] {
+  const out: any[] = []
+  for (const child of node?.children || []) {
+    out.push(child)
+    out.push(...collectAllDescendants(child))
+  }
+  return out
+}
 
 const nodeGroups = computed(() => {
-  const cats = nodeTree.value.categories || []
-  return cats.map((catName: string) => ({
-    name: catName,
-    subnodes: nodeTree.value.groupedNodes[catName] || []
+  return rootTree.value.map((root: any) => ({
+    id: Number(root.id),
+    slug: String(root.slug || ''),
+    name: cleanNodeLabel(root.name || root.slug),
+    category: String(root.category || ''),
+    icon: root.icon || '#',
+    subnodes: collectAllDescendants(root)
   }))
 })
 
 const activeGroupObj = computed(() =>
-  nodeGroups.value.find((g: any) => g.name === selectedNodeGroup.value) || null
+  nodeGroups.value.find(
+    (g: any) =>
+      g.name === selectedNodeGroup.value ||
+      g.category === selectedNodeGroup.value ||
+      g.slug === selectedNodeGroup.value
+  ) || null
 )
 
 function selectNodeGroup(groupName: string) {
@@ -99,15 +120,15 @@ const filteredThreads = computed<any[]>(() => {
     const tNodeId = Number(t.nodeId || t.node_id || 0)
 
     if (selectedNodeGroup.value !== 'Tutti' && activeGroup) {
-      const subList = activeGroup.subnodes || []
-      const groupSlugs = new Set(subList.map((n: any) => String(n.slug || '').toLowerCase().replace(/^(n\/)+/i, '')))
-      const groupNames = new Set(subList.map((n: any) => String(cleanNodeLabel(n.name || '')).toLowerCase()))
-      const groupIds = new Set(subList.map((n: any) => Number(n.id || 0)).filter((id: number) => id > 0))
+      const family = [activeGroup, ...(activeGroup.subnodes || [])]
+      const groupSlugs = new Set(family.map((n: any) => String(n.slug || '').toLowerCase().replace(/^(n\/)+/i, '')))
+      const groupNames = new Set(family.map((n: any) => String(cleanNodeLabel(n.name || '')).toLowerCase()))
+      const groupIds = new Set(family.map((n: any) => Number(n.id || 0)).filter((id: number) => id > 0))
       const matchesGroup =
         groupSlugs.has(tSlug) ||
         groupNames.has(tName) ||
         (tNodeId > 0 && groupIds.has(tNodeId)) ||
-        String(t.category || '').toLowerCase() === selectedNodeGroup.value.toLowerCase()
+        String(t.category || '').toLowerCase() === activeGroup.category.toLowerCase()
       if (!matchesGroup) return false
     }
 
@@ -133,11 +154,14 @@ const filteredThreads = computed<any[]>(() => {
 async function loadNodesHub() {
   isLoading.value = true
   try {
-    const [nRes, pRes]: any = await Promise.all([
-      $fetch('/api/nodes').catch(() => null),
+    const [treeRes, pRes]: any = await Promise.all([
+      $fetch('/api/nodes/tree?_t=' + Date.now()).catch(() => null),
       $fetch('/api/nodes/posts?limit=40&_t=' + Date.now()).catch(() => null)
     ])
-    nodesList.value = nRes?.data || []
+    if (Array.isArray(treeRes?.tree)) {
+      rootTree.value = treeRes.tree
+      flatNodes.value = treeRes.flat || []
+    }
     recentThreads.value = pRes?.posts || pRes?.data || []
   } finally {
     isLoading.value = false
@@ -160,11 +184,10 @@ onMounted(loadNodesHub)
   <div class="bg-dkp-bg text-dkp-text font-display min-h-screen bg-grid-pattern relative">
     <DkpHomeTelemetry />
 
-    <!-- HERO SECTION SPECULARE ALLA HOME, /news E /blog -->
     <section class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-4 text-center">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dkp-card border border-dkp-border font-mono text-xs text-dkp-accent font-bold mb-6 card-glow">
         <span class="w-2 h-2 rounded-full bg-violet-400"></span>
-        <span> DKP TALKS HUB &bull; FORUM TECNICI &amp; SHA-256 VAULT V2.6-PURE-SQL</span>
+        <span>DKP TALKS HUB &bull; ALBERO GERARCHICO NODI &amp; SHA-256 VAULT V2.6-PURE-SQL</span>
       </div>
 
       <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight m-0 mb-5">
@@ -175,10 +198,9 @@ onMounted(loadNodesHub)
       </h1>
 
       <p class="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed mb-8">
-        Forum tecnici verticali, sub-nodi specializzati, code review e discussioni notarizzate su Neon PostgreSQL dalla community DevKernelPulse.
+        Forum tecnici verticali organizzati in {{ rootTree.length || 10 }} Nodi Principali e {{ Math.max(0, flatNodes.length - rootTree.length) }} Sub-Nodi specializzati, notarizzati su Neon PostgreSQL.
       </p>
 
-      <!-- 4 CARD PRINCIPALI -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left mb-7">
         <NuxtLink
           v-for="card in heroCards"
@@ -205,20 +227,19 @@ onMounted(loadNodesHub)
         </NuxtLink>
       </div>
 
-      <!-- AZIONI RAPIDE NODI -> PUBBLICA THREAD APRE DASHBOARD -->
       <div class="flex flex-wrap items-center justify-center gap-3 mb-6">
         <NuxtLink
           to="/user/dashboard?tab=content&subtab=nodes&new=1"
           class="px-5 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-mono text-xs sm:text-sm font-extrabold no-underline shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all"
         >
-           Pubblica Thread (+50 XP)
+          Pubblica Thread (+50 XP)
         </NuxtLink>
 
         <NuxtLink
           to="/nodes/n/blockchain-vault"
           class="px-4 py-2.5 rounded-xl bg-dkp-card border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 font-mono text-xs sm:text-sm font-bold no-underline transition-colors"
         >
-           n/blockchain-vault
+          n/blockchain-vault
         </NuxtLink>
 
         <button
@@ -226,31 +247,29 @@ onMounted(loadNodesHub)
           @click="loadNodesHub"
           class="px-4 py-2.5 rounded-xl bg-dkp-card border border-dkp-border hover:border-cyan-400 text-slate-200 font-mono text-xs sm:text-sm font-bold cursor-pointer transition-colors"
         >
-           Aggiorna Feed
+          Aggiorna Feed
         </button>
       </div>
 
-      <!-- BARRA RICERCA THREAD -->
       <div class="max-w-3xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <div class="relative flex-1">
-          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></span>
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Cerca thread, architetture, nodi (es. BEMYAGENT, Pure SQL, Rust, AI)..."
-            class="w-full bg-dkp-card/95 border border-dkp-border focus:border-violet-400 text-white pl-10 pr-4 py-3 rounded-xl font-mono text-xs outline-none box-border"
+            class="w-full bg-dkp-card/95 border border-dkp-border focus:border-violet-400 text-white px-4 py-3 rounded-xl font-mono text-xs outline-none box-border"
           />
         </div>
         <div class="px-4 py-3 rounded-xl bg-dkp-card/95 border border-dkp-border font-mono text-xs font-bold text-violet-300 shrink-0">
-           {{ filteredThreads.length }} thread
+          {{ filteredThreads.length }} thread
         </div>
       </div>
 
-      <!-- MENU NODi & SUBNODi A PILLOLE SOTTO LA BARRA DI RICERCA (COME CATEGORIE & SOTTOCATEGORIE IN BLOG) -->
+      <!-- MENU GERARCHICO NODI ROOT -> SUB-NODI -->
       <div v-if="nodeGroups.length > 0" class="max-w-6xl mx-auto text-left bg-dkp-card/90 border border-dkp-border rounded-2xl p-4 space-y-3 card-glow">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <span class="font-mono text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-             Nodi &amp; Sub-Nodi
+            Nodi Principali ({{ nodeGroups.length }}) &amp; Sub-Nodi Gerarchici
           </span>
           <button
             v-if="selectedNodeGroup !== 'Tutti' || selectedSubnodeSlug !== 'Tutti' || searchQuery"
@@ -258,11 +277,11 @@ onMounted(loadNodesHub)
             @click="resetNodeFilters"
             class="font-mono text-[11px] text-rose-400 hover:text-rose-300 bg-transparent border-none cursor-pointer font-bold"
           >
-             Reset filtri
+            Reset filtri
           </button>
         </div>
 
-        <!-- Pillole Macro-Nodi -->
+        <!-- Pillole Nodi Root -->
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -279,7 +298,7 @@ onMounted(loadNodesHub)
 
           <button
             v-for="grp in nodeGroups"
-            :key="grp.name"
+            :key="grp.id"
             type="button"
             @click="selectNodeGroup(grp.name)"
             :class="[
@@ -289,16 +308,18 @@ onMounted(loadNodesHub)
                 : 'bg-[#020420] text-slate-300 border-slate-800 hover:border-cyan-400/50'
             ]"
           >
-            {{ grp.name }} ({{ grp.subnodes.length }})
+            n/{{ grp.name }} ({{ grp.subnodes.length }})
           </button>
         </div>
 
-        <!-- Pillole Sub-Nodi del gruppo selezionato -->
+        <!-- Pillole Sub-Nodi del Nodo Root selezionato -->
         <div
           v-if="activeGroupObj && activeGroupObj.subnodes.length > 0"
           class="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-800/80"
         >
-          <span class="font-mono text-[10px] text-cyan-400 uppercase font-bold mr-1">Sub-nodi:</span>
+          <span class="font-mono text-[10px] text-cyan-400 uppercase font-bold mr-1">
+            Sub-nodi di n/{{ activeGroupObj.name }}:
+          </span>
           <button
             type="button"
             @click="selectSubnode('Tutti')"
@@ -309,38 +330,30 @@ onMounted(loadNodesHub)
                 : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-slate-200'
             ]"
           >
-            Tutti
+            Tutti ({{ activeGroupObj.subnodes.length }})
           </button>
 
-          <button
+          <NuxtLink
             v-for="sub in activeGroupObj.subnodes"
             :key="sub.slug"
-            type="button"
-            @click="selectSubnode(sub.slug)"
-            :class="[
-              'px-3 py-1 rounded-lg font-mono text-[11px] font-bold border transition-all cursor-pointer',
-              selectedSubnodeSlug === sub.slug
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
-                : 'bg-[#020420] text-slate-400 border-slate-800 hover:text-emerald-300'
-            ]"
+            :to="`/nodes/n/${sub.slug}`"
+            class="px-3 py-1 rounded-lg font-mono text-[11px] font-bold border bg-[#020420] text-emerald-300 border-slate-800 hover:border-emerald-400 no-underline transition-all"
           >
-            n/{{ cleanNodeLabel(sub.name || sub.slug) }}
-          </button>
+            &#8627; n/{{ cleanNodeLabel(sub.name || sub.slug) }}
+          </NuxtLink>
         </div>
       </div>
     </section>
 
-    <!-- LAYOUT CON SIDEBAR UNIFICATA + THREAD + BLOG & CRAWLER NEWS -->
     <DkpLayout :hide-section-header="true" :show-sidebar-ads="true">
-      <!-- Feed Card dei Thread -->
       <div class="space-y-4">
         <div class="flex items-center justify-between px-1">
-          <h3 class="text-lg font-bold text-white m-0"> Ultime Discussioni nei Nodi</h3>
+          <h3 class="text-lg font-bold text-white m-0">Ultime Discussioni nei Nodi</h3>
           <span class="text-xs font-mono text-emerald-400">{{ filteredThreads.length }} thread</span>
         </div>
 
         <div v-if="isLoading" class="bg-dkp-card border border-slate-800 rounded-2xl p-10 text-center font-mono text-xs text-emerald-400 animate-pulse">
-           Sincronizzazione thread dal database Pure SQL...
+          Sincronizzazione thread dal database Pure SQL...
         </div>
 
         <div v-else-if="filteredThreads.length === 0" class="bg-dkp-card border border-slate-800 rounded-2xl p-10 text-center font-mono text-xs text-slate-400">
@@ -358,11 +371,9 @@ onMounted(loadNodesHub)
         </div>
       </div>
 
-      <!-- IDENTICO ALLA HOME: Ultimi Articoli dal Blog & Ultime Notizie Crawler AI -->
       <DkpRelatedBlogWidget />
       <DkpHomeWidget />
 
-      <!-- Circuito Approfondimenti dal Vault -->
       <DkpAdStrip
         layout="horizontal"
         category-tag="DKP ADS NETWORK &bull; APPROFONDIMENTI DAL VAULT"

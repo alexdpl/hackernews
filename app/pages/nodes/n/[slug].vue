@@ -5,8 +5,10 @@ import DkpLayout from '~/components/DkpLayout.vue'
 import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
 import DkpVaultLedgerView from '~/components/vault/DkpVaultLedgerView.vue'
 import DkpNodesNavBar from '~/components/nodes/DkpNodesNavBar.vue'
-import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vue'
+import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
+import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 import { cleanNodeLabel } from '~/composables/useDkpNodes'
 
 const route = useRoute()
@@ -156,8 +158,15 @@ watch(slug, () => refresh())
           @toggle-lock="handleToggleLock"
         />
       </div>
-
+       <DkpAdsWidget
+             placement="feedInline"
+              layout="horizontal"
+              :limit="3"
+              :show-advertise-link="true"
+           />
       <DkpRelatedNodesWidget :current-slug="slug" />
+	   <DkpRelatedBlogWidget />
+	   <DkpHomeWidget />
       <DkpAdStrip />
     </div>
   </DkpLayout>

@@ -4,13 +4,13 @@ import { roadmapMilestones, type RoadmapMilestone } from '~/data/roadmap'
 
 useDkpSeo({
   title: 'Roadmap & Changelog v2.6-PURE-SQL - DevKernelPulse',
-  description: 'Roadmap ufficiale e Changelog v2.6-PURE-SQL: Unificazione Ecosistema, DKP Ai Nexus©, DKP Mail Nexus© (Resend + Brevo), 10 Macro-Nodi e Pulsebot.',
+  description: 'Roadmap ufficiale e Changelog v2.6-PURE-SQL: Albero Gerarchico Nodi, DKP Ai Nexus Safe-Diff Engine, DKP Mail Nexus (Resend + Brevo), SDK v1.1.0 e Blockchain Vault.',
   type: 'website',
   canonicalPath: '/roadmap'
 })
 
 const { data: roadmapRes } = await useFetch<any>('/api/roadmap', {
-  default: () => ({ completion: 65, milestones: roadmapMilestones })
+  default: () => ({ completion: 69, milestones: roadmapMilestones })
 })
 
 const milestones = computed<RoadmapMilestone[]>(() => {
@@ -18,16 +18,31 @@ const milestones = computed<RoadmapMilestone[]>(() => {
   return Array.isArray(list) && list.length > 0 ? list : roadmapMilestones
 })
 
-const overallCompletion = computed<number>(() => Number(roadmapRes.value?.completion || 65))
+const overallCompletion = computed<number>(() => Number(roadmapRes.value?.completion || 69))
 
 const changelogV26 = [
+  {
+    area: 'DKP Ai Nexus© Safe-Diff & Undo Engine',
+    badge: 'PATCHED & VERIFIED',
+    items: [
+      'Algoritmo LCS Word-Diff granulare con guardrail anti-troncamento e protezione strutturale su blocchi codice, liste, link, immagini e tabelle.',
+      'Undo/Redo Stack deterministico (Ctrl+Z / Ctrl+Y) su tutte le trasformazioni AI e fix grammaticali, più rendering corretto delle liste puntate e numerate in Zen Mode.'
+    ]
+  },
+  {
+    area: 'Albero Gerarchico Nodi & Sub-Nodi (Parent -> Children)',
+    badge: 'PURE SQL TREE',
+    items: [
+      'Riordino semantico della tabella nodes su PostgreSQL con risoluzione deterministica dei nodi orfani, controllo anti-ciclo padre-figlio e API dedicata /api/nodes/tree.',
+      'Gestione Accordion interattiva in Admin (/admin/nodes) con azioni dirette [Modifica], [Elimina], [+ Sub] sincronizzate istantaneamente con l\'hub pubblico /nodes.'
+    ]
+  },
   {
     area: '@devkernelpulse/sdk v1.1.0 & Sentinel Scan',
     badge: 'DEPLOYED',
     items: [
       'Rilascio @devkernelpulse/sdk v1.1.0 con moduli completi AI, Vault, Blog, Sentinel Scan (SAST + AI) e OpenUI Studio.',
-      'Certificazione crittografica Proof of Safety SHA-256 concatenata sul ledger pubblico n/blockchain-vault con verifica hash/blocco.',
-      'Distinzione chiara tra endpoint pubblici e servizi SaaS autenticati tramite chiave dkp_live_... dalla API Console.'
+      'Certificazione crittografica Proof of Safety SHA-256 concatenata sul ledger pubblico n/blockchain-vault con verifica hash/blocco.'
     ]
   },
   {
@@ -47,36 +62,11 @@ const changelogV26 = [
     ]
   },
   {
-    area: 'DKP Ai Nexus© & Editor',
-    badge: 'NEW',
-    items: [
-      'Unificazione nomenclatura da AI Studio / AI Copilot a DKP Ai Nexus© su Blog e Nodes.',
-      'Sentinella Passiva Grammarly-Style integrata in tempo reale con auto-rilevamento lingua (IT/EN) e fix 1-click.',
-      'Fix rendering liste puntate (<ul>) e numerate (<ol>), highlight (<mark>) e codice inline (<code>) con Prism.js dinamico.'
-    ]
-  },
-  {
-    area: 'DKP Mail Nexus© 2.6',
+    area: 'DKP Mail Nexus© 2.6 & Pulsebot',
     badge: 'DUAL-PROVIDER',
     items: [
-      'Adapter unificato IMailProvider con Resend API (Sentinel Network, Chat Pulse Nexus, alert critici) e Brevo (Newsletter Double Opt-In, posta ordinaria, autoresponder) con failover automatico.',
-      'Endpoint webhook idempotente (/api/webhooks/brevo) su PostgreSQL per gestire hard_bounce, spam e unsubscribed senza duplicati.'
-    ]
-  },
-  {
-    area: 'Gerarchia 10 Macro-Nodi & Vault',
-    badge: 'PURE SQL',
-    items: [
-      'Riordino semantico dei sub-nodi su 10 Macro-Domini tematici bilanciati (DKP Core, Community, Dev/Arch, AI/LLM, Security, Cloud/DB, Tools, Blockchain, Mobile, Programming Languages).',
-      'Notarizzazione SHA-256 concatenata su dkp_vault_ledger per discussioni Forum e articoli Editorial Hub.'
-    ]
-  },
-  {
-    area: 'Pulsebot & Resilienza SSR',
-    badge: 'SENTINEL',
-    items: [
-      'Nuova Sentinella guardiana Pulsebot (BEMYAGENT.md) per audit build, dipendenze, sicurezza chiavi .env e allineamento endpoint.',
-      'Hardening SSR sulle rotte dinamiche /[feed] e gate CI/CD Playwright su Google Cloud Run.'
+      'Adapter unificato IMailProvider con Resend API (Sentinel Network, alert critici) e Brevo (Newsletter Double Opt-In, autoresponder) con webhook idempotente su PostgreSQL.',
+      'Sentinella guardiana Pulsebot (BEMYAGENT.md) per audit build, dipendenze, sicurezza chiavi .env e gate CI/CD Playwright.'
     ]
   }
 ]
@@ -106,10 +96,10 @@ const changelogV26 = [
         </div>
 
         <h2 class="text-2xl font-extrabold text-dkp-text m-0">
-          Unificazione Ecosistema, DKP Ai Nexus© &amp; Mail Nexus© 2.6
+          Unificazione Ecosistema, Albero Nodi Gerarchico &amp; DKP Ai Nexus© Safe-Diff
         </h2>
         <p class="text-dkp-muted text-sm leading-relaxed m-0">
-          Con <strong>DKP Kernel v2.6 Pure SQL</strong> l'intera piattaforma opera su un design system unificato (<strong>DKP Sentinel Style</strong>), query SQL parametrizzate su Neon PostgreSQL, cinque Sentinelle autonome (<code>sentinel_ai</code>, <code>guardian_bot</code>, <code>snippet_master</code>, <code>security_watch</code> e <code>pulsebot</code>) e infrastruttura mail asincrona dual-provider.
+          Con <strong>DKP Kernel v2.6 Pure SQL</strong> l'intera piattaforma opera su un design system unificato (<strong>DKP Sentinel Style</strong>), query SQL parametrizzate su Neon PostgreSQL, albero gerarchico Nodi/Sub-Nodi sincronizzato, cinque Sentinelle autonome e infrastruttura mail asincrona dual-provider.
         </p>
 
         <div class="w-full h-2.5 bg-dkp-bg border border-dkp-border rounded-full overflow-hidden">
