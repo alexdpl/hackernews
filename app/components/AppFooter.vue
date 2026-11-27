@@ -37,13 +37,28 @@ const { getMainUrl } = useDomain()
 
         <ul class="flex flex-col gap-2.5 mt-1 list-none p-0 m-0">
           <li>
-            <NuxtLink :to="getMainUrl('/docs/ecosystem')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              📖 Cos'è DKP &amp; Guida Ecosistema
+            <NuxtLink :to="getMainUrl('/ecosystem')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              📖  Ecosistema DevKernelPulse
             </NuxtLink>
           </li>
-          <li>
-            <NuxtLink :to="getMainUrl('/news')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              🤖 Hacker News AI Feed
+		  <li>
+		  <NuxtLink :to="getMainUrl('/news')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">           
+			 🤖 Hacker News AI Feed
+            </NuxtLink>
+          </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/nodes')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              💬 Node Talks Hub
+            </NuxtLink>
+          </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/blog')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              ✍️ Blog Editorial Hub
+            </NuxtLink>
+          </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/jobs')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              💼 Jobs Hub Center
             </NuxtLink>
           </li>
           <li>
@@ -55,30 +70,10 @@ const { getMainUrl } = useDomain()
             <NuxtLink :to="getMainUrl('/newest')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
               📚 Blog Vault News &amp; Guide
             </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink :to="getMainUrl('/blog')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              ✍️ DKP Blog Editorial Hub
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink :to="getMainUrl('/nodes')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              💬 DKP Node Talks Hub
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink :to="getMainUrl('/jobs')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              💼 DKP Jobs Hub Center
-            </NuxtLink>
-          </li>
+          </li>    
           <li>
             <NuxtLink :to="getMainUrl('/shop')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              💳 DKP Shop &amp; SaaS Plans
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink :to="getMainUrl('/roadmap')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              🚀 Roadmap Ecosistema 2026
+              💳 Shop &amp; SaaS Plans
             </NuxtLink>
           </li>
         </ul>
@@ -140,9 +135,19 @@ const { getMainUrl } = useDomain()
               🔑 DKP API Console
             </NuxtLink>
           </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/docs')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+             📚 Documentazione 
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink :to="getMainUrl('/docs/api')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
-              📖 Documentazione DKP API
+              📖 Documentazione API
+            </NuxtLink>
+          </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/docs/ecosystem')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              📖 Documentazione Ecosistema
             </NuxtLink>
           </li>
           <li>
@@ -200,6 +205,11 @@ const { getMainUrl } = useDomain()
           <li>
             <NuxtLink :to="getMainUrl('/cookie-policy')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
               🍪 Cookie Policy
+            </NuxtLink>
+          </li>
+		  <li>
+            <NuxtLink :to="getMainUrl('/roadmap')" external class="text-slate-400 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all hover:translate-x-1">
+              🚀 Roadmap Ecosistema 2026
             </NuxtLink>
           </li>
           <li>

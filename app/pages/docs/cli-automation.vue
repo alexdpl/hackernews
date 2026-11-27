@@ -1,6 +1,8 @@
+<-- app/pages/docs/api.vue -->
 <script setup lang="ts">
 import { ref } from 'vue'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const { getMainUrl, getMailUrl, getApiUrl } = useDomain()
 
@@ -57,7 +59,7 @@ useDkpSeo({
           to="/blog"
           class="px-4 py-2 bg-[#020420] border border-slate-700 hover:border-emerald-400 text-emerald-300 font-extrabold text-xs rounded-xl transition-all"
         >
-          Ô£ì´©Å DKP Editorial Hub
+          DKP Editorial Hub
         </NuxtLink>
       </nav>
 
@@ -67,7 +69,7 @@ useDkpSeo({
 
         <div class="mb-4 relative z-10">
           <span class="inline-flex items-center gap-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/50 px-4 py-1.5 rounded-full text-xs font-mono font-extrabold tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            ÔÜÖ´©Å DKP DEVELOPER DOCUMENTATION v2.6-PURE-SQL
+           DKP DEVELOPER DOCUMENTATION v2.6-PURE-SQL
           </span>
         </div>
 
@@ -114,7 +116,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
           </div>
 
           <p class="text-xs sm:text-sm text-slate-400 italic m-0">
-            Ô£à <strong class="text-slate-200 not-italic">Verifica:</strong> Esegui <code class="text-emerald-400 bg-[#020420] px-1.5 py-0.5 rounded font-mono not-italic">dkp --version</code> per verificare che il runtime <code class="text-emerald-400 font-mono not-italic">v2.6.0-pure-sql</code> sia attivo.
+           <strong class="text-slate-200 not-italic">Verifica:</strong> Esegui <code class="text-emerald-400 bg-[#020420] px-1.5 py-0.5 rounded font-mono not-italic">dkp --version</code> per verificare che il runtime <code class="text-emerald-400 font-mono not-italic">v2.6.0-pure-sql</code> sia attivo.
           </p>
         </section>
 
@@ -158,7 +160,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
         <!-- SEZIONE 3: COMANDI PRINCIPALI (FOCUS V2.6-PURE-SQL) -->
         <section class="bg-[#090d16] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
           <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-4 pb-3 border-b border-slate-800">
-            ÔÜí 3. Direttive Core &amp; Comandi v2.6-PURE-SQL
+            3. Direttive Core &amp; Comandi v2.6-PURE-SQL
           </h2>
           <p class="text-slate-400 text-sm sm:text-base leading-relaxed mb-6">
             Tutte le direttive operative per gestire scansioni, database Pure SQL, pubblicazione editoriale e chiavi crittografiche.
@@ -267,7 +269,7 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
             <code class="font-mono text-sky-400 text-xs sm:text-sm">dkp firewall:monitor --level=critical,warning</code>
           </div>
           <p class="text-xs text-slate-500 italic m-0">
-            ÔÜá´©Å Usa <code class="text-slate-300 font-mono not-italic">Ctrl+C</code> per sganciare la CLI dallo stream live.
+           Usa <code class="text-slate-300 font-mono not-italic">Ctrl+C</code> per sganciare la CLI dallo stream live.
           </p>
         </section>
         
@@ -283,20 +285,24 @@ pnpm add -g @devkernelpulse/cli@latest</code></pre>
         </section>
 
       </div>
-<div class="mt-2 mb-6">
-       <DkpAdsWidget placement="docs" />
-      </div>
       <!-- FOOTER LINK -->
       <div class="flex flex-wrap justify-between items-center gap-4 pt-6 border-t border-slate-800 font-mono text-xs">
         <NuxtLink to="/tools" class="text-sky-400 hover:text-emerald-400 font-bold transition-colors">
-          ÔåÉ Ritorna ai Developer Tools
+          Ritorna ai Developer Tools
         </NuxtLink>
         <NuxtLink to="/docs/api" class="text-emerald-400 hover:underline font-bold">
-          Esplora API Reference v2.6-PURE-SQL Ô×ö
+          Esplora API Reference v2.6-PURE-SQL
         </NuxtLink>
       </div>
 	  
     </div>
   </div>
+  <DkpAdsWidget
+      placement="feedInline"
+      layout="horizontal"
+      :limit="3"
+      :show-advertise-link="true"
+    />
+    <DkpAdStrip />
   </DkpLayout>
 </template>

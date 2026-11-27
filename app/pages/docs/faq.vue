@@ -1,6 +1,8 @@
+<-- app/pages/docs/faq.vue -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const activeId = ref<string | null>('ai-1')
 const searchQuery = ref('')
@@ -169,8 +171,6 @@ useDkpSeo({
           </div>
         </header>
 
-        <DkpAdsWidget placement="feedInline" layout="horizontal" :limit="3" :show-advertise-link="true" />
-
         <!-- ACCORDION CATEGORIE FAQ -->
         <div class="space-y-6">
           <section
@@ -206,5 +206,12 @@ useDkpSeo({
 
       </div>
     </div>
+	<DkpAdsWidget
+      placement="feedInline"
+      layout="horizontal"
+      :limit="3"
+      :show-advertise-link="true"
+    />
+    <DkpAdStrip />
   </DkpLayout>
 </template>

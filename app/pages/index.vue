@@ -6,6 +6,8 @@ import DkpRelatedNodesWidget from '~/components/widgets/DkpRelatedNodesWidget.vu
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
 
+
+
 useDkpSeo({
   title: 'DevKernelPulse \u2014 La Piattaforma per Sviluppatori & Sentinel AI',
   description: 'Notarizzazione crittografica del codice, strumenti di sicurezza e aggregatore tech ad alto segnale arricchito in tempo reale da Trinity AI.'

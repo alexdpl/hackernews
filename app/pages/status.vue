@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useHead({
   title: 'API Status & Latency ÔÇö DevKernelPulse v2.6-PURE-SQL',
@@ -57,6 +59,7 @@ useDkpSeo({
 </script>
 
 <template>
+<DkpHomeTelemetry />
   <DkpLayout
     title="Stato del Sistema"
     subtitle="Diagnostica servizi, database Pure SQL e moduli attivi"
@@ -161,8 +164,14 @@ useDkpSeo({
           </div>
         </div>
       </section>
- <DkpAdsWidget placement="docs" />
     </div>
   </div>
+  <DkpAdsWidget
+      placement="feedInline"
+      layout="horizontal"
+      :limit="3"
+      :show-advertise-link="true"
+    />
+    <DkpAdStrip />
   </DkpLayout>
 </template>

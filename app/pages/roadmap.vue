@@ -1,6 +1,9 @@
+<-- app/pages/roadmap.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import { roadmapMilestones, type RoadmapMilestone } from '~/data/roadmap'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 useDkpSeo({
   title: 'Roadmap & Changelog v2.6-PURE-SQL - DevKernelPulse',
@@ -174,5 +177,12 @@ const changelogV26 = [
         </div>
       </div>
     </div>
+	<DkpAdsWidget
+             placement="feedInline"
+              layout="horizontal"
+              :limit="3"
+              :show-advertise-link="true"
+           />
+		   <DkpAdStrip />
   </DkpLayout>
 </template>

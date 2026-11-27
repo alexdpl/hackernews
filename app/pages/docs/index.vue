@@ -1,4 +1,10 @@
+<-- app/pages/docs/index.vue -->
 <script setup lang="ts">
+import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
+import RoadmapProgress from '~/components/RoadmapProgress.vue'
+
 useDkpSeo({
   title: 'Documentazione - DevKernelPulse Kernel v2.6',
   description: 'Documentazione ufficiale di DevKernelPulse: API Gateway, CLI Automation, SDK, Ecosistema e FAQ.',
@@ -8,6 +14,7 @@ useDkpSeo({
 </script>
 
 <template>
+<DkpHomeTelemetry />
   <DkpLayout
     title="Documentazione Tecnica"
     subtitle="Indice completo guide, API, SDK, CLI ed ecosistema"
@@ -33,6 +40,14 @@ useDkpSeo({
           <p class="text-xs text-slate-300 m-0">Dettagli su Pure SQL, Sentinel AI e Proof of Code Vault.</p>
         </NuxtLink>
       </div>
+	  <RoadmapProgress />
     </div>
+	<DkpAdsWidget
+      placement="feedInline"
+      layout="horizontal"
+      :limit="3"
+      :show-advertise-link="true"
+    />
+    <DkpAdStrip />
   </DkpLayout>
 </template>

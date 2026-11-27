@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 const activeLang = ref<'node' | 'python' | 'go' | 'cli'>('node')
 const activeCliCmd = ref<'auth' | 'scan' | 'vault' | 'blog' | 'db' | 'status'>('auth')
@@ -421,9 +422,14 @@ console.log('Protocollo:', bemy.protocol, 'Milestones:', bemy.workMilestones)</c
           </NuxtLink>
         </div>
       </div>
-       <DkpAdsWidget placement="docs" />
-      
     </div>
   </div>
+  <DkpAdsWidget
+      placement="feedInline"
+      layout="horizontal"
+      :limit="3"
+      :show-advertise-link="true"
+    />
+    <DkpAdStrip />
   </DkpLayout>
 </template>

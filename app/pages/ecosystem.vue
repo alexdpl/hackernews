@@ -1,4 +1,8 @@
+<-- app/pages/roadmap.vue -->
 <script setup lang="ts">
+import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
+import DkpAdStrip from '~/components/DkpAdStrip.vue'
+
 useDkpSeo({
   title: 'Ecosistema DevKernelPulse - Architettura e Moduli v2.6-PURE-SQL',
   description: 'Esplora l ecosistema completo di DevKernelPulse v2.6: DKP Ai Nexus©, Mail Nexus©, Sentinel Network (BEMYAGENT.md), 10 Macro-Nodi e Proof of Code Vault.',
@@ -82,5 +86,12 @@ useDkpSeo({
         </NuxtLink>
       </div>
     </div>
+	<DkpAdsWidget
+             placement="feedInline"
+              layout="horizontal"
+              :limit="3"
+              :show-advertise-link="true"
+           />
+		   <DkpAdStrip />
   </DkpLayout>
 </template>
