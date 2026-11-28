@@ -494,6 +494,7 @@ const freeTools = computed(() => servicesList.filter((s) => s.category === 'free
         aria-label="Collegamenti rapidi ecosistema"
         class="bg-[#080e1e] border border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3 font-mono text-xs"
       >
+	  
         <div class="flex flex-wrap items-center gap-2">
           <NuxtLink to="/tools" class="px-3 py-1.5 rounded-xl bg-[#020617] border border-emerald-500/35 text-emerald-300 font-bold no-underline hover:border-emerald-400">
             Panoramica DKP Tools

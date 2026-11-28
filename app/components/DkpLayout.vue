@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import DkpAdsWidget from '~/components/ads/DkpAdsWidget.vue'
-import DkpAdStrip from '~/components/DkpAdStrip.vue'
 
 interface Props {
   title?: string
@@ -257,21 +256,8 @@ const isActive = (path: string) => computed(() => route.path === path)
             :limit="3"
             :compact="true"
           />
-
           <slot name="sidebar-extra" />
-		  <DkpAdsWidget
-      placement="feedInline"
-      layout="vertical"
-      :limit="3"
-      :show-advertise-link="true"
-    />
-	<DkpAdStrip 
-	placement="feedInline"
-      layout="vertical"
-      :limit="3"
-	/>
         </aside>
-
         <!-- Contenuto Principale -->
         <section :class="hideSidebar ? 'col-span-1 space-y-6' : 'lg:col-span-3 space-y-6'">
           <slot />
