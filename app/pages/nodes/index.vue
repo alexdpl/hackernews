@@ -1,8 +1,10 @@
+<!-- app/pages/nodes/index.vue -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DkpHomeTelemetry from '~/components/DkpHomeTelemetry.vue'
 import DkpThreadCard from '~/components/nodes/DkpThreadCard.vue'
+import DkpPagination from '~/components/nodes/DkpPagination.vue'
 import DkpRelatedBlogWidget from '~/components/widgets/DkpRelatedBlogWidget.vue'
 import DkpHomeWidget from '~/components/DkpHomeWidget.vue'
 import DkpAdStrip from '~/components/DkpAdStrip.vue'
@@ -18,7 +20,7 @@ useDkpSeo({
 const heroCards = [
   {
     to: '/news',
-    icon: '🌍',
+    icon: '🌐',
     badge: 'LIVE STREAM',
     badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35',
     title: 'DKP Tech Feed',
@@ -42,13 +44,17 @@ const heroCards = [
   },
   {
     to: '/blog',
-    icon: '📝',
+    icon: '✍️',
     badge: 'VAULT VERIFIED',
     badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
     title: 'DKP Editorial Hub',
     desc: 'Deep-dive tecnici con certificazione SHA-256 immutabile'
   }
 ]
+
+const THREADS_PER_PAGE = 10
+const currentPage = ref(1)
+const threadsSectionRef = ref<HTMLElement | null>(null)
 
 const rootTree = ref<any[]>([])
 const flatNodes = ref<any[]>([])
@@ -59,12 +65,24 @@ const route = useRoute()
 const selectedNodeGroup = ref(String(route.query.group || 'Tutti'))
 const selectedSubnodeSlug = ref(String(route.query.sub || 'Tutti'))
 
-watch(() => route.query.group, (g) => {
-  selectedNodeGroup.value = g ? String(g) : 'Tutti'
-  selectedSubnodeSlug.value = 'Tutti'
-})
+watch(
+  () => route.query.group,
+  (g) => {
+    selectedNodeGroup.value = g ? String(g) : 'Tutti'
+    selectedSubnodeSlug.value = 'Tutti'
+    currentPage.value = 1
+  }
+)
 
 const { currentUser } = useAuthCore()
+
+const isAdmin = computed(() => {
+  const user: any = currentUser.value
+  if (!user) return false
+  const username = String(user.username || '').toLowerCase()
+  const role = String(user.role || '').toLowerCase()
+  return Boolean(user.isAdmin || user.is_admin || username === 'alexdpl' || role === 'admin')
+})
 
 function collectAllDescendants(node: any): any[] {
   const out: any[] = []
@@ -86,29 +104,37 @@ const nodeGroups = computed(() => {
   }))
 })
 
-const activeGroupObj = computed(() =>
-  nodeGroups.value.find(
-    (g: any) =>
-      g.name === selectedNodeGroup.value ||
-      g.category === selectedNodeGroup.value ||
-      g.slug === selectedNodeGroup.value
-  ) || null
+const activeGroupObj = computed(
+  () =>
+    nodeGroups.value.find(
+      (g: any) =>
+        g.name === selectedNodeGroup.value ||
+        g.category === selectedNodeGroup.value ||
+        g.slug === selectedNodeGroup.value
+    ) || null
 )
 
 function selectNodeGroup(groupName: string) {
   selectedNodeGroup.value = groupName
   selectedSubnodeSlug.value = 'Tutti'
+  currentPage.value = 1
 }
 
 function selectSubnode(subSlug: string) {
   selectedSubnodeSlug.value = subSlug
+  currentPage.value = 1
 }
 
 function resetNodeFilters() {
   selectedNodeGroup.value = 'Tutti'
   selectedSubnodeSlug.value = 'Tutti'
   searchQuery.value = ''
+  currentPage.value = 1
 }
+
+watch(searchQuery, () => {
+  currentPage.value = 1
+})
 
 const filteredThreads = computed<any[]>(() => {
   const q = searchQuery.value.toLowerCase().trim()
@@ -151,30 +177,59 @@ const filteredThreads = computed<any[]>(() => {
   })
 })
 
+const paginatedThreads = computed<any[]>(() => {
+  const start = (currentPage.value - 1) * THREADS_PER_PAGE
+  return filteredThreads.value.slice(start, start + THREADS_PER_PAGE)
+})
+
+function onPageChange(newPage: number) {
+  currentPage.value = newPage
+  if (import.meta.client && threadsSectionRef.value) {
+    threadsSectionRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 async function loadNodesHub() {
   isLoading.value = true
   try {
     const [treeRes, pRes]: any = await Promise.all([
       $fetch('/api/nodes/tree?_t=' + Date.now()).catch(() => null),
-      $fetch('/api/nodes/posts?limit=40&_t=' + Date.now()).catch(() => null)
+      $fetch('/api/nodes/posts?limit=100&_t=' + Date.now()).catch(() => null)
     ])
     if (Array.isArray(treeRes?.tree)) {
       rootTree.value = treeRes.tree
       flatNodes.value = treeRes.flat || []
     }
-    recentThreads.value = pRes?.posts || pRes?.data || []
+    const rawList = pRes?.posts || pRes?.data || []
+    recentThreads.value = rawList.map((item: any) => ({
+      ...item,
+      isLocked: Boolean(item.isLocked ?? item.is_locked)
+    }))
   } finally {
     isLoading.value = false
   }
 }
 
 async function handleToggleLock(thread: any) {
-  const nextLocked = !thread.isLocked
-  const res: any = await $fetch(`/api/nodes/posts/${thread.id}/close`, {
-    method: 'PATCH',
-    body: { isLocked: nextLocked }
-  }).catch(() => null)
-  if (res?.success) thread.isLocked = nextLocked
+  const numericId = String(thread.id || '').replace(/\D+/g, '')
+  if (!numericId) return
+  const currentLocked = Boolean(thread.isLocked ?? thread.is_locked)
+  const nextLocked = !currentLocked
+  thread._locking = true
+  try {
+    const res: any = await $fetch(`/api/nodes/posts/${numericId}/close`, {
+      method: 'PATCH',
+      body: { isLocked: nextLocked }
+    })
+    if (res?.success) {
+      thread.isLocked = Boolean(res.isLocked)
+      thread.is_locked = Boolean(res.isLocked)
+    }
+  } catch (err) {
+    console.error('[DKP Nodes] Errore aggiornamento stato lock thread:', err)
+  } finally {
+    thread._locking = false
+  }
 }
 
 onMounted(loadNodesHub)
@@ -281,7 +336,6 @@ onMounted(loadNodesHub)
           </button>
         </div>
 
-        <!-- Pillole Nodi Root -->
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -312,7 +366,6 @@ onMounted(loadNodesHub)
           </button>
         </div>
 
-        <!-- Pillole Sub-Nodi del Nodo Root selezionato -->
         <div
           v-if="activeGroupObj && activeGroupObj.subnodes.length > 0"
           class="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-800/80"
@@ -346,10 +399,10 @@ onMounted(loadNodesHub)
     </section>
 
     <DkpLayout :hide-section-header="true" :show-sidebar-ads="true">
-      <div class="space-y-4">
+      <div ref="threadsSectionRef" class="space-y-4 scroll-mt-24">
         <div class="flex items-center justify-between px-1">
           <h3 class="text-lg font-bold text-white m-0">Ultime Discussioni nei Nodi</h3>
-          <span class="text-xs font-mono text-emerald-400">{{ filteredThreads.length }} thread</span>
+          <span class="text-xs font-mono text-emerald-400">Pagina {{ currentPage }} &bull; {{ filteredThreads.length }} thread</span>
         </div>
 
         <div v-if="isLoading" class="bg-dkp-card border border-slate-800 rounded-2xl p-10 text-center font-mono text-xs text-emerald-400 animate-pulse">
@@ -360,15 +413,24 @@ onMounted(loadNodesHub)
           Nessuna discussione trovata con i filtri attivi.
         </div>
 
-        <div v-else class="space-y-3.5">
-          <DkpThreadCard
-            v-for="thread in filteredThreads"
-            :key="thread.id"
-            :thread="thread"
-            :can-moderate="Boolean(currentUser)"
-            @toggle-lock="handleToggleLock"
+        <template v-else>
+          <div class="space-y-3.5">
+            <DkpThreadCard
+              v-for="thread in paginatedThreads"
+              :key="thread.id"
+              :thread="thread"
+              :can-moderate="isAdmin || Number(currentUser?.id || 0) === Number(thread.authorId ?? thread.author_id ?? 0)"
+              @toggle-lock="handleToggleLock"
+            />
+          </div>
+
+          <DkpPagination
+            :current-page="currentPage"
+            :total-items="filteredThreads.length"
+            :per-page="THREADS_PER_PAGE"
+            @update:current-page="onPageChange"
           />
-        </div>
+        </template>
       </div>
 
       <DkpRelatedBlogWidget />

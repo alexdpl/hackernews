@@ -1,6 +1,7 @@
 <!-- app/app.vue -->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useDkpTheme } from '~/composables/useDkpTheme'
 
 useHead({
   htmlAttrs: { lang: 'it' }
@@ -8,10 +9,13 @@ useHead({
 
 useSeoMeta({
   titleTemplate: 'DevKernelPulse | %s',
-  description: 'DevKernelPulse - Ecosystem & Proof of Code su GCP'
+  description: 'DevKernelPulse v2.6-PURE-SQL - Ecosistema Developer, Sentinel Network & Proof of Code su GCP'
 })
 
 const { initAuth } = useAuthCore()
+const { initTranslator } = useDkpTranslator()
+const { initTheme } = useDkpTheme()
+
 const isClientReady = ref(false)
 const showScrollTop = ref(false)
 
@@ -27,6 +31,8 @@ function scrollToTop() {
 
 onMounted(() => {
   isClientReady.value = true
+  initTranslator()
+  if (typeof initTheme === 'function') initTheme()
   handleWindowScroll()
   window.addEventListener('scroll', handleWindowScroll, { passive: true })
 
@@ -48,12 +54,10 @@ onUnmounted(() => {
 
 <template>
   <div class="dkp-app-wrapper min-h-screen bg-[#020617] text-slate-100">
-    <!-- LAYOUT E PAGINA UNICI -->
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
 
-    <!-- Modale globale, Chat Pulse Nexus e Bottone Torna Su a sinistra -->
     <ClientOnly>
       <AuthModal />
       <button
@@ -62,7 +66,7 @@ onUnmounted(() => {
         @click="scrollToTop"
         aria-label="Torna su"
         title="Torna all'inizio della pagina"
-        class="fixed bottom-6 left-6 z-[9990] inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#041224]/95 hover:bg-cyan-500/20 border border-cyan-500/45 hover:border-emerald-400 text-cyan-200 hover:text-emerald-300 font-mono text-xs font-extrabold shadow-[0_8px_30px_rgba(2,6,23,0.85)] backdrop-blur-md cursor-pointer transition-all"
+        class="fixed bottom-6 left-6 z-[9990] inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#080e1e]/95 hover:bg-cyan-500/20 border border-cyan-500/45 hover:border-emerald-400 text-cyan-200 hover:text-emerald-300 font-mono text-xs font-extrabold shadow-[0_8px_30px_rgba(2,6,23,0.85)] backdrop-blur-md cursor-pointer transition-all"
       >
         <span class="text-emerald-400 text-sm leading-none">&#8593;</span>
         <span>Torna su</span>
@@ -70,7 +74,6 @@ onUnmounted(() => {
       <DkpPulseNexus v-if="isClientReady" />
     </ClientOnly>
 
-    <!-- BADGE TELEMETRIA PROPRIETARIO DKP KERNEL CENTRATO v2.4 -->
     <DKPKernelBadge />
   </div>
 </template>
@@ -90,11 +93,28 @@ html, body {
 }
 
 a {
-  color: #38bdf8;
+  color: #6ee7b7; /* emerald-300 (oppure #34d399 per emerald-400) */
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 a:hover {
+  color: #22d3ee; /* cyan-400 */
+  text-decoration: underline;
+}
+
+.prose a,
+.markdown-body a,
+article a:not([class]) {
+  color: #6ee7b7;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.prose a:hover,
+.markdown-body a:hover,
+article a:not([class]):hover {
+  color: #22d3ee;
   text-decoration: underline;
 }
 </style>
